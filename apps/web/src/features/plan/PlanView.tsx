@@ -54,6 +54,7 @@ export function PlanView({ location }: { location: RoomLocation }) {
           selectedId={selected?.id ?? null}
           viewport={viewport}
           preview={gestures.preview}
+          measure={gestures.measure}
           cursor={gestures.cursor}
           svgHandlers={gestures.svgHandlers}
           onFocusObject={select}

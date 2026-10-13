@@ -108,3 +108,9 @@ export const IconWarn = (p: IconProps) => (
     <path d="M7.8 7.6A2.2 2.2 0 1 1 10 10.2V11.6M10 13.6V14.6" strokeWidth={1.75} />
   </svg>
 );
+export const IconMeasure = (p: IconProps) => (
+  <svg {...frame(18)} {...p}>
+    <path d="M2.5 12.5L12.5 2.5L15.5 5.5L5.5 15.5Z" strokeLinejoin="round" />
+    <path d="M6 9L7.5 10.5M8.5 6.5L10 8M11 4L12.5 5.5" strokeWidth={1.2} />
+  </svg>
+);

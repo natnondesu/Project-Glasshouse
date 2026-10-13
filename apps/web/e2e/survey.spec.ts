@@ -98,3 +98,21 @@ test('a second tab is read-only instead of overwriting the first', async ({ page
   await expect(second.getByText('This tab is read-only because Glasshouse is open in another tab.')).toBeVisible();
   await expect(page.getByText('read-only', { exact: false })).toHaveCount(0);
 });
+
+test('Measure: hover shows wall gaps, two clicks measure, Escape clears', async ({ page }) => {
+  await createRoom(page);
+  await placeRack(page, 0.3, 0.4);
+  const x = await page.getByLabel('X', { exact: true }).inputValue();
+  await page.getByRole('button', { name: 'Measure' }).click();
+  const rack = await page.getByRole('button', { name: 'RK-01, Rack' }).boundingBox();
+  const fp = await page.getByTestId('footprint').boundingBox();
+  if (!rack || !fp) throw new Error('Plan not rendered');
+  const cy = rack.y + rack.height / 2;
+  await page.mouse.move(rack.x + rack.width / 2, cy);
+  await expect(page.getByTestId('gap-left')).toHaveText(`${x} m`);
+  await page.mouse.click(fp.x + 2, cy);
+  await page.mouse.click(rack.x + 2, cy);
+  await expect(page.getByTestId('measure-result')).toContainText(`${x} m`);
+  await page.keyboard.press('Escape');
+  await expect(page.getByTestId('measure-result')).toHaveCount(0);
+});

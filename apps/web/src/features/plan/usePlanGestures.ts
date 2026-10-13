@@ -3,6 +3,7 @@ import { useEffect, useRef, useState, type KeyboardEvent, type PointerEvent } fr
 import type { ViewportApi } from '../../viewport/useViewport';
 import { clampIntoRoom } from './clamp';
 import { hitTest } from './hitTest';
+import { snapMeasurePoint, type SnapTarget } from './measure';
 import type { Preview } from './layers';
 import type { SvgHandlers } from './PlanCanvas';
 import { resizePlacement, type Handle } from './resize';
@@ -20,6 +21,18 @@ const DRAG_THRESHOLD_PX = 4;
 const MESSAGE_MS = 4000;
 const NUDGE_M = 0.1;
 const FINE_NUDGE_M = 0.01;
+const MEASURE_SNAP_PX = 10;
+
+export interface MeasureState {
+  a: SnapTarget | null;
+  b: SnapTarget | null;
+  /** Live snapped cursor while the Measure tool is active. */
+  cursor: SnapTarget | null;
+  /** Object under the cursor; its gaps to the walls are shown. */
+  hoverId: Id | null;
+}
+
+const NO_MEASURE: MeasureState = { a: null, b: null, cursor: null, hoverId: null };
 
 interface Args {
   content: PlanContent;
@@ -43,6 +56,9 @@ export function usePlanGestures({ content, tool, setTool, selectedId, select, vi
   const [preview, setPreviewState] = useState<Preview | null>(null);
   const [spaceHeld, setSpaceHeld] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [measure, setMeasure] = useState<MeasureState>(NO_MEASURE);
+
+  useEffect(() => setMeasure(NO_MEASURE), [tool]);
 
   useEffect(() => {
     if (!message) return;
@@ -70,6 +86,11 @@ export function usePlanGestures({ content, tool, setTool, selectedId, select, vi
     e.currentTarget.setPointerCapture(e.pointerId);
     if (tool === 'pan' || spaceHeld || e.button === 1) {
       gesture.current = { kind: 'pan', lastX: e.clientX, lastY: e.clientY };
+      return;
+    }
+    if (tool === 'measure') {
+      const snap = snapMeasurePoint(world, content, MEASURE_SNAP_PX / viewport.view.scale);
+      setMeasure((m) => (m.a === null || m.b !== null ? { ...m, a: snap, b: null } : { ...m, b: snap }));
       return;
     }
     if (tool === 'area' || tool === 'cut') {
@@ -106,6 +127,12 @@ export function usePlanGestures({ content, tool, setTool, selectedId, select, vi
 
   const onPointerMove = (e: PointerEvent<SVGSVGElement>): void => {
     const g = gesture.current;
+    if (!g && tool === 'measure') {
+      const world = viewport.clientToWorld(e.clientX, e.clientY);
+      const cursorSnap = snapMeasurePoint(world, content, MEASURE_SNAP_PX / viewport.view.scale);
+      setMeasure((m) => ({ ...m, cursor: cursorSnap, hoverId: hitTest(content.objects, world)?.id ?? null }));
+      return;
+    }
     if (!g) return;
     if (g.kind === 'pan') {
       viewport.panBy(e.clientX - g.lastX, e.clientY - g.lastY);
@@ -155,6 +182,7 @@ export function usePlanGestures({ content, tool, setTool, selectedId, select, vi
     }
     if (e.key === 'Escape') {
       if (gesture.current) cancel();
+      else if (tool === 'measure' && measure.a !== null) setMeasure(NO_MEASURE);
       else if (tool !== 'select') setTool('select');
       else select(null);
       return;
@@ -191,13 +219,15 @@ export function usePlanGestures({ content, tool, setTool, selectedId, select, vi
 
   const panning = tool === 'pan' || spaceHeld || gesture.current?.kind === 'pan';
   const cursor = panning ? 'grab' : tool === 'select' ? 'default' : 'crosshair';
+  const onPointerLeave = (): void => setMeasure((m) => ({ ...m, cursor: null, hoverId: null }));
   const svgHandlers: SvgHandlers = {
     onPointerDown,
     onPointerMove,
     onPointerUp,
     onPointerCancel: cancel,
+    onPointerLeave,
     onContextMenu: (e) => e.preventDefault(),
   };
 
-  return { preview, cursor, message, svgHandlers, onKeyDown, onKeyUp };
+  return { preview, cursor, message, measure, svgHandlers, onKeyDown, onKeyUp };
 }

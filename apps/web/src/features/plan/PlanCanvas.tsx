@@ -2,6 +2,8 @@ import type { Issue, PlanContent, RoomObject } from '@glasshouse/domain';
 import { useMemo, type DOMAttributes } from 'react';
 import type { ViewportApi } from '../../viewport/useViewport';
 import { flaggedObjectIds } from './flagged';
+import { MeasureLayer } from './MeasureLayer';
+import type { MeasureState } from './usePlanGestures';
 import {
   ClearanceLayer,
   DimensionsLayer,
@@ -16,7 +18,7 @@ import {
 
 export type SvgHandlers = Pick<
   DOMAttributes<SVGSVGElement>,
-  'onPointerDown' | 'onPointerMove' | 'onPointerUp' | 'onPointerCancel' | 'onContextMenu'
+  'onPointerDown' | 'onPointerMove' | 'onPointerUp' | 'onPointerCancel' | 'onPointerLeave' | 'onContextMenu'
 >;
 
 interface PlanCanvasProps {
@@ -25,6 +27,7 @@ interface PlanCanvasProps {
   selectedId: string | null;
   viewport: ViewportApi;
   preview: Preview | null;
+  measure?: MeasureState;
   cursor: string;
   svgHandlers?: SvgHandlers;
   onFocusObject: (id: string) => void;
@@ -33,7 +36,7 @@ interface PlanCanvasProps {
 const withPreview = (objects: RoomObject[], preview: Preview | null): RoomObject[] =>
   preview?.kind === 'object' ? objects.map((o) => (o.id === preview.id ? { ...o, ...preview.patch } : o)) : objects;
 
-export function PlanCanvas({ content, issues, selectedId, viewport, preview, cursor, svgHandlers, onFocusObject }: PlanCanvasProps) {
+export function PlanCanvas({ content, issues, selectedId, viewport, preview, measure, cursor, svgHandlers, onFocusObject }: PlanCanvasProps) {
   const { view } = viewport;
   const flagged = useMemo(() => flaggedObjectIds(issues), [issues]);
   const objects = withPreview(content.objects, preview);
@@ -56,6 +59,7 @@ export function PlanCanvas({ content, issues, selectedId, viewport, preview, cur
       {selected ? <SelectionLayer object={selected} view={view} /> : null}
       <DimensionsLayer survey={content.survey} view={view} />
       {preview?.kind === 'rect' ? <FloorPreview preview={preview} view={view} /> : null}
+      {measure ? <MeasureLayer measure={measure} content={content} view={view} /> : null}
     </svg>
   );
 }
