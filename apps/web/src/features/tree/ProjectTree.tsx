@@ -1,8 +1,10 @@
-import { currentRevision, newId, type WorkspaceCommand } from '@glasshouse/domain';
-import { useState } from 'react';
+import { currentRevision, newId, parseProjectFile, type ProjectFile, type WorkspaceCommand } from '@glasshouse/domain';
+import { useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { useWorkspaceStore } from '../../store/workspaceStore';
-import { IconPlus } from '../../ui/icons';
+import { readJsonFile } from '../../ui/files';
+import { IconPlus, IconUpload } from '../../ui/icons';
+import { ImportDialog } from '../handoff/ImportDialog';
 import { pad2, STATE_LABEL } from '../../ui/StatusStamp';
 import { TreeRow } from './TreeRow';
 import './tree.css';
@@ -14,6 +16,23 @@ export function ProjectTree({ activeRoomId }: { activeRoomId: string | null }) {
   const navigate = useNavigate();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const fileInput = useRef<HTMLInputElement>(null);
+  const [importing, setImporting] = useState<ProjectFile | null>(null);
+  const onImportFile = async (file: File | undefined): Promise<void> => {
+    if (!file) return;
+    const read = await readJsonFile(file);
+    if (!read.ok) {
+      setError(read.message);
+      return;
+    }
+    const parsed = parseProjectFile(read.value);
+    if (!parsed.ok) {
+      setError(parsed.error.message);
+      return;
+    }
+    setError(null);
+    setImporting(parsed.value);
+  };
 
   const run = (command: WorkspaceCommand): boolean => {
     const problem = dispatch(command);
@@ -36,9 +55,25 @@ export function ProjectTree({ activeRoomId }: { activeRoomId: string | null }) {
     <aside className="tree glass" aria-label="Projects">
       <div className="tree__head">
         <h2>Projects</h2>
-        <button type="button" className="icon-btn" aria-label="New project" title="New project" onClick={addProject}>
-          <IconPlus />
-        </button>
+        <span className="tree__head-actions">
+          <button type="button" className="icon-btn" aria-label="Import project file" title="Import project file" onClick={() => fileInput.current?.click()}>
+            <IconUpload />
+          </button>
+          <button type="button" className="icon-btn" aria-label="New project" title="New project" onClick={addProject}>
+            <IconPlus />
+          </button>
+        </span>
+        <input
+          ref={fileInput}
+          type="file"
+          accept=".json,application/json"
+          hidden
+          aria-label="Choose a project file"
+          onChange={(e) => {
+            void onImportFile(e.target.files?.[0]);
+            e.target.value = '';
+          }}
+        />
       </div>
       {projects.length === 0 ? <p className="tree__empty">No projects yet.</p> : null}
       <ul className="tree__list">
@@ -118,6 +153,7 @@ export function ProjectTree({ activeRoomId }: { activeRoomId: string | null }) {
           {error}
         </p>
       ) : null}
+      {importing ? <ImportDialog file={importing} onClose={() => setImporting(null)} /> : null}
       <Link to="/catalog" className="tree__catalog">
         Device catalog · {templateCount} {templateCount === 1 ? 'template' : 'templates'}
       </Link>

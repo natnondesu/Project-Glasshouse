@@ -157,3 +157,8 @@
 .tree__catalog:hover {
   color: var(--acc);
 }
+
+.tree__head-actions {
+  display: flex;
+  gap: 6px;
+}
