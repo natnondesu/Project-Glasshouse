@@ -267,3 +267,44 @@
 .zoom__fit:hover {
   background: var(--hover);
 }
+.toolbar {
+  position: absolute;
+  left: 16px;
+  top: 16px;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 4px;
+  background: var(--sheet);
+  border: 1.25px solid var(--ink);
+  box-shadow: var(--shadow-float);
+}
+
+.toolbar__sep {
+  height: 1px;
+  margin: 3px 4px;
+  background: var(--rule);
+}
+
+.plan-view__message {
+  position: absolute;
+  left: 50%;
+  bottom: 18px;
+  max-width: min(560px, 80%);
+  padding: 9px 14px;
+  border-radius: var(--radius);
+  background: var(--ink);
+  color: var(--sheet);
+  font-size: 14px;
+  box-shadow: var(--shadow-float);
+  transform: translateX(-50%);
+  animation: message-in var(--duration-normal) var(--ease-out-expo);
+}
+
+@keyframes message-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 8px);
+  }
+}
