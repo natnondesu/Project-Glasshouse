@@ -138,3 +138,22 @@
   font-weight: 600;
   color: var(--block);
 }
+
+.tree {
+  display: flex;
+  flex-direction: column;
+}
+
+.tree__catalog {
+  margin-top: auto;
+  padding: 12px 10px 2px;
+  border-top: 1px solid var(--line);
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  color: var(--ink);
+}
+
+.tree__catalog:hover {
+  color: var(--acc);
+}
