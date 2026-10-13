@@ -8,6 +8,7 @@ import { applyCatalogCommand, type CatalogCommand } from './catalog';
 import { applyPlanCommand, type PlanCommand } from './plan';
 import { applyReviewCommand, type ReviewCommand } from './review';
 import { applyImport, type ImportResolution, type ProjectFile } from '../projectFile';
+import { withSample } from '../sample';
 
 export type WorkspaceCommand =
   | { type: 'project/create'; id: Id; name: string }
@@ -22,6 +23,7 @@ export type WorkspaceCommand =
   | { type: 'plan'; roomId: Id; command: PlanCommand }
   | { type: 'review'; roomId: Id; command: ReviewCommand }
   | { type: 'backup/mark'; at: string }
+  | { type: 'sample/load'; at: string }
   | { type: 'project/import'; file: ProjectFile; resolution: ImportResolution }
   | CatalogCommand;
 
@@ -136,6 +138,8 @@ export function apply(ws: Workspace, cmd: WorkspaceCommand): Result<Workspace> {
     }
     case 'project/import':
       return applyImport(ws, cmd.file, cmd.resolution);
+    case 'sample/load':
+      return withSample(ws, cmd.at);
     case 'backup/mark':
       return ok(produce(ws, (d) => void (d.lastBackupAt = cmd.at)));
     case 'review': {

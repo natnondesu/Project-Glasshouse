@@ -1,7 +1,7 @@
 import { CATEGORY_LABEL } from './catalog';
 import { racksOf } from './devices';
 import { currentRevision, type RoomLocation } from './lookup';
-import type { Demand, Id, PlanContent } from './model/types';
+import type { Demand, Id, PlanContent, Revision } from './model/types';
 import { formatURange } from './occupancy';
 
 export interface BomRow {
@@ -50,8 +50,10 @@ function templateText(content: PlanContent, id: Id, version: number): string {
 
 const demandText = (d: Demand): string => (d.kind === 'known' ? String(d.watts) : 'unknown');
 
-export function bomRows(loc: RoomLocation): BomRow[] {
-  const content = currentRevision(loc.room.plan).content;
+export const bomRows = (loc: RoomLocation): BomRow[] => bomRowsFor(loc, currentRevision(loc.room.plan));
+
+export function bomRowsFor(loc: RoomLocation, revision: Revision): BomRow[] {
+  const content = revision.content;
   const where = { project: loc.project.name, site: loc.site.name, room: loc.room.name };
   const racks = [...racksOf(content)].sort((a, b) => a.name.localeCompare(b.name));
   return racks.flatMap((rack) =>

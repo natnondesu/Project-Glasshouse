@@ -65,7 +65,7 @@ test('AC09/AC10: template edits leave placed devices alone; a too-deep device bl
   await page.getByLabel('Demand in watts').fill('999');
   await page.getByRole('button', { name: 'Save template' }).click();
 
-  await page.getByRole('link', { name: /MDF-1/ }).click();
+  await page.getByRole('link', { name: /MDF-1/ }).last().click();
   await page.getByRole('link', { name: 'Elevation' }).click();
   await page.getByRole('button', { name: /^SRV-01,/ }).click();
   await expect(page.getByLabel('Demand in watts')).toHaveValue('780');

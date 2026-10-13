@@ -126,9 +126,11 @@ interface ObjectsLayerProps {
   flagged: Set<string>;
   selectedId: string | null;
   onFocusObject: (id: string) => void;
+  /** Print: a drawing, not a set of controls. */
+  isStatic?: boolean;
 }
 
-export function ObjectsLayer({ objects, view, flagged, selectedId, onFocusObject }: ObjectsLayerProps) {
+export function ObjectsLayer({ objects, view, flagged, selectedId, onFocusObject, isStatic = false }: ObjectsLayerProps) {
   return (
     <g>
       {objects.map((o) => {
@@ -140,13 +142,11 @@ export function ObjectsLayer({ objects, view, flagged, selectedId, onFocusObject
         return (
           <g
             key={o.id}
-            role="button"
-            tabIndex={0}
-            aria-label={`${o.name}, ${TYPE_LABEL[o.type]}`}
-            aria-pressed={o.id === selectedId}
             className={classes}
             data-object-id={o.id}
-            onFocus={() => onFocusObject(o.id)}
+            {...(isStatic
+              ? {}
+              : { role: 'button', tabIndex: 0, 'aria-label': `${o.name}, ${TYPE_LABEL[o.type]}`, 'aria-pressed': o.id === selectedId, onFocus: () => onFocusObject(o.id) })}
           >
             <path className="obj__body" d={polygonPath(placementPolygon(o), view)} />
             {o.type === 'existing_rack' ? <path className="obj__cross" d={crossPath(o, view)} /> : null}

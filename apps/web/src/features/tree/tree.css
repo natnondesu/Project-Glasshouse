@@ -211,3 +211,13 @@
   border: 1px solid rgb(184 50 42 / 0.3);
   background: var(--block-bg);
 }
+
+.tree__sample {
+  align-self: flex-start;
+  margin: 8px 6px 0;
+}
+
+.tree-row__label .stamp--sample {
+  background: var(--acc-soft);
+  color: var(--acc-deep);
+}

@@ -1,10 +1,12 @@
-import { approvalBlockers, currentRevision } from '@glasshouse/domain';
-import { NavLink } from 'react-router';
+import { approvalBlockers, currentRevision, latestApproved } from '@glasshouse/domain';
+import { Link, NavLink } from 'react-router';
+import { pad2 } from '../ui/StatusStamp';
 import { useRoomLocation } from '../store/hooks';
 
 const VIEWS = [
   { id: 'plan', label: 'Plan' },
   { id: 'elevation', label: 'Elevation' },
+  { id: '3d', label: '3D' },
   { id: 'bom', label: 'Devices & BOM' },
   { id: 'review', label: 'Review' },
 ] as const;
@@ -12,6 +14,7 @@ const VIEWS = [
 export function ViewTabs({ roomId }: { roomId: string }) {
   const location = useRoomLocation(roomId);
   const plan = location?.room.plan;
+  const approved = plan ? latestApproved(plan) : null;
   const blockers = plan && currentRevision(plan).state !== 'approved' ? approvalBlockers(plan).length : 0;
   return (
     <nav className="view-tabs glass" aria-label="Room views">
@@ -27,7 +30,17 @@ export function ViewTabs({ roomId }: { roomId: string }) {
           </NavLink>
         ))}
       </span>
-      <span className="view-tabs__meta">Grid 0.50 m · snap 0.10 m</span>
+      <span className="view-tabs__meta">
+        {approved ? (
+          <Link to={`/rooms/${roomId}/install-sheet`} className="btn btn--sm">
+            {`Install sheet · R${pad2(approved.number)}`}
+          </Link>
+        ) : (
+          <span className="view-tabs__hint" title="The Install sheet prints from an Approved revision.">
+            Install sheet after approval
+          </span>
+        )}
+      </span>
     </nav>
   );
 }

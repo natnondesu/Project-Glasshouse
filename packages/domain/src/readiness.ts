@@ -26,3 +26,6 @@ export const isSelfApproved = (revision: Revision): boolean =>
   revision.designedBy !== null &&
   revision.approvedBy !== null &&
   revision.designedBy.name.trim().toLowerCase() === revision.approvedBy.name.trim().toLowerCase();
+
+/** The Revision an Install sheet prints: the newest Approved one, even after a new Draft has started. */
+export const latestApproved = (plan: Plan): Revision | null => [...plan.revisions].reverse().find((r) => r.state === 'approved') ?? null;

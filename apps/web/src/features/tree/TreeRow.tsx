@@ -54,6 +54,7 @@ export function TreeRow(props: TreeRowProps) {
         ) : (
           <span className="tree-row__label tree-row__label--group">
             <span className="tree-row__name">{label}</span>
+            {badge}
           </span>
         )}
         <span className="tree-row__actions">

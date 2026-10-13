@@ -15,8 +15,10 @@ export function App({ repository = idbRepository }: { repository?: Repository })
   const load = useWorkspaceStore((s) => s.load);
 
   useEffect(() => {
-    void acquireWriterLock().then((isWriter) => useWorkspaceStore.getState().setReadOnly(!isWriter));
-    void hydrate(repository);
+    // The lock decides first, so a read-only tab never seeds or saves on first run.
+    void acquireWriterLock()
+      .then((isWriter) => useWorkspaceStore.getState().setReadOnly(!isWriter))
+      .then(() => hydrate(repository));
     return startPersistence(repository);
   }, [repository]);
 
