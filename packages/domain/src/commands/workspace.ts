@@ -4,6 +4,7 @@ import { currentRevision, findProject, findRoom, findSite } from '../lookup';
 import type { Id, PlanContent, Room, Site, Workspace } from '../model/types';
 import { err, ok, type Result } from '../result';
 import { validateName } from '../validation';
+import { applyCatalogCommand, type CatalogCommand } from './catalog';
 import { applyPlanCommand, type PlanCommand } from './plan';
 
 export type WorkspaceCommand =
@@ -16,7 +17,8 @@ export type WorkspaceCommand =
   | { type: 'room/create'; siteId: Id; id: Id; name: string }
   | { type: 'room/rename'; roomId: Id; name: string }
   | { type: 'room/delete'; roomId: Id }
-  | { type: 'plan'; roomId: Id; command: PlanCommand };
+  | { type: 'plan'; roomId: Id; command: PlanCommand }
+  | CatalogCommand;
 
 const gone = (what: string, id: Id) => err('not_found', `That ${what} no longer exists.`, [id]);
 
@@ -119,6 +121,14 @@ export function apply(ws: Workspace, cmd: WorkspaceCommand): Result<Workspace> {
       return ok(produce(ws, (d) => {
         for (const p of d.projects) for (const s of p.sites) s.rooms = s.rooms.filter((r) => r.id !== cmd.roomId);
       }));
+    case 'template/create':
+    case 'template/update':
+    case 'template/delete':
+    case 'catalog/seed': {
+      const result = applyCatalogCommand(ws.catalog, cmd);
+      if (!result.ok) return result;
+      return ok(produce(ws, (d) => void (d.catalog = castDraft(result.value))));
+    }
     case 'plan':
       return applyToPlan(ws, cmd.roomId, cmd.command);
   }

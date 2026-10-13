@@ -1,3 +1,4 @@
+import { seedTemplates } from './catalog';
 import { newId } from './ids';
 import { CURRENT_SCHEMA_VERSION, DEFAULT_DESIGN_LIMIT_PCT, DEFAULT_POWER_BUDGET_W, DEFAULT_ROOM } from './model/defaults';
 import type { Plan, PlanContent, Revision, Survey, Workspace } from './model/types';
@@ -35,6 +36,6 @@ export const createPlan = (): Plan => ({ revisions: [createDraftRevision(1, empt
 export const createWorkspace = (): Workspace => ({
   schemaVersion: CURRENT_SCHEMA_VERSION,
   projects: [],
-  catalog: [],
+  catalog: seedTemplates(),
   lastBackupAt: null,
 });

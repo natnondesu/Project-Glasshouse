@@ -1,6 +1,6 @@
 import { currentRevision, newId, type WorkspaceCommand } from '@glasshouse/domain';
 import { useState } from 'react';
-import { useNavigate } from 'react-router';
+import { Link, useNavigate } from 'react-router';
 import { useWorkspaceStore } from '../../store/workspaceStore';
 import { IconPlus } from '../../ui/icons';
 import { pad2, STATE_LABEL } from '../../ui/StatusStamp';
@@ -9,6 +9,7 @@ import './tree.css';
 
 export function ProjectTree({ activeRoomId }: { activeRoomId: string | null }) {
   const projects = useWorkspaceStore((s) => s.workspace.projects);
+  const templateCount = useWorkspaceStore((s) => s.workspace.catalog.length);
   const dispatch = useWorkspaceStore((s) => s.dispatch);
   const navigate = useNavigate();
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -117,6 +118,9 @@ export function ProjectTree({ activeRoomId }: { activeRoomId: string | null }) {
           {error}
         </p>
       ) : null}
+      <Link to="/catalog" className="tree__catalog">
+        Device catalog · {templateCount} {templateCount === 1 ? 'template' : 'templates'}
+      </Link>
     </aside>
   );
 }

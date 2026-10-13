@@ -15,7 +15,7 @@ it('draws the footprint and labels racks with name and capacity', () => {
   render(<Harness content={{ ...base, objects: [rack] }} />);
   expect(screen.getByTestId('footprint').getAttribute('d')).toMatch(/^M/);
   expect(screen.getByRole('button', { name: 'RK-01, Rack' })).toBeInTheDocument();
-  expect(screen.getByText('42U')).toBeInTheDocument();
+  expect(screen.getByText('0/42U')).toBeInTheDocument();
   expect(screen.getByText('5.00')).toBeInTheDocument();
   expect(screen.getByText('4.00')).toBeInTheDocument();
 });

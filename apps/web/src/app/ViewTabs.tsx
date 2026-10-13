@@ -1,6 +1,10 @@
 import { NavLink } from 'react-router';
 
-const VIEWS = [{ id: 'plan', label: 'Plan' }] as const;
+const VIEWS = [
+  { id: 'plan', label: 'Plan' },
+  { id: 'elevation', label: 'Elevation' },
+  { id: 'bom', label: 'Devices & BOM' },
+] as const;
 
 export function ViewTabs({ roomId }: { roomId: string }) {
   return (

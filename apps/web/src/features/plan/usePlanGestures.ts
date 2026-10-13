@@ -1,15 +1,17 @@
+import type { CommitFn } from '../../store/hooks';
 import { createObject, newId, snapDrag, snapFloor, type Id, type PlanCommand, type PlanContent, type Point } from '@glasshouse/domain';
 import { useEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react';
 import type { ViewportApi } from '../../viewport/useViewport';
 import { clampIntoRoom } from './clamp';
 import { hitTest } from './hitTest';
+import { describeRackContents } from './labels';
 import { snapMeasurePoint, type SnapTarget } from './measure';
 import type { Preview } from './layers';
 import type { SvgHandlers } from './PlanCanvas';
 import { resizePlacement, type Handle } from './resize';
 import { isPlacementTool, toolForKey, type Tool } from './tools';
 
-export type CommitFn = (command: PlanCommand, coalesceKey?: string) => string | null;
+export type { CommitFn } from '../../store/hooks';
 
 type Gesture =
   | { kind: 'pan'; lastX: number; lastY: number }
@@ -197,6 +199,11 @@ export function usePlanGestures({ content, tool, setTool, selectedId, select, vi
     if (!selected) return;
     if (e.key === 'Delete' || e.key === 'Backspace') {
       e.preventDefault();
+      const contents = selected.type === 'rack' ? describeRackContents(selected) : null;
+      if (contents) {
+        setMessage(`${selected.name} holds ${contents}. Remove it from the inspector to confirm.`);
+        return;
+      }
       if (run({ type: 'object/remove', id: selected.id })) select(null);
       return;
     }
