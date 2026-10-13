@@ -1,0 +1,412 @@
+/* The plan is full-bleed; tools, zoom, inspector and checks float over it as glass. */
+.plan-view {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  border-radius: 20px;
+  overflow: hidden;
+  background: var(--ground);
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.5);
+}
+
+.plan-view__canvas {
+  position: absolute;
+  inset: 0;
+}
+
+.plan-canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+  touch-action: none;
+  user-select: none;
+  outline: none;
+}
+
+.hatch-fill {
+  fill: var(--clearance-fill);
+}
+
+.hatch-line {
+  stroke: var(--ink-2);
+  stroke-width: 1;
+  opacity: 0.5;
+}
+
+.hatch-line--clearance {
+  stroke: var(--clearance);
+  opacity: 0;
+}
+
+.grid {
+  stroke: var(--grid);
+  stroke-width: 1;
+}
+
+.grid--major {
+  stroke: var(--grid-major);
+  opacity: 0.55;
+}
+
+.canvas-bounds {
+  fill: none;
+  stroke: var(--grid-major);
+  stroke-width: 1;
+  stroke-dasharray: 2 5;
+}
+
+.footprint-shadow {
+  fill: rgb(30 45 60 / 0.18);
+}
+
+.footprint {
+  fill: var(--floor);
+  fill-opacity: 0.92;
+  stroke: var(--ink);
+  stroke-width: 5;
+  stroke-linejoin: round;
+}
+
+.cut-out {
+  fill: var(--column);
+  stroke: var(--ink);
+  stroke-width: 2;
+}
+
+.clearance {
+  fill: var(--clearance-fill);
+  stroke: var(--clearance);
+  stroke-width: 1.25;
+  stroke-dasharray: 5 3;
+  pointer-events: none;
+}
+
+.obj {
+  cursor: pointer;
+  outline: none;
+}
+
+.obj__body {
+  stroke-width: 1.25;
+  stroke-linejoin: round;
+  transition:
+    fill var(--duration-fast) ease-out,
+    filter var(--duration-fast) ease-out;
+}
+
+.obj--rack .obj__body {
+  fill: var(--rack);
+  stroke: var(--rack);
+}
+
+.obj--existing_rack .obj__body {
+  fill: var(--existing);
+  stroke: #7d8a96;
+}
+
+.obj--door .obj__body {
+  fill: var(--floor);
+  stroke: var(--ink);
+  stroke-width: 2;
+}
+
+.obj--mcb .obj__body {
+  fill: var(--panel-light);
+  stroke: var(--ink);
+}
+
+.obj--furniture .obj__body {
+  fill: var(--desk);
+  stroke: var(--desk-edge);
+}
+
+.obj:hover .obj__body {
+  filter: brightness(1.08);
+}
+
+.obj__cross {
+  stroke: rgb(255 255 255 / 0.55);
+  stroke-width: 1;
+}
+
+.obj.is-selected .obj__body {
+  fill: var(--acc);
+  stroke: var(--acc);
+}
+
+.obj.is-flagged .obj__body {
+  fill: var(--block-fill);
+  stroke: var(--block);
+  stroke-width: 1.5;
+}
+
+.obj:focus-visible .obj__body {
+  stroke: var(--acc);
+  stroke-width: 3;
+}
+
+.obj__label,
+.obj__sub {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  pointer-events: none;
+}
+
+.obj__label {
+  font-weight: 600;
+  fill: var(--ink);
+}
+
+.obj__sub {
+  fill: var(--ink-2);
+}
+
+.obj--rack .obj__label,
+.obj--existing_rack .obj__label,
+.obj.is-selected .obj__label,
+.obj.is-flagged .obj__label {
+  fill: #fff;
+}
+
+.obj--rack .obj__sub,
+.obj--existing_rack .obj__sub,
+.obj.is-selected .obj__sub,
+.obj.is-flagged .obj__sub {
+  fill: rgb(255 255 255 / 0.8);
+}
+
+.rack-front {
+  stroke: var(--rack-front);
+  stroke-width: 5;
+}
+
+.obj.is-selected .rack-front {
+  stroke: var(--acc-deep);
+}
+
+.rack-front-arrow {
+  fill: var(--ink);
+}
+
+.selection {
+  fill: none;
+  stroke: var(--acc);
+  stroke-width: 2;
+  stroke-linejoin: round;
+  pointer-events: none;
+}
+
+.handle {
+  fill: #fff;
+  stroke: var(--acc);
+  stroke-width: 1.5;
+}
+
+.handle--n,
+.handle--s {
+  cursor: ns-resize;
+}
+
+.handle--e,
+.handle--w {
+  cursor: ew-resize;
+}
+
+.handle--ne,
+.handle--sw {
+  cursor: nesw-resize;
+}
+
+.handle--nw,
+.handle--se {
+  cursor: nwse-resize;
+}
+
+.dim {
+  stroke: var(--ink-2);
+  stroke-width: 1;
+  fill: none;
+}
+
+.dim__ext {
+  stroke: var(--grid-major);
+  stroke-width: 0.75;
+  fill: none;
+}
+
+.dim__bg {
+  fill: var(--ground);
+  rx: 4px;
+}
+
+.dim__label {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 600;
+  fill: var(--ink-2);
+}
+
+.preview--area {
+  fill: var(--acc-soft);
+  stroke: var(--acc);
+  stroke-width: 1.5;
+  stroke-dasharray: 6 3;
+}
+
+.preview--cut {
+  fill: rgb(203 212 220 / 0.7);
+  stroke: var(--ink);
+  stroke-width: 1.5;
+  stroke-dasharray: 3 3;
+}
+
+.measure__line line {
+  stroke: var(--acc);
+  stroke-width: 1.75;
+}
+
+.measure__line--live line {
+  stroke-dasharray: 6 4;
+}
+
+.measure__line circle {
+  fill: #fff;
+  stroke: var(--acc);
+  stroke-width: 1.5;
+}
+
+.measure__pill rect {
+  fill: rgb(255 255 255 / 0.92);
+  stroke: rgb(28 100 200 / 0.35);
+  filter: drop-shadow(0 4px 10px rgb(14 24 36 / 0.18));
+}
+
+.measure__value {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 600;
+  fill: var(--ink);
+}
+
+.measure__sub {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  fill: var(--ink-2);
+}
+
+.measure__snap circle {
+  fill: none;
+  stroke: var(--acc);
+  stroke-width: 1.5;
+}
+
+.measure__snap text {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  fill: var(--acc-deep);
+  paint-order: stroke;
+  stroke: var(--floor);
+  stroke-width: 3px;
+}
+
+.toolbar {
+  position: absolute;
+  left: 12px;
+  top: 12px;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px;
+  border-radius: 14px;
+}
+
+.toolbar__sep {
+  height: 1px;
+  margin: 3px 6px;
+  background: var(--line);
+}
+
+.tool {
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-control);
+  background: none;
+  color: var(--ink);
+  transition: background var(--duration-fast) ease-out;
+}
+
+.tool:hover {
+  background: rgb(255 255 255 / 0.7);
+}
+
+.tool[aria-pressed='true'] {
+  background: var(--ink);
+  color: #fff;
+}
+
+.zoom {
+  position: absolute;
+  right: 376px;
+  top: 12px;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  padding: 4px;
+  border-radius: 14px;
+}
+
+.zoom .tool {
+  width: 34px;
+  height: 34px;
+}
+
+.zoom__value {
+  min-width: 70px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--ink-2);
+}
+
+.zoom__fit {
+  height: 34px;
+  padding: 0 12px;
+  margin-left: 4px;
+  border: 0;
+  border-radius: var(--radius-field);
+  background: rgb(255 255 255 / 0.6);
+  font-weight: 600;
+  font-size: 12px;
+}
+
+.zoom__fit:hover {
+  background: #fff;
+}
+
+.plan-view__message {
+  position: absolute;
+  left: calc(50% - 180px);
+  bottom: 168px;
+  z-index: 3;
+  max-width: min(520px, 60%);
+  padding: 9px 16px;
+  border-radius: 999px;
+  background: var(--ink);
+  color: #fff;
+  font-size: 13px;
+  box-shadow: var(--shadow-float);
+  transform: translateX(-50%);
+  animation: message-in var(--duration-normal) var(--ease-out-expo);
+}
+
+@keyframes message-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 8px);
+  }
+}

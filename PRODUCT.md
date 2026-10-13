@@ -39,7 +39,7 @@ The room geometry, rack U occupancy, Chassis → Node containment, clearance and
 ## Brand Commitments
 
 - The name is Glasshouse (formerly Rackspace).
-- Visual direction pinned by the product owner: modern technical drawing, meaning measured, dimensioned and drawing-like, never decorative "blueprint cosplay".
+- Visual direction pinned by the product owner: **glass and depth** (frosted panels floating over a full-bleed live plan, light only). It replaced the earlier technical-drawing direction on 2026-10-14; the layout and components were kept.
 
 ## Evidence on Hand
 
