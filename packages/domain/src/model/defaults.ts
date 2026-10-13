@@ -19,6 +19,10 @@ export const LIMITS = {
   designLimitMaxPct: 100,
   nameMaxLength: 80,
   textMaxLength: 2000,
+  deviceDepthMinMm: 100,
+  deviceDepthMaxMm: 1500,
+  chassisMaxSlots: 64,
+  deviceDemandMaxW: 20_000,
 } as const;
 
 export const DEFAULT_ROOM = { width: 5, length: 4 } as const;

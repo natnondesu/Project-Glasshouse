@@ -18,3 +18,6 @@ export * from './commands/workspace';
 export * from './checks/index';
 export * from './migrations';
 export * from './schema';
+export * from './demand';
+export * from './catalog';
+export * from './commands/catalog';

@@ -15,3 +15,8 @@ export const inRange = (v: number, min: number, max: number): boolean =>
 
 export const isWholeInRange = (v: number, min: number, max: number): boolean =>
   Number.isInteger(v) && v >= min && v <= max;
+
+/** Drops keys whose value is undefined, so a partial patch never overwrites a field with undefined. */
+export function definedOnly<T extends object>(o: T): Partial<T> {
+  return Object.fromEntries(Object.entries(o).filter(([, v]) => v !== undefined)) as Partial<T>;
+}

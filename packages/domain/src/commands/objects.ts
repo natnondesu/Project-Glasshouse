@@ -3,7 +3,7 @@ import { LIMITS } from '../model/defaults';
 import type { Id, Metres, Millimetres, PlanContent, Rack, RackOwner, RoomObject, Survey, Units } from '../model/types';
 import { err, ok, withTarget, type Failure, type Result } from '../result';
 import { formatMetres, normalizeAngle, rackAutoHeightM, snapTyped } from '../units';
-import { inRange, isWholeInRange, validateName } from '../validation';
+import { definedOnly, inRange, isWholeInRange, validateName } from '../validation';
 
 export interface ObjectPatch {
   name?: string;
@@ -29,10 +29,6 @@ export type ObjectCommand =
 const RACK_ONLY: (keyof ObjectPatch)[] = ['capacityU', 'usableDepthMm', 'owner', 'clearance'];
 /** Rounding to 0.01 m after a rotation can push a flush object a hair past the wall; absorb that. */
 const OVERFLOW_TOLERANCE_M = 0.01;
-
-function definedOnly<T extends object>(o: T): Partial<T> {
-  return Object.fromEntries(Object.entries(o).filter(([, v]) => v !== undefined)) as Partial<T>;
-}
 
 function normalizeObject(o: RoomObject): RoomObject {
   const geometry = {
