@@ -68,6 +68,8 @@ export interface ImportPreview {
   conflicts: RoomConflict[];
   newRooms: number;
   newTemplates: number;
+  /** Templates whose ID exists here at a different version. The catalog keeps one entry per ID, so the local one stays. */
+  differingTemplates: string[];
   /** A site or room ID in the file already belongs to a different local project: only a copy is safe. */
   idClash: boolean;
 }
@@ -117,6 +119,9 @@ export function previewImport(ws: Workspace, file: ProjectFile): ImportPreview {
     conflicts,
     newRooms,
     newTemplates: latestTemplates(file.templates).filter((t) => !ws.catalog.some((c) => c.id === t.id)).length,
+    differingTemplates: latestTemplates(file.templates)
+      .filter((t) => ws.catalog.some((c) => c.id === t.id && c.version !== t.version))
+      .map((t) => t.label),
     idClash,
   };
 }

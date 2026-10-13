@@ -1,5 +1,5 @@
 import {
-  checkPlan,
+  revisionIssues,
   currentRevision,
   findNode,
   findRackDevice,
@@ -42,14 +42,15 @@ function entityNames(content: PlanContent): { id: string; name: string }[] {
 }
 
 export function ElevationView({ location, readOnly = false }: { location: RoomLocation; readOnly?: boolean }) {
-  const content = currentRevision(location.room.plan).content;
+  const revision = currentRevision(location.room.plan);
+  const content = revision.content;
   const roomId = location.room.id;
   const commit = usePlanCommit(roomId);
   const catalog = useWorkspaceStore((s) => s.workspace.catalog);
   const [selectedId, select] = useSearchParamState('sel');
   const [message, setMessage] = useState<string | null>(null);
   const racks = racksOf(content);
-  const issues = useMemo(() => checkPlan(content), [content]);
+  const issues = useMemo(() => revisionIssues(revision), [revision]);
   const flagged = useMemo(() => flaggedObjectIds(issues), [issues]);
   const names = useMemo(() => entityNames(content), [content]);
   const activeRack = owningRack(content, selectedId) ?? racks[0] ?? null;

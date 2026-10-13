@@ -29,7 +29,7 @@ export function parseBackup(raw: unknown): Result<Workspace> {
 
 export function daysSinceBackup(ws: Workspace, now: Date): number | null {
   if (!ws.lastBackupAt) return null;
-  return Math.floor((now.getTime() - Date.parse(ws.lastBackupAt)) / DAY_MS);
+  return Math.max(0, Math.floor((now.getTime() - Date.parse(ws.lastBackupAt)) / DAY_MS));
 }
 
 /** Only real work needs backing up; the Sample Project alone never nags. */

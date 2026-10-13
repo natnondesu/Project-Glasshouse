@@ -1,4 +1,4 @@
-import { checkPlan, currentRevision, type RoomLocation } from '@glasshouse/domain';
+import { currentRevision, revisionIssues, type RoomLocation } from '@glasshouse/domain';
 import { useEffect, useMemo, useState } from 'react';
 import { usePlanCommit, useSearchParamState } from '../../store/hooks';
 import { useViewport } from '../../viewport/useViewport';
@@ -12,7 +12,8 @@ import { ZoomControls } from './ZoomControls';
 import './plan.css';
 
 export function PlanView({ location, readOnly = false }: { location: RoomLocation; readOnly?: boolean }) {
-  const content = currentRevision(location.room.plan).content;
+  const revision = currentRevision(location.room.plan);
+  const content = revision.content;
   const commit = usePlanCommit(location.room.id);
   const [selectedParam, select] = useSearchParamState('sel');
   const [tool, setTool] = useState<Tool>('select');
@@ -21,7 +22,7 @@ export function PlanView({ location, readOnly = false }: { location: RoomLocatio
   }, [readOnly, tool]);
   const selected = content.objects.find((o) => o.id === selectedParam) ?? null;
 
-  const issues = useMemo(() => checkPlan(content), [content]);
+  const issues = useMemo(() => revisionIssues(revision), [revision]);
   const viewport = useViewport({ w: content.survey.width, d: content.survey.length });
   const gestures = usePlanGestures({ content, tool, setTool, selectedId: selected?.id ?? null, select, viewport, commit, readOnly });
 

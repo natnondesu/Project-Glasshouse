@@ -56,3 +56,16 @@ it('explains files that are not project files and changes nothing', async () => 
   expect(await screen.findByRole('alert')).toHaveTextContent("This isn't a Glasshouse project file.");
   expect(useWorkspaceStore.getState().workspace).toBe(before);
 });
+
+it('is a native modal dialog that closes on Escape and returns focus to the import button', async () => {
+  const user = userEvent.setup();
+  open();
+  const button = screen.getByRole('button', { name: 'Import project file' });
+  button.focus();
+  await user.upload(screen.getByLabelText('Choose a project file'), new File([exported], 'n.json'));
+  const dialog = await screen.findByRole('dialog');
+  expect(dialog.tagName).toBe('DIALOG');
+  dialog.dispatchEvent(new Event('cancel', { cancelable: true }));
+  expect(await screen.findByRole('button', { name: 'Import project file' })).toHaveFocus();
+  expect(screen.queryByRole('dialog')).toBeNull();
+});
