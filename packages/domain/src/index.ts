@@ -25,3 +25,4 @@ export * from './occupancy';
 export * from './devices';
 export * from './commands/equipment';
 export * from './commands/nodes';
+export * from './power';
