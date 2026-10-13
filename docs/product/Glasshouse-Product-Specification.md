@@ -324,7 +324,8 @@ Defaults are rendering and planning assumptions, not manufacturer specifications
 | Blank/invalid numeric edit | Inline error; last valid model kept | Only valid values enter the Snapshot |
 | Rack U overlap (Devices or Reserved ranges) or out-of-range position | Reject the placement | Block |
 | Rack device deeper than Usable depth | Flag | Block |
-| Object outside Footprint | Reject direct invalid edits; flag objects invalidated by Footprint edits | Block |
+| Object outside the room canvas | Reject the edit | Block |
+| Object off the Footprint (e.g. on a Cut-out), inside the canvas | Allow and flag (decided 2026-10-14) | Block |
 | Rotated footprint overlap between objects | Allow temporarily, flag | Block |
 | Clearance zone outside Footprint, or obstacle inside a Clearance zone | Flag | Block |
 | Door inside a Clearance zone | Warn | Allowed |
