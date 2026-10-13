@@ -1,0 +1,88 @@
+import { useEffect, useRef, useState } from 'react';
+import './fields.css';
+
+export type ParsedNumber = { kind: 'empty' } | { kind: 'invalid' } | { kind: 'ok'; value: number };
+
+const NUMBER_PATTERN = /^-?(\d+\.?\d*|\.\d+)$/;
+
+export function parseNumber(text: string): ParsedNumber {
+  const t = text.trim().replace(',', '.');
+  if (t === '') return { kind: 'empty' };
+  if (!NUMBER_PATTERN.test(t)) return { kind: 'invalid' };
+  const value = Number(t);
+  return Number.isFinite(value) ? { kind: 'ok', value } : { kind: 'invalid' };
+}
+
+const format = (value: number | null, decimals: number): string => (value === null ? '' : value.toFixed(decimals));
+
+interface NumberFieldProps {
+  id: string;
+  label: string;
+  value: number | null;
+  onCommit: (value: number | null) => string | null;
+  unit?: string;
+  decimals?: number;
+  allowEmpty?: boolean;
+  placeholder?: string;
+}
+
+export function NumberField({ id, label, value, onCommit, unit, decimals = 2, allowEmpty = false, placeholder }: NumberFieldProps) {
+  const [text, setText] = useState(() => format(value, decimals));
+  const [error, setError] = useState<string | null>(null);
+  const focused = useRef(false);
+
+  useEffect(() => {
+    if (focused.current) return;
+    setText(format(value, decimals));
+    setError(null);
+  }, [value, decimals]);
+
+  const handleChange = (next: string): void => {
+    setText(next);
+    const parsed = parseNumber(next);
+    if (parsed.kind === 'empty') {
+      setError(allowEmpty ? onCommit(null) : 'Enter a value.');
+      return;
+    }
+    if (parsed.kind === 'invalid') {
+      setError('Enter a number.');
+      return;
+    }
+    setError(onCommit(parsed.value));
+  };
+
+  const errorId = `${id}-error`;
+  return (
+    <div className="field">
+      <label htmlFor={id} className="field__label">
+        {label}
+      </label>
+      <div className={`field__box${error ? ' field__box--error' : ''}`}>
+        <input
+          id={id}
+          className="field__input mono"
+          inputMode="decimal"
+          autoComplete="off"
+          value={text}
+          placeholder={placeholder}
+          aria-invalid={error !== null}
+          aria-describedby={error ? errorId : undefined}
+          onFocus={() => {
+            focused.current = true;
+          }}
+          onBlur={() => {
+            focused.current = false;
+            if (!error) setText(format(value, decimals));
+          }}
+          onChange={(e) => handleChange(e.target.value)}
+        />
+        {unit ? <span className="field__unit">{unit}</span> : null}
+      </div>
+      {error ? (
+        <p id={errorId} className="field__error">
+          {error}
+        </p>
+      ) : null}
+    </div>
+  );
+}

@@ -6239,7 +6239,7 @@ import { Inspector } from './Inspector';
 it('edits rack fields through plan commands and shows rejections', async () => {
   const user = userEvent.setup();
   const rack = { ...(createObject('rack', { x: 1, y: 1 }, []) as Rack), name: 'RK-01' };
-  const commit = vi.fn(() => null as string | null);
+  const commit = vi.fn<(command: unknown, coalesceKey?: string) => string | null>(() => null);
   render(<Inspector content={{ ...emptyContent(), objects: [rack] }} selected={rack} commit={commit} onDeleted={() => {}} />);
 
   expect(screen.getByRole('heading', { name: 'RK-01' })).toBeInTheDocument();

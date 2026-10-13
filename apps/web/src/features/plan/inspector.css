@@ -1,0 +1,135 @@
+.inspector {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  min-height: 0;
+  overflow-y: auto;
+  background: var(--sheet);
+  border-left: 1px solid var(--rule);
+}
+
+.inspector__body {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  padding: 18px 18px 28px;
+}
+
+.inspector__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.inspector__head h2 {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.inspector__hint,
+.inspector__note,
+.inspector__empty {
+  font-size: 13px;
+  color: var(--ink-2);
+}
+
+.inspector__group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+
+.inspector__group > legend {
+  margin-bottom: 6px;
+  padding: 0;
+}
+
+.inspector__group--clearance > legend {
+  color: var(--clearance);
+}
+
+.field-pair {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.field-quad {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.angle-row {
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr);
+  align-items: end;
+  gap: 6px;
+}
+
+.angle-row .icon-btn {
+  width: 34px;
+  height: 34px;
+}
+
+.seg {
+  display: flex;
+  border: 1.25px solid var(--ink);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.seg button {
+  flex: 1;
+  height: 32px;
+  border: 0;
+  background: var(--sheet);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.seg button[aria-pressed='true'] {
+  background: var(--ink);
+  color: var(--sheet);
+}
+
+.rect-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.rect-list__item {
+  padding-top: 10px;
+  border-top: 1px solid var(--rule-2);
+}
+
+.rect-list__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.rect-list__name {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.inspector__danger {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding-top: 14px;
+  border-top: 1px solid var(--rule);
+  font-size: 13px;
+}

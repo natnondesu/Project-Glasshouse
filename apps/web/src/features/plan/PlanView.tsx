@@ -3,6 +3,7 @@ import { useCallback, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { useWorkspaceStore } from '../../store/workspaceStore';
 import { useViewport } from '../../viewport/useViewport';
+import { Inspector } from './Inspector';
 import { PlanCanvas } from './PlanCanvas';
 import { Toolbar } from './Toolbar';
 import type { Tool } from './tools';
@@ -63,6 +64,7 @@ export function PlanView({ location }: { location: RoomLocation }) {
           </p>
         ) : null}
       </section>
+      <Inspector content={content} selected={selected} commit={commit} onDeleted={() => select(null)} />
     </div>
   );
 }
