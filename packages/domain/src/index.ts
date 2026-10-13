@@ -21,3 +21,4 @@ export * from './schema';
 export * from './demand';
 export * from './catalog';
 export * from './commands/catalog';
+export * from './occupancy';

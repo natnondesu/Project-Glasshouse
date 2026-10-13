@@ -3,6 +3,7 @@ import { LIMITS } from '../model/defaults';
 import type { Id, Metres, Millimetres, PlanContent, Rack, RackOwner, RoomObject, Survey, Units } from '../model/types';
 import { err, ok, withTarget, type Failure, type Result } from '../result';
 import { formatMetres, normalizeAngle, rackAutoHeightM, snapTyped } from '../units';
+import { rackSpans, topU } from '../occupancy';
 import { definedOnly, inRange, isWholeInRange, validateName } from '../validation';
 
 export interface ObjectPatch {
@@ -58,6 +59,10 @@ function validateRackFields(r: Rack, name: string): Failure | null {
   const minHeight = rackAutoHeightM(r.capacityU);
   if (r.height !== null && r.height < minHeight) {
     return err('invalid_value', `${name} needs at least ${formatMetres(minHeight)} m of height for ${r.capacityU}U.`, [r.id]);
+  }
+  const highest = rackSpans(r).reduce((m, s) => Math.max(m, topU(s)), 0);
+  if (highest > r.capacityU) {
+    return err('invalid_value', `${name} is occupied up to U${highest}, so its capacity can't go below ${highest}U.`, [r.id]);
   }
   return null;
 }

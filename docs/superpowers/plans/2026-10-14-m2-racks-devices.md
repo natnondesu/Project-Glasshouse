@@ -444,7 +444,7 @@ describe('rack capacity guard', () => {
     const added = applyPlanCommand(emptyContent(), { type: 'object/add', object: rack });
     if (!added.ok) throw new Error(added.error.message);
     const r = applyPlanCommand(added.value, { type: 'object/update', id: rack.id, patch: { capacityU: 18 } });
-    expect(r).toMatchObject({ ok: false, error: { message: "RK-01 has equipment up to U20, so its capacity can't go below 20U." } });
+    expect(r).toMatchObject({ ok: false, error: { message: "RK-01 is occupied up to U20, so its capacity can't go below 20U." } });
     expect(applyPlanCommand(added.value, { type: 'object/update', id: rack.id, patch: { capacityU: 20 } }).ok).toBe(true);
   });
 });
@@ -516,7 +516,7 @@ In `packages/domain/src/commands/objects.ts`:
 ```ts
   const highest = rackSpans(r).reduce((m, s) => Math.max(m, topU(s)), 0);
   if (highest > r.capacityU) {
-    return err('invalid_value', `${name} has equipment up to U${highest}, so its capacity can't go below ${highest}U.`, [r.id]);
+    return err('invalid_value', `${name} is occupied up to U${highest}, so its capacity can't go below ${highest}U.`, [r.id]);
   }
 ```
 
