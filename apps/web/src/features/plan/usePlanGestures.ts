@@ -1,3 +1,4 @@
+import type { CommitFn } from '../../store/hooks';
 import { createObject, newId, snapDrag, snapFloor, type Id, type PlanCommand, type PlanContent, type Point } from '@glasshouse/domain';
 import { useEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react';
 import type { ViewportApi } from '../../viewport/useViewport';
@@ -9,7 +10,7 @@ import type { SvgHandlers } from './PlanCanvas';
 import { resizePlacement, type Handle } from './resize';
 import { isPlacementTool, toolForKey, type Tool } from './tools';
 
-export type CommitFn = (command: PlanCommand, coalesceKey?: string) => string | null;
+export type { CommitFn } from '../../store/hooks';
 
 type Gesture =
   | { kind: 'pan'; lastX: number; lastY: number }

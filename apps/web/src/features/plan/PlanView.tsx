@@ -1,7 +1,6 @@
-import { checkPlan, currentRevision, type Id, type PlanCommand, type RoomLocation } from '@glasshouse/domain';
-import { useCallback, useMemo, useState } from 'react';
-import { useSearchParams } from 'react-router';
-import { useWorkspaceStore } from '../../store/workspaceStore';
+import { checkPlan, currentRevision, type RoomLocation } from '@glasshouse/domain';
+import { useMemo, useState } from 'react';
+import { usePlanCommit, useSearchParamState } from '../../store/hooks';
 import { useViewport } from '../../viewport/useViewport';
 import { ChecksStrip } from './ChecksStrip';
 import { Inspector } from './Inspector';
@@ -14,31 +13,10 @@ import './plan.css';
 
 export function PlanView({ location }: { location: RoomLocation }) {
   const content = currentRevision(location.room.plan).content;
-  const roomId = location.room.id;
-  const dispatch = useWorkspaceStore((s) => s.dispatch);
-  const [params, setParams] = useSearchParams();
+  const commit = usePlanCommit(location.room.id);
+  const [selectedParam, select] = useSearchParamState('sel');
   const [tool, setTool] = useState<Tool>('select');
-  const selectedParam = params.get('sel');
   const selected = content.objects.find((o) => o.id === selectedParam) ?? null;
-
-  const select = useCallback(
-    (id: Id | null) =>
-      setParams(
-        (prev) => {
-          const next = new URLSearchParams(prev);
-          if (id) next.set('sel', id);
-          else next.delete('sel');
-          return next;
-        },
-        { replace: true },
-      ),
-    [setParams],
-  );
-  const commit = useCallback(
-    (command: PlanCommand, coalesceKey?: string): string | null =>
-      dispatch({ type: 'plan', roomId, command }, coalesceKey === undefined ? {} : { coalesceKey })?.message ?? null,
-    [dispatch, roomId],
-  );
 
   const issues = useMemo(() => checkPlan(content), [content]);
   const viewport = useViewport({ w: content.survey.width, d: content.survey.length });
