@@ -7,7 +7,7 @@ import type { Issue } from './types';
 
 const UNKNOWN_HINT = "Enter its watts. Your own Devices can't stay unknown.";
 
-export function equipmentIssues(content: PlanContent): Issue[] {
+export function equipmentIssues(content: PlanContent, acknowledged: ReadonlySet<string> = new Set()): Issue[] {
   const issues: Issue[] = [];
   for (const rack of racksOf(content)) {
     for (const d of rack.devices) {
@@ -45,7 +45,7 @@ export function equipmentIssues(content: PlanContent): Issue[] {
       }
     }
     for (const r of rack.reserved) {
-      if (r.demand.kind !== 'unknown') continue;
+      if (r.demand.kind !== 'unknown' || acknowledged.has(r.id)) continue;
       issues.push({
         key: `reserved_demand_unknown:${r.id}`,
         code: 'reserved_demand_unknown',
