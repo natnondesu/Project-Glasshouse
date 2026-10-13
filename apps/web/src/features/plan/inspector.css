@@ -127,3 +127,9 @@
 .inspector__lock:disabled .field__box {
   background: rgb(255 255 255 / 0.35);
 }
+
+.inspector__lock:disabled .field__input,
+.inspector__lock:disabled .field__unit {
+  color: var(--ink-2);
+  cursor: not-allowed;
+}

@@ -194,3 +194,7 @@
   gap: 10px;
   font-size: 12px;
 }
+
+.stamp--warn {
+  text-transform: uppercase;
+}

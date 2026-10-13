@@ -39,6 +39,7 @@
 }
 
 .tree-row__line {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 2px;
@@ -87,11 +88,20 @@
 }
 
 .tree-row__label .stamp {
+  flex-shrink: 0;
   background: var(--warn-bg);
   color: var(--warn);
 }
 
+/* Overlaid so hidden actions don't squeeze the name and status stamp. */
 .tree-row__actions {
+  position: absolute;
+  top: 50%;
+  right: 2px;
+  transform: translateY(-50%);
+  padding-left: 6px;
+  border-radius: var(--radius-field);
+  background: rgb(238 242 247 / 0.96);
   display: flex;
   opacity: 0;
   transition: opacity var(--duration-fast) ease-out;

@@ -1,5 +1,6 @@
 import { previewImport, type ProjectFile } from '@glasshouse/domain';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useWorkspaceStore } from '../../store/workspaceStore';
 import { pad2, STATE_LABEL } from '../../ui/StatusStamp';
 import { formatTime } from '../../ui/time';
@@ -33,7 +34,8 @@ export function ImportDialog({ file, onClose }: { file: ProjectFile; onClose: ()
     if (!problem) onClose();
   };
 
-  return (
+  // Portalled: a glass ancestor's backdrop-filter would otherwise trap position: fixed.
+  return createPortal(
     <div
       className="dialog-backdrop"
       onKeyDown={(e) => {
@@ -105,6 +107,7 @@ export function ImportDialog({ file, onClose }: { file: ProjectFile; onClose: ()
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
