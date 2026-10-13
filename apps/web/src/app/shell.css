@@ -202,3 +202,12 @@
   font-size: 13px;
   color: var(--ink-2);
 }
+
+.read-only-banner {
+  padding: 10px 20px;
+  background: var(--warn-bg);
+  border-bottom: 1.5px dashed var(--warn);
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 600;
+}

@@ -3,6 +3,8 @@ import { createBrowserRouter, RouterProvider } from 'react-router';
 import { idbRepository } from '../storage/idbRepository';
 import type { Repository } from '../storage/repository';
 import { hydrate, startPersistence } from '../store/persistence';
+import { acquireWriterLock } from '../store/writerLock';
+import { ErrorBoundary } from './ErrorBoundary';
 import { useWorkspaceStore } from '../store/workspaceStore';
 import { RecoveryScreen } from './RecoveryScreen';
 import { routes } from './routes';
@@ -13,6 +15,7 @@ export function App({ repository = idbRepository }: { repository?: Repository })
   const load = useWorkspaceStore((s) => s.load);
 
   useEffect(() => {
+    void acquireWriterLock().then((isWriter) => useWorkspaceStore.getState().setReadOnly(!isWriter));
     void hydrate(repository);
     return startPersistence(repository);
   }, [repository]);
@@ -25,5 +28,9 @@ export function App({ repository = idbRepository }: { repository?: Repository })
     );
   }
   if (load.kind === 'failed') return <RecoveryScreen reason={load.reason} raw={load.raw} repository={repository} />;
-  return <RouterProvider router={router} />;
+  return (
+    <ErrorBoundary label="Glasshouse">
+      <RouterProvider router={router} />
+    </ErrorBoundary>
+  );
 }

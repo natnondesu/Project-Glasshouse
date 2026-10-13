@@ -45,3 +45,12 @@ describe('NumberField', () => {
     expect(onCommit).toHaveBeenLastCalledWith(null);
   });
 });
+
+describe('thousands separators', () => {
+  it('reads "100,000" and "1,500" as thousands, not decimals', () => {
+    expect(parseNumber('100,000')).toEqual({ kind: 'ok', value: 100000 });
+    expect(parseNumber('1,500')).toEqual({ kind: 'ok', value: 1500 });
+    expect(parseNumber('12,500.5')).toEqual({ kind: 'ok', value: 12500.5 });
+    expect(parseNumber('1,5')).toEqual({ kind: 'ok', value: 1.5 });
+  });
+});

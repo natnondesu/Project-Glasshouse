@@ -1,7 +1,7 @@
 import { castDraft, produce, type Draft } from 'immer';
 import { createPlan } from '../factories';
 import { currentRevision, findProject, findRoom, findSite } from '../lookup';
-import type { Id, Room, Site, Workspace } from '../model/types';
+import type { Id, PlanContent, Room, Site, Workspace } from '../model/types';
 import { err, ok, type Result } from '../result';
 import { validateName } from '../validation';
 import { applyPlanCommand, type PlanCommand } from './plan';
@@ -122,4 +122,21 @@ export function apply(ws: Workspace, cmd: WorkspaceCommand): Result<Workspace> {
     case 'plan':
       return applyToPlan(ws, cmd.roomId, cmd.command);
   }
+}
+
+/** Restores a room's Draft content wholesale; the building block for per-room undo/redo. Frozen revisions are never touched. */
+export function replaceDraftContent(ws: Workspace, roomId: Id, content: PlanContent): Result<Workspace> {
+  const loc = findRoom(ws, roomId);
+  if (!loc) return gone('room', roomId);
+  const revision = currentRevision(loc.room.plan);
+  if (revision.state !== 'draft') {
+    return err('not_draft', `Revision ${revision.number} is frozen. Start a new draft to edit it.`, [roomId]);
+  }
+  return ok(
+    produce(ws, (d) => {
+      const revisions = draftRoom(d, roomId).plan.revisions;
+      const last = revisions[revisions.length - 1];
+      if (last) last.content = castDraft(content);
+    }),
+  );
 }

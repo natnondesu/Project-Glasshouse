@@ -1,6 +1,7 @@
 import { createObject, newId, snapDrag, snapFloor, type Id, type PlanCommand, type PlanContent, type Point } from '@glasshouse/domain';
 import { useEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react';
 import type { ViewportApi } from '../../viewport/useViewport';
+import { clampIntoRoom } from './clamp';
 import { hitTest } from './hitTest';
 import type { Preview } from './layers';
 import type { SvgHandlers } from './PlanCanvas';
@@ -120,11 +121,11 @@ export function usePlanGestures({ content, tool, setTool, selectedId, select, vi
       const moved = Math.hypot(e.clientX - g.startClient[0], e.clientY - g.startClient[1]);
       if (!g.dragging && moved < DRAG_THRESHOLD_PX) return;
       gesture.current = { ...g, dragging: true };
-      setPreview({
-        kind: 'object',
-        id: g.id,
-        patch: { x: snapDrag(g.start.x + world[0] - g.origin[0]), y: snapDrag(g.start.y + world[1] - g.origin[1]) },
-      });
+      const dragged = content.objects.find((o) => o.id === g.id);
+      if (!dragged) return;
+      const x = snapDrag(g.start.x + world[0] - g.origin[0]);
+      const y = snapDrag(g.start.y + world[1] - g.origin[1]);
+      setPreview({ kind: 'object', id: g.id, patch: clampIntoRoom(dragged, x, y, content.survey) });
       return;
     }
     const object = content.objects.find((o) => o.id === g.id);

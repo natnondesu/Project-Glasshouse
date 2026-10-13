@@ -60,3 +60,20 @@ describe('persistence', () => {
     expect((repo.saved as ReturnType<typeof createWorkspace>).projects).toHaveLength(1);
   });
 });
+
+describe('read-only tabs', () => {
+  beforeEach(() => resetWorkspaceStore());
+
+  it('never saves from a read-only tab', async () => {
+    vi.useFakeTimers();
+    const repo = createMemoryRepository();
+    await hydrate(repo);
+    useWorkspaceStore.getState().setReadOnly(true);
+    const stop = startPersistence(repo, 400);
+    useWorkspaceStore.setState({ workspace: { ...useWorkspaceStore.getState().workspace, lastBackupAt: 'x' } });
+    await vi.advanceTimersByTimeAsync(400);
+    expect(repo.saved).toBeNull();
+    stop();
+    vi.useRealTimers();
+  });
+});

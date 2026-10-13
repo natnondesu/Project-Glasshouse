@@ -4,9 +4,12 @@ import './fields.css';
 export type ParsedNumber = { kind: 'empty' } | { kind: 'invalid' } | { kind: 'ok'; value: number };
 
 const NUMBER_PATTERN = /^-?(\d+\.?\d*|\.\d+)$/;
+const THOUSANDS_PATTERN = /^-?\d{1,3}(,\d{3})+(\.\d+)?$/;
 
 export function parseNumber(text: string): ParsedNumber {
-  const t = text.trim().replace(',', '.');
+  const trimmed = text.trim();
+  // "1,500" / "100,000" are thousands (how the team writes watts); a lone "1,5" is a decimal comma.
+  const t = THOUSANDS_PATTERN.test(trimmed) ? trimmed.replaceAll(',', '') : trimmed.replace(',', '.');
   if (t === '') return { kind: 'empty' };
   if (!NUMBER_PATTERN.test(t)) return { kind: 'invalid' };
   const value = Number(t);

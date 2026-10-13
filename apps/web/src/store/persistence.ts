@@ -46,7 +46,7 @@ export function startPersistence(repo: Repository, delayMs = SAVE_DEBOUNCE_MS): 
   };
 
   const unsubscribe = useWorkspaceStore.subscribe((state, previous) => {
-    if (state.workspace === previous.workspace || state.load.kind !== 'ready') return;
+    if (state.workspace === previous.workspace || state.load.kind !== 'ready' || state.readOnly) return;
     if (timer !== null) clearTimeout(timer);
     state.setSave({ kind: 'saving' });
     timer = setTimeout(save, delayMs);

@@ -87,3 +87,14 @@ test('AC11: a rack against the wall shows a blocking rear-clearance check', asyn
   await page.getByLabel('Y', { exact: true }).fill('0.6');
   await expect(page.getByText('No issues found')).toBeVisible();
 });
+
+test('a second tab is read-only instead of overwriting the first', async ({ page, context }) => {
+  await page.goto('/');
+  await expect(page.getByRole('button', { name: 'New project' })).toBeVisible();
+  const second = await context.newPage();
+  await second.goto('/');
+  await expect(second.getByText('Glasshouse is open in another tab, so this tab is read-only.', { exact: false })).toBeVisible();
+  await second.getByRole('button', { name: 'New project' }).click();
+  await expect(second.getByText('This tab is read-only because Glasshouse is open in another tab.')).toBeVisible();
+  await expect(page.getByText('read-only', { exact: false })).toHaveCount(0);
+});

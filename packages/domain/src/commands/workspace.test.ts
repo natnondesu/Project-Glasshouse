@@ -83,3 +83,17 @@ describe('plan routing', () => {
     expect(ws).toEqual(before);
   });
 });
+
+describe('replaceDraftContent', () => {
+  it('swaps a room draft content (used by undo) and refuses frozen revisions', async () => {
+    const { replaceDraftContent } = await import('./workspace');
+    const ws = seeded();
+    const before = currentRevision(findRoom(ws, 'r')!.room.plan).content;
+    const edited = run(ws, { type: 'plan', roomId: 'r', command: { type: 'survey/update', patch: { width: 9 } } });
+    const restored = replaceDraftContent(edited, 'r', before);
+    expect(restored.ok && currentRevision(findRoom(restored.value, 'r')!.room.plan).content.survey.width).toBe(5);
+    const frozen = produce(edited, (d) => void (d.projects[0]!.sites[0]!.rooms[0]!.plan.revisions[0]!.state = 'approved'));
+    expect(replaceDraftContent(frozen, 'r', before)).toMatchObject({ ok: false, error: { code: 'not_draft' } });
+    expect(replaceDraftContent(ws, 'nope', before).ok).toBe(false);
+  });
+});
