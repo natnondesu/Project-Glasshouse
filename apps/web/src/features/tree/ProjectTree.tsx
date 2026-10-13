@@ -6,6 +6,7 @@ import { readJsonFile } from '../../ui/files';
 import { IconPlus, IconUpload } from '../../ui/icons';
 import { ImportDialog } from '../handoff/ImportDialog';
 import { pad2, STATE_LABEL } from '../../ui/StatusStamp';
+import { BackupPanel } from './BackupPanel';
 import { TreeRow } from './TreeRow';
 import './tree.css';
 
@@ -154,6 +155,7 @@ export function ProjectTree({ activeRoomId }: { activeRoomId: string | null }) {
         </p>
       ) : null}
       {importing ? <ImportDialog file={importing} onClose={() => setImporting(null)} /> : null}
+      <BackupPanel />
       <Link to="/catalog" className="tree__catalog">
         Device catalog · {templateCount} {templateCount === 1 ? 'template' : 'templates'}
       </Link>
