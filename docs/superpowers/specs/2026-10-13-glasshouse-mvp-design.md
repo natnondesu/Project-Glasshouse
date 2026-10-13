@@ -61,7 +61,7 @@ The Repository interface lives in `apps/web/src/storage` for the MVP and moves i
 | Need | Choice | Why |
 | --- | --- | --- |
 | UI | React 19 + Vite + TypeScript strict | ADR-0001 |
-| Routing (URL as state) | React Router | Shareable `/p/:project/s/:site/r/:room/:view` and selected object in search params |
+| Routing (URL as state) | React Router | `/rooms/:roomId/:view` (room IDs are globally unique) and the selected object in `?sel=` |
 | Client store | zustand | Small; the store holds the workspace value and dispatches domain commands |
 | Immutability helper | immer (inside domain handlers) | Readable immutable updates; runs on server too |
 | Boundary validation | zod | Project file import, storage reads, schema migrations |
@@ -99,7 +99,8 @@ interface PlanContent {
   survey: Survey; objects: RoomObject[];           // racks, existing racks, doors, mcb, furniture
   templatesUsed: Template[];                        // frozen Template versions referenced by Devices
 }
-interface Survey { roomName: string; floorAreas: Rect[]; cutOuts: Rect[]; powerBudget: Watts; designLimitPct: number; networkHandoff: string; notes: string }
+interface Survey { width: Metres; length: Metres; floorAreas: Rect[]; cutOuts: Rect[]; powerBudget: Watts; designLimitPct: number; networkHandoff: string; notes: string }
+// width/length = the room's bounding canvas (1–50 m); the room's name lives on Room, not the Survey
 interface Rect { id: Id; x: Metres; y: Metres; w: Metres; d: Metres }
 
 interface ObjectBase { id: Id; name: string; x: Metres; y: Metres; w: Metres; d: Metres; angle: number; height: Metres | null; notes: string }
@@ -138,7 +139,7 @@ interface Issue { code: IssueCode; severity: 'block' | 'warn' | 'needs_ack'; mes
 
 - **Hard rules reject** (`Result.err`): U overlap, U out of range, invalid Slot, non-Node insert, Slot count below an occupied Slot, edits to a non-Draft Revision, room bounds below placed objects.
 - **Soft rules flag** through `checks()`: Footprint containment, object overlap, clearance, depth, Demand, Review notes, missing fields. They never prevent an edit, but every `block` issue disables approval. `review/approve` re-runs `checks()` and rejects if any blocking issue remains. The UI's disabled button is a convenience, not the guard.
-- **Store:** zustand holds `{ workspace, undo: Workspace[], redo: Workspace[] }`. Because state is immutable, undo/redo is a stack of prior workspace values, scoped to Draft content edits and capped at 100. A practical addition for an editor, beyond the product spec.
+- **Store:** zustand holds `{ workspace, past: Workspace[], future: Workspace[] }`; consecutive edits of the same field within 1 s coalesce into one undo step. Because state is immutable, undo/redo is a stack of prior workspace values, scoped to Draft content edits and capped at 100. A practical addition for an editor, beyond the product spec.
 - **Gestures:** a drag previews in local component state and dispatches one command on release, so one gesture is one undo step. Escape discards the preview.
 
 ## 6. Geometry
@@ -149,6 +150,7 @@ interface Issue { code: IssueCode; severity: 'block' | 'warn' | 'needs_ack'; mes
 - **Overlap:** `area(intersection(a, b)) > ε`, so edge contact passes.
 - **Clearance zone:** the polygon in front of or behind the rack, rotated with it. Checked against the Footprint (must be contained) and against other objects (overlap). Doors produce a warning; zone-to-zone overlap is ignored.
 - **Disconnected areas:** the Footprint union has more than one outer ring, which produces a warning.
+- Doors sit in walls, so they are exempt from Footprint containment. They must still be inside the canvas and must not overlap other objects.
 - ε = 1e-6 m². Values are snapped and rounded at the command boundary: 0.10 m for drags, 0.01 m for typed values. No float drift accumulates, because every command stores rounded numbers.
 
 ## 7. Persistence, migrations, hand-off
