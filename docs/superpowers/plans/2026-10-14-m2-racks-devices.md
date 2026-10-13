@@ -2704,7 +2704,7 @@ it('selects devices and nodes, and activates the rack from its caption', async (
   render(<RackElevation rack={rack} active={false} selectedId="srv" flagged={new Set(['srv'])} onSelect={onSelect} onActivate={onActivate} onDropTemplate={() => {}} />);
   await user.click(screen.getByRole('button', { name: 'SRV-01, U20–U21' }));
   expect(onSelect).toHaveBeenLastCalledWith('srv');
-  await user.click(screen.getByTitle('Slot 2: NODE-01'));
+  await user.click(screen.getByText('Slot 2: NODE-01'));
   expect(onSelect).toHaveBeenLastCalledWith('n2');
   await user.click(screen.getByRole('button', { name: 'RK-01' }));
   expect(onActivate).toHaveBeenCalled();
