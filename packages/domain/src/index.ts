@@ -22,3 +22,5 @@ export * from './demand';
 export * from './catalog';
 export * from './commands/catalog';
 export * from './occupancy';
+export * from './devices';
+export * from './commands/equipment';

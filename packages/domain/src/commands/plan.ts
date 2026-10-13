@@ -1,5 +1,6 @@
 import type { Id, PlanContent, Rect } from '../model/types';
 import type { Result } from '../result';
+import { applyEquipmentCommand, type EquipmentCommand } from './equipment';
 import { addFloorRect, removeFloorRect, updateFloorRect } from './floor';
 import { addObject, removeObject, rotateObject, updateObject, type ObjectCommand } from './objects';
 import { updateSurvey, type SurveyPatch } from './survey';
@@ -10,7 +11,8 @@ export type PlanCommand =
   | { type: 'floor/cut'; rect: Rect }
   | { type: 'floor/update'; id: Id; patch: Partial<Omit<Rect, 'id'>> }
   | { type: 'floor/remove'; id: Id }
-  | ObjectCommand;
+  | ObjectCommand
+  | EquipmentCommand;
 
 export function applyPlanCommand(content: PlanContent, cmd: PlanCommand): Result<PlanContent> {
   switch (cmd.type) {
@@ -32,5 +34,13 @@ export function applyPlanCommand(content: PlanContent, cmd: PlanCommand): Result
       return rotateObject(content, cmd.id, cmd.by);
     case 'object/remove':
       return removeObject(content, cmd.id);
+    case 'device/place':
+    case 'device/move':
+    case 'device/update':
+    case 'device/remove':
+    case 'reserved/add':
+    case 'reserved/update':
+    case 'reserved/remove':
+      return applyEquipmentCommand(content, cmd);
   }
 }
