@@ -1,5 +1,6 @@
 import { approvalBlockers, currentRevision, isSelfApproved, type Plan } from '@glasshouse/domain';
 import { useState, type FormEvent } from 'react';
+import { Link } from 'react-router';
 import { useReviewCommit } from '../../store/hooks';
 import { pad2, StatusStamp } from '../../ui/StatusStamp';
 import { formatTime } from '../../ui/time';
@@ -86,6 +87,9 @@ export function ApprovalPanel({ roomId, plan }: { roomId: string; plan: Plan }) 
       {revision.state === 'approved' ? (
         <div className="review-form">
           <p className="review-note">Approved Revisions never change. To make changes, start a new Draft.</p>
+          <Link to={`/rooms/${roomId}/install-sheet`} className="btn">
+            Open Install sheet
+          </Link>
           <button type="button" className="btn btn--ink" onClick={newDraft}>
             Start new draft
           </button>

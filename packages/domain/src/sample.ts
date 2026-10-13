@@ -64,8 +64,8 @@ export function createSampleProject(at: string): Result<Project> {
   plan(serverId, { type: 'device/place', id: newId(), rackId: s1.id, bottomU: 7, template: template('tpl-server-2u') });
   plan(serverId, { type: 'device/place', id: newId(), rackId: s2.id, bottomU: 42, template: template('tpl-switch-1u') });
   for (let u = 1; u <= 4; u += 1) plan(serverId, { type: 'device/place', id: newId(), rackId: s2.id, bottomU: u, template: template('tpl-server-1u') });
-  review(serverId, { type: 'review/submit', designedBy: 'Ploy (sample)', at });
-  review(serverId, { type: 'review/approve', reviewer: 'Somchai (sample)', at });
+  review(serverId, { type: 'review/submit', designedBy: 'Ploy', at });
+  review(serverId, { type: 'review/approve', reviewer: 'Somchai', at });
 
   // MDF-1: L-shaped with a column, mixed ownership, a populated Chassis, one blocker and one open note.
   plan(mdfId, { type: 'survey/update', patch: { width: 6, length: 5, networkHandoff: 'Carrier demarc in the south-west corner' } });

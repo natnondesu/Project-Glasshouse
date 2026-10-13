@@ -16,6 +16,8 @@ interface RackElevationProps {
   onSelect: (id: string) => void;
   onActivate: () => void;
   onDropTemplate: (templateId: string, bottomU: number) => void;
+  /** Print: no controls, only the drawing. */
+  isStatic?: boolean;
 }
 
 const categoryOf = (d: RackDevice): string => (d.kind === 'chassis' ? 'chassis' : d.category);
@@ -119,7 +121,7 @@ function ReservedBlock(props: { range: ReservedRange; y: number; patternId: stri
   );
 }
 
-export function RackElevation({ rack, active, selectedId, flagged, onSelect, onActivate, onDropTemplate }: RackElevationProps) {
+export function RackElevation({ rack, active, selectedId, flagged, onSelect, onActivate, onDropTemplate, isStatic = false }: RackElevationProps) {
   const height = rack.capacityU * U_PX;
   const yTop = (top: number): number => PAD + (rack.capacityU - top) * U_PX;
   const power = rackPower(rack);
@@ -150,9 +152,13 @@ export function RackElevation({ rack, active, selectedId, flagged, onSelect, onA
   return (
     <figure className={`rack-elev${active ? ' is-active' : ''}`}>
       <figcaption className="rack-elev__cap">
-        <button type="button" className="rack-elev__name mono" aria-pressed={active} onClick={onActivate}>
-          {rack.name}
-        </button>
+        {isStatic ? (
+          <span className="rack-elev__name mono">{rack.name}</span>
+        ) : (
+          <button type="button" className="rack-elev__name mono" aria-pressed={active} onClick={onActivate}>
+            {rack.name}
+          </button>
+        )}
         <span className="rack-elev__meta">
           {rack.owner === 'customer' ? 'Customer' : 'OxygenAI'} · <span className="mono">{`${usedU(rack)}/${rack.capacityU}U`}</span> ·{' '}
           <span className="mono">{`${knownW.toLocaleString('en-US')} W${unknown ? ` + ${unknown} unknown` : ''}`}</span>

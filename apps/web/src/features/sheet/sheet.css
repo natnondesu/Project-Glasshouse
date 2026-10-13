@@ -1,0 +1,254 @@
+/* The Install sheet is a document, not an app surface: white paper, ink lines, no glass. */
+.sheet {
+  min-height: 100vh;
+  padding: 24px 16px 64px;
+  background: var(--ground);
+  color: var(--ink);
+}
+
+.sheet--empty {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  max-width: 560px;
+  margin: 0 auto;
+  padding-top: 15vh;
+}
+
+.sheet--empty h1 {
+  font-size: 24px;
+  letter-spacing: -0.02em;
+}
+
+.sheet-toolbar {
+  position: sticky;
+  top: 12px;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: min(210mm, 100%);
+  margin: 0 auto 16px;
+  padding: 8px 10px;
+  border-radius: var(--radius-control);
+  background: rgb(255 255 255 / 0.85);
+  box-shadow: 0 2px 10px rgb(14 24 36 / 0.12);
+}
+
+.sheet-toolbar .btn--ink {
+  margin-left: auto;
+}
+
+.sheet-toolbar__note {
+  font-size: 12px;
+  color: var(--warn);
+}
+
+.sheet-page {
+  box-sizing: border-box;
+  width: min(210mm, 100%);
+  min-height: 297mm;
+  margin: 0 auto 16px;
+  padding: 12mm;
+  background: #fff;
+  box-shadow: 0 1px 2px rgb(14 24 36 / 0.1), 0 8px 24px rgb(14 24 36 / 0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.sheet-page--flow {
+  min-height: 0;
+}
+
+.sheet-title {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-bottom: 8px;
+  border-bottom: 2px solid var(--ink);
+  font-size: 11px;
+}
+
+.sheet-title__main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.sheet-title__main strong {
+  font-size: 15px;
+  letter-spacing: -0.01em;
+}
+
+.sheet-title__kicker {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+}
+
+.sheet-title__cells {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 18px;
+  margin: 0;
+}
+
+.sheet-title__cells div {
+  display: flex;
+  gap: 6px;
+}
+
+.sheet-title__cells dt {
+  color: var(--ink-2);
+}
+
+.sheet-title__cells dd {
+  margin: 0;
+  font-weight: 600;
+}
+
+.sheet-plan {
+  width: 100%;
+  height: auto;
+  background: #fff;
+}
+
+.sheet-gap line {
+  stroke: var(--acc-deep);
+  stroke-width: 1;
+  stroke-dasharray: 3 2;
+}
+
+.sheet-gap text {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  fill: var(--acc-deep);
+  paint-order: stroke;
+  stroke: #fff;
+  stroke-width: 3px;
+}
+
+.sheet-legend {
+  font-size: 11px;
+  color: var(--ink-2);
+}
+
+.sheet-elevations {
+  display: flex;
+  justify-content: space-around;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.sheet-elevations .rack-elev {
+  background: none;
+  box-shadow: none;
+}
+
+.sheet-slotmaps {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  align-items: start;
+}
+
+.sheet-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 10.5px;
+}
+
+.sheet-table caption {
+  text-align: left;
+  font-weight: 700;
+  font-size: 12px;
+  padding-bottom: 6px;
+}
+
+.sheet-table th {
+  text-align: left;
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+  border-bottom: 1.5px solid var(--ink);
+  padding: 4px 6px;
+}
+
+.sheet-table .is-short {
+  white-space: nowrap;
+}
+
+.sheet-table td {
+  border-bottom: 1px solid var(--line);
+  padding: 4px 6px;
+  vertical-align: top;
+}
+
+.sheet-table__title td {
+  border: 0;
+  padding: 0 0 10px;
+}
+
+.sheet-table--bom tr.is-node td:nth-child(4) {
+  padding-left: 14px;
+}
+
+.sheet-empty {
+  color: var(--ink-2);
+  font-style: italic;
+}
+
+.sheet-acks h3 {
+  font-size: 13px;
+  margin-bottom: 6px;
+}
+
+.sheet-acks ul {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 11px;
+}
+
+@page {
+  size: A4;
+  margin: 12mm;
+}
+
+@media print {
+  html,
+  body {
+    background: #fff;
+  }
+
+  .sheet {
+    padding: 0;
+    background: #fff;
+  }
+
+  .sheet-toolbar {
+    display: none;
+  }
+
+  .sheet-page {
+    width: auto;
+    min-height: 0;
+    margin: 0;
+    padding: 0;
+    box-shadow: none;
+    break-after: page;
+  }
+
+  .sheet-page:last-child {
+    break-after: auto;
+  }
+
+  .sheet-table tr {
+    break-inside: avoid;
+  }
+}
