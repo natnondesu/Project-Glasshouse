@@ -69,6 +69,16 @@ const draftContent = (ws: Workspace, roomId: Id): PlanContent | null => {
 
 const emptyHistory = (): RoomHistory => ({ past: [], future: [] });
 
+/** A Snapshot is a hard boundary: undo never reaches back across a review step, and an import may replace whole Rooms. */
+function historyAfter(history: Record<Id, RoomHistory>, command: WorkspaceCommand): Record<Id, RoomHistory> {
+  if (command.type === 'review') {
+    const { [command.roomId]: _dropped, ...rest } = history;
+    return rest;
+  }
+  if (command.type === 'project/import') return {};
+  return history;
+}
+
 export const useWorkspaceStore = create<WorkspaceState>()((set, get) => ({
   ...initialData(),
   dispatch: (command, options = {}) => {
@@ -77,7 +87,7 @@ export const useWorkspaceStore = create<WorkspaceState>()((set, get) => ({
     const result = apply(state.workspace, command);
     if (!result.ok) return result.error;
     if (command.type !== 'plan') {
-      set({ workspace: result.value, lastEdit: null });
+      set({ workspace: result.value, history: historyAfter(state.history, command), lastEdit: null });
       return null;
     }
     const { roomId } = command;

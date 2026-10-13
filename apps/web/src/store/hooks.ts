@@ -1,4 +1,4 @@
-import { findRoom, type Id, type PlanCommand, type RoomLocation } from '@glasshouse/domain';
+import { findRoom, type Id, type PlanCommand, type ReviewCommand, type RoomLocation } from '@glasshouse/domain';
 import { useCallback, useMemo } from 'react';
 import { useSearchParams } from 'react-router';
 import { useWorkspaceStore } from './workspaceStore';
@@ -36,4 +36,11 @@ export function useSearchParamState(key: string): [string | null, (value: string
     [key, setParams],
   );
   return [params.get(key), set];
+}
+
+export type ReviewFn = (command: ReviewCommand) => string | null;
+
+export function useReviewCommit(roomId: Id): ReviewFn {
+  const dispatch = useWorkspaceStore((s) => s.dispatch);
+  return useCallback<ReviewFn>((command) => dispatch({ type: 'review', roomId, command })?.message ?? null, [dispatch, roomId]);
 }

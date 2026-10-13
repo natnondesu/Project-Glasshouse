@@ -1,26 +1,19 @@
 import { BOM_COLUMNS, bomCsv, bomRows, currentRevision, type RoomLocation } from '@glasshouse/domain';
 import { useMemo } from 'react';
+import { downloadText, slugify } from '../../ui/files';
 import { pad2 } from '../../ui/StatusStamp';
 import './bom.css';
 
 const VISIBLE = BOM_COLUMNS.filter((c) => c.key !== 'project' && c.key !== 'site' && c.key !== 'room');
 const NOWRAP = new Set<string>(['rack', 'chassis', 'slot', 'name', 'position', 'heightU', 'depthMm', 'demandW']);
 
-const slug = (name: string): string => name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'room';
-
 export function BomView({ location }: { location: RoomLocation }) {
   const rows = useMemo(() => bomRows(location), [location]);
   const revision = currentRevision(location.room.plan);
 
-  const download = (): void => {
-    const blob = new Blob([`\uFEFF${bomCsv(rows)}`], { type: 'text/csv;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `${slug(location.room.name)}-R${pad2(revision.number)}-bom.csv`;
-    link.click();
-    URL.revokeObjectURL(url);
-  };
+  const download = (): void =>
+    // The UTF-8 byte-order mark makes Excel read en dashes and Thai text correctly.
+    downloadText(`${slugify(location.room.name)}-R${pad2(revision.number)}-bom.csv`, `\uFEFF${bomCsv(rows)}`, 'text/csv;charset=utf-8');
 
   return (
     <section className="bom glass" aria-labelledby="bom-h">

@@ -114,3 +114,13 @@ export const IconMeasure = (p: IconProps) => (
     <path d="M6 9L7.5 10.5M8.5 6.5L10 8M11 4L12.5 5.5" strokeWidth={1.2} />
   </svg>
 );
+export const IconUpload = (p: IconProps) => (
+  <svg {...frame(14)} {...p}>
+    <path d="M7 10V2.5M4 5.5L7 2.5L10 5.5M2 12H12" />
+  </svg>
+);
+export const IconDownload = (p: IconProps) => (
+  <svg {...frame(14)} {...p}>
+    <path d="M7 2V9.5M4 6.5L7 9.5L10 6.5M2 12H12" />
+  </svg>
+);

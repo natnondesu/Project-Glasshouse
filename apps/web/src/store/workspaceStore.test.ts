@@ -59,3 +59,20 @@ describe('workspace store', () => {
     expect(width('a')).toBe(5);
   });
 });
+
+describe('review boundaries', () => {
+  beforeEach(() => {
+    resetWorkspaceStore();
+    seed();
+  });
+
+  it('clears a room’s undo history when it is submitted for review', () => {
+    setWidth('a', 6);
+    setWidth('b', 7);
+    store().dispatch({ type: 'review', roomId: 'a', command: { type: 'review/submit', designedBy: '', at: '2026-10-14T00:00:00.000Z' } });
+    expect(store().history.a).toBeUndefined();
+    expect(store().history.b?.past).toHaveLength(1);
+    store().undo('a');
+    expect(width('a')).toBe(6);
+  });
+});
