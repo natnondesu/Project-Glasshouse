@@ -20,6 +20,7 @@ export type WorkspaceCommand =
   | { type: 'room/delete'; roomId: Id }
   | { type: 'plan'; roomId: Id; command: PlanCommand }
   | { type: 'review'; roomId: Id; command: ReviewCommand }
+  | { type: 'backup/mark'; at: string }
   | CatalogCommand;
 
 const gone = (what: string, id: Id) => err('not_found', `That ${what} no longer exists.`, [id]);
@@ -131,6 +132,8 @@ export function apply(ws: Workspace, cmd: WorkspaceCommand): Result<Workspace> {
       if (!result.ok) return result;
       return ok(produce(ws, (d) => void (d.catalog = castDraft(result.value))));
     }
+    case 'backup/mark':
+      return ok(produce(ws, (d) => void (d.lastBackupAt = cmd.at)));
     case 'review': {
       const loc = findRoom(ws, cmd.roomId);
       if (!loc) return gone('room', cmd.roomId);
