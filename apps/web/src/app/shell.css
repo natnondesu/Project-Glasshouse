@@ -58,3 +58,41 @@
 .home p {
   color: var(--ink-2);
 }
+.app-loading {
+  margin: 72px auto;
+  text-align: center;
+  color: var(--ink-2);
+}
+
+.recovery {
+  max-width: 64ch;
+  margin: 72px auto;
+  padding: 0 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.recovery h1 {
+  font-size: 26px;
+  font-weight: 700;
+}
+
+.recovery__reason {
+  padding: 12px 14px;
+  border: 1.5px solid var(--block);
+  background: var(--block-bg);
+  color: var(--block);
+  font-size: 13px;
+}
+
+.recovery__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.recovery__error {
+  color: var(--block);
+  font-weight: 600;
+}
