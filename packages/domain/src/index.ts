@@ -5,3 +5,5 @@ export * from './result';
 export * from './ids';
 export * from './validation';
 export * from './geometry/polygon';
+export * from './footprint';
+export * from './clearance';
