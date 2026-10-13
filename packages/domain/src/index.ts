@@ -13,3 +13,5 @@ export * from './commands/floor';
 export * from './commands/plan';
 export * from './objects';
 export * from './commands/objects';
+export * from './lookup';
+export * from './commands/workspace';
