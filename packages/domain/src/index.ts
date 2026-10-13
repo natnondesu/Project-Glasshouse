@@ -30,3 +30,4 @@ export * from './bom';
 export * from './readiness';
 export * from './commands/review';
 export * from './backup';
+export * from './projectFile';

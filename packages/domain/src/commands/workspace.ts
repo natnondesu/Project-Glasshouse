@@ -7,6 +7,7 @@ import { validateName } from '../validation';
 import { applyCatalogCommand, type CatalogCommand } from './catalog';
 import { applyPlanCommand, type PlanCommand } from './plan';
 import { applyReviewCommand, type ReviewCommand } from './review';
+import { applyImport, type ImportResolution, type ProjectFile } from '../projectFile';
 
 export type WorkspaceCommand =
   | { type: 'project/create'; id: Id; name: string }
@@ -21,6 +22,7 @@ export type WorkspaceCommand =
   | { type: 'plan'; roomId: Id; command: PlanCommand }
   | { type: 'review'; roomId: Id; command: ReviewCommand }
   | { type: 'backup/mark'; at: string }
+  | { type: 'project/import'; file: ProjectFile; resolution: ImportResolution }
   | CatalogCommand;
 
 const gone = (what: string, id: Id) => err('not_found', `That ${what} no longer exists.`, [id]);
@@ -132,6 +134,8 @@ export function apply(ws: Workspace, cmd: WorkspaceCommand): Result<Workspace> {
       if (!result.ok) return result;
       return ok(produce(ws, (d) => void (d.catalog = castDraft(result.value))));
     }
+    case 'project/import':
+      return applyImport(ws, cmd.file, cmd.resolution);
     case 'backup/mark':
       return ok(produce(ws, (d) => void (d.lastBackupAt = cmd.at)));
     case 'review': {
