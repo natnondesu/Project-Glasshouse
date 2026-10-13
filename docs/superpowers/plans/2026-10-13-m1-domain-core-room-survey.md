@@ -3956,11 +3956,14 @@ it('creates Project → Site → Room and opens the room', async () => {
   render(<RouterProvider router={router} />);
 
   await user.click(screen.getByRole('button', { name: 'New project' }));
-  await user.type(screen.getByRole('textbox', { name: 'Project name' }), 'Northgate{Enter}');
+  expect(screen.getByRole('textbox', { name: 'Project name' })).toHaveFocus();
+  await user.keyboard('Northgate{Enter}');
   await user.click(screen.getByRole('button', { name: 'Add site to Northgate' }));
-  await user.type(screen.getByRole('textbox', { name: 'Site name' }), 'Site A{Enter}');
+  expect(screen.getByRole('textbox', { name: 'Site name' })).toHaveFocus();
+  await user.keyboard('Site A{Enter}');
   await user.click(screen.getByRole('button', { name: 'Add room to Site A' }));
-  await user.type(screen.getByRole('textbox', { name: 'Room name' }), 'MDF-1{Enter}');
+  expect(screen.getByRole('textbox', { name: 'Room name' })).toHaveFocus();
+  await user.keyboard('MDF-1{Enter}');
 
   expect(router.state.location.pathname).toMatch(/^\/rooms\/.+\/plan$/);
   expect(screen.getByRole('link', { name: /MDF-1/ })).toHaveAttribute('aria-current', 'page');
