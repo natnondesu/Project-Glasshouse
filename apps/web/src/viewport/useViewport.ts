@@ -1,6 +1,9 @@
 import type { Point } from '@glasshouse/domain';
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type RefObject } from 'react';
-import { fit, pan, toWorld, wheelZoomFactor, zoomAt, type View } from './math';
+import { fit, pan, toWorld, wheelZoomFactor, zoomAt, type Insets, type View } from './math';
+
+/** Leaves room for the floating tool palette (left) and the zoom controls (bottom). */
+const FIT_INSETS: Insets = { top: 64, right: 56, bottom: 88, left: 120 };
 
 export interface ViewportApi {
   svgRef: RefObject<SVGSVGElement | null>;
@@ -32,7 +35,7 @@ export function useViewport(content: { w: number; d: number }): ViewportApi {
   useEffect(() => {
     if (fitted.current || size.width === 0 || size.height === 0) return;
     fitted.current = true;
-    setView(fit({ w, d }, size));
+    setView(fit({ w, d }, size, FIT_INSETS));
   }, [size, w, d]);
 
   useEffect(() => {
@@ -64,7 +67,7 @@ export function useViewport(content: { w: number; d: number }): ViewportApi {
     view,
     clientToWorld,
     zoomBy: (factor) => setView((v) => zoomAt(v, factor, size.width / 2, size.height / 2)),
-    fitToContent: () => setView(fit({ w, d }, size)),
+    fitToContent: () => setView(fit({ w, d }, size, FIT_INSETS)),
     panBy: (dx, dy) => setView((v) => pan(v, dx, dy)),
   };
 }

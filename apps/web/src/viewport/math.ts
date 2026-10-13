@@ -25,9 +25,19 @@ export function zoomAt(v: View, factor: number, sx: number, sy: number): View {
 
 export const pan = (v: View, dx: number, dy: number): View => ({ ...v, tx: v.tx + dx, ty: v.ty + dy });
 
-export function fit(content: { w: number; d: number }, size: { width: number; height: number }, padding = 64): View {
-  const scale = clampScale(Math.min((size.width - 2 * padding) / content.w, (size.height - 2 * padding) / content.d));
-  return { scale, tx: (size.width - content.w * scale) / 2, ty: (size.height - content.d * scale) / 2 };
+export interface Insets {
+  top: number;
+  right: number;
+  bottom: number;
+  left: number;
+}
+
+export function fit(content: { w: number; d: number }, size: { width: number; height: number }, padding: number | Insets = 64): View {
+  const p = typeof padding === 'number' ? { top: padding, right: padding, bottom: padding, left: padding } : padding;
+  const availW = size.width - p.left - p.right;
+  const availH = size.height - p.top - p.bottom;
+  const scale = clampScale(Math.min(availW / content.w, availH / content.d));
+  return { scale, tx: p.left + (availW - content.w * scale) / 2, ty: p.top + (availH - content.d * scale) / 2 };
 }
 
 export function wheelZoomFactor(deltaY: number, deltaMode: number): number {

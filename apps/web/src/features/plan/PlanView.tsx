@@ -3,6 +3,7 @@ import { useCallback, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { useWorkspaceStore } from '../../store/workspaceStore';
 import { useViewport } from '../../viewport/useViewport';
+import { ChecksStrip } from './ChecksStrip';
 import { Inspector } from './Inspector';
 import { PlanCanvas } from './PlanCanvas';
 import { Toolbar } from './Toolbar';
@@ -64,6 +65,7 @@ export function PlanView({ location }: { location: RoomLocation }) {
           </p>
         ) : null}
       </section>
+      <ChecksStrip issues={issues} objects={content.objects} onSelect={select} />
       <Inspector content={content} selected={selected} commit={commit} onDeleted={() => select(null)} />
     </div>
   );

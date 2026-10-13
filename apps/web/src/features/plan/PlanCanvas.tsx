@@ -1,6 +1,7 @@
 import type { Issue, PlanContent, RoomObject } from '@glasshouse/domain';
 import { useMemo, type DOMAttributes } from 'react';
 import type { ViewportApi } from '../../viewport/useViewport';
+import { flaggedObjectIds } from './flagged';
 import {
   ClearanceLayer,
   DimensionsLayer,
@@ -34,7 +35,7 @@ const withPreview = (objects: RoomObject[], preview: Preview | null): RoomObject
 
 export function PlanCanvas({ content, issues, selectedId, viewport, preview, cursor, svgHandlers, onFocusObject }: PlanCanvasProps) {
   const { view } = viewport;
-  const flagged = useMemo(() => new Set(issues.filter((i) => i.severity === 'block').flatMap((i) => i.targets)), [issues]);
+  const flagged = useMemo(() => flaggedObjectIds(issues), [issues]);
   const objects = withPreview(content.objects, preview);
   const selected = objects.find((o) => o.id === selectedId) ?? null;
 

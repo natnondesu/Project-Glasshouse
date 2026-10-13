@@ -34,3 +34,11 @@ describe('viewport math', () => {
     expect(wheelZoomFactor(3, 1)).toBeLessThan(1);
   });
 });
+
+describe('fit with insets', () => {
+  it('reserves room for the floating tool palette on the left', () => {
+    const f = fit({ w: 5, d: 4 }, { width: 1000, height: 700 }, { top: 64, right: 64, bottom: 64, left: 120 });
+    expect(f.tx).toBeGreaterThanOrEqual(120);
+    expect(f.tx + 5 * f.scale).toBeLessThanOrEqual(1000 - 64 + 1e-9);
+  });
+});
