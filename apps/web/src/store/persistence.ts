@@ -1,4 +1,4 @@
-import { createWorkspace, parseWorkspace } from '@glasshouse/domain';
+import { createWorkspace, parseWorkspace, withSample } from '@glasshouse/domain';
 import type { Repository } from '../storage/repository';
 import { useWorkspaceStore } from './workspaceStore';
 
@@ -16,7 +16,10 @@ export async function hydrate(repo: Repository): Promise<void> {
     return;
   }
   if (raw === null) {
-    store.replace(createWorkspace());
+    // FR13: every new workspace starts with the Sample Project. If it can't be built, start empty;
+    // the tree's "Load sample project" then reports the reason.
+    const seeded = withSample(createWorkspace(), new Date().toISOString());
+    store.replace(seeded.ok ? seeded.value : createWorkspace());
     store.setLoad({ kind: 'ready' });
     return;
   }

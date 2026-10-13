@@ -1,4 +1,4 @@
-import { createWorkspace } from '@glasshouse/domain';
+import { createWorkspace, SAMPLE_PROJECT_NAME } from '@glasshouse/domain';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createMemoryRepository } from '../storage/memoryRepository';
 import { hydrate, startPersistence } from './persistence';
@@ -13,10 +13,10 @@ describe('persistence', () => {
   });
   afterEach(() => vi.useRealTimers());
 
-  it('starts a fresh workspace when nothing is stored', async () => {
+  it('starts a fresh workspace with the Sample Project when nothing is stored (AC18)', async () => {
     await hydrate(createMemoryRepository());
     expect(store().load).toEqual({ kind: 'ready' });
-    expect(store().workspace.projects).toEqual([]);
+    expect(store().workspace.projects).toMatchObject([{ name: SAMPLE_PROJECT_NAME, isSample: true }]);
   });
 
   it('keeps corrupted data and reports it instead of resetting', async () => {
@@ -35,7 +35,7 @@ describe('persistence', () => {
     expect(store().save).toEqual({ kind: 'saving' });
     await vi.advanceTimersByTimeAsync(400);
     expect(store().save.kind).toBe('saved');
-    expect((repo.saved as ReturnType<typeof createWorkspace>).projects[0]?.name).toBe('Northgate');
+    expect((repo.saved as ReturnType<typeof createWorkspace>).projects.filter((p) => !p.isSample).map((p) => p.name)).toEqual(['Northgate']);
     stop();
   });
 
@@ -57,7 +57,7 @@ describe('persistence', () => {
     store().dispatch({ type: 'project/create', id: 'p', name: 'Northgate' });
     stop();
     await vi.runAllTimersAsync();
-    expect((repo.saved as ReturnType<typeof createWorkspace>).projects).toHaveLength(1);
+    expect((repo.saved as ReturnType<typeof createWorkspace>).projects.filter((p) => !p.isSample)).toHaveLength(1);
   });
 });
 

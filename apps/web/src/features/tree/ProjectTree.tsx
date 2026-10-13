@@ -83,6 +83,7 @@ export function ProjectTree({ activeRoomId }: { activeRoomId: string | null }) {
             key={project.id}
             kind="project"
             label={project.name}
+            badge={project.isSample ? <span className="stamp stamp--sample">SAMPLE</span> : undefined}
             {...editing(project.id)}
             onRename={(name) => rename({ type: 'project/rename', projectId: project.id, name })}
             onAdd={() => {
@@ -154,6 +155,11 @@ export function ProjectTree({ activeRoomId }: { activeRoomId: string | null }) {
           {error}
         </p>
       ) : null}
+      {projects.some((p) => p.isSample) ? null : (
+        <button type="button" className="btn btn--sm btn--quiet tree__sample" onClick={() => run({ type: 'sample/load', at: new Date().toISOString() })}>
+          Load sample project
+        </button>
+      )}
       {importing ? <ImportDialog file={importing} onClose={() => setImporting(null)} /> : null}
       <BackupPanel />
       <Link to="/catalog" className="tree__catalog">
