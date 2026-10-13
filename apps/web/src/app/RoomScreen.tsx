@@ -1,4 +1,5 @@
 import { currentRevision } from '@glasshouse/domain';
+import { lazy, Suspense } from 'react';
 import { useParams } from 'react-router';
 import { BomView } from '../features/bom/BomView';
 import { ElevationView } from '../features/elevation/ElevationView';
@@ -8,9 +9,12 @@ import { useRoomLocation } from '../store/hooks';
 import { ErrorBoundary } from './ErrorBoundary';
 import { FrozenBanner } from './FrozenBanner';
 import { NotFound } from './NotFound';
+
+// three.js is large and only this view needs it: keep it out of the main bundle.
+const Room3DView = lazy(() => import('../features/room3d/Room3DView'));
 import { ViewTabs } from './ViewTabs';
 
-const LABEL: Record<string, string> = { plan: 'the plan', elevation: 'the elevation', bom: 'the BOM', review: 'the review' };
+const LABEL: Record<string, string> = { plan: 'the plan', elevation: 'the elevation', '3d': 'the 3D view', bom: 'the BOM', review: 'the review' };
 
 export function RoomScreen() {
   const { roomId = '', view = 'plan' } = useParams();
@@ -21,6 +25,12 @@ export function RoomScreen() {
   let body;
   if (view === 'plan') body = <PlanView key={roomId} location={location} readOnly={readOnly} />;
   else if (view === 'elevation') body = <ElevationView key={roomId} location={location} readOnly={readOnly} />;
+  else if (view === '3d')
+    body = (
+      <Suspense fallback={<p className="room3d__fallback" role="status">Loading 3D…</p>}>
+        <Room3DView key={roomId} location={location} />
+      </Suspense>
+    );
   else if (view === 'bom') body = <BomView key={roomId} location={location} />;
   else if (view === 'review') body = <ReviewView key={roomId} location={location} />;
   else return <NotFound message="That view doesn't exist for this room." />;

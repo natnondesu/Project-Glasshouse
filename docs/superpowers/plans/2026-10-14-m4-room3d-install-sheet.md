@@ -43,7 +43,7 @@
 6. **Rack selection in 3D.** Clicking a Rack box opens `/rooms/:id/elevation?sel=<rackId>`. An accessible "Racks" list overlay does the same with keyboard and screen readers, which is the non-pointer path that FR08 requires.
 7. **Sample Project (FR13).**
    - `createSampleProject(catalog, at)` builds a Project with `isSample: true` by applying ordinary workspace commands to a scratch workspace with new ids.
-   - **Server room A:** rectangular, 6.0 × 4.8 m. Two populated OxygenAI Racks. Approved R01, with designer and reviewer marked "(sample)".
+   - **Server room A:** rectangular, 6.0 × 4.8 m. Two populated OxygenAI Racks. Approved R01.
    - **MDF-1:** L-shaped, with a column Cut-out. It holds:
      - two OxygenAI Racks, one of them with a 6U Chassis holding five Nodes;
      - one customer Rack with a Reserved range of unknown demand;

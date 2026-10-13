@@ -6,6 +6,7 @@ import { useRoomLocation } from '../store/hooks';
 const VIEWS = [
   { id: 'plan', label: 'Plan' },
   { id: 'elevation', label: 'Elevation' },
+  { id: '3d', label: '3D' },
   { id: 'bom', label: 'Devices & BOM' },
   { id: 'review', label: 'Review' },
 ] as const;
