@@ -1,9 +1,10 @@
-import { currentRevision } from '@glasshouse/domain';
-import type { ReactNode } from 'react';
+import { currentRevision, exportProjectFile } from '@glasshouse/domain';
+import { useState, type ReactNode } from 'react';
 import { Link } from 'react-router';
 import { useRoomLocation } from '../store/hooks';
 import { useWorkspaceStore, type SaveState } from '../store/workspaceStore';
-import { GlasshouseMark } from '../ui/icons';
+import { downloadJson, slugify } from '../ui/files';
+import { GlasshouseMark, IconDownload } from '../ui/icons';
 import { pad2, StatusStamp } from '../ui/StatusStamp';
 
 function Cell({ label, children, mono = false }: { label: string; children: ReactNode; mono?: boolean }) {
@@ -38,6 +39,18 @@ export function TitleBlock({ roomId }: { roomId: string | null }) {
   const location = useRoomLocation(roomId);
   const save = useWorkspaceStore((s) => s.save);
   const revision = location ? currentRevision(location.room.plan) : null;
+  const workspace = useWorkspaceStore((s) => s.workspace);
+  const [exportError, setExportError] = useState<string | null>(null);
+  const exportProject = (): void => {
+    if (!location) return;
+    const file = exportProjectFile(workspace, location.project.id, new Date().toISOString());
+    if (!file.ok) {
+      setExportError(file.error.message);
+      return;
+    }
+    setExportError(null);
+    downloadJson(`${slugify(location.project.name)}.glasshouse.json`, file.value);
+  };
   return (
     <header className="title-block glass">
       <Link to="/" className="title-block__mark">
@@ -57,6 +70,17 @@ export function TitleBlock({ roomId }: { roomId: string | null }) {
         <Cell label="Status">{revision ? <StatusStamp state={revision.state} /> : '—'}</Cell>
       </dl>
       <div className="title-block__actions">
+        {location ? (
+          <button type="button" className="btn btn--sm" onClick={exportProject}>
+            <IconDownload />
+            Export project file
+          </button>
+        ) : null}
+        {exportError ? (
+          <span role="alert" className="save-status save-status--failed">
+            {exportError}
+          </span>
+        ) : null}
         <SaveStatus save={save} />
       </div>
     </header>

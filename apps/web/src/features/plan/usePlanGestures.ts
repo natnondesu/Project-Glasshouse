@@ -44,6 +44,7 @@ interface Args {
   select: (id: Id | null) => void;
   viewport: ViewportApi;
   commit: CommitFn;
+  readOnly?: boolean;
 }
 
 const snapPoint = ([x, y]: Point): Point => [snapFloor(x), snapFloor(y)];
@@ -52,7 +53,7 @@ function rectPreview(mode: 'area' | 'cut', a: Point, b: Point): Extract<Preview,
   return { kind: 'rect', mode, x: Math.min(a[0], b[0]), y: Math.min(a[1], b[1]), w: Math.abs(a[0] - b[0]), d: Math.abs(a[1] - b[1]) };
 }
 
-export function usePlanGestures({ content, tool, setTool, selectedId, select, viewport, commit }: Args) {
+export function usePlanGestures({ content, tool, setTool, selectedId, select, viewport, commit, readOnly = false }: Args) {
   const gesture = useRef<Gesture | null>(null);
   const previewRef = useRef<Preview | null>(null);
   const [preview, setPreviewState] = useState<Preview | null>(null);
@@ -93,6 +94,10 @@ export function usePlanGestures({ content, tool, setTool, selectedId, select, vi
     if (tool === 'measure') {
       const snap = snapMeasurePoint(world, content, MEASURE_SNAP_PX / viewport.view.scale);
       setMeasure((m) => (m.a === null || m.b !== null ? { ...m, a: snap, b: null } : { ...m, b: snap }));
+      return;
+    }
+    if (readOnly) {
+      select(hitTest(content.objects, world)?.id ?? null);
       return;
     }
     if (tool === 'area' || tool === 'cut') {
@@ -191,10 +196,11 @@ export function usePlanGestures({ content, tool, setTool, selectedId, select, vi
     }
     if (e.metaKey || e.ctrlKey || e.altKey) return;
     const nextTool = toolForKey(e.key);
-    if (nextTool) {
+    if (nextTool && (!readOnly || nextTool === 'select' || nextTool === 'pan' || nextTool === 'measure')) {
       setTool(nextTool);
       return;
     }
+    if (readOnly) return;
     const selected = content.objects.find((o) => o.id === selectedId);
     if (!selected) return;
     if (e.key === 'Delete' || e.key === 'Backspace') {

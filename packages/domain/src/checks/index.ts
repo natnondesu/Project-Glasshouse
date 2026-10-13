@@ -9,8 +9,8 @@ export { equipmentIssues } from './equipment';
 
 const ORDER: Record<Severity, number> = { block: 0, needs_ack: 1, warn: 2 };
 
-export function checkPlan(content: PlanContent): Issue[] {
-  return [...placementIssues(content), ...equipmentIssues(content)].sort((a, b) => ORDER[a.severity] - ORDER[b.severity]);
+export function checkPlan(content: PlanContent, acknowledged: ReadonlySet<string> = new Set()): Issue[] {
+  return [...placementIssues(content), ...equipmentIssues(content, acknowledged)].sort((a, b) => ORDER[a.severity] - ORDER[b.severity]);
 }
 
 export const blockingIssues = (issues: Issue[]): Issue[] => issues.filter((i) => i.severity === 'block');

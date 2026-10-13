@@ -39,6 +39,7 @@
 }
 
 .tree-row__line {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 2px;
@@ -87,11 +88,20 @@
 }
 
 .tree-row__label .stamp {
+  flex-shrink: 0;
   background: var(--warn-bg);
   color: var(--warn);
 }
 
+/* Overlaid so hidden actions don't squeeze the name and status stamp. */
 .tree-row__actions {
+  position: absolute;
+  top: 50%;
+  right: 2px;
+  transform: translateY(-50%);
+  padding-left: 6px;
+  border-radius: var(--radius-field);
+  background: rgb(238 242 247 / 0.96);
   display: flex;
   opacity: 0;
   transition: opacity var(--duration-fast) ease-out;
@@ -145,7 +155,7 @@
 }
 
 .tree__catalog {
-  margin-top: auto;
+  margin-top: 10px;
   padding: 12px 10px 2px;
   border-top: 1px solid var(--line);
   font-size: 13px;
@@ -156,4 +166,48 @@
 
 .tree__catalog:hover {
   color: var(--acc);
+}
+
+.tree__head-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.backup {
+  margin-top: auto;
+  padding: 12px 10px 4px;
+  border-top: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.backup--due {
+  margin-left: 0;
+  margin-right: 0;
+  padding: 10px 12px;
+  border: 1px solid rgb(154 90 0 / 0.3);
+  border-radius: var(--radius-control);
+  background: var(--warn-bg);
+}
+
+.backup--due .backup__status strong {
+  color: var(--warn);
+}
+
+.backup__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.backup__confirm {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  border-radius: var(--radius-control);
+  border: 1px solid rgb(184 50 42 / 0.3);
+  background: var(--block-bg);
 }

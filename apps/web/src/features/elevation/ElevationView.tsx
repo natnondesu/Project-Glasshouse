@@ -1,5 +1,5 @@
 import {
-  checkPlan,
+  revisionIssues,
   currentRevision,
   findNode,
   findRackDevice,
@@ -41,15 +41,16 @@ function entityNames(content: PlanContent): { id: string; name: string }[] {
   ]);
 }
 
-export function ElevationView({ location }: { location: RoomLocation }) {
-  const content = currentRevision(location.room.plan).content;
+export function ElevationView({ location, readOnly = false }: { location: RoomLocation; readOnly?: boolean }) {
+  const revision = currentRevision(location.room.plan);
+  const content = revision.content;
   const roomId = location.room.id;
   const commit = usePlanCommit(roomId);
   const catalog = useWorkspaceStore((s) => s.workspace.catalog);
   const [selectedId, select] = useSearchParamState('sel');
   const [message, setMessage] = useState<string | null>(null);
   const racks = racksOf(content);
-  const issues = useMemo(() => checkPlan(content), [content]);
+  const issues = useMemo(() => revisionIssues(revision), [revision]);
   const flagged = useMemo(() => flaggedObjectIds(issues), [issues]);
   const names = useMemo(() => entityNames(content), [content]);
   const activeRack = owningRack(content, selectedId) ?? racks[0] ?? null;
@@ -61,6 +62,7 @@ export function ElevationView({ location }: { location: RoomLocation }) {
   }, [message]);
 
   const place = (template: Template, rack: Rack, atU?: number): void => {
+    if (readOnly) return;
     if (template.mounting === 'slot') {
       setMessage('Nodes go into a Chassis. Select one and use its slot map.');
       return;
@@ -92,7 +94,7 @@ export function ElevationView({ location }: { location: RoomLocation }) {
     <div className="elev">
       <aside className="elev__side" aria-label="Catalog and checks">
         <div className="glass elev__palette">
-          <CatalogPalette catalog={catalog} activeRack={activeRack} onAdd={(t) => activeRack && place(t, activeRack)} />
+          <CatalogPalette catalog={catalog} activeRack={activeRack} onAdd={(t) => activeRack && place(t, activeRack)} disabled={readOnly} />
         </div>
         <ChecksStrip className="checks--static checks--narrow" issues={issues} objects={names} onSelect={select} />
       </aside>
@@ -116,7 +118,7 @@ export function ElevationView({ location }: { location: RoomLocation }) {
           />
         ))}
       </section>
-      <EquipmentInspector content={content} roomId={roomId} selectedId={selectedId} activeRack={activeRack} catalog={catalog} commit={commit} onSelect={select} />
+      <EquipmentInspector content={content} roomId={roomId} selectedId={selectedId} activeRack={activeRack} catalog={catalog} commit={commit} onSelect={select} readOnly={readOnly} />
       {message ? (
         <p role="status" className="elev__message">
           {message}

@@ -116,3 +116,20 @@
   border-top: 1px solid var(--line);
   font-size: 12px;
 }
+
+.inspector__lock {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+
+.inspector__lock:disabled .field__box {
+  background: rgb(255 255 255 / 0.35);
+}
+
+.inspector__lock:disabled .field__input,
+.inspector__lock:disabled .field__unit {
+  color: var(--ink-2);
+  cursor: not-allowed;
+}

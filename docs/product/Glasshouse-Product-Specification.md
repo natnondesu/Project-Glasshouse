@@ -247,7 +247,7 @@ Unverified names are labelled "unverified" everywhere they appear, including the
 
 Browser storage keeps the whole workspace: hierarchy, Plans, Revisions, Snapshots, Review notes, Catalog and history. Storage sits behind one repository interface so P1 can replace it with a server API without changing domain or UI code (ADR-0001). Schema versions migrate forward without losing edits.
 
-A **Project file** exports one Project's full tree with Revisions, Snapshots, Review notes and the Templates it uses. Importing never silently overwrites: when a Plan with the same ID exists locally, the user sees both Revision numbers and states and chooses *keep mine*, *take incoming* or *import as copy*. Imported Templates that already exist are matched by ID and version; differing versions are kept side by side.
+A **Project file** exports one Project's full tree with Revisions, Snapshots, Review notes and the Templates it uses. Importing never silently overwrites: when a Plan with the same ID exists locally, the user sees both Revision numbers and states and chooses *keep mine*, *take incoming* or *import as copy*. Imported Templates are matched by ID: new ones are added, and when the file holds a different version of a Template that exists locally, the local Catalog entry is kept and the import preview names it (decided 2026-10-14). Placed Devices are unaffected, because each Plan keeps a frozen copy of every Template version it uses.
 
 A **Workspace backup** exports and restores the entire workspace. The app shows a non-blocking reminder when no backup has been made for 7 days.
 

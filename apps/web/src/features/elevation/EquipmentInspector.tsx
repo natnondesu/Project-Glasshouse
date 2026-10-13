@@ -7,6 +7,7 @@ import { ReservedInspector } from './ReservedInspector';
 import '../plan/inspector.css';
 
 interface EquipmentInspectorProps {
+  readOnly?: boolean;
   content: PlanContent;
   roomId: string;
   selectedId: string | null;
@@ -16,7 +17,7 @@ interface EquipmentInspectorProps {
   onSelect: (id: string | null) => void;
 }
 
-export function EquipmentInspector({ content, roomId, selectedId, activeRack, catalog, commit, onSelect }: EquipmentInspectorProps) {
+export function EquipmentInspector({ content, roomId, selectedId, activeRack, catalog, commit, onSelect, readOnly = false }: EquipmentInspectorProps) {
   const device = selectedId ? findRackDevice(content, selectedId) : null;
   const node = !device && selectedId ? findNode(content, selectedId) : null;
   const reserved = !device && !node && selectedId ? findReserved(content, selectedId) : null;
@@ -30,7 +31,9 @@ export function EquipmentInspector({ content, roomId, selectedId, activeRack, ca
 
   return (
     <aside className="equip glass" aria-label="Equipment details">
-      {body}
+      <fieldset className="inspector__lock" disabled={readOnly}>
+        {body}
+      </fieldset>
     </aside>
   );
 }

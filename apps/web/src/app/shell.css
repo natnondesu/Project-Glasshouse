@@ -240,3 +240,28 @@
   color: var(--block);
   font-weight: 600;
 }
+
+.frozen-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 14px;
+  padding: 10px 14px;
+  border-color: rgb(154 90 0 / 0.35);
+  background: rgb(255 243 223 / 0.85);
+  font-size: 13px;
+}
+
+.frozen-banner > span:first-child {
+  flex: 1 1 320px;
+}
+
+.view-tab__badge {
+  margin-left: 6px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--block-fill);
+  color: #fff;
+  font-size: 11px;
+  line-height: 18px;
+}

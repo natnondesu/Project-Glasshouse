@@ -9,16 +9,19 @@ interface InspectorProps {
   selected: RoomObject | null;
   commit: CommitFn;
   onDeleted: () => void;
+  readOnly?: boolean;
 }
 
-export function Inspector({ content, selected, commit, onDeleted }: InspectorProps) {
+export function Inspector({ content, selected, commit, onDeleted, readOnly = false }: InspectorProps) {
   return (
     <aside className="inspector glass" aria-label={selected ? `${selected.name} details` : 'Survey'}>
-      {selected ? (
-        <ObjectInspector key={selected.id} object={selected} commit={commit} onDeleted={onDeleted} />
-      ) : (
-        <SurveyPanel survey={content.survey} commit={commit} />
-      )}
+      <fieldset className="inspector__lock" disabled={readOnly}>
+        {selected ? (
+          <ObjectInspector key={selected.id} object={selected} commit={commit} onDeleted={onDeleted} />
+        ) : (
+          <SurveyPanel survey={content.survey} commit={commit} />
+        )}
+      </fieldset>
     </aside>
   );
 }

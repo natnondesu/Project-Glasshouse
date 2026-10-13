@@ -1,5 +1,5 @@
-import { checkPlan, currentRevision, type RoomLocation } from '@glasshouse/domain';
-import { useMemo, useState } from 'react';
+import { currentRevision, revisionIssues, type RoomLocation } from '@glasshouse/domain';
+import { useEffect, useMemo, useState } from 'react';
 import { usePlanCommit, useSearchParamState } from '../../store/hooks';
 import { useViewport } from '../../viewport/useViewport';
 import { ChecksStrip } from './ChecksStrip';
@@ -11,21 +11,25 @@ import { usePlanGestures } from './usePlanGestures';
 import { ZoomControls } from './ZoomControls';
 import './plan.css';
 
-export function PlanView({ location }: { location: RoomLocation }) {
-  const content = currentRevision(location.room.plan).content;
+export function PlanView({ location, readOnly = false }: { location: RoomLocation; readOnly?: boolean }) {
+  const revision = currentRevision(location.room.plan);
+  const content = revision.content;
   const commit = usePlanCommit(location.room.id);
   const [selectedParam, select] = useSearchParamState('sel');
   const [tool, setTool] = useState<Tool>('select');
+  useEffect(() => {
+    if (readOnly && tool !== 'select' && tool !== 'pan' && tool !== 'measure') setTool('select');
+  }, [readOnly, tool]);
   const selected = content.objects.find((o) => o.id === selectedParam) ?? null;
 
-  const issues = useMemo(() => checkPlan(content), [content]);
+  const issues = useMemo(() => revisionIssues(revision), [revision]);
   const viewport = useViewport({ w: content.survey.width, d: content.survey.length });
-  const gestures = usePlanGestures({ content, tool, setTool, selectedId: selected?.id ?? null, select, viewport, commit });
+  const gestures = usePlanGestures({ content, tool, setTool, selectedId: selected?.id ?? null, select, viewport, commit, readOnly });
 
   return (
     <div className="plan-view">
       <section className="plan-view__canvas" aria-label="Room plan" onKeyDown={gestures.onKeyDown} onKeyUp={gestures.onKeyUp}>
-        <Toolbar tool={tool} onTool={setTool} />
+        <Toolbar tool={tool} onTool={setTool} readOnly={readOnly} />
         <PlanCanvas
           content={content}
           issues={issues}
@@ -45,7 +49,7 @@ export function PlanView({ location }: { location: RoomLocation }) {
         ) : null}
       </section>
       <ChecksStrip issues={issues} objects={content.objects} onSelect={select} />
-      <Inspector content={content} selected={selected} commit={commit} onDeleted={() => select(null)} />
+      <Inspector content={content} selected={selected} commit={commit} onDeleted={() => select(null)} readOnly={readOnly} />
     </div>
   );
 }

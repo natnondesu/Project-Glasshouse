@@ -6,6 +6,8 @@ import { err, ok, type Result } from '../result';
 import { validateName } from '../validation';
 import { applyCatalogCommand, type CatalogCommand } from './catalog';
 import { applyPlanCommand, type PlanCommand } from './plan';
+import { applyReviewCommand, type ReviewCommand } from './review';
+import { applyImport, type ImportResolution, type ProjectFile } from '../projectFile';
 
 export type WorkspaceCommand =
   | { type: 'project/create'; id: Id; name: string }
@@ -18,6 +20,9 @@ export type WorkspaceCommand =
   | { type: 'room/rename'; roomId: Id; name: string }
   | { type: 'room/delete'; roomId: Id }
   | { type: 'plan'; roomId: Id; command: PlanCommand }
+  | { type: 'review'; roomId: Id; command: ReviewCommand }
+  | { type: 'backup/mark'; at: string }
+  | { type: 'project/import'; file: ProjectFile; resolution: ImportResolution }
   | CatalogCommand;
 
 const gone = (what: string, id: Id) => err('not_found', `That ${what} no longer exists.`, [id]);
@@ -128,6 +133,17 @@ export function apply(ws: Workspace, cmd: WorkspaceCommand): Result<Workspace> {
       const result = applyCatalogCommand(ws.catalog, cmd);
       if (!result.ok) return result;
       return ok(produce(ws, (d) => void (d.catalog = castDraft(result.value))));
+    }
+    case 'project/import':
+      return applyImport(ws, cmd.file, cmd.resolution);
+    case 'backup/mark':
+      return ok(produce(ws, (d) => void (d.lastBackupAt = cmd.at)));
+    case 'review': {
+      const loc = findRoom(ws, cmd.roomId);
+      if (!loc) return gone('room', cmd.roomId);
+      const result = applyReviewCommand(loc.room.plan, cmd.command);
+      if (!result.ok) return result;
+      return ok(produce(ws, (d) => void (draftRoom(d, cmd.roomId).plan = castDraft(result.value))));
     }
     case 'plan':
       return applyToPlan(ws, cmd.roomId, cmd.command);
