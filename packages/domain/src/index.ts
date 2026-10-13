@@ -11,3 +11,5 @@ export * from './factories';
 export * from './commands/survey';
 export * from './commands/floor';
 export * from './commands/plan';
+export * from './objects';
+export * from './commands/objects';
