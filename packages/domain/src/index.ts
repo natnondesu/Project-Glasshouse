@@ -15,3 +15,4 @@ export * from './objects';
 export * from './commands/objects';
 export * from './lookup';
 export * from './commands/workspace';
+export * from './checks/index';
