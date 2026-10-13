@@ -1,26 +1,53 @@
 import { bomRowsFor, currentRevision, latestApproved, racksOf, type Chassis, type Rack } from '@glasshouse/domain';
-import { useMemo } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router';
 import { NotFound } from '../../app/NotFound';
 import { useRoomLocation } from '../../store/hooks';
 import { pad2 } from '../../ui/StatusStamp';
 import { RackElevation } from '../elevation/RackElevation';
 import { SheetPlan } from './SheetPlan';
-import { AcknowledgedUnknowns, BomTable, SlotMapTable } from './SheetTables';
+import { BomTable, SlotMapsTable } from './SheetTables';
 import { SheetTitleBlock } from './SheetTitleBlock';
 import './sheet.css';
 
-const RACKS_PER_PAGE = 2;
-const SLOT_MAPS_PER_PAGE = 4;
+/** Two racks fit side by side on A4 up to this height; taller ones get a page each (and scale to fit). */
+const PAIRED_MAX_U = 44;
 const NO_FLAGS = new Set<string>();
 const noop = (): void => undefined;
 
-const chunk = <T,>(items: T[], size: number): T[][] => Array.from({ length: Math.ceil(items.length / size) }, (_, i) => items.slice(i * size, i * size + size));
+function elevationPages(racks: Rack[]): Rack[][] {
+  const pages: Rack[][] = [];
+  let pair: Rack[] = [];
+  for (const rack of racks) {
+    if (rack.capacityU > PAIRED_MAX_U) {
+      pages.push([rack]);
+      continue;
+    }
+    pair.push(rack);
+    if (pair.length === 2) {
+      pages.push(pair);
+      pair = [];
+    }
+  }
+  if (pair.length > 0) pages.push(pair);
+  return pages;
+}
+
+/** The "Printed" stamp is taken when the browser prints, not when the page was opened. */
+function usePrintTime(): string {
+  const [at, setAt] = useState(() => new Date().toISOString());
+  useEffect(() => {
+    const stamp = (): void => setAt(new Date().toISOString());
+    window.addEventListener('beforeprint', stamp);
+    return () => window.removeEventListener('beforeprint', stamp);
+  }, []);
+  return at;
+}
 
 export function InstallSheet() {
   const { roomId = '' } = useParams();
   const location = useRoomLocation(roomId);
-  const printedAt = useMemo(() => new Date().toISOString(), []);
+  const printedAt = usePrintTime();
   if (!location) return <NotFound message="This room isn't in this browser's workspace." />;
   const revision = latestApproved(location.room.plan);
   const current = currentRevision(location.room.plan);
@@ -59,7 +86,7 @@ export function InstallSheet() {
         <p className="sheet-legend">Distances in metres from each Rack to the nearest walls. Hatched bands are Clearance zones; the arrow marks each Rack's Front.</p>
       </section>
 
-      {chunk(racks, RACKS_PER_PAGE).map((group, i) => (
+      {elevationPages(racks).map((group, i) => (
         <section key={`elev-${i}`} className="sheet-page">
           {title('Rack elevations')}
           <div className="sheet-elevations">
@@ -70,20 +97,14 @@ export function InstallSheet() {
         </section>
       ))}
 
-      {chunk(chassis, SLOT_MAPS_PER_PAGE).map((group, i) => (
-        <section key={`slots-${i}`} className="sheet-page">
-          {title('Slot maps')}
-          <div className="sheet-slotmaps">
-            {group.map(({ rack, chassis: c }) => (
-              <SlotMapTable key={c.id} chassis={c} rackName={rack.name} />
-            ))}
-          </div>
+      {chassis.length > 0 ? (
+        <section className="sheet-page sheet-page--flow">
+          <SlotMapsTable chassis={chassis} titleBlock={title('Slot maps')} />
         </section>
-      ))}
+      ) : null}
 
       <section className="sheet-page sheet-page--flow">
-        <BomTable rows={bomRowsFor(location, revision)} titleBlock={title('Bill of materials')} />
-        <AcknowledgedUnknowns revision={revision} />
+        <BomTable rows={bomRowsFor(location, revision)} revision={revision} titleBlock={title('Bill of materials')} />
       </section>
     </main>
   );

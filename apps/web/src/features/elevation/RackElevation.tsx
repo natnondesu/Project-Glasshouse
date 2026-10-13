@@ -22,7 +22,7 @@ interface RackElevationProps {
 
 const categoryOf = (d: RackDevice): string => (d.kind === 'chassis' ? 'chassis' : d.category);
 
-function ChassisSlots({ chassis, y, onSelect }: { chassis: Chassis; y: number; onSelect: (id: string) => void }) {
+function ChassisSlots({ chassis, y, onSelect }: { chassis: Chassis; y: number; onSelect: ((id: string) => void) | null }) {
   const left = 66;
   const right = RACK_W - 12;
   const top = y + 5;
@@ -44,7 +44,7 @@ function ChassisSlots({ chassis, y, onSelect }: { chassis: Chassis; y: number; o
           <g
             key={slot}
             onClick={
-              node
+              node && onSelect
                 ? (e) => {
                     e.stopPropagation();
                     onSelect(node.id);
@@ -65,19 +65,24 @@ function ChassisSlots({ chassis, y, onSelect }: { chassis: Chassis; y: number; o
   );
 }
 
-function DeviceBlock(props: { device: RackDevice; y: number; selected: boolean; flagged: boolean; onSelect: (id: string) => void; onKey: (e: KeyboardEvent) => void }) {
-  const { device, y, selected, flagged, onSelect, onKey } = props;
+/** Interactive attributes for a block, or none on paper. */
+function control(isStatic: boolean, label: string, selected: boolean, onClick: () => void, onKey: (e: KeyboardEvent) => void) {
+  return isStatic ? {} : { role: 'button', tabIndex: 0, 'aria-label': label, 'aria-pressed': selected, onClick, onKeyDown: onKey };
+}
+
+function DeviceBlock(props: { device: RackDevice; y: number; selected: boolean; flagged: boolean; onSelect: (id: string) => void; onKey: (e: KeyboardEvent) => void; isStatic: boolean }) {
+  const { device, y, selected, flagged, onSelect, onKey, isStatic } = props;
   const h = device.heightU * U_PX;
   const textY = y + Math.min(h, 32) / 2 + 4;
   const classes = ['dev', `dev--${categoryOf(device)}`, selected ? 'is-selected' : '', flagged ? 'is-flagged' : ''].filter(Boolean).join(' ');
   return (
-    <g role="button" tabIndex={0} aria-label={`${device.name}, ${formatURange(device)}`} aria-pressed={selected} className={classes} onClick={() => onSelect(device.id)} onKeyDown={onKey}>
+    <g className={classes} {...control(isStatic, `${device.name}, ${formatURange(device)}`, selected, () => onSelect(device.id), onKey)}>
       <rect x={4} y={y + 1} width={RACK_W - 8} height={h - 2} rx={3} className="dev__body" />
       <text x={12} y={textY} className="dev__name">
         {device.name}
       </text>
       {device.kind === 'chassis' ? (
-        <ChassisSlots chassis={device} y={y} onSelect={onSelect} />
+        <ChassisSlots chassis={device} y={y} onSelect={isStatic ? null : onSelect} />
       ) : (
         <text x={RACK_W - 12} y={textY} textAnchor="end" className="dev__w">
           {formatDemand(device.demand)}
@@ -87,20 +92,12 @@ function DeviceBlock(props: { device: RackDevice; y: number; selected: boolean; 
   );
 }
 
-function ReservedBlock(props: { range: ReservedRange; y: number; patternId: string; selected: boolean; onSelect: (id: string) => void; onKey: (e: KeyboardEvent) => void }) {
-  const { range, y, patternId, selected, onSelect, onKey } = props;
+function ReservedBlock(props: { range: ReservedRange; y: number; patternId: string; selected: boolean; onSelect: (id: string) => void; onKey: (e: KeyboardEvent) => void; isStatic: boolean }) {
+  const { range, y, patternId, selected, onSelect, onKey, isStatic } = props;
   const h = range.heightU * U_PX;
   const midY = y + h / 2;
   return (
-    <g
-      role="button"
-      tabIndex={0}
-      aria-label={`Reserved range ${formatURange(range)}, ${range.label}`}
-      aria-pressed={selected}
-      className={`rsv${selected ? ' is-selected' : ''}`}
-      onClick={() => onSelect(range.id)}
-      onKeyDown={onKey}
-    >
+    <g className={`rsv${selected ? ' is-selected' : ''}`} {...control(isStatic, `Reserved range ${formatURange(range)}, ${range.label}`, selected, () => onSelect(range.id), onKey)}>
       <rect x={4} y={y + 1} width={RACK_W - 8} height={h - 2} rx={3} fill={`url(#${patternId})`} className="rsv__body" />
       {h >= 48 ? (
         <>
@@ -165,7 +162,12 @@ export function RackElevation({ rack, active, selectedId, flagged, onSelect, onA
         </span>
         <span className="rack-elev__depth mono">usable depth {rack.usableDepthMm} mm</span>
       </figcaption>
-      <svg className="rack-elev__svg" width={LABEL_W * 2 + RACK_W} height={height + PAD * 2} role="group" aria-label={`${rack.name} front elevation, ${rack.capacityU}U`} onDragOver={onDragOver} onDrop={onDrop}>
+      <svg
+        className="rack-elev__svg"
+        width={LABEL_W * 2 + RACK_W}
+        height={height + PAD * 2}
+        viewBox={`0 0 ${LABEL_W * 2 + RACK_W} ${height + PAD * 2}`}
+        role="group" aria-label={`${rack.name} front elevation, ${rack.capacityU}U`} onDragOver={onDragOver} onDrop={onDrop}>
         <defs>
           <pattern id={patternId} width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(-45)">
             <path d="M0 0V8" className="rsv-hatch" />
@@ -186,10 +188,10 @@ export function RackElevation({ rack, active, selectedId, flagged, onSelect, onA
         <rect x={LABEL_W} y={PAD} width={RACK_W} height={height} className="rack-frame" />
         <g transform={`translate(${LABEL_W} 0)`}>
           {rack.reserved.map((r) => (
-            <ReservedBlock key={r.id} range={r} y={yTop(topU(r))} patternId={patternId} selected={r.id === selectedId} onSelect={onSelect} onKey={keySelect(r.id)} />
+            <ReservedBlock key={r.id} range={r} y={yTop(topU(r))} patternId={patternId} selected={r.id === selectedId} onSelect={onSelect} onKey={keySelect(r.id)} isStatic={isStatic} />
           ))}
           {rack.devices.map((d) => (
-            <DeviceBlock key={d.id} device={d} y={yTop(topU(d))} selected={d.id === selectedId} flagged={flagged.has(d.id)} onSelect={onSelect} onKey={keySelect(d.id)} />
+            <DeviceBlock key={d.id} device={d} y={yTop(topU(d))} selected={d.id === selectedId} flagged={flagged.has(d.id)} onSelect={onSelect} onKey={keySelect(d.id)} isStatic={isStatic} />
           ))}
         </g>
       </svg>

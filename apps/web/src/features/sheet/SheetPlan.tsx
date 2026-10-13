@@ -52,7 +52,7 @@ export function SheetPlan({ content, roomName }: { content: PlanContent; roomNam
       <HatchDefs />
       <FootprintLayer survey={content.survey} view={view} />
       <ClearanceLayer objects={content.objects} view={view} />
-      <ObjectsLayer objects={content.objects} view={view} flagged={NO_FLAGS} selectedId={null} onFocusObject={noop} />
+      <ObjectsLayer objects={content.objects} view={view} flagged={NO_FLAGS} selectedId={null} onFocusObject={noop} isStatic />
       <DimensionsLayer survey={content.survey} view={view} />
       {gaps.map((g, i) => (
         <GapDimension key={i} gap={g} view={view} />

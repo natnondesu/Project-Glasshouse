@@ -33,7 +33,7 @@ export function SheetTitleBlock({ location, revision, printedAt, section }: Shee
         </div>
         <div>
           <dt>Printed</dt>
-          <dd>{formatTime(printedAt)}</dd>
+          <dd className="sheet-title__printed">{formatTime(printedAt)}</dd>
         </div>
       </dl>
     </header>

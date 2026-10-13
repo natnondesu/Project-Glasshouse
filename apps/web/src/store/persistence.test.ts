@@ -1,7 +1,7 @@
 import { createWorkspace, SAMPLE_PROJECT_NAME } from '@glasshouse/domain';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createMemoryRepository } from '../storage/memoryRepository';
-import { hydrate, startPersistence } from './persistence';
+import { hydrate, startPersistence, UNLOAD_JOURNAL_KEY } from './persistence';
 import { resetWorkspaceStore, useWorkspaceStore } from './workspaceStore';
 
 const store = () => useWorkspaceStore.getState();
@@ -17,6 +17,14 @@ describe('persistence', () => {
     await hydrate(createMemoryRepository());
     expect(store().load).toEqual({ kind: 'ready' });
     expect(store().workspace.projects).toMatchObject([{ name: SAMPLE_PROJECT_NAME, isSample: true }]);
+  });
+
+  it('does not seed a sample in a read-only tab', async () => {
+    useWorkspaceStore.getState().setReadOnly(true);
+    const repo = createMemoryRepository();
+    await hydrate(repo);
+    expect(store().workspace.projects).toEqual([]);
+    expect(repo.saved).toBeNull();
   });
 
   it('stores the seeded workspace at once, so a reload keeps the same sample and its room links', async () => {
@@ -81,5 +89,40 @@ describe('read-only tabs', () => {
     expect(repo.saved).toBeNull();
     stop();
     vi.useRealTimers();
+  });
+});
+
+describe('unload journal', () => {
+  beforeEach(() => {
+    resetWorkspaceStore();
+    localStorage.clear();
+  });
+
+  it('writes an unsaved change synchronously when the page is hidden, and hydrate replays it', async () => {
+    vi.useFakeTimers();
+    const repo = createMemoryRepository();
+    await hydrate(repo);
+    const stop = startPersistence(repo, 400);
+    store().dispatch({ type: 'project/create', id: 'p', name: 'Northgate' });
+    window.dispatchEvent(new Event('pagehide'));
+    expect(localStorage.getItem(UNLOAD_JOURNAL_KEY)).toContain('Northgate');
+    stop();
+    vi.useRealTimers();
+
+    // The IndexedDB write never finished: the next load must still see the change.
+    const stale = createMemoryRepository(JSON.parse(JSON.stringify({ ...store().workspace, projects: store().workspace.projects.filter((p) => p.isSample) })));
+    resetWorkspaceStore();
+    await hydrate(stale);
+    expect(store().workspace.projects.map((p) => p.name)).toContain('Northgate');
+    expect((stale.saved as ReturnType<typeof createWorkspace>).projects.map((p) => p.name)).toContain('Northgate');
+    expect(localStorage.getItem(UNLOAD_JOURNAL_KEY)).toBeNull();
+  });
+
+  it('ignores a damaged journal and keeps stored data', async () => {
+    localStorage.setItem(UNLOAD_JOURNAL_KEY, '{nope');
+    const repo = createMemoryRepository();
+    await hydrate(repo);
+    expect(store().load).toEqual({ kind: 'ready' });
+    expect(localStorage.getItem(UNLOAD_JOURNAL_KEY)).toBeNull();
   });
 });

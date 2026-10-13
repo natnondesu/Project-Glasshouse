@@ -9,7 +9,11 @@ import { resetWorkspaceStore, useWorkspaceStore } from '../../store/workspaceSto
 // jsdom has no WebGL: stand in for the canvas and keep the rest of the view real.
 vi.mock('./Room3DCanvas', () => ({
   hasWebGL: () => true,
-  Room3DCanvas: () => <div data-testid="room3d-canvas" />,
+  Room3DCanvas: ({ onCamera }: { onCamera: (u: (c: { distance: number }) => object) => void }) => (
+    <button type="button" data-testid="room3d-canvas" onClick={() => onCamera((c) => ({ ...c, distance: c.distance * 2 }))}>
+      move camera
+    </button>
+  ),
 }));
 
 beforeEach(() => {
@@ -38,6 +42,8 @@ it('resets the camera', async () => {
   render(<RouterProvider router={createMemoryRouter(routes, { initialEntries: ['/rooms/r/3d'] })} />);
   const zoom = await screen.findByText(/^\d+\.\d m$/);
   const before = zoom.textContent;
+  await user.click(screen.getByTestId('room3d-canvas'));
+  expect(screen.getByText(/^\d+\.\d m$/).textContent).not.toBe(before);
   await user.click(screen.getByRole('button', { name: 'Reset view' }));
   expect(screen.getByText(/^\d+\.\d m$/).textContent).toBe(before);
 });

@@ -149,12 +149,22 @@
   box-shadow: none;
 }
 
-.sheet-slotmaps {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
-  align-items: start;
+/* On paper a 60U rack must still fit one A4 page with its title block, so the drawing scales down. */
+.sheet-elevations .rack-elev__svg {
+  width: auto;
+  height: auto;
+  max-height: 205mm;
 }
+
+.sheet-table__group th {
+  padding-top: 12px;
+  font-size: 11px;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--ink);
+  border-bottom: 1px solid var(--line-strong);
+}
+
 
 .sheet-table {
   width: 100%;
@@ -204,16 +214,6 @@
   font-style: italic;
 }
 
-.sheet-acks h3 {
-  font-size: 13px;
-  margin-bottom: 6px;
-}
-
-.sheet-acks ul {
-  margin: 0;
-  padding-left: 18px;
-  font-size: 11px;
-}
 
 @page {
   size: A4;

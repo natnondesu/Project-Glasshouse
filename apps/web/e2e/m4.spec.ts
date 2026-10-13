@@ -57,3 +57,30 @@ test('AC20: room 3D renders, pinch zooms at the pointer, and a Rack opens its el
   await expect(page).toHaveURL(/\/elevation\?sel=/);
   await expect(page.getByRole('group', { name: 'RK-C1 front elevation, 42U' })).toBeVisible();
 });
+
+test('AC17 print layout: 60U racks still fit one A4 page each with the title block', async ({ page, browserName }) => {
+  test.skip(browserName !== 'chromium', 'PDF and print-media layout checked in Chromium');
+  await openSampleRoom(page, /Server room A/);
+  await page.getByRole('link', { name: 'Review', exact: true }).click();
+  await page.getByRole('button', { name: 'Start new draft' }).click();
+  await page.getByRole('link', { name: 'Plan' }).click();
+  for (const rack of ['RK-01', 'RK-02']) {
+    await page.getByRole('button', { name: `${rack}, Rack` }).focus();
+    await page.getByLabel('Capacity').fill('60');
+  }
+  await page.getByRole('link', { name: 'Review', exact: true }).click();
+  await page.getByRole('button', { name: 'Submit for review' }).click();
+  await page.getByLabel('Reviewer name (unverified)').fill('Nok');
+  await page.getByRole('button', { name: 'Approve revision' }).click();
+  await expect(page.getByRole('heading', { name: 'Revision 02' })).toBeVisible();
+  await page.getByRole('link', { name: 'Open Install sheet' }).click();
+  await expect(page.locator('.sheet-page').first()).toContainText('R02 APPROVED');
+
+  // A4 at 96 dpi with 12 mm margins: 186 × 273 mm printable ≈ 703 × 1032 px.
+  await page.setViewportSize({ width: 703, height: 1032 });
+  await page.emulateMedia({ media: 'print' });
+  const fixedPages = page.locator('.sheet-page:not(.sheet-page--flow)');
+  await expect(fixedPages).toHaveCount(3);
+  for (const height of await fixedPages.evaluateAll((els) => els.map((el) => el.scrollHeight))) expect(height).toBeLessThanOrEqual(1032);
+  expect((await page.pdf({ format: 'A4' })).byteLength).toBeGreaterThan(10_000);
+});

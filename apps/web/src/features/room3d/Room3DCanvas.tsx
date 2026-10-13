@@ -1,5 +1,5 @@
 import { Canvas, useThree, type ThreeEvent } from '@react-three/fiber';
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo } from 'react';
 import { BoxGeometry, DoubleSide, EdgesGeometry, Plane, Raycaster, Shape, ShapeGeometry, Vector2, Vector3 } from 'three';
 import { wheelZoomFactor } from '../../viewport/math';
 import { cameraPosition, dollyToward, orbit, panGround, type OrbitCamera } from './camera';
@@ -12,22 +12,25 @@ const CLICK_SLOP_PX = 4;
 export function hasWebGL(): boolean {
   try {
     const canvas = document.createElement('canvas');
-    return Boolean(canvas.getContext('webgl2') ?? canvas.getContext('webgl'));
+    const gl = canvas.getContext('webgl2') ?? canvas.getContext('webgl');
+    // Release the probe at once: browsers cap live WebGL contexts.
+    gl?.getExtension('WEBGL_lose_context')?.loseContext();
+    return gl !== null;
   } catch {
     return false;
   }
 }
 
+export type CameraUpdate = (update: (prev: OrbitCamera) => OrbitCamera) => void;
+
 interface ControllerProps {
   camera: OrbitCamera;
-  onChange: (next: OrbitCamera) => void;
+  onChange: CameraUpdate;
 }
 
 /** Trackpad-first: drag orbits, two-finger scroll pans, pinch or ⌘/Ctrl+scroll zooms at the pointer; Shift- or right-drag also pans. */
 function CameraController({ camera, onChange }: ControllerProps) {
   const { camera: three, gl, size } = useThree();
-  const latest = useRef(camera);
-  latest.current = camera;
 
   useEffect(() => {
     const [x, y, z] = cameraPosition(camera);
@@ -56,7 +59,9 @@ function CameraController({ camera, onChange }: ControllerProps) {
       const dx = e.clientX - drag.x;
       const dy = e.clientY - drag.y;
       drag = { ...drag, x: e.clientX, y: e.clientY };
-      onChange(drag.pan ? panGround(latest.current, -dx, -dy, size.height, FOV_DEG) : orbit(latest.current, dx, dy));
+      // Updaters, not snapshots: several events can arrive between renders and each must count.
+      const pan = drag.pan;
+      onChange((prev) => (pan ? panGround(prev, -dx, -dy, size.height, FOV_DEG) : orbit(prev, dx, dy)));
     };
     const onUp = (): void => {
       drag = null;
@@ -65,10 +70,13 @@ function CameraController({ camera, onChange }: ControllerProps) {
       e.preventDefault();
       // Same rule as the 2D plan: pinch, ⌘/Ctrl+scroll or a notched mouse wheel zooms; trackpad scroll pans.
       if (e.ctrlKey || e.metaKey || e.deltaMode !== 0) {
-        onChange(dollyToward(latest.current, 1 / wheelZoomFactor(e.deltaY, e.deltaMode), floorPointAt(e.clientX, e.clientY)));
+        const factor = 1 / wheelZoomFactor(e.deltaY, e.deltaMode);
+        const anchor = floorPointAt(e.clientX, e.clientY);
+        onChange((prev) => dollyToward(prev, factor, anchor));
         return;
       }
-      onChange(panGround(latest.current, e.deltaX, e.deltaY, size.height, FOV_DEG));
+      const { deltaX, deltaY } = e;
+      onChange((prev) => panGround(prev, deltaX, deltaY, size.height, FOV_DEG));
     };
     const noMenu = (e: Event): void => e.preventDefault();
     el.addEventListener('pointerdown', onDown);
@@ -99,6 +107,8 @@ function Floor({ scene, palette }: { scene: Scene3D; palette: Palette3D }) {
     });
     return new ShapeGeometry(shapes);
   }, [scene.floor]);
+  // R3F disposes what it creates, not geometries passed in as props.
+  useEffect(() => () => geometry.dispose(), [geometry]);
   const edges = useMemo(() => new Float32Array(scene.floor.flatMap((poly) => poly.flatMap((ring) => ring.slice(0, -1).flatMap(([x, y], i) => {
     const [nx, ny] = ring[i + 1]!;
     return [x, 0.004, y, nx, 0.004, ny];
@@ -121,7 +131,13 @@ function Floor({ scene, palette }: { scene: Scene3D; palette: Palette3D }) {
 
 /** Crisp ink edges keep boxes readable in flat light, in keeping with the 2D drawing. */
 function Edges({ size, color }: { size: [number, number, number]; color: string }) {
-  const geometry = useMemo(() => new EdgesGeometry(new BoxGeometry(...size)), [size]);
+  const geometry = useMemo(() => {
+    const box = new BoxGeometry(...size);
+    const edges = new EdgesGeometry(box);
+    box.dispose();
+    return edges;
+  }, [size]);
+  useEffect(() => () => geometry.dispose(), [geometry]);
   return (
     <lineSegments geometry={geometry}>
       <lineBasicMaterial color={color} transparent opacity={0.55} />
@@ -191,7 +207,7 @@ interface Room3DCanvasProps {
   scene: Scene3D;
   palette: Palette3D;
   camera: OrbitCamera;
-  onCamera: (next: OrbitCamera) => void;
+  onCamera: CameraUpdate;
   onOpenRack: (id: string) => void;
 }
 
