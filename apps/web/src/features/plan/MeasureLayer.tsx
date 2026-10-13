@@ -1,10 +1,22 @@
-import { footprintOf, formatMetres, type PlanContent, type Point } from '@glasshouse/domain';
+import { footprintOf, formatMetres, placementPolygon, pointInPolygon, type PlanContent, type Point, type Poly } from '@glasshouse/domain';
 import { useMemo } from 'react';
 import { toScreen, type View } from '../../viewport/math';
 import { measureBetween, wallGaps } from './measure';
 import type { MeasureState } from './usePlanGestures';
 
 const PILL_H = 22;
+const PILL_HALF_W_PX = 30;
+/** Preferred label positions along a gap, centre first; the first one clear of every object wins. */
+const LABEL_STOPS = [0.5, 0.4, 0.6, 0.3, 0.7, 0.2, 0.8, 0.12, 0.88];
+
+function freeLabelSpot(from: Point, to: Point, obstacles: Poly[], halfW: number, halfH: number): Point {
+  const at = (t: number): Point => [from[0] + (to[0] - from[0]) * t, from[1] + (to[1] - from[1]) * t];
+  const clear = ([x, y]: Point): boolean => {
+    const probes: Point[] = [[x, y], [x - halfW, y - halfH], [x + halfW, y - halfH], [x - halfW, y + halfH], [x + halfW, y + halfH]];
+    return !obstacles.some((poly) => probes.some((pt) => pointInPolygon(pt, poly)));
+  };
+  return LABEL_STOPS.map(at).find(clear) ?? at(0.5);
+}
 
 function Pill({ at, text, sub, testId }: { at: Point; text: string; sub?: string; testId?: string }) {
   const width = Math.max(text.length, sub?.length ?? 0) * 7.4 + 18;
@@ -39,6 +51,7 @@ function Segment({ a, b, view, live = false }: { a: Point; b: Point; view: View;
 export function MeasureLayer({ measure, content, view }: { measure: MeasureState; content: PlanContent; view: View }) {
   const footprint = useMemo(() => footprintOf(content.survey), [content.survey]);
   const hovered = content.objects.find((o) => o.id === measure.hoverId) ?? null;
+  const obstacles = useMemo(() => content.objects.map((o) => placementPolygon(o)), [content.objects]);
   const end = measure.b ?? measure.cursor;
   return (
     <g aria-live="polite">
@@ -46,7 +59,7 @@ export function MeasureLayer({ measure, content, view }: { measure: MeasureState
         ? wallGaps(hovered, footprint)
             .filter((g) => g.distance > 0.005)
             .map((g) => {
-              const mid: Point = [(g.from[0] + g.to[0]) / 2, (g.from[1] + g.to[1]) / 2];
+              const mid = freeLabelSpot(g.from, g.to, obstacles, PILL_HALF_W_PX / view.scale, PILL_H / 2 / view.scale);
               return (
                 <g key={g.side}>
                   <Segment a={g.from} b={g.to} view={view} />

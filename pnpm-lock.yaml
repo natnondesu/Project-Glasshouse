@@ -14,13 +14,10 @@ importers:
 
   apps/web:
     dependencies:
-      '@fontsource/barlow':
+      '@fontsource/geist-mono':
         specifier: ^5.3.0
         version: 5.3.0
-      '@fontsource/barlow-semi-condensed':
-        specifier: ^5.3.0
-        version: 5.3.0
-      '@fontsource/spline-sans-mono':
+      '@fontsource/geist-sans':
         specifier: ^5.3.0
         version: 5.3.0
       '@glasshouse/domain':
@@ -195,14 +192,11 @@ packages:
       '@noble/hashes':
         optional: true
 
-  '@fontsource/barlow-semi-condensed@5.3.0':
-    resolution: {integrity: sha512-EdpQ1GlLMofGqDsQhEw+g6DonNKmzt21p8y/oNbTl4BFzEkqYkFyE2fj25YGxmZBL/LZZGAxe74FlvEWcgc31w==}
+  '@fontsource/geist-mono@5.3.0':
+    resolution: {integrity: sha512-UtJ1BBBCVpMYdIcW7nEB45UAoAw5M53ZXs2t0ciPW+IokuAAIc56M8+kW5tXbRJCTpDw4XTtU7proT6NdQAHTg==}
 
-  '@fontsource/barlow@5.3.0':
-    resolution: {integrity: sha512-tGR0y6QObRtKv71MOth44222+mdNFM/ZWFWDV1VLzNbG4oK9PNRlyJzmkck4vHAi9ibHBXgt4SlY51amFP55CA==}
-
-  '@fontsource/spline-sans-mono@5.3.0':
-    resolution: {integrity: sha512-9MJxL52KuuVskwM3LbCwEP/L3ClsHsCd18gwmm5df/ZFh/TIg3LE9DT4pLyB5ptKCvEEi7JwclAe8HhCfzlBWg==}
+  '@fontsource/geist-sans@5.3.0':
+    resolution: {integrity: sha512-AmG7cE1AvE4NHROPaOl1sN+a02cB5xy6pA/ZV76HXqWTCsJTV2SCBc9DTFHfJqnVOODm7HhXIYtUIb75NP5QXQ==}
 
   '@jridgewell/resolve-uri@3.1.2':
     resolution: {integrity: sha512-bRISgCIjP20/tbWSPWMEi54QVPRZExkuD9lJL+UIxUKtwVJA8wW1Trb1jMs1RFXo1CBTNZ/5hpC9QvmKWdopKw==}
@@ -1123,11 +1117,9 @@ snapshots:
 
   '@exodus/bytes@1.16.0': {}
 
-  '@fontsource/barlow-semi-condensed@5.3.0': {}
+  '@fontsource/geist-mono@5.3.0': {}
 
-  '@fontsource/barlow@5.3.0': {}
-
-  '@fontsource/spline-sans-mono@5.3.0': {}
+  '@fontsource/geist-sans@5.3.0': {}
 
   '@jridgewell/resolve-uri@3.1.2': {}
 

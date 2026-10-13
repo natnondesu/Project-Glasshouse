@@ -449,7 +449,7 @@ Changes include regression tests for nested Devices, unknown Demand, rotated obj
 
 Save/reload, Project file round-trips and migrations preserve Device relationships and Snapshot independence. Destructive actions explain what is replaced and offer an export first. No release may describe browser-local storage or Unverified names as production collaboration or audit.
 
-Visual design follows `DESIGN.md` (modern technical drawing direction, approved draft in `design-draft/`).
+Visual design follows `DESIGN.md` (glass and depth direction, adopted 2026-10-14; reference: the "Glass and depth" page of the visual draft canvas).
 
 ## 14. Decisions before production implementation
 

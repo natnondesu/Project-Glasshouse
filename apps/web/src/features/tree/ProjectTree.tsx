@@ -32,7 +32,7 @@ export function ProjectTree({ activeRoomId }: { activeRoomId: string | null }) {
   };
 
   return (
-    <aside className="tree" aria-label="Projects">
+    <aside className="tree glass" aria-label="Projects">
       <div className="tree__head">
         <h2>Projects</h2>
         <button type="button" className="icon-btn" aria-label="New project" title="New project" onClick={addProject}>

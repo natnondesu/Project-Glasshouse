@@ -6,7 +6,7 @@
 }
 
 .field__label {
-  font-size: 13px;
+  font-size: 12px;
   color: var(--ink-2);
 }
 
@@ -15,31 +15,34 @@
   align-items: center;
   gap: 6px;
   height: 34px;
-  padding: 0 8px;
-  border: 1.25px solid var(--rule);
-  border-radius: var(--radius);
-  background: var(--film);
-  transition: border-color var(--duration-fast) ease-out;
+  padding: 0 9px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-field);
+  background: var(--control-bg);
+  transition:
+    border-color var(--duration-fast) ease-out,
+    box-shadow var(--duration-fast) ease-out;
 }
 
 .field__box:hover {
-  border-color: var(--ink-2);
+  border-color: var(--line-strong);
 }
 
 .field__box:focus-within {
-  border-color: var(--ink);
-  box-shadow: 0 0 0 2px var(--clearance-fill);
+  border-color: var(--acc);
+  background: #fff;
+  box-shadow: 0 0 0 3px var(--acc-soft);
 }
 
 .field__box--multiline {
   height: auto;
-  padding: 6px 8px;
+  padding: 6px 9px;
 }
 
 .field__box--error,
 .field__box--error:focus-within {
   border-color: var(--block);
-  border-width: 1.75px;
+  box-shadow: 0 0 0 3px rgb(184 50 42 / 0.12);
 }
 
 .field__input {
@@ -48,7 +51,7 @@
   border: 0;
   background: none;
   outline: none;
-  font-size: 14px;
+  font-size: 13px;
 }
 
 textarea.field__input {

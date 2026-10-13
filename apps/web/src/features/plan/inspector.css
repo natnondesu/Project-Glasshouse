@@ -1,17 +1,18 @@
 .inspector {
-  grid-column: 2;
-  grid-row: 1 / span 2;
-  min-height: 0;
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  bottom: 12px;
+  z-index: 2;
+  width: 352px;
   overflow-y: auto;
-  background: var(--sheet);
-  border-left: 1px solid var(--rule);
 }
 
 .inspector__body {
   display: flex;
   flex-direction: column;
-  gap: 22px;
-  padding: 18px 18px 28px;
+  gap: 20px;
+  padding: 18px 18px 22px;
 }
 
 .inspector__head {
@@ -22,15 +23,15 @@
 }
 
 .inspector__head h2 {
-  font-size: 22px;
+  font-size: 20px;
   font-weight: 700;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.02em;
 }
 
 .inspector__hint,
 .inspector__note,
 .inspector__empty {
-  font-size: 13px;
+  font-size: 12px;
   color: var(--ink-2);
 }
 
@@ -50,7 +51,7 @@
 }
 
 .inspector__group--clearance > legend {
-  color: var(--clearance);
+  color: var(--acc);
 }
 
 .field-pair {
@@ -79,23 +80,32 @@
 
 .seg {
   display: flex;
-  border: 1.25px solid var(--ink);
-  border-radius: var(--radius);
-  overflow: hidden;
+  gap: 2px;
+  padding: 3px;
+  border-radius: var(--radius-control);
+  background: rgb(14 24 36 / 0.06);
 }
 
 .seg button {
   flex: 1;
-  height: 32px;
+  height: 30px;
   border: 0;
-  background: var(--sheet);
+  border-radius: var(--radius-field);
+  background: none;
+  color: var(--ink-2);
   font-size: 13px;
   font-weight: 600;
 }
 
+.seg button:hover {
+  color: var(--ink);
+  background: rgb(255 255 255 / 0.5);
+}
+
 .seg button[aria-pressed='true'] {
-  background: var(--ink);
-  color: var(--sheet);
+  background: #fff;
+  color: var(--ink);
+  box-shadow: 0 1px 3px rgb(14 24 36 / 0.14);
 }
 
 .rect-list {
@@ -104,12 +114,14 @@
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
 }
 
 .rect-list__item {
-  padding-top: 10px;
-  border-top: 1px solid var(--rule-2);
+  padding: 10px;
+  border-radius: var(--radius-control);
+  background: rgb(255 255 255 / 0.45);
+  border: 1px solid rgb(255 255 255 / 0.8);
 }
 
 .rect-list__head {
@@ -120,7 +132,7 @@
 }
 
 .rect-list__name {
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 600;
 }
 
@@ -130,6 +142,6 @@
   align-items: center;
   gap: 8px;
   padding-top: 14px;
-  border-top: 1px solid var(--rule);
-  font-size: 13px;
+  border-top: 1px solid var(--line);
+  font-size: 12px;
 }

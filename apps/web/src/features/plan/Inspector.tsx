@@ -13,7 +13,7 @@ interface InspectorProps {
 
 export function Inspector({ content, selected, commit, onDeleted }: InspectorProps) {
   return (
-    <aside className="inspector" aria-label={selected ? `${selected.name} details` : 'Survey'}>
+    <aside className="inspector glass" aria-label={selected ? `${selected.name} details` : 'Survey'}>
       {selected ? (
         <ObjectInspector key={selected.id} object={selected} commit={commit} onDeleted={onDeleted} />
       ) : (

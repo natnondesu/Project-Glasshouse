@@ -1,100 +1,60 @@
+/* Glasshouse — glass and depth. Light only (product decision 2026-10-14). */
 :root {
   color-scheme: light;
-  --film: #f2f4f1;
-  --sheet: #fbfcfa;
-  --ink: #111720;
-  --ink-2: #3b4552;
-  --rule: #c9d0d4;
-  --rule-2: #e1e6e8;
-  --construct: #a9c8de;
-  --construct-minor: #d6e5ef;
-  --clearance: #2a6a9e;
-  --clearance-fill: rgb(42 106 158 / 0.1);
-  --block: #b3261e;
-  --block-bg: #fbedeb;
-  --warn: #9a5800;
-  --warn-bg: #fbf2e3;
-  --compute: #2c4ea6;
-  --compute-bg: #e4eaf7;
-  --storage: #0b7262;
-  --storage-bg: #e0f1ee;
-  --network: #6b3da6;
-  --network-bg: #eee7f6;
-  --power: #7a5718;
-  --power-bg: #f3ecdf;
-  --chassis: #3a4554;
-  --chassis-bg: #e3e6ea;
-  --hover: #e8ecec;
-  --shadow-float: 0 6px 18px rgb(17 23 32 / 0.12);
+  --ground: #d3dbe1;
+  --floor: #eef2f5;
+  --grid: #d9e1e7;
+  --grid-major: #aebbc6;
+  --ink: #0e1824;
+  --ink-2: #3a4756;
+  --line: rgb(14 24 36 / 0.12);
+  --line-strong: rgb(14 24 36 / 0.28);
 
-  --font-ui: 'Barlow', system-ui, sans-serif;
-  --font-cond: 'Barlow Semi Condensed', 'Barlow', sans-serif;
-  --font-mono: 'Spline Sans Mono', ui-monospace, monospace;
+  --acc: #1c64c8;
+  --acc-hover: #1857af;
+  --acc-deep: #154e9c;
+  --acc-soft: rgb(28 100 200 / 0.1);
+  --clearance: #1c64c8;
+  --clearance-fill: rgb(28 100 200 / 0.12);
 
-  --radius: 2px;
+  --block: #b8322a;
+  --block-bg: #fbebe9;
+  --block-fill: #c24a3f;
+  --warn: #9a5a00;
+  --warn-bg: #fff3df;
+  --ok: #11795a;
+
+  --rack: #333d49;
+  --rack-front: #56626f;
+  --rack-customer: #7a8794;
+  --rack-customer-front: #97a3af;
+  --existing: #9aa6b2;
+  --column: #cbd4dc;
+  --desk: #e2d8ca;
+  --desk-edge: #b4a794;
+  --panel-light: #f6f8fa;
+
+  --compute: #7fa2e8;
+  --network: #b79af0;
+  --chassis: #9aa6b2;
+
+  --glass-tint: 0.56;
+  --glass-blur: 13px;
+  --glass-bg: rgb(247 249 251 / var(--glass-tint));
+  --glass-border: rgb(255 255 255 / 0.75);
+  --glass-shadow: inset 0 1px 0 rgb(255 255 255 / 0.9), 0 1px 2px rgb(14 24 36 / 0.06), 0 18px 48px -12px rgb(14 24 36 / 0.22);
+  --control-bg: rgb(255 255 255 / 0.72);
+  --hover: rgb(255 255 255 / 0.6);
+  --shadow-float: 0 10px 30px -10px rgb(14 24 36 / 0.35);
+
+  --font-ui: 'Geist Sans', system-ui, sans-serif;
+  --font-mono: 'Geist Mono', ui-monospace, monospace;
+
+  --radius-panel: 16px;
+  --radius-control: 10px;
+  --radius-field: 8px;
+  --gap: 16px;
   --duration-fast: 150ms;
   --duration-normal: 300ms;
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme='light']) {
-    color-scheme: dark;
-    --film: #0d1218;
-    --sheet: #131a22;
-    --ink: #e8edf1;
-    --ink-2: #aebac6;
-    --rule: #2a3541;
-    --rule-2: #1d2731;
-    --construct: #2c4a63;
-    --construct-minor: #18293a;
-    --clearance: #6fa8d6;
-    --clearance-fill: rgb(111 168 214 / 0.12);
-    --block: #ff7a6e;
-    --block-bg: #2a1513;
-    --warn: #f2b154;
-    --warn-bg: #2a1f0e;
-    --compute: #7e9bea;
-    --compute-bg: #1a2440;
-    --storage: #4cc2ac;
-    --storage-bg: #0f2a26;
-    --network: #b48bea;
-    --network-bg: #261b3a;
-    --power: #d4ae62;
-    --power-bg: #2a2210;
-    --chassis: #9aa6b6;
-    --chassis-bg: #1e2630;
-    --hover: #1b2430;
-    --shadow-float: 0 6px 18px rgb(0 0 0 / 0.4);
-  }
-}
-
-:root[data-theme='dark'] {
-  color-scheme: dark;
-  --film: #0d1218;
-  --sheet: #131a22;
-  --ink: #e8edf1;
-  --ink-2: #aebac6;
-  --rule: #2a3541;
-  --rule-2: #1d2731;
-  --construct: #2c4a63;
-  --construct-minor: #18293a;
-  --clearance: #6fa8d6;
-  --clearance-fill: rgb(111 168 214 / 0.12);
-  --block: #ff7a6e;
-  --block-bg: #2a1513;
-  --warn: #f2b154;
-  --warn-bg: #2a1f0e;
-  --compute: #7e9bea;
-  --compute-bg: #1a2440;
-  --storage: #4cc2ac;
-  --storage-bg: #0f2a26;
-  --network: #b48bea;
-  --network-bg: #261b3a;
-  --power: #d4ae62;
-  --power-bg: #2a2210;
-  --chassis: #9aa6b6;
-  --chassis-bg: #1e2630;
-  --hover: #1b2430;
-  --shadow-float: 0 6px 18px rgb(0 0 0 / 0.4);
 }

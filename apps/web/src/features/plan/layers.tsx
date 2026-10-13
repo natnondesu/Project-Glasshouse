@@ -26,6 +26,10 @@ export type Preview =
 export function HatchDefs() {
   return (
     <defs>
+      <filter id="gh-floor-shadow" x="-10%" y="-10%" width="120%" height="125%">
+        <feOffset dy="6" />
+        <feGaussianBlur stdDeviation="10" />
+      </filter>
       <pattern id="gh-hatch-clearance" width="7" height="7" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
         <rect width="7" height="7" className="hatch-fill" />
         <path d="M0 0V7" className="hatch-line hatch-line--clearance" />
@@ -63,6 +67,7 @@ export function FootprintLayer({ survey, view }: { survey: Survey; view: View })
   const fp = useMemo(() => footprintOf(survey), [survey]);
   return (
     <g aria-hidden="true">
+      <path className="footprint-shadow" d={multiPolygonPath(fp, view)} fillRule="evenodd" filter="url(#gh-floor-shadow)" />
       <path data-testid="footprint" className="footprint" d={multiPolygonPath(fp, view)} fillRule="evenodd" />
       {survey.cutOuts.map((r) => {
         const [x, y] = toScreen(view, [r.x, r.y]);
@@ -177,7 +182,7 @@ export function SelectionLayer({ object, view }: { object: RoomObject; view: Vie
       <path className="selection" d={polygonPath(placementPolygon(object), view)} />
       {HANDLE_POSITIONS.map(([handle, fx, fy]) => {
         const [sx, sy] = toScreen(view, localToWorld(object, [(fx * object.w) / 2, (fy * object.d) / 2]));
-        return <rect key={handle} data-handle={handle} className={`handle handle--${handle}`} x={sx - 4.5} y={sy - 4.5} width={9} height={9} />;
+        return <circle key={handle} data-handle={handle} className={`handle handle--${handle}`} cx={sx} cy={sy} r={5} />;
       })}
     </g>
   );

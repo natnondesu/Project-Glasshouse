@@ -1,48 +1,54 @@
 # Glasshouse — Design System
 
-Status: provisional (set by the first visual draft, 2026-10-13). Exact tokens settle in the first build.
+Status: **glass and depth**, adopted 2026-10-14. It replaces the technical-drawing direction and keeps the component structure and placement. The reference is the "Glass and depth" page of the visual draft canvas. Exact values live in `apps/web/src/styles/tokens.css`.
 
 ## World
 
-**Modern technical drawing on drafting film.** The app is a working drawing sheet, not a dashboard. Ink means committed geometry. Non-photo-blue construction lines show the measuring grid and clearance. Dimension lines, leader callouts and a **title block** carry the information, never decorative chrome. The same language runs from the screen to the printed Install sheet.
+**Frosted glass floating over a live plan.** The room plan runs full-bleed on a cool grey-blue ground with a faint construction grid. The title block, project tree, tool palette, zoom, inspector and checks are panels of frosted glass layered above it. The drawing stays visible through them, so the editor always feels like it's *on* the room.
 
-Use scene: engineers on laptops in bright server rooms and offices, so the design is **light-first**. Dark mode is a true inverse ("night sheet"), not an afterthought.
+Depth carries meaning. The floor slab casts a soft shadow, walls are a heavy rounded ink line, and objects are solid, filled shapes rather than outlines. Light only, chosen for laptops in bright rooms; there is no theme toggle.
 
-## Color (semantic only)
+## Color (semantic)
 
-| Role | Light | Dark | Use |
+| Role | Token | Value | Use |
 | --- | --- | --- | --- |
-| film | `#F2F4F1` | `#0D1218` | Canvas ground (drafting film) |
-| sheet | `#FBFCFA` | `#131A22` | Panels, title block |
-| ink | `#111720` | `#E8EDF1` | Committed linework, primary text |
-| ink-2 | `#3B4552` | `#AEBAC6` | Secondary text (≥ 7:1 on film) |
-| rule | `#C9D0D4` | `#26313C` | Panel dividers |
-| construct | `#9CC0DA` / `#C9DDEB` | `#2C4A63` / `#1B2D3D` | Major / minor grid (non-photo blue) |
-| clearance | `#2A6A9E` | `#6FA8D6` | Clearance hatch and outline |
-| block | `#B3261E` | `#FF7A6E` | Blocking issues (always with icon + label) |
-| warn | `#9A5800` | `#F2B154` | Warnings, unknown Demand (with "?" glyph) |
-| compute / storage / network / power / chassis | `#2C4EA6` / `#0B7262` / `#6B3DA6` / `#7A5718` / `#3A4554` | lifted ~30% L | Device category fills, at low alpha on faces |
+| Ground | `--ground` | `#D3DBE1` | App background, plan surround |
+| Floor | `--floor` | `#EEF2F5` | Footprint slab |
+| Ink | `--ink` / `--ink-2` | `#0E1824` / `#3A4756` | Text, walls |
+| Accent | `--acc` | `#1C64C8` | Selection, primary action, Clearance zones, measurements |
+| Rack | `--rack` | `#333D49` | OxygenAI Rack body (white label) |
+| Customer rack | `--rack-customer` | `#7A8794` | Rack with owner Customer |
+| Existing rack | `--existing` | `#9AA6B2` | Obstacle rack, white cross |
+| Column / cut-out | `--column` | `#CBD4DC` | Cut-outs |
+| Furniture | `--desk` | `#E2D8CA` | Desks and furniture |
+| Blocking | `--block` / `--block-fill` | `#B8322A` / `#C24A3F` | Objects and issues that block approval; the object is filled red |
+| Warning | `--warn` | `#9A5A00` on `#FFF3DF` | Warnings, Draft status |
+| OK | `--ok` | `#11795A` | Approved, "no issues" |
 
-Colour is never the only signal: blocking items use a solid outline + icon, warnings a dashed outline + "?", and clearance zones use a 45° hatch.
+Colour never works alone. Blocking issues use a solid circle icon; warnings use a dashed circle with "?"; selection adds handles; flagged objects are also named in the checks panel.
+
+## Glass
+
+`.glass`: `rgb(247 249 251 / 0.56)` with `backdrop-filter: blur(13px) saturate(1.5)`, a 1px white border at 75% opacity and a 16px radius. The shadow is an inset top highlight plus a long soft drop (`0 18px 48px -12px rgb(14 24 36 / 0.22)`). Controls inside panels are translucent white (`--control-bg`) with 8–10px radii. Segmented controls use a sunken track with a white, raised selected item.
 
 ## Type
 
-- **Barlow** (UI): DIN-lineage grotesk, close to ISO technical lettering. 400/500/600/700.
-- **Barlow Semi Condensed** (drawing annotations, title-block labels, U labels): 500/600.
-- **Spline Sans Mono** (every measurement, U number, watt and ID): tabular figures, so units line up.
-- Minimum size is 12 px for any meaningful label; title-block field labels are 11 px semibold caps, the only exception.
+- **Geist Sans** for UI: 400, 500, 600 and 700.
+- **Geist Mono** for every figure, ID, unit, chip and measurement, with tabular numerals.
+- Labels are 11px semibold uppercase with +0.04em tracking. Nothing meaningful is set below 11px.
 
-## Line weights
+## Plan drawing
 
-Walls are 2.25 px ink. Objects are 1.5 px ink. Dimension lines are 1 px ink with 45° tick terminators. Grid lines are 1 px construct. Selection is 1.5 px ink with square handles. No hairlines below 1 px for anything meaningful.
-
-## Components
-
-- **Title block**: the app header, a ruled grid of label/value cells (Project, Site, Room, Rev, Status, Drawn, Checked). Status shows as a stamp: `DRAFT` outlined, `IN REVIEW` hatched, `APPROVED` solid ink.
-- **Inspector**: ruled field rows with a mono value and a unit suffix; numeric steppers; 45° rotation step buttons.
-- **Checks strip**: one row per issue with severity glyph, plain-language problem, the object ID (selects it), and a fix hint.
-- Corner radius is 2 px on controls and 0 on panels and the sheet. Depth comes from panel rules and one soft shadow on floating tool palettes only.
+- **Room:** walls are 5px rounded ink; the floor slab has an offset blurred shadow; the grid is `--grid`, with a major line every metre.
+- **Objects:** solid fills by type, with white mono labels on dark bodies. A Rack's Front is a 5px lighter band with an ink arrow.
+- **Selection:** fills the object accent blue, with a 2px accent outline and white circular handles.
+- **Clearance zones:** accent-tinted fill with a dashed accent outline.
+- **Measure tool:** accent lines with white end dots. Results sit in white pill labels with the distance and ΔX/ΔY. Hovering an object shows its gaps to the walls, each labelled at the first spot clear of other objects.
 
 ## Prohibitions
 
-No gradients, glass or glow. No cards-as-layout. No faint hairlines carrying meaning. No mono as decoration; mono is for figures only.
+- No dark mode until it's designed deliberately.
+- No glass without content behind it. Panels float over the plan or the gridded ground, never over a flat colour block.
+- No gradient text or decorative glow.
+- No colour as the only signal.
+- The page-wide construction grid is intentional; it's what the glass refracts. It is not a decorative template background.

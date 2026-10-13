@@ -15,7 +15,7 @@ export function ChecksStrip({ issues, objects, onSelect }: ChecksStripProps) {
   const blocks = issues.filter((i) => i.severity === 'block').length;
   const warnings = issues.length - blocks;
   return (
-    <section className="checks" aria-labelledby="checks-heading">
+    <section className="checks glass" aria-labelledby="checks-heading">
       <header className="checks__head">
         <h2 id="checks-heading">Checks</h2>
         {issues.length === 0 ? <span className="checks__ok">No issues found</span> : null}

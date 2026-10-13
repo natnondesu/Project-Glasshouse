@@ -1,32 +1,39 @@
 .checks {
-  grid-column: 1;
-  grid-row: 2;
-  max-height: 220px;
+  position: absolute;
+  left: 12px;
+  right: 376px;
+  bottom: 12px;
+  z-index: 2;
+  max-height: 200px;
   overflow-y: auto;
-  background: var(--sheet);
-  border-top: 1.5px solid var(--ink);
+  padding: 8px;
 }
 
 .checks__head {
-  position: sticky;
-  top: 0;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 6px 14px;
-  padding: 10px 16px;
-  background: var(--sheet);
+  gap: 6px 10px;
+  padding: 4px 8px 6px;
 }
 
 .checks__head h2 {
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 700;
 }
 
 .checks__ok,
 .checks__note {
-  font-size: 13px;
+  font-size: 12px;
   color: var(--ink-2);
+}
+
+.checks__ok {
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: rgb(17 121 90 / 0.12);
+  color: var(--ok);
+  font-weight: 600;
 }
 
 .checks__note {
@@ -34,15 +41,20 @@
 }
 
 .checks__count {
-  font-size: 13px;
+  padding: 2px 9px;
+  border-radius: 999px;
+  font-family: var(--font-mono);
+  font-size: 11px;
   font-weight: 600;
 }
 
 .checks__count--block {
+  background: var(--block-bg);
   color: var(--block);
 }
 
 .checks__count--warn {
+  background: var(--warn-bg);
   color: var(--warn);
 }
 
@@ -54,19 +66,24 @@
 
 .checks__row {
   display: grid;
-  grid-template-columns: 24px minmax(0, 1fr) auto;
+  grid-template-columns: 22px minmax(0, 1fr) auto;
   align-items: start;
   gap: 12px;
-  padding: 10px 16px;
-  border-top: 1px solid var(--rule-2);
+  padding: 9px 10px;
+  border-radius: var(--radius-control);
+  transition: background var(--duration-fast) ease-out;
 }
 
 .checks__row:hover {
-  background: var(--hover);
+  background: rgb(255 255 255 / 0.55);
 }
 
 .checks__row--block svg {
   color: var(--block);
+}
+
+.checks__row--block .sev-fill {
+  fill: var(--block-bg);
 }
 
 .checks__row--warn svg,
@@ -74,12 +91,17 @@
   color: var(--warn);
 }
 
+.checks__row--warn .sev-fill,
+.checks__row--needs_ack .sev-fill {
+  fill: var(--warn-bg);
+}
+
 .checks__msg {
-  font-size: 14px;
+  font-size: 13px;
   line-height: 1.45;
 }
 
 .checks__hint {
-  font-size: 13px;
+  font-size: 12px;
   color: var(--ink-2);
 }

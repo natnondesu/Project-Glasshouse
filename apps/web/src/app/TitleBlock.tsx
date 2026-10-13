@@ -5,7 +5,6 @@ import { useRoomLocation } from '../store/hooks';
 import { useWorkspaceStore, type SaveState } from '../store/workspaceStore';
 import { GlasshouseMark } from '../ui/icons';
 import { pad2, StatusStamp } from '../ui/StatusStamp';
-import { ThemeToggle } from '../ui/ThemeToggle';
 
 function Cell({ label, children, mono = false }: { label: string; children: ReactNode; mono?: boolean }) {
   return (
@@ -40,7 +39,7 @@ export function TitleBlock({ roomId }: { roomId: string | null }) {
   const save = useWorkspaceStore((s) => s.save);
   const revision = location ? currentRevision(location.room.plan) : null;
   return (
-    <header className="title-block">
+    <header className="title-block glass">
       <Link to="/" className="title-block__mark">
         <GlasshouseMark />
         <span>Glasshouse</span>
@@ -59,7 +58,6 @@ export function TitleBlock({ roomId }: { roomId: string | null }) {
       </dl>
       <div className="title-block__actions">
         <SaveStatus save={save} />
-        <ThemeToggle />
       </div>
     </header>
   );

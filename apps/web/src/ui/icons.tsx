@@ -97,15 +97,15 @@ export const IconRotateCcw = (p: IconProps) => (
   </svg>
 );
 export const IconBlock = (p: IconProps) => (
-  <svg {...frame(20)} strokeWidth={2} {...p}>
-    <rect x="2" y="2" width="16" height="16" />
-    <path d="M10 6V11.5M10 13.5V14.5" />
+  <svg {...frame(20)} strokeWidth={1.75} {...p}>
+    <circle cx="10" cy="10" r="8" className="sev-fill" />
+    <path d="M10 6V11M10 13.6V14.4" strokeWidth={2} strokeLinecap="round" />
   </svg>
 );
 export const IconWarn = (p: IconProps) => (
-  <svg {...frame(20)} strokeWidth={2} {...p}>
-    <rect x="2" y="2" width="16" height="16" strokeDasharray="3 2" />
-    <path d="M7.8 7.6A2.2 2.2 0 1 1 10 10.2V11.6M10 13.6V14.6" strokeWidth={1.75} />
+  <svg {...frame(20)} strokeWidth={1.75} {...p}>
+    <circle cx="10" cy="10" r="8" strokeDasharray="3 2" className="sev-fill" />
+    <path d="M8 7.8A2 2 0 1 1 10 10V11.2M10 13.6V14.4" strokeLinecap="round" />
   </svg>
 );
 export const IconMeasure = (p: IconProps) => (

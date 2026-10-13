@@ -2,8 +2,8 @@ import type { Point } from '@glasshouse/domain';
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type RefObject } from 'react';
 import { fit, pan, toWorld, wheelZoomFactor, zoomAt, type Insets, type View } from './math';
 
-/** Leaves room for the floating tool palette (left) and the zoom controls (bottom). */
-const FIT_INSETS: Insets = { top: 64, right: 56, bottom: 88, left: 120 };
+/** Leaves room for the floating glass panels: tools (left), inspector (right), checks (bottom). */
+const FIT_INSETS: Insets = { top: 72, right: 392, bottom: 210, left: 132 };
 
 export interface ViewportApi {
   svgRef: RefObject<SVGSVGElement | null>;

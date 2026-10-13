@@ -3,7 +3,7 @@ import { useWorkspaceStore } from '../store/workspaceStore';
 export function Home() {
   const hasProjects = useWorkspaceStore((s) => s.workspace.projects.length > 0);
   return (
-    <section className="home">
+    <section className="home glass">
       <h1>{hasProjects ? 'Open a room to plan it' : 'Start with a project'}</h1>
       <p>
         {hasProjects
