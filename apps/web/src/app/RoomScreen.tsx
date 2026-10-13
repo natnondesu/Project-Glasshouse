@@ -1,4 +1,5 @@
 import { useParams } from 'react-router';
+import { BomView } from '../features/bom/BomView';
 import { ElevationView } from '../features/elevation/ElevationView';
 import { PlanView } from '../features/plan/PlanView';
 import { useRoomLocation } from '../store/hooks';
@@ -13,11 +14,12 @@ export function RoomScreen() {
   let body;
   if (view === 'plan') body = <PlanView key={roomId} location={location} />;
   else if (view === 'elevation') body = <ElevationView key={roomId} location={location} />;
+  else if (view === 'bom') body = <BomView key={roomId} location={location} />;
   else return <NotFound message="That view doesn't exist for this room." />;
   return (
     <div className="room-screen">
       <ViewTabs roomId={roomId} />
-      <ErrorBoundary key={view} label={view === 'plan' ? 'the plan' : 'the elevation'}>
+      <ErrorBoundary key={view} label={view === 'plan' ? 'the plan' : view === 'elevation' ? 'the elevation' : 'the BOM'}>
         {body}
       </ErrorBoundary>
     </div>
