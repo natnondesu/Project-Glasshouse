@@ -1,0 +1,26 @@
+{
+  "name": "@glasshouse/domain",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "coverage": "vitest run --coverage",
+    "typecheck": "tsc --noEmit",
+    "build": "tsc --noEmit"
+  },
+  "dependencies": {
+    "immer": "^11.1.21",
+    "polygon-clipping": "^0.15.7",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@vitest/coverage-v8": "^5.0.4",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.4"
+  }
+}
