@@ -97,3 +97,12 @@ describe('project file', () => {
     expect(r).toMatchObject({ ok: false, error: { message: 'Some sites or rooms in this file already belong to another project here. Import it as a copy instead.' } });
   });
 });
+
+describe('template versions on import', () => {
+  it('names templates whose version in the file differs from this browser, instead of dropping them silently', () => {
+    const file = fileOf(source());
+    const bumped: ProjectFile = { ...file, templates: file.templates.map((t) => (t.id === 'tpl-server-2u' ? { ...t, version: t.version + 2, label: 'Server 2U (site)' } : t)) };
+    expect(previewImport(createWorkspace(), bumped).differingTemplates).toEqual(['Server 2U (site)']);
+    expect(previewImport(createWorkspace(), file).differingTemplates).toEqual([]);
+  });
+});

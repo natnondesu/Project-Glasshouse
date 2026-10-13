@@ -47,6 +47,7 @@ function AcknowledgeForm({ roomId, range, disabled }: { roomId: string; range: R
 
 export function UnknownsPanel({ roomId, revision }: { roomId: string; revision: Revision }) {
   const review = useReviewCommit(roomId);
+  const [withdrawError, setWithdrawError] = useState<string | null>(null);
   const frozen = revision.state === 'approved';
   const items: { rack: Rack; range: ReservedRange }[] = racksOf(revision.content).flatMap((rack) =>
     rack.reserved.filter((r) => r.demand.kind === 'unknown').map((range) => ({ rack, range })),
@@ -71,7 +72,7 @@ export function UnknownsPanel({ roomId, revision }: { roomId: string; revision: 
                     type="button"
                     className="btn btn--sm btn--quiet"
                     disabled={frozen}
-                    onClick={() => review({ type: 'review/unacknowledge', reservedRangeId: range.id, at: new Date().toISOString() })}
+                    onClick={() => setWithdrawError(review({ type: 'review/unacknowledge', reservedRangeId: range.id, at: new Date().toISOString() }))}
                   >
                     Withdraw
                   </button>
@@ -83,6 +84,11 @@ export function UnknownsPanel({ roomId, revision }: { roomId: string; revision: 
           );
         })}
       </ul>
+      {withdrawError ? (
+        <p role="alert" className="field__error">
+          {withdrawError}
+        </p>
+      ) : null}
     </section>
   );
 }

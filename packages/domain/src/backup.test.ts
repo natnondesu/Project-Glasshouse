@@ -41,3 +41,10 @@ describe('backup reminder', () => {
     expect(backupDue({ ...withProject(), lastBackupAt: '2026-10-12T23:00:00.000Z' }, now)).toBe(true);
   });
 });
+
+describe('backup clock skew', () => {
+  it('never reports a negative age for a backup stamped in the future', () => {
+    const ws = { ...createWorkspace(), lastBackupAt: '2026-10-20T00:00:00.000Z' };
+    expect(daysSinceBackup(ws, new Date('2026-10-14T00:00:00.000Z'))).toBe(0);
+  });
+});

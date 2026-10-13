@@ -1,6 +1,5 @@
 import { previewImport, type ProjectFile } from '@glasshouse/domain';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
 import { useWorkspaceStore } from '../../store/workspaceStore';
 import { pad2, STATE_LABEL } from '../../ui/StatusStamp';
 import { formatTime } from '../../ui/time';
@@ -15,10 +14,19 @@ export function ImportDialog({ file, onClose }: { file: ProjectFile; onClose: ()
   const [mode, setMode] = useState<'merge' | 'copy'>(preview.idClash ? 'copy' : 'merge');
   const [take, setTake] = useState<ReadonlySet<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
-  const ref = useRef<HTMLDivElement>(null);
+  const ref = useRef<HTMLDialogElement>(null);
 
+  // A native modal gives a focus trap, an inert page, Escape and the top layer (no backdrop-filter trap).
   useEffect(() => {
-    ref.current?.querySelector<HTMLElement>('button:not([disabled])')?.focus();
+    const dialog = ref.current;
+    const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    if (dialog && typeof dialog.showModal === 'function' && !dialog.open) dialog.showModal();
+    else dialog?.setAttribute('open', '');
+    dialog?.querySelector<HTMLElement>('button:not([disabled])')?.focus();
+    return () => {
+      if (dialog?.open && typeof dialog.close === 'function') dialog.close();
+      opener?.focus();
+    };
   }, []);
 
   const choose = (roomId: string, incoming: boolean): void =>
@@ -34,15 +42,16 @@ export function ImportDialog({ file, onClose }: { file: ProjectFile; onClose: ()
     if (!problem) onClose();
   };
 
-  // Portalled: a glass ancestor's backdrop-filter would otherwise trap position: fixed.
-  return createPortal(
-    <div
-      className="dialog-backdrop"
-      onKeyDown={(e) => {
-        if (e.key === 'Escape') onClose();
+  return (
+    <dialog
+      ref={ref}
+      className="dialog glass"
+      aria-labelledby="import-h"
+      onCancel={(e) => {
+        e.preventDefault();
+        onClose();
       }}
     >
-      <div ref={ref} className="dialog glass" role="dialog" aria-modal="true" aria-labelledby="import-h">
         <h2 id="import-h">{`Import “${preview.projectName}”`}</h2>
         <p className="dialog__meta">
           {`${plural(preview.newRooms, 'new room', 'new rooms')} · ${plural(preview.conflicts.length, 'room already here', 'rooms already here')} · ${plural(preview.newTemplates, 'new template', 'new templates')}`}
@@ -56,6 +65,9 @@ export function ImportDialog({ file, onClose }: { file: ProjectFile; onClose: ()
             Import as a copy
           </button>
         </div>
+        {preview.differingTemplates.length > 0 ? (
+          <p className="dialog__note">{`${preview.differingTemplates.join(', ')}: a different version is in the file. Your catalog keeps its own; placed Devices keep the version they were placed with.`}</p>
+        ) : null}
         {preview.idClash ? <p className="dialog__note">Some rooms in this file belong to another project here, so it can only be imported as a copy.</p> : null}
         {mode === 'copy' ? <p className="dialog__note">The copy gets new IDs and “(copy)” after its name. Nothing here changes.</p> : null}
         {mode === 'merge' && preview.conflicts.length > 0 ? (
@@ -106,8 +118,6 @@ export function ImportDialog({ file, onClose }: { file: ProjectFile; onClose: ()
             Cancel
           </button>
         </div>
-      </div>
-    </div>,
-    document.body,
+    </dialog>
   );
 }
