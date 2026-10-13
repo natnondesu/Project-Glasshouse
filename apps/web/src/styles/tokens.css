@@ -1,0 +1,100 @@
+:root {
+  color-scheme: light;
+  --film: #f2f4f1;
+  --sheet: #fbfcfa;
+  --ink: #111720;
+  --ink-2: #3b4552;
+  --rule: #c9d0d4;
+  --rule-2: #e1e6e8;
+  --construct: #a9c8de;
+  --construct-minor: #d6e5ef;
+  --clearance: #2a6a9e;
+  --clearance-fill: rgb(42 106 158 / 0.1);
+  --block: #b3261e;
+  --block-bg: #fbedeb;
+  --warn: #9a5800;
+  --warn-bg: #fbf2e3;
+  --compute: #2c4ea6;
+  --compute-bg: #e4eaf7;
+  --storage: #0b7262;
+  --storage-bg: #e0f1ee;
+  --network: #6b3da6;
+  --network-bg: #eee7f6;
+  --power: #7a5718;
+  --power-bg: #f3ecdf;
+  --chassis: #3a4554;
+  --chassis-bg: #e3e6ea;
+  --hover: #e8ecec;
+  --shadow-float: 0 6px 18px rgb(17 23 32 / 0.12);
+
+  --font-ui: 'Barlow', system-ui, sans-serif;
+  --font-cond: 'Barlow Semi Condensed', 'Barlow', sans-serif;
+  --font-mono: 'Spline Sans Mono', ui-monospace, monospace;
+
+  --radius: 2px;
+  --duration-fast: 150ms;
+  --duration-normal: 300ms;
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    color-scheme: dark;
+    --film: #0d1218;
+    --sheet: #131a22;
+    --ink: #e8edf1;
+    --ink-2: #aebac6;
+    --rule: #2a3541;
+    --rule-2: #1d2731;
+    --construct: #2c4a63;
+    --construct-minor: #18293a;
+    --clearance: #6fa8d6;
+    --clearance-fill: rgb(111 168 214 / 0.12);
+    --block: #ff7a6e;
+    --block-bg: #2a1513;
+    --warn: #f2b154;
+    --warn-bg: #2a1f0e;
+    --compute: #7e9bea;
+    --compute-bg: #1a2440;
+    --storage: #4cc2ac;
+    --storage-bg: #0f2a26;
+    --network: #b48bea;
+    --network-bg: #261b3a;
+    --power: #d4ae62;
+    --power-bg: #2a2210;
+    --chassis: #9aa6b6;
+    --chassis-bg: #1e2630;
+    --hover: #1b2430;
+    --shadow-float: 0 6px 18px rgb(0 0 0 / 0.4);
+  }
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --film: #0d1218;
+  --sheet: #131a22;
+  --ink: #e8edf1;
+  --ink-2: #aebac6;
+  --rule: #2a3541;
+  --rule-2: #1d2731;
+  --construct: #2c4a63;
+  --construct-minor: #18293a;
+  --clearance: #6fa8d6;
+  --clearance-fill: rgb(111 168 214 / 0.12);
+  --block: #ff7a6e;
+  --block-bg: #2a1513;
+  --warn: #f2b154;
+  --warn-bg: #2a1f0e;
+  --compute: #7e9bea;
+  --compute-bg: #1a2440;
+  --storage: #4cc2ac;
+  --storage-bg: #0f2a26;
+  --network: #b48bea;
+  --network-bg: #261b3a;
+  --power: #d4ae62;
+  --power-bg: #2a2210;
+  --chassis: #9aa6b6;
+  --chassis-bg: #1e2630;
+  --hover: #1b2430;
+  --shadow-float: 0 6px 18px rgb(0 0 0 / 0.4);
+}
