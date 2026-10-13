@@ -12,3 +12,11 @@ it('flags both objects in an overlap and ignores warnings', () => {
   const ids = flaggedObjectIds([issue('object_overlap', 'block', ['a', 'b']), issue('clearance_door', 'warn', ['d', 'rack'])]);
   expect([...ids].sort()).toEqual(['a', 'b']);
 });
+
+it('flags the node with unknown demand, not its chassis', () => {
+  expect([...flaggedObjectIds([issue('demand_unknown', 'block', ['node', 'chassis'])])]).toEqual(['node']);
+});
+
+it('flags the too-deep device, not its rack', () => {
+  expect([...flaggedObjectIds([issue('device_too_deep', 'block', ['dev', 'rack'])])]).toEqual(['dev']);
+});

@@ -76,3 +76,7 @@
 .bom__row--chassis td {
   font-weight: 600;
 }
+
+.bom__table td.bom__nowrap {
+  white-space: nowrap;
+}

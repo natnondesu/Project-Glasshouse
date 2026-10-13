@@ -4,8 +4,8 @@ import { TEMPLATE_MIME } from './dnd';
 import './elevation.css';
 
 export const U_PX = 16;
-const LABEL_W = 30;
-const RACK_W = 252;
+const LABEL_W = 24;
+const RACK_W = 200;
 const PAD = 2;
 
 interface RackElevationProps {
@@ -21,7 +21,7 @@ interface RackElevationProps {
 const categoryOf = (d: RackDevice): string => (d.kind === 'chassis' ? 'chassis' : d.category);
 
 function ChassisSlots({ chassis, y, onSelect }: { chassis: Chassis; y: number; onSelect: (id: string) => void }) {
-  const left = 74;
+  const left = 66;
   const right = RACK_W - 12;
   const top = y + 5;
   const bottom = y + chassis.heightU * U_PX - 5;
@@ -102,7 +102,7 @@ function ReservedBlock(props: { range: ReservedRange; y: number; patternId: stri
       <rect x={4} y={y + 1} width={RACK_W - 8} height={h - 2} rx={3} fill={`url(#${patternId})`} className="rsv__body" />
       {h >= 48 ? (
         <>
-          <rect x={24} y={midY - 22} width={RACK_W - 48} height={44} rx={8} className="rsv__label-bg" />
+          <rect x={14} y={midY - 22} width={RACK_W - 28} height={44} rx={8} className="rsv__label-bg" />
           <text x={RACK_W / 2} y={midY - 6} textAnchor="middle" className="rsv__title">
             {`RESERVED · ${formatURange(range)}`}
           </text>

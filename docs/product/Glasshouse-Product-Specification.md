@@ -137,7 +137,7 @@ The workspace holds many **Projects**; each Project holds one or more **Sites**;
 
 The **Survey** belongs to the Plan and is frozen with each Revision. It stores room name, Footprint, Power budget in watts, descriptive network handoff and installation notes.
 
-Valid Survey and room-object edits update the model, drawings and browser storage immediately. The focused input and cursor survive redraws. Incomplete or invalid input stays visible with an inline error while the model keeps its last valid value. Device and Catalog forms use explicit Save; the interface distinguishes autosaved fields from Save forms. Storage failure is shown; the app never implies browser storage is durable shared storage.
+Valid Survey and room-object edits update the model, drawings and browser storage immediately. The focused input and cursor survive redraws. Incomplete or invalid input stays visible with an inline error while the model keeps its last valid value. Placed Devices, Reserved ranges and Nodes autosave and can be undone per Room like the plan. Catalog Templates use explicit Save / Discard because they are shared by every Project; the interface distinguishes the two. Storage failure is shown; the app never implies browser storage is durable shared storage.
 
 ### FR02 Footprint builder
 

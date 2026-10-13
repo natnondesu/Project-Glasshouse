@@ -99,6 +99,15 @@
   stroke: var(--rack);
 }
 
+.obj--rack.obj--customer .obj__body {
+  fill: var(--rack-customer);
+  stroke: var(--rack-customer);
+}
+
+.obj--customer .rack-front {
+  stroke: var(--rack-customer-front);
+}
+
 .obj--existing_rack .obj__body {
   fill: var(--existing);
   stroke: #7d8a96;

@@ -90,9 +90,15 @@ export function ElevationView({ location }: { location: RoomLocation }) {
 
   return (
     <div className="elev">
-      <aside className="elev__side glass" aria-label="Catalog">
-        <CatalogPalette catalog={catalog} activeRack={activeRack} onAdd={(t) => activeRack && place(t, activeRack)} />
+      <aside className="elev__side" aria-label="Catalog and checks">
+        <div className="glass elev__palette">
+          <CatalogPalette catalog={catalog} activeRack={activeRack} onAdd={(t) => activeRack && place(t, activeRack)} />
+        </div>
+        <ChecksStrip className="checks--static checks--narrow" issues={issues} objects={names} onSelect={select} />
       </aside>
+      <div className="elev__power">
+        <PowerBar content={content} />
+      </div>
       <section className="elev__racks" aria-label="Rack elevations">
         {racks.map((rack) => (
           <RackElevation
@@ -110,10 +116,6 @@ export function ElevationView({ location }: { location: RoomLocation }) {
           />
         ))}
       </section>
-      <div className="elev__foot">
-        <PowerBar content={content} />
-        <ChecksStrip className="checks--static" issues={issues} objects={names} onSelect={select} />
-      </div>
       <EquipmentInspector content={content} roomId={roomId} selectedId={selectedId} activeRack={activeRack} catalog={catalog} commit={commit} onSelect={select} />
       {message ? (
         <p role="status" className="elev__message">

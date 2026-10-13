@@ -4,6 +4,7 @@ import { pad2 } from '../../ui/StatusStamp';
 import './bom.css';
 
 const VISIBLE = BOM_COLUMNS.filter((c) => c.key !== 'project' && c.key !== 'site' && c.key !== 'room');
+const NOWRAP = new Set<string>(['rack', 'chassis', 'slot', 'name', 'position', 'heightU', 'depthMm', 'demandW']);
 
 const slug = (name: string): string => name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'room';
 
@@ -48,7 +49,7 @@ export function BomView({ location }: { location: RoomLocation }) {
               {rows.map((r, i) => (
                 <tr key={`${r.rack}-${r.name}-${i}`} className={`bom__row bom__row--${r.kind.toLowerCase()}`}>
                   {VISIBLE.map((c) => (
-                    <td key={c.key} className={c.key === 'name' || c.key === 'position' || c.key === 'demandW' ? 'mono' : undefined}>
+                    <td key={c.key} className={NOWRAP.has(c.key) ? 'mono bom__nowrap' : undefined}>
                       {r[c.key]}
                     </td>
                   ))}

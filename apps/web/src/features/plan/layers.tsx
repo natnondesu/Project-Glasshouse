@@ -134,7 +134,9 @@ export function ObjectsLayer({ objects, view, flagged, selectedId, onFocusObject
       {objects.map((o) => {
         const [cx, cy] = toScreen(view, centerOf(o));
         const showLabel = Math.min(o.w, o.d) * view.scale >= MIN_LABEL_PX || Math.max(o.w, o.d) * view.scale >= MIN_LABEL_PX * 2;
-        const classes = ['obj', `obj--${o.type}`, flagged.has(o.id) ? 'is-flagged' : '', o.id === selectedId ? 'is-selected' : ''].filter(Boolean).join(' ');
+        const classes = ['obj', `obj--${o.type}`, o.type === 'rack' && o.owner === 'customer' ? 'obj--customer' : '', flagged.has(o.id) ? 'is-flagged' : '', o.id === selectedId ? 'is-selected' : '']
+          .filter(Boolean)
+          .join(' ');
         return (
           <g
             key={o.id}
