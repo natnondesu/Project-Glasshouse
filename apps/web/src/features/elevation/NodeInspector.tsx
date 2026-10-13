@@ -24,7 +24,7 @@ export function NodeInspector({ location: { rack, chassis, node }, commit, onSel
       <fieldset className="inspector__group">
         <legend className="visually-hidden">Node details</legend>
         <TextField id={`${node.id}-name`} label="Name" value={node.name} onCommit={(v) => update({ name: v }, 'name')} />
-        <DemandField id={`${node.id}-demand`} label="Demand" value={node.demand} onCommit={(d) => update({ demand: d })} />
+        <DemandField id={`${node.id}-demand`} label="Demand" value={node.demand} onCommit={(d) => update({ demand: d }, 'demand')} />
         <TextField id={`${node.id}-config`} label="Configuration" multiline value={node.config} onCommit={(v) => update({ config: v }, 'config')} />
         <TextField id={`${node.id}-notes`} label="Notes" multiline value={node.notes} onCommit={(v) => update({ notes: v }, 'notes')} />
       </fieldset>

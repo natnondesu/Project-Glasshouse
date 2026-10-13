@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, type KeyboardEvent, type PointerEvent } fr
 import type { ViewportApi } from '../../viewport/useViewport';
 import { clampIntoRoom } from './clamp';
 import { hitTest } from './hitTest';
+import { describeRackContents } from './labels';
 import { snapMeasurePoint, type SnapTarget } from './measure';
 import type { Preview } from './layers';
 import type { SvgHandlers } from './PlanCanvas';
@@ -198,6 +199,11 @@ export function usePlanGestures({ content, tool, setTool, selectedId, select, vi
     if (!selected) return;
     if (e.key === 'Delete' || e.key === 'Backspace') {
       e.preventDefault();
+      const contents = selected.type === 'rack' ? describeRackContents(selected) : null;
+      if (contents) {
+        setMessage(`${selected.name} holds ${contents}. Remove it from the inspector to confirm.`);
+        return;
+      }
       if (run({ type: 'object/remove', id: selected.id })) select(null);
       return;
     }

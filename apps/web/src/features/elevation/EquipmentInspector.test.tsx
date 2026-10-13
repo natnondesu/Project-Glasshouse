@@ -81,3 +81,23 @@ it('lists the catalog with add buttons for rack templates only', async () => {
   expect(onAdd).toHaveBeenCalledWith(expect.objectContaining({ id: 'tpl-server-4u' }));
   expect(screen.queryByRole('button', { name: 'Add Node server to RK-01' })).toBeNull();
 });
+
+it('moves a device only when the Bottom U entry is finished', async () => {
+  const user = userEvent.setup();
+  const { commit } = show('srv');
+  const u = screen.getByLabelText('Bottom U');
+  await user.clear(u);
+  await user.type(u, '12');
+  expect(commit.mock.calls.some((c) => (c[0] as { type: string }).type === 'device/move')).toBe(false);
+  await user.tab();
+  expect(commit.mock.lastCall?.[0]).toEqual({ type: 'device/move', id: 'srv', rackId: 'ra', bottomU: 12 });
+});
+
+it('coalesces demand typing into one undo step', async () => {
+  const user = userEvent.setup();
+  const { commit } = show('srv');
+  const w = screen.getByLabelText('Demand in watts');
+  await user.clear(w);
+  await user.type(w, '45');
+  expect(commit.mock.lastCall).toEqual([{ type: 'device/update', id: 'srv', patch: { demand: { kind: 'known', watts: 45 } } }, 'dev:srv:demand']);
+});

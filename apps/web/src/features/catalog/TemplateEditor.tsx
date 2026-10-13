@@ -1,5 +1,5 @@
 import { CATEGORY_LABEL, newId, type Category, type Template } from '@glasshouse/domain';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useWorkspaceStore } from '../../store/workspaceStore';
 import { DemandField } from '../../ui/DemandField';
 import { NumberField } from '../../ui/NumberField';
@@ -28,9 +28,10 @@ interface TemplateEditorProps {
   mode: 'create' | 'edit';
   initial: Template;
   onDone: (id: string | null) => void;
+  onDirtyChange?: (dirty: boolean) => void;
 }
 
-export function TemplateEditor({ mode, initial, onDone }: TemplateEditorProps) {
+export function TemplateEditor({ mode, initial, onDone, onDirtyChange }: TemplateEditorProps) {
   const dispatch = useWorkspaceStore((s) => s.dispatch);
   const [draft, setDraft] = useState(initial);
   const [error, setError] = useState<string | null>(null);
@@ -42,6 +43,11 @@ export function TemplateEditor({ mode, initial, onDone }: TemplateEditorProps) {
   const isSlot = draft.mounting === 'slot';
   const isChassis = draft.category === 'chassis';
   const dirty = JSON.stringify(draft) !== JSON.stringify(initial);
+
+  useEffect(() => {
+    onDirtyChange?.(dirty);
+  }, [dirty, onDirtyChange]);
+  useEffect(() => () => onDirtyChange?.(false), [onDirtyChange]);
 
   const save = (): void => {
     const { version: _version, ...fields } = draft;

@@ -37,3 +37,17 @@ it('lists devices with nodes and downloads the CSV', async () => {
   expect(created).toHaveLength(1);
   expect(await created[0]!.text()).toContain('RK-01,CH-01,1,Node,NODE-01');
 });
+
+it('starts the CSV with a UTF-8 byte-order mark so Excel keeps en dashes and Thai text', async () => {
+  const user = userEvent.setup();
+  const created: Blob[] = [];
+  URL.createObjectURL = vi.fn((blob: Blob) => {
+    created.push(blob);
+    return 'blob:bom';
+  });
+  URL.revokeObjectURL = vi.fn();
+  render(<RouterProvider router={createMemoryRouter(routes, { initialEntries: ['/rooms/r/bom'] })} />);
+  await user.click(screen.getByRole('button', { name: 'Download CSV' }));
+  const bytes = new Uint8Array(await created[0]!.arrayBuffer());
+  expect([...bytes.slice(0, 3)]).toEqual([0xef, 0xbb, 0xbf]);
+});

@@ -1,5 +1,5 @@
 import type { Demand } from '@glasshouse/domain';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { NumberField } from './NumberField';
 import './fields.css';
 
@@ -16,9 +16,17 @@ export function DemandField({ id, label, value, onCommit, unknownHint = 'Blocks 
   const [mode, setMode] = useState<Demand['kind']>(value.kind);
   const [error, setError] = useState<string | null>(null);
 
+  useEffect(() => setMode(value.kind), [value.kind]);
+
   const choose = (next: Demand['kind']): void => {
-    setMode(next);
-    setError(next === 'unknown' ? onCommit({ kind: 'unknown' }) : null);
+    if (next === 'known') {
+      setMode('known');
+      setError(null);
+      return;
+    }
+    const problem = onCommit({ kind: 'unknown' });
+    setError(problem);
+    if (problem === null) setMode('unknown');
   };
 
   return (

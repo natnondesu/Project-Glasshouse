@@ -25,14 +25,14 @@ export function ReservedInspector({ rack, range, commit, onSelect }: ReservedIns
         <legend className="visually-hidden">Reserved range</legend>
         <TextField id={`${range.id}-label`} label="Label" value={range.label} onCommit={(v) => update({ label: v }, 'label')} />
         <div className="field-pair">
-          <NumberField id={`${range.id}-u`} label="Bottom U" decimals={0} value={range.bottomU} onCommit={(v) => (v === null ? null : update({ bottomU: v }, 'u'))} />
-          <NumberField id={`${range.id}-h`} label="Height" unit="U" decimals={0} value={range.heightU} onCommit={(v) => (v === null ? null : update({ heightU: v }, 'h'))} />
+          <NumberField id={`${range.id}-u`} label="Bottom U" decimals={0} commitOn="blur" value={range.bottomU} onCommit={(v) => (v === null ? null : update({ bottomU: v }, 'u'))} />
+          <NumberField id={`${range.id}-h`} label="Height" unit="U" decimals={0} commitOn="blur" value={range.heightU} onCommit={(v) => (v === null ? null : update({ heightU: v }, 'h'))} />
         </div>
         <DemandField
           id={`${range.id}-demand`}
           label="Demand"
           value={range.demand}
-          onCommit={(d) => update({ demand: d })}
+          onCommit={(d) => update({ demand: d }, 'demand')}
           unknownHint="Allowed, but a reviewer must acknowledge it with a reason before approval."
         />
         <TextField id={`${range.id}-notes`} label="Notes" multiline value={range.notes} onCommit={(v) => update({ notes: v }, 'notes')} />

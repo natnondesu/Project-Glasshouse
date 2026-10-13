@@ -54,3 +54,21 @@ describe('thousands separators', () => {
     expect(parseNumber('1,5')).toEqual({ kind: 'ok', value: 1.5 });
   });
 });
+
+describe('commit on blur', () => {
+  it('does not commit intermediate values while typing, only on blur or Enter', async () => {
+    const user = userEvent.setup();
+    const onCommit = vi.fn<(v: number | null) => string | null>(() => null);
+    render(<NumberField id="u" label="Bottom U" decimals={0} value={20} commitOn="blur" onCommit={onCommit} />);
+    const input = screen.getByLabelText('Bottom U');
+    await user.clear(input);
+    await user.type(input, '12');
+    expect(onCommit).not.toHaveBeenCalled();
+    await user.keyboard('{Enter}');
+    expect(onCommit).toHaveBeenCalledWith(12);
+    await user.clear(input);
+    await user.type(input, '7');
+    await user.tab();
+    expect(onCommit).toHaveBeenLastCalledWith(7);
+  });
+});

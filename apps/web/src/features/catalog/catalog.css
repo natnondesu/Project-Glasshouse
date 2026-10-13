@@ -95,3 +95,14 @@
   display: flex;
   gap: 8px;
 }
+
+.catalog__confirm {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border-radius: var(--radius-control);
+  border: 1px solid rgb(154 90 0 / 0.35);
+  background: var(--warn-bg);
+  font-size: 13px;
+}

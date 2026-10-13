@@ -25,3 +25,18 @@ it('commits Unknown explicitly and shows a custom hint', async () => {
   expect(screen.getByText('A reviewer must acknowledge this.')).toBeInTheDocument();
   expect(screen.getByRole('button', { name: 'Unknown' })).toHaveAttribute('aria-pressed', 'true');
 });
+
+it('follows the stored value when it changes outside the field (undo, discard)', () => {
+  const { rerender } = render(<DemandField id="d" label="Demand" value={{ kind: 'unknown' }} onCommit={() => null} />);
+  rerender(<DemandField id="d" label="Demand" value={{ kind: 'known', watts: 300 }} onCommit={() => null} />);
+  expect(screen.getByRole('button', { name: 'Known' })).toHaveAttribute('aria-pressed', 'true');
+  expect(screen.getByLabelText('Demand in watts')).toHaveValue('300');
+});
+
+it('stays on Known when switching to Unknown is refused', async () => {
+  const user = userEvent.setup();
+  render(<DemandField id="d" label="Demand" value={{ kind: 'known', watts: 150 }} onCommit={() => 'This tab is read-only.'} />);
+  await user.click(screen.getByRole('button', { name: 'Unknown' }));
+  expect(screen.getByRole('button', { name: 'Known' })).toHaveAttribute('aria-pressed', 'true');
+  expect(screen.getByText('This tab is read-only.')).toBeInTheDocument();
+});

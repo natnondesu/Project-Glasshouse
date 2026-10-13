@@ -54,7 +54,7 @@ export function DeviceInspector({ location: { rack, device }, racks, catalog, co
               </select>
             </div>
           </div>
-          <NumberField id={`${device.id}-u`} label="Bottom U" decimals={0} value={device.bottomU} onCommit={(v) => (v === null ? null : move(rack.id, v))} />
+          <NumberField id={`${device.id}-u`} label="Bottom U" decimals={0} commitOn="blur" value={device.bottomU} onCommit={(v) => (v === null ? null : move(rack.id, v))} />
         </div>
         <p className="inspector__note mono">{`${formatURange(device)} · depth ${device.depthMm} / ${rack.usableDepthMm} mm usable`}</p>
         {actionError ? (
@@ -66,12 +66,12 @@ export function DeviceInspector({ location: { rack, device }, racks, catalog, co
 
       <fieldset className="inspector__group">
         <legend className="lbl">Power and size</legend>
-        <DemandField id={`${device.id}-demand`} label={isChassis ? 'Chassis overhead' : 'Demand'} value={device.demand} onCommit={(d) => update({ demand: d })} />
+        <DemandField id={`${device.id}-demand`} label={isChassis ? 'Chassis overhead' : 'Demand'} value={device.demand} onCommit={(d) => update({ demand: d }, 'demand')} />
         <NumberField id={`${device.id}-depth`} label="Depth" unit="mm" decimals={0} value={device.depthMm} onCommit={(v) => (v === null ? null : update({ depthMm: v }, 'depth'))} />
         {device.kind === 'chassis' ? (
           <div className="field-pair">
-            <NumberField id={`${device.id}-slots`} label="Slots" decimals={0} value={device.slotCount} onCommit={(v) => (v === null ? null : update({ slotCount: v }, 'slots'))} />
-            <NumberField id={`${device.id}-per-row`} label="Slots per row" decimals={0} value={device.slotsPerRow} onCommit={(v) => (v === null ? null : update({ slotsPerRow: v }, 'perRow'))} />
+            <NumberField id={`${device.id}-slots`} label="Slots" decimals={0} commitOn="blur" value={device.slotCount} onCommit={(v) => (v === null ? null : update({ slotCount: v }, 'slots'))} />
+            <NumberField id={`${device.id}-per-row`} label="Slots per row" decimals={0} commitOn="blur" value={device.slotsPerRow} onCommit={(v) => (v === null ? null : update({ slotsPerRow: v }, 'perRow'))} />
           </div>
         ) : null}
       </fieldset>

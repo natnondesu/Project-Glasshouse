@@ -13,7 +13,7 @@ export function BomView({ location }: { location: RoomLocation }) {
   const revision = currentRevision(location.room.plan);
 
   const download = (): void => {
-    const blob = new Blob([bomCsv(rows)], { type: 'text/csv;charset=utf-8' });
+    const blob = new Blob([`\uFEFF${bomCsv(rows)}`], { type: 'text/csv;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;

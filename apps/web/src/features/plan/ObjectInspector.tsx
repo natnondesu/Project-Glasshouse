@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { IconRotateCcw, IconRotateCw } from '../../ui/icons';
 import { NumberField } from '../../ui/NumberField';
 import { TextField } from '../../ui/TextField';
-import { TYPE_LABEL } from './labels';
+import { describeRackContents, TYPE_LABEL } from './labels';
 import type { CommitFn } from './usePlanGestures';
 
 interface ObjectInspectorProps {
@@ -21,6 +21,7 @@ export function ObjectInspector({ object, commit, onDeleted }: ObjectInspectorPr
   const act = (run: () => string | null): void => setActionError(run());
   const num = (key: 'x' | 'y' | 'w' | 'd' | 'angle') => (v: number | null) => (v === null ? null : update({ [key]: v }, key));
   const rack = object.type === 'rack' ? object : null;
+  const rackContents = rack ? describeRackContents(rack) : null;
   const autoHeight = rack ? rackAutoHeightM(rack.capacityU) : null;
 
   return (
@@ -135,7 +136,7 @@ export function ObjectInspector({ object, commit, onDeleted }: ObjectInspectorPr
       <div className="inspector__danger">
         {confirmDelete ? (
           <>
-            <span>Remove {object.name} from the plan?</span>
+            <span>{rackContents ? `Remove ${object.name} and its ${rackContents} from the plan?` : `Remove ${object.name} from the plan?`}</span>
             <button
               type="button"
               className="btn btn--sm btn--danger"

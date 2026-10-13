@@ -27,9 +27,11 @@ interface NumberFieldProps {
   decimals?: number;
   allowEmpty?: boolean;
   placeholder?: string;
+  /** 'blur' commits on blur or Enter: for U positions and counts, where "1" on the way to "12" is a real, unwanted value. */
+  commitOn?: 'change' | 'blur';
 }
 
-export function NumberField({ id, label, value, onCommit, unit, decimals = 2, allowEmpty = false, placeholder }: NumberFieldProps) {
+export function NumberField({ id, label, value, onCommit, unit, decimals = 2, allowEmpty = false, placeholder, commitOn = 'change' }: NumberFieldProps) {
   const [text, setText] = useState(() => format(value, decimals));
   const [error, setError] = useState<string | null>(null);
   const focused = useRef(false);
@@ -40,18 +42,19 @@ export function NumberField({ id, label, value, onCommit, unit, decimals = 2, al
     setError(null);
   }, [value, decimals]);
 
+  const commitText = (t: string): string | null => {
+    const parsed = parseNumber(t);
+    const problem = parsed.kind === 'empty' ? (allowEmpty ? onCommit(null) : 'Enter a value.') : parsed.kind === 'invalid' ? 'Enter a number.' : onCommit(parsed.value);
+    setError(problem);
+    return problem;
+  };
   const handleChange = (next: string): void => {
     setText(next);
-    const parsed = parseNumber(next);
-    if (parsed.kind === 'empty') {
-      setError(allowEmpty ? onCommit(null) : 'Enter a value.');
+    if (commitOn === 'change') {
+      commitText(next);
       return;
     }
-    if (parsed.kind === 'invalid') {
-      setError('Enter a number.');
-      return;
-    }
-    setError(onCommit(parsed.value));
+    setError(parseNumber(next).kind === 'invalid' ? 'Enter a number.' : null);
   };
 
   const errorId = `${id}-error`;
@@ -75,7 +78,14 @@ export function NumberField({ id, label, value, onCommit, unit, decimals = 2, al
           }}
           onBlur={() => {
             focused.current = false;
-            if (!error) setText(format(value, decimals));
+            const problem = commitOn === 'blur' && text !== format(value, decimals) ? commitText(text) : error;
+            if (!problem) setText(format(value, decimals));
+          }}
+          onKeyDown={(e) => {
+            if (commitOn === 'blur' && e.key === 'Enter') {
+              e.preventDefault();
+              commitText(text);
+            }
           }}
           onChange={(e) => handleChange(e.target.value)}
         />
