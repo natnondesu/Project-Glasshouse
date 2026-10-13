@@ -7,3 +7,7 @@ export * from './validation';
 export * from './geometry/polygon';
 export * from './footprint';
 export * from './clearance';
+export * from './factories';
+export * from './commands/survey';
+export * from './commands/floor';
+export * from './commands/plan';

@@ -1185,7 +1185,7 @@ describe('floor areas and cut-outs', () => {
 
   it('never mutates its input', () => {
     const c = emptyContent();
-    const before = structuredClone(c);
+    const before = JSON.parse(JSON.stringify(c)) as typeof c;
     applyPlanCommand(c, { type: 'survey/update', patch: { width: 8 } });
     expect(c).toEqual(before);
   });
@@ -1941,7 +1941,7 @@ describe('plan routing', () => {
 
   it('passes plan errors through and never mutates the input', () => {
     const ws = seeded();
-    const before = structuredClone(ws);
+    const before = JSON.parse(JSON.stringify(ws)) as typeof ws;
     expect(apply(ws, { type: 'plan', roomId: 'r', command: { type: 'survey/update', patch: { width: 0 } } }).ok).toBe(false);
     expect(apply(ws, { type: 'plan', roomId: 'nope', command: { type: 'survey/update', patch: {} } }).ok).toBe(false);
     run(ws, { type: 'plan', roomId: 'r', command: { type: 'survey/update', patch: { width: 7 } } });
