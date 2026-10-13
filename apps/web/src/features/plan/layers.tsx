@@ -9,6 +9,7 @@ import {
   type Point,
   type RoomObject,
   type Survey,
+  usedU,
 } from '@glasshouse/domain';
 import { useMemo, type ReactElement } from 'react';
 import { toScreen, type View } from '../../viewport/math';
@@ -155,7 +156,7 @@ export function ObjectsLayer({ objects, view, flagged, selectedId, onFocusObject
             ) : null}
             {showLabel && o.type === 'rack' ? (
               <text className="obj__sub" x={cx} y={cy + 9} textAnchor="middle" dominantBaseline="middle">
-                {o.owner === 'customer' ? 'CUST' : `${o.capacityU}U`}
+                {o.owner === 'customer' ? 'CUST' : `${usedU(o)}/${o.capacityU}U`}
               </text>
             ) : null}
           </g>

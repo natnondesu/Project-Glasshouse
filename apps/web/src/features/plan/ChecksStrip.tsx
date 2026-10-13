@@ -6,16 +6,17 @@ interface ChecksStripProps {
   issues: Issue[];
   objects: Pick<RoomObject, 'id' | 'name'>[];
   onSelect: (id: string) => void;
+  className?: string;
 }
 
 const plural = (n: number, one: string, many: string): string => `${n} ${n === 1 ? one : many}`;
 
-export function ChecksStrip({ issues, objects, onSelect }: ChecksStripProps) {
+export function ChecksStrip({ issues, objects, onSelect, className }: ChecksStripProps) {
   const names = new Map(objects.map((o) => [o.id, o.name]));
   const blocks = issues.filter((i) => i.severity === 'block').length;
   const warnings = issues.length - blocks;
   return (
-    <section className="checks glass" aria-labelledby="checks-heading">
+    <section className={`checks glass${className ? ` ${className}` : ''}`} aria-labelledby="checks-heading">
       <header className="checks__head">
         <h2 id="checks-heading">Checks</h2>
         {issues.length === 0 ? <span className="checks__ok">No issues found</span> : null}
