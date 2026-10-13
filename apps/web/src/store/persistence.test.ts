@@ -19,6 +19,12 @@ describe('persistence', () => {
     expect(store().workspace.projects).toMatchObject([{ name: SAMPLE_PROJECT_NAME, isSample: true }]);
   });
 
+  it('stores the seeded workspace at once, so a reload keeps the same sample and its room links', async () => {
+    const repo = createMemoryRepository();
+    await hydrate(repo);
+    expect(repo.saved).toBe(store().workspace);
+  });
+
   it('keeps corrupted data and reports it instead of resetting', async () => {
     const raw = { schemaVersion: 1, projects: 'nope' };
     const repo = createMemoryRepository(raw);
@@ -67,8 +73,8 @@ describe('read-only tabs', () => {
   it('never saves from a read-only tab', async () => {
     vi.useFakeTimers();
     const repo = createMemoryRepository();
-    await hydrate(repo);
     useWorkspaceStore.getState().setReadOnly(true);
+    await hydrate(repo);
     const stop = startPersistence(repo, 400);
     useWorkspaceStore.setState({ workspace: { ...useWorkspaceStore.getState().workspace, lastBackupAt: 'x' } });
     await vi.advanceTimersByTimeAsync(400);

@@ -19,7 +19,19 @@ export async function hydrate(repo: Repository): Promise<void> {
     // FR13: every new workspace starts with the Sample Project. If it can't be built, start empty;
     // the tree's "Load sample project" then reports the reason.
     const seeded = withSample(createWorkspace(), new Date().toISOString());
-    store.replace(seeded.ok ? seeded.value : createWorkspace());
+    const fresh = seeded.ok ? seeded.value : createWorkspace();
+    store.replace(fresh);
+    // Saved now, not on the first edit: otherwise a reload seeds a new sample with new IDs and room links break.
+    if (useWorkspaceStore.getState().readOnly) {
+      store.setLoad({ kind: 'ready' });
+      return;
+    }
+    try {
+      await repo.save(fresh);
+      store.setSave({ kind: 'saved', at: new Date() });
+    } catch (error) {
+      store.setSave({ kind: 'failed', reason: describeError(error) });
+    }
     store.setLoad({ kind: 'ready' });
     return;
   }
