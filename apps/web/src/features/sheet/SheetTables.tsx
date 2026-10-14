@@ -1,4 +1,4 @@
-import { BOM_COLUMNS, formatDemand, formatURange, racksOf, type BomRow, type Chassis, type Rack, type Revision } from '@glasshouse/domain';
+import { BOM_COLUMNS, formatDemand, formatURange, panelOf, racksOf, wayPhase, type BomRow, type Chassis, type Rack, type Revision } from '@glasshouse/domain';
 import type { ReactNode } from 'react';
 
 const SHEET_COLUMNS = BOM_COLUMNS.filter((c) => !['project', 'site', 'room', 'kind'].includes(c.key));
@@ -93,7 +93,12 @@ export function BomTable({ rows, revision, titleBlock }: { rows: BomRow[]; revis
             </th>
           </tr>
           {[...revision.content.feeds]
-            .map((f) => ({ f, rack: revision.content.objects.find((o) => o.id === f.rackId)?.name ?? '', panel: revision.content.objects.find((o) => o.id === f.sourceId)?.name ?? '' }))
+            .map((f) => {
+              const source = revision.content.objects.find((o) => o.id === f.sourceId);
+              const way = source && source.type === 'mcb' && f.way ? panelOf(source).ways[f.way - 1] : undefined;
+              const where = way && source && f.way ? ` · way ${f.way} (${wayPhase(panelOf(source), f.way)}, ${way.ratingA} A)` : '';
+              return { f, rack: revision.content.objects.find((o) => o.id === f.rackId)?.name ?? '', panel: `${source?.name ?? ''}${where}` };
+            })
             .sort((a, b) => a.rack.localeCompare(b.rack) || a.f.label.localeCompare(b.f.label))
             .map(({ f, rack, panel }) => (
               <tr key={f.id}>

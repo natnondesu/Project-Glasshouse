@@ -64,3 +64,11 @@ export function applyPanelCommand(content: PlanContent, cmd: PanelCommand): Resu
   }
   return ok({ ...content, objects: content.objects.map((o) => (o.id === target.id && o.type === 'mcb' ? { ...o, panel: next } : o)) });
 }
+
+/** Current a rack draws at the nominal voltage, from its known demand. Each feed is sized to carry all of it. */
+export function rackCurrentA(rack: RoomObject): number {
+  if (rack.type !== 'rack') return 0;
+  const w = rack.devices.reduce((sum, d) => sum + (d.demand.kind === 'known' ? d.demand.watts : 0) + (d.kind === 'chassis' ? d.nodes.reduce((n, x) => n + (x.demand.kind === 'known' ? x.demand.watts : 0), 0) : 0), 0);
+  const reserved = rack.reserved.reduce((sum, r) => sum + (r.demand.kind === 'known' ? r.demand.watts : 0), 0);
+  return (w + reserved) / NOMINAL_VOLTAGE_V;
+}

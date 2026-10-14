@@ -16,7 +16,10 @@ import { useMemo, type ReactElement } from 'react';
 import { toScreen, type View } from '../../viewport/math';
 import { TYPE_LABEL } from './labels';
 import { polygonPath, multiPolygonPath } from './svgPath';
-import { DoorSymbol, fitLabel, HoverTag, McbSymbol } from './symbols';
+import { DoorSymbol, fitLabel, HoverTag, McbSymbol, SourceSymbol } from './symbols';
+
+/** Too thin or too small for a name: these rely on their symbol and the hover tag. */
+const UNLABELLED = new Set<string>(['door', 'mcb', 'wall_plug', 'industrial_socket', 'floor_box']);
 
 const GRID_STEP_M = 0.5;
 const MIN_LABEL_PX = 34;
@@ -148,7 +151,7 @@ export function ObjectsLayer({ objects, view, flagged, selectedId, onFocusObject
         const bounds = rotatedBoundsSize(o.w, o.d, o.angle);
         const tall = bounds.d * view.scale;
         // Labels must fit inside the object; doors and MCB panels are too thin and rely on the hover tag.
-        const labelled = o.type !== 'door' && o.type !== 'mcb' && tall >= MIN_LABEL_PX * (o.type === 'rack' ? 1 : 0.6);
+        const labelled = !UNLABELLED.has(o.type) && tall >= MIN_LABEL_PX * (o.type === 'rack' ? 1 : 0.6);
         const label = labelled ? fitLabel(o.name, bounds.w * view.scale) : null;
         const sub = label && o.type === 'rack' && tall >= MIN_LABEL_PX * 1.4 ? fitLabel(o.owner === 'customer' ? 'CUST' : `${usedU(o)}/${o.capacityU}U`, bounds.w * view.scale, 6.7) : null;
         const topY = toScreen(view, [0, o.y])[1];
@@ -168,6 +171,7 @@ export function ObjectsLayer({ objects, view, flagged, selectedId, onFocusObject
             {o.type === 'existing_rack' ? <path className="obj__cross" d={crossPath(o, view)} /> : null}
             {o.type === 'door' ? <DoorSymbol o={o} view={view} /> : null}
             {o.type === 'mcb' ? <McbSymbol o={o} view={view} /> : null}
+            <SourceSymbol o={o} view={view} />
             {o.type === 'rack' ? <RackFront rack={o} view={view} /> : null}
             {label ? (
               <text className="obj__label" x={cx} y={sub ? cy - 7 : cy} textAnchor="middle" dominantBaseline="middle">

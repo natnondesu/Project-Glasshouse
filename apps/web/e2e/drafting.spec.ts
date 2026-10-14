@@ -9,7 +9,8 @@ test('draw a saved dimension from the wall to a rack; it follows the rack and su
   if (!box) throw new Error('Footprint not rendered');
   // MDF-1 is 6 × 5 m; RK-01's top-left corner sits at (0.4, 0.6).
   const at = (x: number, y: number) => [box.x + (x / 6) * box.width, box.y + (y / 5) * box.height] as const;
-  await page.getByRole('button', { name: 'Dimension' }).click();
+  await page.getByRole('button', { name: 'More Measure tools' }).click();
+  await page.getByRole('menuitemradio', { name: 'Dimension' }).click();
   await page.mouse.click(...at(0, 0.6));
   await page.mouse.click(...at(0.4, 0.6));
   // Third click places the dimension line 0.3 m above the measured points.

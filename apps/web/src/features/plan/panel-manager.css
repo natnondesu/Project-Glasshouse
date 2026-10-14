@@ -1,0 +1,144 @@
+.panel-mgr {
+  position: absolute;
+  z-index: 30;
+  width: min(640px, calc(100% - 24px));
+  max-height: calc(100% - 96px);
+  display: flex;
+  flex-direction: column;
+  border-radius: 14px;
+  background: rgb(247 249 251 / 0.97);
+  box-shadow: var(--shadow-float);
+  overflow: hidden;
+}
+
+.panel-mgr__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px 8px 16px;
+  cursor: grab;
+  user-select: none;
+  border-bottom: 1px solid var(--line);
+}
+
+.panel-mgr__head:active {
+  cursor: grabbing;
+}
+
+.panel-mgr__head h2 {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.panel-mgr__config {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 16px;
+}
+
+.panel-mgr__count {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--ink-2);
+}
+
+.panel-mgr select,
+.panel-mgr__label {
+  font: inherit;
+  font-size: 12px;
+  padding: 4px 6px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--control-bg);
+  color: var(--ink);
+}
+
+.panel-mgr__label {
+  width: 100%;
+  min-width: 80px;
+}
+
+.panel-mgr__error {
+  margin: 0 16px 6px;
+}
+
+.panel-mgr__scroll {
+  overflow: auto;
+  padding: 0 8px;
+}
+
+.panel-mgr__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12.5px;
+}
+
+.panel-mgr__table th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding: 6px 8px;
+  background: rgb(247 249 251 / 0.98);
+  text-align: left;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+  border-bottom: 1px solid var(--line-strong);
+}
+
+.panel-mgr__table td {
+  padding: 4px 8px;
+  border-bottom: 1px solid var(--line);
+  vertical-align: middle;
+}
+
+.panel-mgr__table tr.is-used td:first-child {
+  font-weight: 700;
+}
+
+.panel-mgr__feed {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.panel-mgr__swatch {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+}
+
+.panel-mgr__load {
+  white-space: nowrap;
+}
+
+.panel-mgr__load.is-over {
+  color: var(--block);
+  font-weight: 700;
+}
+
+.panel-mgr__foot {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 6px 12px;
+  padding: 10px 16px;
+  border-top: 1px solid var(--line);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.panel-mgr__note {
+  font-weight: 400;
+  color: var(--ink-2);
+}
+
+.panel-mgr .seg button {
+  white-space: nowrap;
+  padding: 0 12px;
+}

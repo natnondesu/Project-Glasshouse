@@ -154,11 +154,75 @@ function Mcb({ size, color, wall }: { size: [number, number, number]; color: str
   );
 }
 
+/** Wall plugs and sockets: a faceplate at outlet height (the object's height is its top). */
+function Faceplate({ size, color, wall, round }: { size: [number, number, number]; color: string; wall: string; round: boolean }) {
+  const [w, h, d] = size;
+  const plateH = Math.min(w, 0.16);
+  return (
+    <group position={[0, h / 2 - plateH / 2, 0]}>
+      <mesh castShadow>
+        <boxGeometry args={[w, plateH, d]} />
+        <meshStandardMaterial color={color} roughness={0.5} />
+      </mesh>
+      {round ? (
+        <mesh position={[0, 0, d / 2 + 0.002]}>
+          <circleGeometry args={[plateH * 0.38, 24]} />
+          <meshStandardMaterial color="#1f2c3a" />
+        </mesh>
+      ) : (
+        <mesh position={[0, 0, d / 2 + 0.002]}>
+          <planeGeometry args={[w * 0.55, plateH * 0.45]} />
+          <meshStandardMaterial color="#c9cfd5" />
+        </mesh>
+      )}
+      <Edges size={[w, plateH, d]} color={wall} />
+    </group>
+  );
+}
+
+function FloorBoxLid({ size, color, wall }: { size: [number, number, number]; color: string; wall: string }) {
+  const [w, h, d] = size;
+  return (
+    <group>
+      <mesh receiveShadow>
+        <boxGeometry args={[w, h, d]} />
+        <meshStandardMaterial color={color} roughness={0.6} metalness={0.4} />
+      </mesh>
+      <Edges size={size} color={wall} opacity={0.7} />
+    </group>
+  );
+}
+
+/** Standing UPS or PDU: a cabinet with a front panel and a small status display. */
+function Cabinet({ size, color, wall, accent }: { size: [number, number, number]; color: string; wall: string; accent: string }) {
+  const [w, h, d] = size;
+  return (
+    <group>
+      <mesh castShadow receiveShadow>
+        <boxGeometry args={size} />
+        <meshStandardMaterial color={color} roughness={0.6} metalness={0.25} />
+      </mesh>
+      <mesh position={[0, h * 0.22, d / 2 + 0.002]}>
+        <planeGeometry args={[w * 0.45, h * 0.08]} />
+        <meshStandardMaterial color={accent} emissive={accent} emissiveIntensity={0.4} />
+      </mesh>
+      <mesh position={[0, -h * 0.1, d / 2 + 0.002]}>
+        <planeGeometry args={[w * 0.8, h * 0.5]} />
+        <meshStandardMaterial color="#1b2128" roughness={0.8} />
+      </mesh>
+      <Edges size={size} color={wall} />
+    </group>
+  );
+}
+
 export function ObjectModel({ object, palette }: { object: Object3D; palette: Palette3D }) {
   const color = palette.object[object.type];
   let body;
   if (object.type === 'furniture') body = <Desk size={object.size} color={color} edge={palette.slotEmpty} />;
   else if (object.type === 'door') body = <Door size={object.size} color={color} wall={palette.wall} />;
+  else if (object.type === 'wall_plug' || object.type === 'industrial_socket') body = <Faceplate size={object.size} color={color} wall={palette.wall} round={object.type === 'industrial_socket'} />;
+  else if (object.type === 'floor_box') body = <FloorBoxLid size={object.size} color={color} wall={palette.wall} />;
+  else if (object.type === 'ups' || object.type === 'pdu') body = <Cabinet size={object.size} color={color} wall={palette.wall} accent={object.type === 'ups' ? '#4cd17a' : '#7fa2e8'} />;
   else body = <Mcb size={object.size} color={color} wall={palette.wall} />;
   return (
     <group position={object.position} rotation={[0, object.yaw, 0]}>

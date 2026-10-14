@@ -44,13 +44,28 @@ it('adds, re-sources and removes a rack’s power feeds from its inspector', asy
   expect(commit.mock.lastCall?.[0]).toMatchObject({ type: 'feed/add', feed: { rackId: 'rk', sourceId: 'm1', label: 'Feed C' } });
 });
 
-it('asks for an MCB panel before a feed can be added, and lists what a panel feeds', () => {
+it('asks for a power source before a feed can be added, and lists what a panel feeds', () => {
   const noPanels: PlanContent = { ...emptyContent(), objects: [rack] };
   const { unmount } = render(<Inspector content={noPanels} selected={rack} commit={() => null} onDeleted={() => {}} />);
   expect(screen.getByRole('button', { name: 'Add power feed' })).toBeDisabled();
-  expect(screen.getByText('Place an MCB panel on the plan to connect this rack.')).toBeInTheDocument();
+  expect(screen.getByText(/Place a power source/)).toBeInTheDocument();
   unmount();
   const c = content();
   render(<Inspector content={c} selected={c.objects[0]!} commit={() => null} onDeleted={() => {}} />);
   expect(screen.getByRole('list', { name: 'Racks fed from MCB-01' })).toHaveTextContent('RK-01 · Feed A');
+});
+
+it('picks the MCB way for a feed from the rack, and opens the panel manager from the panel', async () => {
+  const user = userEvent.setup();
+  const commit = vi.fn<(command: unknown, coalesceKey?: string) => string | null>(() => null);
+  const c: PlanContent = { ...content(), feeds: [{ id: 'f1', rackId: 'rk', sourceId: 'm1', label: 'Feed A', way: 2 }] };
+  const { unmount } = render(<Inspector content={c} selected={rack} commit={commit} onDeleted={() => {}} />);
+  expect(screen.getByLabelText('Feed A way')).toHaveValue('2');
+  await user.selectOptions(screen.getByLabelText('Feed A way'), '5');
+  expect(commit).toHaveBeenLastCalledWith({ type: 'feed/update', id: 'f1', patch: { way: 5 } });
+  unmount();
+  const onManagePanel = vi.fn();
+  render(<Inspector content={c} selected={c.objects[0]!} commit={commit} onDeleted={() => {}} onManagePanel={onManagePanel} />);
+  await user.click(screen.getByRole('button', { name: 'Manage ways' }));
+  expect(onManagePanel).toHaveBeenCalledWith('m1');
 });

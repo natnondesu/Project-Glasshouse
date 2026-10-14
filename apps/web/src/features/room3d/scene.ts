@@ -86,6 +86,16 @@ export interface Feed3D {
 
 /** MCB cabinets hang from the top of their height; the drop leaves from the cabinet's underside. */
 const MCB_CABINET_M = 0.8;
+const FACEPLATE_M = 0.16;
+const FLOOR_LEVEL_M = 0.02;
+
+/** Where a feed leaves its source: under a wall cabinet or faceplate, or at floor level for standing sources. */
+function dropHeight(source: RoomObject): number {
+  const h = effectiveHeight(source);
+  if (source.type === 'mcb') return Math.max(0.1, h - Math.min(MCB_CABINET_M, h));
+  if (source.type === 'wall_plug' || source.type === 'industrial_socket') return Math.max(FLOOR_LEVEL_M, h - FACEPLATE_M);
+  return FLOOR_LEVEL_M;
+}
 
 export interface Scene3D {
   width: number;
@@ -161,7 +171,7 @@ export function buildScene(content: PlanContent): Scene3D {
   const feeds = content.feeds.flatMap((feed) => {
     const route = feedRoute(content, feed);
     const panel = content.objects.find((o) => o.id === feed.sourceId);
-    return route && panel ? [{ feed, route, dropFrom: Math.max(0.1, effectiveHeight(panel) - Math.min(MCB_CABINET_M, effectiveHeight(panel))) }] : [];
+    return route && panel ? [{ feed, route, dropFrom: dropHeight(panel) }] : [];
   });
   return { width: content.survey.width, length: content.survey.length, floor: footprintOf(content.survey), racks, others, columns, feeds };
 }

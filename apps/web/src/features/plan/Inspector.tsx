@@ -12,16 +12,17 @@ interface InspectorProps {
   onDeleted: () => void;
   readOnly?: boolean;
   dimension?: Dimension | null;
+  onManagePanel?: (id: string) => void;
 }
 
-export function Inspector({ content, selected, commit, onDeleted, readOnly = false, dimension = null }: InspectorProps) {
+export function Inspector({ content, selected, commit, onDeleted, readOnly = false, dimension = null, onManagePanel }: InspectorProps) {
   return (
     <aside className="inspector glass" aria-label={dimension ? 'Dimension details' : selected ? `${selected.name} details` : 'Survey'}>
       <fieldset className="inspector__lock" disabled={readOnly}>
         {dimension ? (
           <DimensionInspector key={dimension.id} content={content} dimension={dimension} commit={commit} onDeleted={onDeleted} />
         ) : selected ? (
-          <ObjectInspector key={selected.id} object={selected} content={content} commit={commit} onDeleted={onDeleted} />
+          <ObjectInspector key={selected.id} object={selected} content={content} commit={commit} onDeleted={onDeleted} onManagePanel={onManagePanel} />
         ) : (
           <SurveyPanel survey={content.survey} commit={commit} />
         )}

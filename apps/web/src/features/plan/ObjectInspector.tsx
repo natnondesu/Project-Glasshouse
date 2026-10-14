@@ -1,4 +1,4 @@
-import { formatMetres, rackAutoHeightM, type ObjectPatch, type PlanContent, type RoomObject } from '@glasshouse/domain';
+import { formatMetres, isPowerSource, rackAutoHeightM, type ObjectPatch, type PlanContent, type RoomObject } from '@glasshouse/domain';
 import { PanelFeeds, RackFeeds } from './feeds';
 import { useState } from 'react';
 import { IconRotateCcw, IconRotateCw } from '../../ui/icons';
@@ -11,10 +11,11 @@ interface ObjectInspectorProps {
   object: RoomObject;
   content: PlanContent;
   commit: CommitFn;
+  onManagePanel?: (id: string) => void;
   onDeleted: () => void;
 }
 
-export function ObjectInspector({ object, content, commit, onDeleted }: ObjectInspectorProps) {
+export function ObjectInspector({ object, content, commit, onDeleted, onManagePanel }: ObjectInspectorProps) {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const update = (patch: ObjectPatch, key?: string): string | null =>
@@ -144,7 +145,7 @@ export function ObjectInspector({ object, content, commit, onDeleted }: ObjectIn
       ) : null}
 
       {rack ? <RackFeeds rack={rack} content={content} commit={commit} /> : null}
-      {object.type === 'mcb' ? <PanelFeeds panel={object} content={content} /> : null}
+      {isPowerSource(object) ? <PanelFeeds panel={object} content={content} onManage={onManagePanel} /> : null}
 
       <fieldset className="inspector__group">
         <legend className="visually-hidden">Notes</legend>

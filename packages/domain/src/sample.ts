@@ -23,7 +23,7 @@ function rack(name: string, x: number, y: number, owner: RackOwner = 'oxygenai')
 
 /** A wall-mounted MCB panel, turned so its back sits on the wall at x = 0 or y = 0. */
 function mcb(name: string, x: number, y: number, onLeftWall: boolean): SimpleObject {
-  return { ...(createObject('mcb', { x, y }, []) as SimpleObject), id: newId(), name, angle: onLeftWall ? 90 : 0 };
+  return { ...(createObject('mcb', { x, y }, []) as SimpleObject), id: newId(), name, angle: onLeftWall ? 270 : 0 };
 }
 
 function existingRack(name: string, x: number, y: number): SimpleObject {

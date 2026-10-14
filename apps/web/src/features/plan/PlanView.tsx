@@ -11,6 +11,8 @@ import type { Tool } from './tools';
 import { usePlanGestures } from './usePlanGestures';
 import { ZoomControls } from './ZoomControls';
 import { PlanLegend } from './drafting';
+import { hitTest } from './hitTest';
+import { PanelManager } from './PanelManager';
 import { usePersistentState } from '../../ui/usePersistentState';
 import './plan.css';
 
@@ -25,6 +27,8 @@ export function PlanView({ location, readOnly = false }: { location: RoomLocatio
   const [selectedParam, select] = useSearchParamState('sel');
   const [tool, setTool] = useState<Tool>('select');
   const [legend, setLegend] = usePersistentState('glasshouse:plan-legend', true);
+  const [managedPanel, setManagedPanel] = useState<string | null>(null);
+  const managed = content.objects.find((o) => o.id === managedPanel && o.type === 'mcb') ?? null;
   useEffect(() => {
     if (readOnly && tool !== 'select' && tool !== 'pan' && tool !== 'measure') setTool('select');
   }, [readOnly, tool]);
@@ -38,7 +42,17 @@ export function PlanView({ location, readOnly = false }: { location: RoomLocatio
 
   return (
     <div className={`plan-view${inspectorOpen ? '' : ' is-inspector-closed'}`}>
-      <section className="plan-view__canvas" aria-label="Room plan" onKeyDown={gestures.onKeyDown} onKeyUp={gestures.onKeyUp}>
+      <section
+        className="plan-view__canvas"
+        aria-label="Room plan"
+        onKeyDown={gestures.onKeyDown}
+        onKeyUp={gestures.onKeyUp}
+        onDoubleClick={(e) => {
+          // Double-clicking an MCB panel opens its ways.
+          const hit = hitTest(content.objects, viewport.clientToWorld(e.clientX, e.clientY));
+          if (hit?.type === 'mcb') setManagedPanel(hit.id);
+        }}
+      >
         <Toolbar tool={tool} onTool={setTool} readOnly={readOnly} />
         <PlanCanvas
           content={content}
@@ -57,6 +71,11 @@ export function PlanView({ location, readOnly = false }: { location: RoomLocatio
         />
         <ZoomControls viewport={viewport} legend={legend} onLegend={setLegend} />
         {legend ? <PlanLegend view={viewport.view} /> : null}
+        {managed ? (
+          <fieldset className="inspector__lock" disabled={readOnly}>
+            <PanelManager panel={managed} content={content} commit={commit} onClose={() => setManagedPanel(null)} />
+          </fieldset>
+        ) : null}
         {gestures.message ? (
           <p role="status" className="plan-view__message">
             {gestures.message}
@@ -67,7 +86,7 @@ export function PlanView({ location, readOnly = false }: { location: RoomLocatio
       {inspectorOpen ? (
         <>
           <PanelCollapseTab label="Inspector" side="right" className="plan-view__tab" onCollapse={() => setInspectorOpen(false)} />
-          <Inspector content={content} selected={selected} dimension={selectedDimension} commit={commit} onDeleted={() => select(null)} readOnly={readOnly} />
+          <Inspector content={content} selected={selected} dimension={selectedDimension} commit={commit} onDeleted={() => select(null)} readOnly={readOnly} onManagePanel={setManagedPanel} />
         </>
       ) : (
         <PanelRail label="Inspector" side="right" className="plan-view__rail" onExpand={() => setInspectorOpen(true)} />

@@ -1,6 +1,5 @@
 import type { PlanContent } from '../model/types';
-import { rackPower } from '../power';
-import { NOMINAL_VOLTAGE_V, panelOf } from '../sources';
+import { NOMINAL_VOLTAGE_V, panelOf, rackCurrentA } from '../sources';
 import type { Issue } from './types';
 
 /**
@@ -26,8 +25,7 @@ export function feedIssues(content: PlanContent): Issue[] {
     }
     const way = panelOf(source).ways[feed.way - 1];
     if (!way) return [];
-    const power = rackPower(rack);
-    const amps = (power.devices.knownW + power.reserved.knownW) / NOMINAL_VOLTAGE_V;
+    const amps = rackCurrentA(rack);
     if (amps <= way.ratingA) return [];
     return [
       {
