@@ -1,3 +1,4 @@
+import { PortsSummary } from '../ports/PortsSummary';
 import { EquipmentStateControl } from './EquipmentStateControl';
 import { findNode, findRackDevice, findReserved, racksOf, type PlanContent, type Rack, type Template, type Plan } from '@glasshouse/domain';
 import type { CommitFn } from '../../store/hooks';
@@ -9,6 +10,7 @@ import '../plan/inspector.css';
 
 interface EquipmentInspectorProps {
   plan?: Plan;
+  onManagePorts?: (id: string) => void;
   /** Viewing an older revision: state shows but can't change. */
   stateLocked?: boolean;
   readOnly?: boolean;
@@ -21,7 +23,7 @@ interface EquipmentInspectorProps {
   onSelect: (id: string | null) => void;
 }
 
-export function EquipmentInspector({ content, roomId, selectedId, activeRack, catalog, commit, onSelect, readOnly = false, plan, stateLocked = false }: EquipmentInspectorProps) {
+export function EquipmentInspector({ content, roomId, selectedId, activeRack, catalog, commit, onSelect, readOnly = false, plan, stateLocked = false, onManagePorts }: EquipmentInspectorProps) {
   const device = selectedId ? findRackDevice(content, selectedId) : null;
   const node = !device && selectedId ? findNode(content, selectedId) : null;
   const reserved = !device && !node && selectedId ? findReserved(content, selectedId) : null;
@@ -35,9 +37,12 @@ export function EquipmentInspector({ content, roomId, selectedId, activeRack, ca
 
   return (
     <aside className="equip glass" aria-label="Equipment details">
-      {plan && (device || node) ? (
-        // Outside the frozen fieldset: state records the site, so it stays editable after approval.
-        <EquipmentStateControl roomId={roomId} plan={plan} id={device ? device.device.id : node!.node.id} locked={stateLocked} />
+      {device || node ? (
+        // Outside the frozen fieldset: state records the site and ports can be inspected on any revision.
+        <div className="equip-live">
+          {plan ? <EquipmentStateControl roomId={roomId} plan={plan} id={device ? device.device.id : node!.node.id} locked={stateLocked} /> : null}
+          <PortsSummary content={content} deviceId={device ? device.device.id : node!.node.id} ports={(device ? device.device.ports : node!.node.ports) ?? []} onManage={onManagePorts} />
+        </div>
       ) : null}
       <fieldset className="inspector__lock" disabled={readOnly}>
         {body}

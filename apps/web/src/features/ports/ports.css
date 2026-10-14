@@ -1,0 +1,238 @@
+/* Floating port map: a dark faceplate of jacks and cages above a light settings sheet. */
+.port-mgr {
+  position: fixed;
+  z-index: 40;
+  width: min(620px, calc(100vw - 24px));
+  max-height: calc(100vh - 96px);
+  display: flex;
+  flex-direction: column;
+  border-radius: 14px;
+  background: rgb(247 249 251 / 0.97);
+  box-shadow: var(--shadow-float);
+  overflow: hidden;
+}
+
+.port-mgr__head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px 8px 16px;
+  cursor: grab;
+  user-select: none;
+  border-bottom: 1px solid var(--line);
+}
+
+.port-mgr__head:active {
+  cursor: grabbing;
+}
+
+.port-mgr__head h2 {
+  flex: 1;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.port-mgr__count {
+  font-size: 12px;
+  color: var(--ink-2);
+}
+
+.port-mgr__tools {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px 0;
+}
+
+.port-mgr__legend {
+  list-style: none;
+  display: flex;
+  gap: 12px;
+  margin: 0 0 0 auto;
+  padding: 0;
+  font-size: 11px;
+  color: var(--ink-2);
+}
+
+.port-mgr__legend li::before {
+  content: '';
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  margin-right: 5px;
+  border-radius: 2px;
+  vertical-align: -1px;
+  background: #2a3540;
+  box-shadow: inset 0 0 0 1px #55606c;
+}
+
+.port-mgr__legend li.is-linked::before {
+  background: #3bbf7d;
+}
+
+.port-mgr__legend li.is-fibre::before {
+  width: 14px;
+  background: #c6ccd2;
+}
+
+.port-mgr__error,
+.port-mgr__empty {
+  margin: 10px 16px 0;
+}
+
+.port-mgr__empty {
+  font-size: 13px;
+  color: var(--ink-2);
+}
+
+.port-mgr__face {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 10px 16px 0;
+  padding: 10px 12px 12px;
+  max-height: 300px;
+  overflow-y: auto;
+  border-radius: 8px;
+  background: linear-gradient(180deg, #1f262e, #262e37);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.06), inset 0 -2px 0 rgb(0 0 0 / 0.3);
+}
+
+.port-mgr__bank-label {
+  display: block;
+  margin: 0 0 4px 2px;
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  color: #7d8a97;
+}
+
+.port-mgr__jacks {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(38px, 1fr));
+  gap: 4px 2px;
+}
+
+.port {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 2px 3px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: none;
+  color: #9aa6b2;
+  cursor: pointer;
+}
+
+.port:hover {
+  background: rgb(255 255 255 / 0.06);
+}
+
+.port:focus-visible,
+.port[aria-pressed='true'] {
+  border-color: #7fb0ff;
+  background: rgb(127 176 255 / 0.14);
+  color: #fff;
+}
+
+/* RJ45: a squarish jack with the latch notch on top. */
+.port__jack {
+  position: relative;
+  width: 22px;
+  height: 17px;
+  border-radius: 2px;
+  background: #0d1116;
+  box-shadow: inset 0 0 0 1px #55606c;
+}
+
+.port--rj45 .port__jack::before {
+  content: '';
+  position: absolute;
+  left: 7px;
+  top: -1px;
+  width: 8px;
+  height: 4px;
+  background: #262e37;
+}
+
+/* SFP/SFP+/QSFP: a wider metal cage. */
+.port--sfp .port__jack,
+.port--sfp_plus .port__jack,
+.port--qsfp .port__jack {
+  width: 30px;
+  height: 12px;
+  margin: 2px 0 3px;
+  background: linear-gradient(180deg, #c6ccd2, #8f99a3);
+  box-shadow: inset 0 0 0 2px #6b7680;
+}
+
+.port--qsfp .port__jack {
+  width: 36px;
+}
+
+.port.is-linked .port__jack {
+  background: #13261d;
+  box-shadow: inset 0 0 0 1px #3bbf7d, 0 0 6px rgb(59 191 125 / 0.45);
+}
+
+.port.is-linked.port--sfp .port__jack,
+.port.is-linked.port--sfp_plus .port__jack,
+.port.is-linked.port--qsfp .port__jack {
+  background: linear-gradient(180deg, #8de0b4, #3bbf7d);
+  box-shadow: inset 0 0 0 2px #23905a;
+}
+
+.port__name {
+  max-width: 100%;
+  overflow: hidden;
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.port-mgr__detail {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+  margin: 0;
+  padding: 14px 16px 16px;
+  border: 0;
+  overflow-y: auto;
+}
+
+.port-mgr__row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 8px;
+}
+
+.port-mgr__link {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+}
+
+.port-mgr__link .port-mgr__row {
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) auto;
+}
+
+.port-mgr__link-to {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.port-mgr__media {
+  font-size: 12px;
+  color: var(--ink-2);
+}
+
+.port-mgr__remove {
+  white-space: nowrap;
+}

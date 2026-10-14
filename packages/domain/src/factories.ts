@@ -16,7 +16,7 @@ export function createSurvey(): Survey {
   };
 }
 
-export const emptyContent = (): PlanContent => ({ survey: createSurvey(), objects: [], templatesUsed: [], dimensions: [], feeds: [] });
+export const emptyContent = (): PlanContent => ({ survey: createSurvey(), objects: [], templatesUsed: [], dimensions: [], feeds: [], links: [] });
 
 export function createDraftRevision(number: number, content: PlanContent): Revision {
   return {

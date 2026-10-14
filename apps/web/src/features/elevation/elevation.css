@@ -708,7 +708,28 @@
   display: flex;
   flex-direction: column;
   gap: 6px;
-  padding: 14px 16px 0;
+}
+
+/* What's true on site (state, cabling) sits in its own band above the design fields. */
+.equip-live {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px 16px 14px;
+  border-bottom: 1px solid var(--line);
+  background: rgb(255 255 255 / 0.35);
+}
+
+.equip-live .inspector__group {
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.equip-live .inspector__group .btn {
+  align-self: flex-start;
+  margin-top: 4px;
 }
 
 .equip-state__btn {

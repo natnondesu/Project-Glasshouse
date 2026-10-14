@@ -1,4 +1,4 @@
-import { bomRowsFor, equipmentStateOf, currentRevision, latestApproved, racksOf, type Chassis, type Rack } from '@glasshouse/domain';
+import { bomRowsFor, cableSchedule, equipmentStateOf, currentRevision, latestApproved, racksOf, type Chassis, type Rack } from '@glasshouse/domain';
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
 import { NotFound } from '../../app/NotFound';
@@ -6,7 +6,7 @@ import { useRoomLocation, useViewedRevisionNumber } from '../../store/hooks';
 import { pad2, STATE_LABEL } from '../../ui/StatusStamp';
 import { RackElevation } from '../elevation/RackElevation';
 import { SheetPlan } from './SheetPlan';
-import { BomTable, SlotMapsTable } from './SheetTables';
+import { BomTable, CableScheduleTable, SlotMapsTable } from './SheetTables';
 import { SheetTitleBlock } from './SheetTitleBlock';
 import './sheet.css';
 
@@ -113,6 +113,12 @@ export function InstallSheet() {
       {chassis.length > 0 ? (
         <section className="sheet-page sheet-page--flow">
           <SlotMapsTable chassis={chassis} titleBlock={title('Slot maps')} />
+        </section>
+      ) : null}
+
+      {revision.content.links.length > 0 ? (
+        <section className="sheet-page sheet-page--flow">
+          <CableScheduleTable rows={cableSchedule(revision.content)} titleBlock={title('Cable schedule')} />
         </section>
       ) : null}
 

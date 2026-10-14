@@ -1,6 +1,6 @@
 import { panelOf, rackCurrentA, wayPhase, type PlanContent, type RoomObject } from '@glasshouse/domain';
-import { useRef, useState, type PointerEvent } from 'react';
-import { usePersistentState } from '../../ui/usePersistentState';
+import { useState } from 'react';
+import { useFloatingPanel } from '../../ui/useFloatingPanel';
 import { feedColor } from './feeds';
 import type { CommitFn } from './usePlanGestures';
 import './panel-manager.css';
@@ -19,25 +19,15 @@ interface PanelManagerProps {
 export function PanelManager({ panel, content, commit, onClose }: PanelManagerProps) {
   const config = panelOf(panel);
   const [error, setError] = useState<string | null>(null);
-  const [pos, setPos] = usePersistentState('glasshouse:panel-manager-pos', { x: 96, y: 72 });
-  const drag = useRef<{ dx: number; dy: number } | null>(null);
+  const { pos, headProps } = useFloatingPanel('glasshouse:panel-manager-pos', { x: 96, y: 72 });
   const feeds = content.feeds.filter((f) => f.sourceId === panel.id);
   const unassigned = feeds.filter((f) => f.way === undefined).length;
   const rackName = (id: string): string => content.objects.find((o) => o.id === id)?.name ?? 'Removed object';
   const act = (problem: string | null): void => setError(problem);
 
-  const onGrab = (e: PointerEvent<HTMLElement>): void => {
-    if ((e.target as Element).closest('button')) return;
-    drag.current = { dx: e.clientX - pos.x, dy: e.clientY - pos.y };
-    e.currentTarget.setPointerCapture(e.pointerId);
-  };
-  const onDrag = (e: PointerEvent<HTMLElement>): void => {
-    if (drag.current) setPos({ x: Math.max(0, e.clientX - drag.current.dx), y: Math.max(0, e.clientY - drag.current.dy) });
-  };
-
   return (
     <section className="panel-mgr glass" role="dialog" aria-label={`${panel.name} ways`} style={{ left: pos.x, top: pos.y }}>
-      <header className="panel-mgr__head" onPointerDown={onGrab} onPointerMove={onDrag} onPointerUp={() => (drag.current = null)}>
+      <header className="panel-mgr__head" {...headProps}>
         <h2>
           <span className="mono">{panel.name}</span> ways
         </h2>

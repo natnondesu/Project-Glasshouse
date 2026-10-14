@@ -1,4 +1,4 @@
-import { createWorkspace, currentRevision, withSample, type Workspace } from '@glasshouse/domain';
+import { createWorkspace, currentRevision, withSample, type PlanCommand, type Workspace } from '@glasshouse/domain';
 import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { createMemoryRouter, RouterProvider } from 'react-router';
@@ -121,4 +121,22 @@ it('lists which panel feeds each rack, and draws the runs on the plan', () => {
   expect(feeds).toHaveTextContent('RK-01Feed AMCB-01');
   expect(feeds).toHaveTextContent('RK-01Feed BMCB-02');
   expect(container.querySelectorAll('.sheet-plan .feed__run').length).toBe(3);
+});
+
+it('prints a cable schedule when the revision has links', () => {
+  const s = useWorkspaceStore.getState();
+  const room = s.workspace.projects[0]!.sites[0]!.rooms[1]!;
+  const racks = currentRevision(room.plan).content.objects.flatMap((o) => (o.type === 'rack' ? [o] : []));
+  const sw = racks.flatMap((r) => r.devices).find((d) => d.name === 'SW-01')!;
+  const srv = racks.flatMap((r) => r.devices).find((d) => d.name === 'SRV-01')!;
+  const plan = (command: PlanCommand) => s.dispatch({ type: 'plan', roomId: room.id, command });
+  plan({ type: 'port/add', deviceId: sw.id, port: { name: 'Gi1/0/1', media: 'rj45', speed: '1G' } });
+  plan({ type: 'port/add', deviceId: srv.id, port: { name: 'eth0', media: 'rj45', speed: '1G' } });
+  plan({ type: 'link/add', link: { id: 'l1', a: { deviceId: srv.id, port: 'eth0' }, b: { deviceId: sw.id, port: 'Gi1/0/1' }, label: 'C-001', cable: 'cat6' } });
+  approveMdf();
+  open(mdf);
+  const table = screen.getByRole('table', { name: 'Cable schedule' });
+  expect(table.querySelector('thead .sheet-title')).not.toBeNull();
+  const row = within(table).getByText('C-001').closest('tr')!;
+  expect([...row.querySelectorAll('td')].map((td) => td.textContent)).toEqual(['C-001', 'RK-02', 'SRV-01', 'eth0', 'RK-01', 'SW-01', 'Gi1/0/1', 'Cat 6']);
 });

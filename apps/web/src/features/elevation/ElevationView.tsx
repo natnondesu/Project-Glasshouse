@@ -1,3 +1,4 @@
+import { PortManager } from '../ports/PortManager';
 import { StateLegend } from './EquipmentStateControl';
 import { SearchBox } from '../search/SearchBox';
 import type { SearchHit } from '../search/search';
@@ -80,6 +81,7 @@ export function ElevationView({ location, readOnly = false, viewingPast = false 
     return () => clearTimeout(t);
   }, [pulse]);
   const [message, setMessage] = useState<string | null>(null);
+  const [portsFor, setPortsFor] = useState<string | null>(null);
   const racks = racksOf(content);
   const issues = useMemo(() => revisionIssues(revision), [revision]);
   const flagged = useMemo(() => flaggedObjectIds(issues), [issues]);
@@ -193,11 +195,14 @@ export function ElevationView({ location, readOnly = false, viewingPast = false 
       {inspectorOpen ? (
         <>
           <PanelCollapseTab label="Inspector" side="right" className="elev__tab" onCollapse={() => setInspectorOpen(false)} />
-          <EquipmentInspector content={content} roomId={roomId} selectedId={selectedId} activeRack={activeRack} catalog={catalog} commit={commit} onSelect={select} readOnly={readOnly} plan={location.room.plan} stateLocked={viewingPast} />
+          <EquipmentInspector content={content} roomId={roomId} selectedId={selectedId} activeRack={activeRack} catalog={catalog} commit={commit} onSelect={select} readOnly={readOnly} plan={location.room.plan} stateLocked={viewingPast} onManagePorts={setPortsFor} />
         </>
       ) : (
         <PanelRail label="Inspector" side="right" className="elev__rail" onExpand={() => setInspectorOpen(true)} />
       )}
+      {portsFor && (findRackDevice(content, portsFor) || findNode(content, portsFor)) ? (
+        <PortManager key={portsFor} content={content} deviceId={portsFor} commit={commit} readOnly={readOnly} onClose={() => setPortsFor(null)} />
+      ) : null}
       {message ? (
         <p role="status" className="elev__message">
           {message}

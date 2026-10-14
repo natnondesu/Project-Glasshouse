@@ -27,6 +27,7 @@ export const templateSchema = z.object({
   slotCount: int.positive().nullable(),
   slotsPerRow: int.positive().nullable(),
   illustrative: z.boolean(),
+  ports: z.array(z.object({ count: int, prefix: z.string(), start: int, media: z.enum(['rj45', 'sfp', 'sfp_plus', 'qsfp']), speed: z.string() })).optional(),
 });
 const rect = z.object({ id, x: num, y: num, w: num, d: num, kind: z.enum(['void', 'solid']).optional() });
 const survey = z.object({
@@ -40,7 +41,10 @@ const survey = z.object({
   notes: z.string(),
 });
 const objectBase = { id, name: z.string(), x: num, y: num, w: num, d: num, angle: num, height: num.nullable(), notes: z.string() };
-const deviceBase = { id, templateId: id, templateVersion: int, name: z.string(), demand, config: z.string(), notes: z.string() };
+const port = z.object({ name: z.string().min(1), media: z.enum(['rj45', 'sfp', 'sfp_plus', 'qsfp']), speed: z.string() });
+const deviceBase = { id, templateId: id, templateVersion: int, name: z.string(), demand, config: z.string(), notes: z.string(), ports: z.array(port).optional() };
+const portRef = z.object({ deviceId: id, port: z.string().min(1) });
+const link = z.object({ id, a: portRef, b: portRef, label: z.string(), cable: z.enum(['cat6', 'cat6a', 'om3', 'om4', 'os2', 'dac', 'aoc']).nullable() });
 const node = z.object({ ...deviceBase, slot: int.positive() });
 const placedDevice = z.object({ ...deviceBase, kind: z.literal('device'), category, bottomU: int.positive(), heightU: int.positive(), depthMm: num });
 const chassis = z.object({
@@ -78,7 +82,7 @@ const feed = z.object({ id, targetId: id, sourceId: id, label: z.string(), way: 
 const revision = z.object({
   number: int.positive(),
   state: z.enum(['draft', 'in_review', 'approved']),
-  content: z.object({ survey, objects: z.array(z.union([rack, simpleObject])), templatesUsed: z.array(templateSchema), dimensions: z.array(dimension), feeds: z.array(feed) }),
+  content: z.object({ survey, objects: z.array(z.union([rack, simpleObject])), templatesUsed: z.array(templateSchema), dimensions: z.array(dimension), feeds: z.array(feed), links: z.array(link) }),
   designedBy: unverifiedName.nullable(),
   approvedBy: unverifiedName.nullable(),
   submittedAt: z.string().nullable(),

@@ -8,6 +8,7 @@ import { updateSurvey, type SurveyPatch } from './survey';
 import { applyDimensionCommand, type DimensionCommand } from '../dimensions';
 import { applyFeedCommand, type FeedCommand } from '../feeds';
 import { applyPanelCommand, type PanelCommand } from '../sources';
+import { applyPortCommand, pruneLinks, type PortCommand } from '../ports';
 
 export type PlanCommand =
   | { type: 'survey/update'; patch: SurveyPatch }
@@ -20,9 +21,16 @@ export type PlanCommand =
   | NodeCommand
   | DimensionCommand
   | FeedCommand
-  | PanelCommand;
+  | PanelCommand
+  | PortCommand;
 
 export function applyPlanCommand(content: PlanContent, cmd: PlanCommand): Result<PlanContent> {
+  const result = applyOne(content, cmd);
+  // Removing a rack, device, node or port leaves links pointing nowhere; drop them in one place.
+  return result.ok ? { ...result, value: pruneLinks(result.value) } : result;
+}
+
+function applyOne(content: PlanContent, cmd: PlanCommand): Result<PlanContent> {
   switch (cmd.type) {
     case 'survey/update':
       return updateSurvey(content, cmd.patch);
@@ -65,5 +73,13 @@ export function applyPlanCommand(content: PlanContent, cmd: PlanCommand): Result
     case 'panel/configure':
     case 'panel/way':
       return applyPanelCommand(content, cmd);
+    case 'port/add':
+    case 'port/update':
+    case 'port/remove':
+    case 'port/reset':
+    case 'link/add':
+    case 'link/update':
+    case 'link/remove':
+      return applyPortCommand(content, cmd);
   }
 }

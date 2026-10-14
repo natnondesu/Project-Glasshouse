@@ -15,7 +15,8 @@ export type IssueCode =
   | 'reserved_demand_unknown'
   | 'over_design_limit'
   | 'feed_no_way'
-  | 'feed_overload';
+  | 'feed_overload'
+  | 'link_media_mismatch';
 
 export interface Issue {
   key: string;

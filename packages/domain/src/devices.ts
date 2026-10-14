@@ -1,5 +1,6 @@
+import { expandPorts } from './ports';
 import { isRack } from './model/types';
-import type { Category, Chassis, Id, Node, PlanContent, Rack, RackDevice, ReservedRange, Template, Units } from './model/types';
+import type { Category, Chassis, Id, Node, PlanContent, Rack, RackDevice, ReservedRange, Template, Units, Port } from './model/types';
 
 const PREFIX: Record<Category, string> = { compute: 'SRV', storage: 'STO', network: 'SW', power: 'PWR', chassis: 'CH', misc: 'MISC' };
 
@@ -58,6 +59,9 @@ export function nextDeviceName(content: PlanContent, template: Template): string
   return `${prefix}-${String(max + 1).padStart(2, '0')}`;
 }
 
+/** Absent rather than empty when the template has none, so older devices and templates look the same. */
+const portsFromTemplate = (template: Template): { ports?: Port[] } => (template.ports?.length ? { ports: expandPorts(template.ports) } : {});
+
 export function deviceFromTemplate(template: Template, id: Id, name: string, bottomU: Units): RackDevice {
   const base = {
     id,
@@ -67,6 +71,7 @@ export function deviceFromTemplate(template: Template, id: Id, name: string, bot
     demand: { ...template.demand },
     config: template.defaultConfig,
     notes: '',
+    ...portsFromTemplate(template),
     bottomU,
     heightU: template.heightU,
     depthMm: template.depthMm,
@@ -86,6 +91,7 @@ export const nodeFromTemplate = (template: Template, id: Id, name: string, slot:
   demand: { ...template.demand },
   config: template.defaultConfig,
   notes: '',
+  ...portsFromTemplate(template),
   slot,
 });
 
@@ -96,5 +102,5 @@ export const replaceRack = (content: PlanContent, rack: Rack): PlanContent => ({
 
 export function rememberTemplate(content: PlanContent, template: Template): PlanContent {
   if (content.templatesUsed.some((t) => t.id === template.id && t.version === template.version)) return content;
-  return { ...content, templatesUsed: [...content.templatesUsed, { ...template, demand: { ...template.demand } }] };
+  return { ...content, templatesUsed: [...content.templatesUsed, { ...template, demand: { ...template.demand }, ...(template.ports ? { ports: template.ports.map((g) => ({ ...g })) } : {}) }] };
 }

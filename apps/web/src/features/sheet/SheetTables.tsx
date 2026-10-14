@@ -1,4 +1,4 @@
-import { BOM_COLUMNS, formatDemand, formatURange, panelOf, racksOf, wayPhase, type BomRow, type Chassis, type Rack, type Revision } from '@glasshouse/domain';
+import { BOM_COLUMNS, formatDemand, formatURange, panelOf, racksOf, wayPhase, type BomRow, type Chassis, type Rack, type Revision, type CableRow } from '@glasshouse/domain';
 import type { ReactNode } from 'react';
 
 const SHEET_COLUMNS = BOM_COLUMNS.filter((c) => !['project', 'site', 'room', 'kind'].includes(c.key));
@@ -126,6 +126,40 @@ export function BomTable({ rows, revision, titleBlock }: { rows: BomRow[]; revis
           ))}
         </tbody>
       ) : null}
+    </table>
+  );
+}
+
+/** Every cable as a row an installer can tick off: label, both ends, and the cable to pull. */
+export function CableScheduleTable({ rows, titleBlock }: { rows: CableRow[]; titleBlock: ReactNode }) {
+  return (
+    <table className="sheet-table" aria-label="Cable schedule">
+      <TitleHead span={8} titleBlock={titleBlock}>
+        <tr>
+          <th scope="col">Label</th>
+          <th scope="col">From rack</th>
+          <th scope="col">From device</th>
+          <th scope="col">Port</th>
+          <th scope="col">To rack</th>
+          <th scope="col">To device</th>
+          <th scope="col">Port</th>
+          <th scope="col">Cable</th>
+        </tr>
+      </TitleHead>
+      <tbody>
+        {rows.map((r) => (
+          <tr key={r.id}>
+            <td className="mono is-short">{r.label || <span className="sheet-empty">unlabelled</span>}</td>
+            <td className="mono is-short">{r.from.rack}</td>
+            <td className="mono is-short">{r.from.device}</td>
+            <td className="mono is-short">{r.from.port}</td>
+            <td className="mono is-short">{r.to.rack}</td>
+            <td className="mono is-short">{r.to.device}</td>
+            <td className="mono is-short">{r.to.port}</td>
+            <td>{r.cable}</td>
+          </tr>
+        ))}
+      </tbody>
     </table>
   );
 }

@@ -88,7 +88,7 @@ describe('power feeds', () => {
   it('upgrades schema 2 data by giving every revision an empty feed list', () => {
     const raw = { schemaVersion: 2, catalog: [], lastBackupAt: null, projects: [{ id: 'p', name: 'P', notes: '', isSample: false, sites: [{ id: 's', name: 'S', notes: '', rooms: [{ id: 'r', name: 'R', notes: '', plan: { notes: [], history: [], revisions: [{ content: {} }] } }] }] }] };
     const m = migrate(raw);
-    expect(m.ok && (m.value as typeof raw).projects[0]!.sites[0]!.rooms[0]!.plan.revisions[0]!.content).toEqual({ feeds: [] });
+    expect(m.ok && (m.value as typeof raw).projects[0]!.sites[0]!.rooms[0]!.plan.revisions[0]!.content).toMatchObject({ feeds: [] });
   });
 });
 
