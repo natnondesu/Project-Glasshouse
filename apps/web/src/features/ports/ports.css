@@ -236,3 +236,8 @@
 .port-mgr__remove {
   white-space: nowrap;
 }
+
+.ports-summary__manage {
+  align-self: flex-start;
+  width: auto;
+}

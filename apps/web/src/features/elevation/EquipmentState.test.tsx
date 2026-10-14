@@ -47,3 +47,14 @@ it('filters the BOM by state', async () => {
   await user.click(screen.getByRole('button', { name: 'Deployed' }));
   expect(screen.getAllByRole('row')).toHaveLength(2);
 });
+
+it('keeps ports inside the device form, before Configuration, and usable on an approved plan', async () => {
+  const user = userEvent.setup();
+  render(<RouterProvider router={createMemoryRouter(routes, { initialEntries: ['/rooms/r/elevation?sel=srv'] })} />);
+  const ports = screen.getByRole('group', { name: 'Network ports' });
+  const config = screen.getByLabelText('Configuration');
+  expect(ports.compareDocumentPosition(config) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  expect(screen.getByLabelText('Name')).toBeDisabled();
+  await user.click(within(ports).getByRole('button', { name: 'Manage ports' }));
+  expect(screen.getByRole('dialog', { name: 'SRV-01 ports' })).toBeInTheDocument();
+});
