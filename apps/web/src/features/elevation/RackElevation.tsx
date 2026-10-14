@@ -1,6 +1,7 @@
-import { formatDemand, formatURange, rackPower, topU, usedU, type Chassis, type Rack, type RackDevice, type ReservedRange } from '@glasshouse/domain';
+import { EQUIPMENT_STATE_LABEL, formatDemand, formatURange, type EquipmentState, rackPower, topU, usedU, type Chassis, type Rack, type RackDevice, type ReservedRange } from '@glasshouse/domain';
 import type { DragEvent, KeyboardEvent } from 'react';
 import { TEMPLATE_MIME } from './dnd';
+import { STATE_SYMBOL } from './EquipmentStateControl';
 import './elevation.css';
 import '../search/search.css';
 
@@ -8,6 +9,9 @@ export const U_PX = 16;
 const LABEL_W = 24;
 const RACK_W = 200;
 const PAD = 2;
+const PLANNED = (): EquipmentState => 'planned';
+const STATE_X = 13;
+const NAME_X = 23;
 const NAME_CHAR_PX = 7.3;
 const SUB_CHAR_PX = 6.7;
 /** Room for a name left of the wattage, and left of a chassis's slot cells. */
@@ -32,11 +36,13 @@ interface RackElevationProps {
   isStatic?: boolean;
   /** Device, node or reserved range to flash after a search jump. */
   pulseId?: string | null;
+  /** On-site state per device or node; absent means planned. */
+  stateOf?: (id: string) => EquipmentState;
 }
 
 const categoryOf = (d: RackDevice): string => (d.kind === 'chassis' ? 'chassis' : d.category);
 
-function ChassisSlots({ chassis, y, onSelect }: { chassis: Chassis; y: number; onSelect: ((id: string) => void) | null }) {
+function ChassisSlots({ chassis, y, onSelect, stateOf }: { chassis: Chassis; y: number; onSelect: ((id: string) => void) | null; stateOf: (id: string) => EquipmentState }) {
   const left = 66;
   const right = RACK_W - 12;
   const top = y + 5;
@@ -53,7 +59,7 @@ function ChassisSlots({ chassis, y, onSelect }: { chassis: Chassis; y: number; o
         const node = chassis.nodes.find((n) => n.slot === slot);
         const x = left + (i % cols) * (w + gap);
         const cy = top + Math.floor(i / cols) * (h + gap);
-        const cls = node ? (node.demand.kind === 'unknown' ? 'slot-cell slot-cell--unknown' : 'slot-cell slot-cell--filled') : 'slot-cell';
+        const cls = node ? `${node.demand.kind === 'unknown' ? 'slot-cell slot-cell--unknown' : 'slot-cell slot-cell--filled'} slot-cell--state-${stateOf(node.id)}` : 'slot-cell';
         return (
           <g
             key={slot}
@@ -85,20 +91,23 @@ function control(isStatic: boolean, label: string, selected: boolean, onClick: (
   return isStatic ? {} : { role: 'button', tabIndex: 0, 'aria-label': label, 'aria-pressed': selected, onClick, onKeyDown: onKey };
 }
 
-function DeviceBlock(props: { device: RackDevice; y: number; selected: boolean; flagged: boolean; onSelect: (id: string) => void; onKey: (e: KeyboardEvent) => void; isStatic: boolean; pulse: boolean }) {
-  const { device, y, selected, flagged, onSelect, onKey, isStatic, pulse } = props;
+function DeviceBlock(props: { device: RackDevice; y: number; selected: boolean; flagged: boolean; onSelect: (id: string) => void; onKey: (e: KeyboardEvent) => void; isStatic: boolean; pulse: boolean; state: EquipmentState; stateOf: (id: string) => EquipmentState }) {
+  const { device, y, selected, flagged, onSelect, onKey, isStatic, pulse, state, stateOf } = props;
   const h = device.heightU * U_PX;
   const textY = y + Math.min(h, 32) / 2 + 4;
   const classes = ['dev', `dev--${categoryOf(device)}`, selected ? 'is-selected' : '', flagged ? 'is-flagged' : ''].filter(Boolean).join(' ');
   return (
-    <g className={`${classes}${pulse ? ' is-search-pulse' : ''}`} data-elev-id={device.id} {...control(isStatic, `${device.name}, ${formatURange(device)}`, selected, () => onSelect(device.id), onKey)}>
-      <title>{`${device.name}, ${formatURange(device)}`}</title>
+    <g className={`${classes} dev--state-${state}${pulse ? ' is-search-pulse' : ''}`} data-elev-id={device.id} {...control(isStatic, `${device.name}, ${formatURange(device)}`, selected, () => onSelect(device.id), onKey)}>
+      <title>{`${device.name}, ${formatURange(device)} · ${EQUIPMENT_STATE_LABEL[state]}`}</title>
       <rect x={4} y={y + 1} width={RACK_W - 8} height={h - 2} rx={3} className="dev__body" />
-      <text x={12} y={textY} className="dev__name">
-        {fitText(device.name, device.kind === 'chassis' ? CHASSIS_NAME_PX : DEVICE_NAME_PX)}
+      <text x={STATE_X} y={textY} className="dev__state" textAnchor="middle">
+        {STATE_SYMBOL[state]}
+      </text>
+      <text x={NAME_X} y={textY} className="dev__name">
+        {fitText(device.name, (device.kind === 'chassis' ? CHASSIS_NAME_PX : DEVICE_NAME_PX) - (NAME_X - 12))}
       </text>
       {device.kind === 'chassis' ? (
-        <ChassisSlots chassis={device} y={y} onSelect={isStatic ? null : onSelect} />
+        <ChassisSlots chassis={device} y={y} onSelect={isStatic ? null : onSelect} stateOf={stateOf} />
       ) : (
         <text x={RACK_W - 12} y={textY} textAnchor="end" className="dev__w">
           {formatDemand(device.demand)}
@@ -135,7 +144,7 @@ function ReservedBlock(props: { range: ReservedRange; y: number; patternId: stri
   );
 }
 
-export function RackElevation({ rack, active, selectedId, flagged, onSelect, onActivate, onDropTemplate, isStatic = false, pulseId = null }: RackElevationProps) {
+export function RackElevation({ rack, active, selectedId, flagged, onSelect, onActivate, onDropTemplate, isStatic = false, pulseId = null, stateOf = PLANNED }: RackElevationProps) {
   const height = rack.capacityU * U_PX;
   const yTop = (top: number): number => PAD + (rack.capacityU - top) * U_PX;
   const power = rackPower(rack);
@@ -208,7 +217,7 @@ export function RackElevation({ rack, active, selectedId, flagged, onSelect, onA
             <ReservedBlock key={r.id} range={r} y={yTop(topU(r))} patternId={patternId} selected={r.id === selectedId} onSelect={onSelect} onKey={keySelect(r.id)} isStatic={isStatic} pulse={r.id === pulseId} />
           ))}
           {rack.devices.map((d) => (
-            <DeviceBlock key={d.id} device={d} y={yTop(topU(d))} selected={d.id === selectedId} flagged={flagged.has(d.id)} onSelect={onSelect} onKey={keySelect(d.id)} isStatic={isStatic} pulse={d.id === pulseId || (d.kind === 'chassis' && d.nodes.some((n) => n.id === pulseId))} />
+            <DeviceBlock key={d.id} device={d} y={yTop(topU(d))} selected={d.id === selectedId} flagged={flagged.has(d.id)} onSelect={onSelect} onKey={keySelect(d.id)} isStatic={isStatic} pulse={d.id === pulseId || (d.kind === 'chassis' && d.nodes.some((n) => n.id === pulseId))} state={stateOf(d.id)} stateOf={stateOf} />
           ))}
         </g>
       </svg>

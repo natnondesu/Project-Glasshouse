@@ -1,4 +1,4 @@
-import { currentRevision, racksOf, rackPower, type RoomLocation } from '@glasshouse/domain';
+import { currentRevision, equipmentStateOf, racksOf, rackPower, type RoomLocation } from '@glasshouse/domain';
 import { useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { SearchBox } from '../search/SearchBox';
@@ -16,7 +16,8 @@ const FOCUS_DISTANCE_M = 6;
 export default function Room3DView({ location }: { location: RoomLocation }) {
   const navigate = useNavigate();
   const content = currentRevision(location.room.plan).content;
-  const scene = useMemo(() => buildScene(content), [content]);
+  const plan = location.room.plan;
+  const scene = useMemo(() => buildScene(content, (id) => equipmentStateOf(plan, id)), [content, plan]);
   const palette = useMemo(() => readPalette(), []);
   const home = useMemo(() => defaultCamera(content.survey.width, content.survey.length), [content.survey.width, content.survey.length]);
   const [camera, setCamera] = useState<OrbitCamera>(home);
@@ -52,6 +53,7 @@ export default function Room3DView({ location }: { location: RoomLocation }) {
         className="room3d__search"
         content={content}
         roomName={location.room.name}
+        plan={location.room.plan}
         onPick={pickHit}
         action={(hit) =>
           hit.elementId ? (

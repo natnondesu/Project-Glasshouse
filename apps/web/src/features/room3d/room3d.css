@@ -144,3 +144,7 @@
   left: 12px;
   top: 12px;
 }
+
+.room3d__bar .seg button {
+  white-space: nowrap;
+}

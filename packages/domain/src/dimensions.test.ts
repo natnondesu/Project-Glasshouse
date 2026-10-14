@@ -74,7 +74,7 @@ describe('persistent dimensions', () => {
     expect(migrated.ok).toBe(true);
     const parsed = parseWorkspace(JSON.parse(JSON.stringify(v1)));
     if (!parsed.ok) throw new Error(parsed.error.message);
-    expect(parsed.value.schemaVersion).toBe(3);
+    expect(parsed.value.schemaVersion).toBe(4);
     expect(parsed.value.projects[0]!.sites[0]!.rooms[0]!.plan.revisions[0]!.content.dimensions).toEqual([]);
   });
 });

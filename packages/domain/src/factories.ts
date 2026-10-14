@@ -31,7 +31,7 @@ export function createDraftRevision(number: number, content: PlanContent): Revis
   };
 }
 
-export const createPlan = (): Plan => ({ revisions: [createDraftRevision(1, emptyContent())], notes: [], history: [] });
+export const createPlan = (): Plan => ({ revisions: [createDraftRevision(1, emptyContent())], notes: [], history: [], equipmentState: {} });
 
 export const createWorkspace = (): Workspace => ({
   schemaVersion: CURRENT_SCHEMA_VERSION,

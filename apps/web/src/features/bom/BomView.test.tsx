@@ -35,7 +35,7 @@ it('lists devices with nodes and downloads the CSV', async () => {
   expect(screen.getByRole('cell', { name: 'NODE-01' })).toBeInTheDocument();
   await user.click(screen.getByRole('button', { name: 'Download CSV' }));
   expect(created).toHaveLength(1);
-  expect(await created[0]!.text()).toContain('RK-01,CH-01,1,Node,NODE-01');
+  expect(await created[0]!.text()).toContain('RK-01,CH-01,1,Node,Planned,NODE-01');
 });
 
 it('starts the CSV with a UTF-8 byte-order mark so Excel keeps en dashes and Thai text', async () => {

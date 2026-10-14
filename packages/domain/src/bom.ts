@@ -3,6 +3,7 @@ import { racksOf } from './devices';
 import { currentRevision, type RoomLocation } from './lookup';
 import type { Demand, Id, PlanContent, Revision } from './model/types';
 import { formatURange } from './occupancy';
+import { EQUIPMENT_STATE_LABEL, equipmentStateOf } from './equipmentState';
 
 export interface BomRow {
   project: string;
@@ -12,6 +13,7 @@ export interface BomRow {
   chassis: string;
   slot: string;
   kind: 'Device' | 'Chassis' | 'Node';
+  state: string;
   name: string;
   model: string;
   category: string;
@@ -31,6 +33,7 @@ export const BOM_COLUMNS: readonly { key: keyof BomRow; header: string }[] = [
   { key: 'chassis', header: 'Parent chassis' },
   { key: 'slot', header: 'Slot' },
   { key: 'kind', header: 'Type' },
+  { key: 'state', header: 'State' },
   { key: 'name', header: 'Name' },
   { key: 'model', header: 'Template / model' },
   { key: 'category', header: 'Category' },
@@ -67,6 +70,7 @@ export function bomRowsFor(loc: RoomLocation, revision: Revision): BomRow[] {
           chassis: '',
           slot: '',
           kind: d.kind === 'chassis' ? 'Chassis' : 'Device',
+          state: EQUIPMENT_STATE_LABEL[equipmentStateOf(loc.room.plan, d.id)],
           name: d.name,
           model: templateText(content, d.templateId, d.templateVersion),
           category: CATEGORY_LABEL[d.kind === 'chassis' ? 'chassis' : d.category],
@@ -87,6 +91,7 @@ export function bomRowsFor(loc: RoomLocation, revision: Revision): BomRow[] {
               chassis: d.name,
               slot: String(n.slot),
               kind: 'Node',
+              state: EQUIPMENT_STATE_LABEL[equipmentStateOf(loc.room.plan, n.id)],
               name: n.name,
               model: templateText(content, n.templateId, n.templateVersion),
               category: CATEGORY_LABEL.compute,

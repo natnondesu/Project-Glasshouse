@@ -624,3 +624,110 @@
   flex: none;
   padding-bottom: 10px;
 }
+
+/* Equipment state: planned is a dashed ghost, deployed solid, maintenance amber; each also has a glyph. */
+.dev__state {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  pointer-events: none;
+}
+
+.dev--state-planned .dev__body {
+  fill-opacity: 0.45;
+  stroke-dasharray: 4 2;
+}
+
+.dev--state-planned .dev__state {
+  fill: var(--ink-2);
+}
+
+.dev--state-deployed .dev__state {
+  fill: var(--ok);
+}
+
+.dev--state-maintenance .dev__body {
+  stroke: #c77700;
+  stroke-width: 2;
+}
+
+.dev--state-maintenance .dev__state {
+  fill: #c77700;
+}
+
+.slot-cell--state-planned {
+  fill-opacity: 0.45;
+  stroke-dasharray: 3 2;
+}
+
+.slot-cell--state-maintenance {
+  stroke: #c77700;
+  stroke-width: 2;
+}
+
+.state-legend {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  margin: 8px 0 0;
+  padding: 0;
+  font-size: 12px;
+  color: var(--ink-2);
+}
+
+.state-legend__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.state-legend__glyph {
+  width: 16px;
+  height: 16px;
+  display: inline-grid;
+  place-items: center;
+  border-radius: 4px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  border: 1px dashed var(--ink-2);
+}
+
+.state-legend__item--deployed .state-legend__glyph {
+  border: 1px solid var(--ok);
+  color: var(--ok);
+}
+
+.state-legend__item--maintenance .state-legend__glyph {
+  border: 1.5px solid #c77700;
+  color: #c77700;
+}
+
+.equip-state {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 14px 16px 0;
+}
+
+.equip-state__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  white-space: nowrap;
+}
+
+.equip-state__glyph {
+  font-family: var(--font-mono);
+  font-weight: 700;
+}
+
+.equip-state__btn--deployed[aria-pressed='true'] .equip-state__glyph {
+  color: #6fe0b0;
+}
+
+.equip-state__btn--maintenance[aria-pressed='true'] .equip-state__glyph {
+  color: #ffc46b;
+}

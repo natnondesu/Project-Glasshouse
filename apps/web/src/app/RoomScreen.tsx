@@ -28,7 +28,7 @@ export function RoomScreen() {
   const readOnly = past !== null || revision.state !== 'draft';
   let body;
   if (view === 'plan') body = <PlanView key={`${roomId}:${revision.number}`} location={location} readOnly={readOnly} />;
-  else if (view === 'elevation') body = <ElevationView key={`${roomId}:${revision.number}`} location={location} readOnly={readOnly} />;
+  else if (view === 'elevation') body = <ElevationView key={`${roomId}:${revision.number}`} location={location} readOnly={readOnly} viewingPast={past !== null} />;
   else if (view === '3d')
     body = (
       <Suspense fallback={<p className="room3d__fallback" role="status">Loading 3D…</p>}>

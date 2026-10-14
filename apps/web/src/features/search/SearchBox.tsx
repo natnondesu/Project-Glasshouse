@@ -1,4 +1,4 @@
-import type { PlanContent } from '@glasshouse/domain';
+import { EQUIPMENT_STATE_LABEL, equipmentStateOf, type Plan, type PlanContent } from '@glasshouse/domain';
 import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react';
 import { searchRoom, type SearchHit } from './search';
 import './search.css';
@@ -10,18 +10,20 @@ interface SearchBoxProps {
   /** An extra link per result, e.g. "Open in elevation". */
   action?: (hit: SearchHit) => ReactNode;
   className?: string;
+  /** The room's plan, so on-site state ("maintenance") is searchable too. */
+  plan?: Plan;
 }
 
 const isTextEntry = (t: EventTarget | null): boolean => t instanceof HTMLElement && (t.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(t.tagName));
 
 /** Room search: `/` or ⌘K to focus, type, ↑/↓ to choose, Enter to go there. */
-export function SearchBox({ content, roomName, onPick, action, className }: SearchBoxProps) {
+export function SearchBox({ content, roomName, onPick, action, className, plan }: SearchBoxProps) {
   const [query, setQuery] = useState('');
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(0);
   const input = useRef<HTMLInputElement>(null);
   const listId = useId();
-  const hits = useMemo(() => searchRoom(content, query), [content, query]);
+  const hits = useMemo(() => searchRoom(content, query, undefined, plan ? (id) => EQUIPMENT_STATE_LABEL[equipmentStateOf(plan, id)].toLowerCase() : undefined), [content, query, plan]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {

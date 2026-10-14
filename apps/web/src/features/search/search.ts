@@ -28,7 +28,7 @@ const templateText = (content: PlanContent, id: string, version: number): string
 const templateLabel = (content: PlanContent, id: string, version: number): string =>
   content.templatesUsed.find((x) => x.id === id && x.version === version)?.label ?? 'Device';
 
-function entries(content: PlanContent): Entry[] {
+function entries(content: PlanContent, stateOf: (id: string) => string): Entry[] {
   const out: Entry[] = [];
   const name = (id: string): string => content.objects.find((o) => o.id === id)?.name ?? '';
   for (const o of content.objects) {
@@ -44,7 +44,7 @@ function entries(content: PlanContent): Entry[] {
         detail: `${d.kind === 'chassis' ? 'Chassis' : 'Device'} · ${model} in ${rack.name}, ${formatURange(d)}`,
         objectId: rack.id,
         elementId: d.id,
-        text: `${templateText(content, d.templateId, d.templateVersion)} ${d.config} ${d.notes} ${d.kind === 'chassis' ? 'chassis' : d.category}`,
+        text: `${templateText(content, d.templateId, d.templateVersion)} ${d.config} ${d.notes} ${d.kind === 'chassis' ? 'chassis' : d.category} ${stateOf(d.id)}`,
       });
       if (d.kind !== 'chassis') continue;
       for (const n of d.nodes) {
@@ -55,7 +55,7 @@ function entries(content: PlanContent): Entry[] {
           detail: `Node · slot ${n.slot} of ${d.name} in ${rack.name}`,
           objectId: rack.id,
           elementId: n.id,
-          text: `node ${templateText(content, n.templateId, n.templateVersion)} ${n.config} ${n.notes}`,
+          text: `node ${templateText(content, n.templateId, n.templateVersion)} ${n.config} ${n.notes} ${stateOf(n.id)}`,
         });
       }
     }
@@ -87,11 +87,11 @@ const ELSEWHERE = 10;
  * Full-text search over everything in a room. Every word must appear in the item's name or its other
  * text; name matches rank first. Room-scoped: the views that use it all show one room.
  */
-export function searchRoom(content: PlanContent, query: string, limit = MAX_HITS): SearchHit[] {
+export function searchRoom(content: PlanContent, query: string, limit = MAX_HITS, stateOf: (id: string) => string = () => ''): SearchHit[] {
   const words = query.toLowerCase().split(/\s+/).filter(Boolean);
   if (words.length === 0) return [];
   const phrase = words.join(' ');
-  return entries(content)
+  return entries(content, stateOf)
     .flatMap((e) => {
       const nameLc = e.name.toLowerCase();
       const all = `${nameLc} ${e.text.toLowerCase()}`;

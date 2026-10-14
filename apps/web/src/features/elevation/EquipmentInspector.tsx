@@ -1,4 +1,5 @@
-import { findNode, findRackDevice, findReserved, racksOf, type PlanContent, type Rack, type Template } from '@glasshouse/domain';
+import { EquipmentStateControl } from './EquipmentStateControl';
+import { findNode, findRackDevice, findReserved, racksOf, type PlanContent, type Rack, type Template, type Plan } from '@glasshouse/domain';
 import type { CommitFn } from '../../store/hooks';
 import { DeviceInspector } from './DeviceInspector';
 import { NodeInspector } from './NodeInspector';
@@ -7,6 +8,9 @@ import { ReservedInspector } from './ReservedInspector';
 import '../plan/inspector.css';
 
 interface EquipmentInspectorProps {
+  plan?: Plan;
+  /** Viewing an older revision: state shows but can't change. */
+  stateLocked?: boolean;
   readOnly?: boolean;
   content: PlanContent;
   roomId: string;
@@ -17,7 +21,7 @@ interface EquipmentInspectorProps {
   onSelect: (id: string | null) => void;
 }
 
-export function EquipmentInspector({ content, roomId, selectedId, activeRack, catalog, commit, onSelect, readOnly = false }: EquipmentInspectorProps) {
+export function EquipmentInspector({ content, roomId, selectedId, activeRack, catalog, commit, onSelect, readOnly = false, plan, stateLocked = false }: EquipmentInspectorProps) {
   const device = selectedId ? findRackDevice(content, selectedId) : null;
   const node = !device && selectedId ? findNode(content, selectedId) : null;
   const reserved = !device && !node && selectedId ? findReserved(content, selectedId) : null;
@@ -31,6 +35,10 @@ export function EquipmentInspector({ content, roomId, selectedId, activeRack, ca
 
   return (
     <aside className="equip glass" aria-label="Equipment details">
+      {plan && (device || node) ? (
+        // Outside the frozen fieldset: state records the site, so it stays editable after approval.
+        <EquipmentStateControl roomId={roomId} plan={plan} id={device ? device.device.id : node!.node.id} locked={stateLocked} />
+      ) : null}
       <fieldset className="inspector__lock" disabled={readOnly}>
         {body}
       </fieldset>

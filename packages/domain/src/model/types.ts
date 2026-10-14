@@ -222,10 +222,15 @@ export interface HistoryEvent {
 }
 
 /** The last Revision is the current one; a Plan always has at least one. */
+/** What is physically true on site for a piece of equipment. Absent means planned. */
+export type EquipmentState = 'planned' | 'deployed' | 'maintenance';
+
 export interface Plan {
   revisions: Revision[];
   notes: ReviewNote[];
   history: HistoryEvent[];
+  /** Per device, chassis or node; outside revisions so it can change after approval. */
+  equipmentState: Record<Id, EquipmentState>;
 }
 
 export interface Room {

@@ -37,3 +37,4 @@ export * from './feeds';
 export * from './sources';
 export { snapToWall } from './walls';
 export * from './catalogFile';
+export * from './equipmentState';
