@@ -212,3 +212,8 @@
   grid-column: 1 / -1;
   color: var(--ink-2);
 }
+
+/* A lock that only disables its controls: its children lay out as if it weren't there. */
+.inspector__lock--flow {
+  display: contents;
+}

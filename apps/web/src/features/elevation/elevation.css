@@ -732,12 +732,19 @@
   margin-top: 4px;
 }
 
+.equip-state__seg {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+/* Three equal columns that may wrap, so the longest label (and Thai) always fits the inspector. */
 .equip-state__btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 5px;
-  white-space: nowrap;
+  /* Block, not flex: the glyph flows with the words when a long label wraps. */
+  display: block;
+  min-width: 0;
+  padding-inline: 6px;
+  line-height: 1.2;
+  text-align: center;
 }
 
 .equip-state__glyph {
@@ -790,4 +797,8 @@ body.is-dragging-device * {
 
 .drop-ghost.is-bad text {
   fill: var(--block);
+}
+
+.equip-state__glyph {
+  margin-right: 4px;
 }
