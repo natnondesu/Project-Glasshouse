@@ -140,3 +140,41 @@ export const IconDimension = (p: IconProps) => (
     <path d="M1 10.5L4 7.5M14 10.5L17 7.5" strokeWidth={1.2} />
   </svg>
 );
+export const IconWallPlug = (p: IconProps) => (
+  <svg {...frame(18)} {...p}>
+    <rect x="3.5" y="3.5" width="11" height="11" rx="2" />
+    <path d="M7 7.5V9.5M11 7.5V9.5M7.5 12H10.5" />
+  </svg>
+);
+export const IconIndustrialSocket = (p: IconProps) => (
+  <svg {...frame(18)} {...p}>
+    <circle cx="9" cy="9" r="6" />
+    <circle cx="9" cy="5.8" r="0.9" fill="currentColor" />
+    <circle cx="6.2" cy="10.6" r="0.9" fill="currentColor" />
+    <circle cx="11.8" cy="10.6" r="0.9" fill="currentColor" />
+  </svg>
+);
+export const IconFloorBox = (p: IconProps) => (
+  <svg {...frame(18)} {...p}>
+    <rect x="3" y="3" width="12" height="12" />
+    <path d="M3 15L15 3" strokeWidth={1} />
+    <circle cx="9" cy="9" r="2.2" />
+  </svg>
+);
+export const IconUps = (p: IconProps) => (
+  <svg {...frame(18)} {...p}>
+    <rect x="4.5" y="2" width="9" height="14" rx="1" />
+    <path d="M7 6H11M9.5 9L8 11.5H10L8.5 14" strokeWidth={1.2} />
+  </svg>
+);
+export const IconPdu = (p: IconProps) => (
+  <svg {...frame(18)} {...p}>
+    <rect x="3" y="3" width="12" height="12" />
+    <path d="M5.5 7H7M8.5 7H10M11.5 7H13M5.5 11H7M8.5 11H10M11.5 11H13" strokeWidth={1.4} />
+  </svg>
+);
+export const IconChevronCorner = (p: IconProps) => (
+  <svg width="7" height="7" viewBox="0 0 7 7" aria-hidden="true" {...p}>
+    <path d="M7 0V7H0Z" fill="currentColor" />
+  </svg>
+);

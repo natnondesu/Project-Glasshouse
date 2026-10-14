@@ -36,6 +36,11 @@ export const DEFAULT_SIZES: Record<SimpleObjectType, { w: number; d: number }> =
   door: { w: 0.9, d: 0.1 },
   mcb: { w: 0.5, d: 0.2 },
   furniture: { w: 1.2, d: 0.6 },
+  wall_plug: { w: 0.15, d: 0.1 },
+  industrial_socket: { w: 0.2, d: 0.12 },
+  floor_box: { w: 0.3, d: 0.3 },
+  ups: { w: 0.6, d: 0.85 },
+  pdu: { w: 0.8, d: 0.8 },
 };
 
 export const DEFAULT_HEIGHTS_M: Record<SimpleObjectType, number> = {
@@ -43,6 +48,11 @@ export const DEFAULT_HEIGHTS_M: Record<SimpleObjectType, number> = {
   door: 2.1,
   mcb: 1.4,
   furniture: 0.75,
+  wall_plug: 0.45,
+  industrial_socket: 0.6,
+  floor_box: 0.03,
+  ups: 1.6,
+  pdu: 1.9,
 };
 
 export const NAME_PREFIX: Record<RoomObjectType, string> = {
@@ -51,4 +61,9 @@ export const NAME_PREFIX: Record<RoomObjectType, string> = {
   door: 'D',
   mcb: 'MCB',
   furniture: 'F',
+  wall_plug: 'WP',
+  industrial_socket: 'IS',
+  floor_box: 'FB',
+  ups: 'UPS',
+  pdu: 'PDU',
 };

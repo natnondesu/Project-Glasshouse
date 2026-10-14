@@ -34,3 +34,4 @@ export * from './projectFile';
 export * from './sample';
 export * from './dimensions';
 export * from './feeds';
+export * from './sources';

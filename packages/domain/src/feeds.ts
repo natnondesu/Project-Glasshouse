@@ -2,6 +2,7 @@ import { footprintOf } from './footprint';
 import { centerOf, localToWorld, type Point, type Ring } from './geometry/polygon';
 import type { Id, PlanContent, PowerFeed } from './model/types';
 import { err, ok, type Result } from './result';
+import { isPowerSource, panelOf, WALL_MOUNTED_SOURCES } from './sources';
 
 export const MAX_FEEDS_PER_RACK = 8;
 const LABEL_MAX = 24;
@@ -24,16 +25,26 @@ export const usesFeedObject = (feed: PowerFeed, objectId: Id): boolean => feed.r
 
 export type FeedCommand =
   | { type: 'feed/add'; feed: PowerFeed }
-  | { type: 'feed/update'; id: Id; patch: { label?: string; sourceId?: Id } }
+  | { type: 'feed/update'; id: Id; patch: { label?: string; sourceId?: Id; way?: number | null } }
   | { type: 'feed/remove'; id: Id };
 
 function validate(content: PlanContent, feed: PowerFeed): Result<PowerFeed> {
   const rack = content.objects.find((o) => o.id === feed.rackId);
   const source = content.objects.find((o) => o.id === feed.sourceId);
   if (!rack || !source) return err('not_found', 'That object no longer exists.', [feed.rackId, feed.sourceId]);
-  if (rack.type !== 'rack' || source.type !== 'mcb') return err('invalid_value', 'Power feeds run from an MCB panel to a rack.', [feed.rackId, feed.sourceId]);
+  if (rack.type !== 'rack' || !isPowerSource(source)) return err('invalid_value', 'Power feeds run from a power source to a rack.', [feed.rackId, feed.sourceId]);
   const label = feed.label.trim();
   if (label.length === 0 || label.length > LABEL_MAX) return err('invalid_value', `Feed names are 1 to ${LABEL_MAX} characters.`, [feed.id]);
+  if (feed.way !== undefined) {
+    if (source.type !== 'mcb') return err('invalid_value', 'Only MCB panels have ways.', [feed.id]);
+    const ways = panelOf(source).ways.length;
+    if (!Number.isInteger(feed.way) || feed.way < 1 || feed.way > ways) return err('invalid_value', `${source.name} has ways 1 to ${ways}.`, [feed.id]);
+    const taken = content.feeds.find((f) => f.id !== feed.id && f.sourceId === source.id && f.way === feed.way);
+    if (taken) {
+      const owner = content.objects.find((o) => o.id === taken.rackId)?.name ?? 'a removed rack';
+      return err('invalid_value', `Way ${feed.way} on ${source.name} already has ${taken.label} of ${owner}.`, [feed.id]);
+    }
+  }
   return ok({ ...feed, label });
 }
 
@@ -50,7 +61,12 @@ export function applyFeedCommand(content: PlanContent, cmd: FeedCommand): Result
     case 'feed/update': {
       const current = content.feeds.find((f) => f.id === cmd.id);
       if (!current) return err('not_found', 'That power feed no longer exists.', [cmd.id]);
-      const valid = validate(content, { ...current, ...cmd.patch });
+      const { way, ...rest } = cmd.patch;
+      const merged: PowerFeed = { ...current, ...rest };
+      // Moving to another source drops the way; `way: null` clears it explicitly.
+      const nextWay = way === null || (rest.sourceId !== undefined && rest.sourceId !== current.sourceId && way === undefined) ? undefined : (way ?? current.way);
+      const { way: _old, ...withoutWay } = merged;
+      const valid = validate(content, nextWay === undefined ? withoutWay : { ...withoutWay, way: nextWay });
       return valid.ok ? ok({ ...content, feeds: content.feeds.map((f) => (f.id === cmd.id ? valid.value : f)) }) : valid;
     }
     case 'feed/remove':
@@ -135,6 +151,8 @@ export function feedRoute(content: PlanContent, feed: PowerFeed): Point[] | null
   const siblings = content.feeds.filter((f) => f.rackId === rack.id);
   const slot = siblings.indexOf(feed) - (siblings.length - 1) / 2;
   const to = localToWorld(rack, [slot * Math.min(ENTRY_SPACING_M, rack.w / (siblings.length + 1)), -rack.d / 2]);
+  // Floor-standing sources (UPS, PDU, floor box) run straight across the floor in an L.
+  if (source.type === 'rack' || !WALL_MOUNTED_SOURCES.has(source.type)) return [from, [to[0], from[1]], to];
   const rings = footprintOf(content.survey).map((poly) => poly[0]!).filter((r) => r.length > 3);
   if (rings.length === 0) return [from, to];
   const ring = rings.map((r) => ({ r, at: closestOnRing(r, from) })).sort((x, y) => x.at.distance - y.at.distance)[0]!.r;

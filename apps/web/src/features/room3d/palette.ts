@@ -27,7 +27,7 @@ const FALLBACK: Palette3D = {
   wallFill: '#dfe5ea',
   sky: '#e9eef2',
   category: { compute: '#7fa2e8', storage: '#8fc7b4', network: '#b79af0', power: '#e2b46a', chassis: '#9aa6b2' },
-  object: { existing_rack: '#9aa6b2', door: '#b4a794', mcb: '#e2b46a', furniture: '#e2d8ca' },
+  object: { existing_rack: '#9aa6b2', door: '#b4a794', mcb: '#e2b46a', furniture: '#e2d8ca', wall_plug: '#f4f1ea', industrial_socket: '#2f6fd1', floor_box: '#8b96a1', ups: '#2b333c', pdu: '#3a4554' },
 };
 
 /** Reads the design tokens so 3D colours stay in step with the 2D views. */
@@ -57,6 +57,11 @@ export function readPalette(el: Element = document.documentElement): Palette3D {
       door: v('--desk-edge', FALLBACK.object.door),
       mcb: v('--power', FALLBACK.object.mcb),
       furniture: v('--desk', FALLBACK.object.furniture),
+      wall_plug: FALLBACK.object.wall_plug,
+      industrial_socket: FALLBACK.object.industrial_socket,
+      floor_box: FALLBACK.object.floor_box,
+      ups: FALLBACK.object.ups,
+      pdu: FALLBACK.object.pdu,
     },
   };
 }

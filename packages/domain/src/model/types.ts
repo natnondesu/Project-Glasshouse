@@ -116,7 +116,21 @@ export interface Rack extends ObjectBase {
   reserved: ReservedRange[];
 }
 
-export type SimpleObjectType = 'existing_rack' | 'door' | 'mcb' | 'furniture';
+export type SimpleObjectType = 'existing_rack' | 'door' | 'mcb' | 'furniture' | 'wall_plug' | 'industrial_socket' | 'floor_box' | 'ups' | 'pdu';
+
+export type PanelPhase = 'single' | 'three';
+
+export interface PanelWay {
+  /** Breaker rating in amps. */
+  ratingA: number;
+  label: string;
+}
+
+/** An MCB panel's ways (breaker slots). Absent on the object means the default panel. */
+export interface PanelConfig {
+  phase: PanelPhase;
+  ways: PanelWay[];
+}
 
 export type DoorHinge = 'left' | 'right';
 
@@ -124,6 +138,8 @@ export interface SimpleObject extends ObjectBase {
   type: SimpleObjectType;
   /** Doors only: the end the leaf hangs from, seen from the swing side. Absent means left. */
   hinge?: DoorHinge;
+  /** MCB panels only. */
+  panel?: PanelConfig;
 }
 
 export type RoomObject = Rack | SimpleObject;
@@ -161,6 +177,8 @@ export interface PowerFeed {
   /** The MCB panel it is fed from. */
   sourceId: Id;
   label: string;
+  /** The MCB way (1-based) this feed is wired to; only for MCB sources. */
+  way?: number;
 }
 
 export interface PlanContent {

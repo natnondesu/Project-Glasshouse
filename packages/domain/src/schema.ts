@@ -64,14 +64,17 @@ const rack = z.object({
   devices: z.array(z.discriminatedUnion('kind', [placedDevice, chassis])),
   reserved: z.array(reserved),
 });
-const simpleObject = z.object({ ...objectBase, type: z.enum(['existing_rack', 'door', 'mcb', 'furniture']), hinge: z.enum(['left', 'right']).optional() });
+const simpleObject = z.object({ ...objectBase, type: z.enum(['existing_rack', 'door', 'mcb', 'furniture', 'wall_plug', 'industrial_socket', 'floor_box', 'ups', 'pdu']),
+  hinge: z.enum(['left', 'right']).optional(),
+  panel: z.object({ phase: z.enum(['single', 'three']), ways: z.array(z.object({ ratingA: num, label: z.string() })) }).optional(),
+});
 const unverifiedName = z.object({ name: z.string(), at: z.string() });
 const anchor = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('point'), x: num, y: num }),
   z.object({ kind: z.literal('object'), objectId: id, u: num, v: num }),
 ]);
 const dimension = z.object({ id, a: anchor, b: anchor, offset: num });
-const feed = z.object({ id, rackId: id, sourceId: id, label: z.string() });
+const feed = z.object({ id, rackId: id, sourceId: id, label: z.string(), way: int.positive().optional() });
 const revision = z.object({
   number: int.positive(),
   state: z.enum(['draft', 'in_review', 'approved']),

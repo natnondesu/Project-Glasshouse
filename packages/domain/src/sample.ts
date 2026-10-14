@@ -74,9 +74,9 @@ export function createSampleProject(at: string): Result<Project> {
   const board2 = mcb('MCB-02', 3.6, 0, false);
   plan(serverId, { type: 'object/add', object: board1 });
   plan(serverId, { type: 'object/add', object: board2 });
-  plan(serverId, { type: 'feed/add', feed: { id: newId(), rackId: s1.id, sourceId: board1.id, label: 'Feed A' } });
-  plan(serverId, { type: 'feed/add', feed: { id: newId(), rackId: s1.id, sourceId: board2.id, label: 'Feed B' } });
-  plan(serverId, { type: 'feed/add', feed: { id: newId(), rackId: s2.id, sourceId: board1.id, label: 'Feed A' } });
+  plan(serverId, { type: 'feed/add', feed: { id: newId(), rackId: s1.id, sourceId: board1.id, label: 'Feed A', way: 1 } });
+  plan(serverId, { type: 'feed/add', feed: { id: newId(), rackId: s1.id, sourceId: board2.id, label: 'Feed B', way: 1 } });
+  plan(serverId, { type: 'feed/add', feed: { id: newId(), rackId: s2.id, sourceId: board1.id, label: 'Feed A', way: 2 } });
   review(serverId, { type: 'review/submit', designedBy: 'Ploy', at });
   review(serverId, { type: 'review/approve', reviewer: 'Somchai', at });
 
@@ -101,8 +101,8 @@ export function createSampleProject(at: string): Result<Project> {
   plan(mdfId, { type: 'device/place', id: newId(), rackId: m2.id, bottomU: 3, template: template('tpl-server-1u') });
   const mdfBoard = mcb('MCB-01', 0, 3.6, true);
   plan(mdfId, { type: 'object/add', object: mdfBoard });
-  plan(mdfId, { type: 'feed/add', feed: { id: newId(), rackId: m1.id, sourceId: mdfBoard.id, label: 'Feed A' } });
-  plan(mdfId, { type: 'feed/add', feed: { id: newId(), rackId: m2.id, sourceId: mdfBoard.id, label: 'Feed A' } });
+  plan(mdfId, { type: 'feed/add', feed: { id: newId(), rackId: m1.id, sourceId: mdfBoard.id, label: 'Feed A', way: 1 } });
+  plan(mdfId, { type: 'feed/add', feed: { id: newId(), rackId: m2.id, sourceId: mdfBoard.id, label: 'Feed A', way: 2 } });
   plan(mdfId, {
     type: 'reserved/add',
     rackId: customer.id,
