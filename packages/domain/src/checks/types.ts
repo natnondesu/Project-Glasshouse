@@ -16,7 +16,10 @@ export type IssueCode =
   | 'over_design_limit'
   | 'feed_no_way'
   | 'feed_overload'
-  | 'link_media_mismatch';
+  | 'link_media_mismatch'
+  | 'vlan_access_mismatch'
+  | 'vlan_native_mismatch'
+  | 'vlan_allowed_mismatch';
 
 export interface Issue {
   key: string;

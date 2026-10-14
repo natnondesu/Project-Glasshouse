@@ -119,5 +119,7 @@ describe('Sample Project power feeds', () => {
     expect(Object.values(server.plan.equipmentState)).toEqual(expect.arrayContaining(['deployed', 'maintenance']));
     const mcb = sc.objects.find((o) => o.type === 'mcb' && o.name === 'MCB-01');
     expect(mcb && mcb.type !== 'rack' && mcb.panel?.phase).toBe('three');
+    expect(sc.vlans.map((v) => v.vid)).toEqual([10, 20, 99]);
+    expect(checkPlan(sc)).toEqual([]);
   });
 });

@@ -84,3 +84,28 @@ it('links to a device without ports by creating one as part of the link', async 
   await user.click(within(mgr).getByRole('button', { name: 'Link' }));
   expect(content().links).toMatchObject([{ a: { deviceId: 'sw', port: 'Gi1' }, b: { deviceId: 'bare', port: 'eth0' } }]);
 });
+
+it('sets a port to access or trunk using the room VLANs, and tags the jack', async () => {
+  const user = userEvent.setup();
+  const s = useWorkspaceStore.getState();
+  for (const [vid, name] of [[10, 'Servers'], [99, 'Mgmt']] as const) s.dispatch({ type: 'plan', roomId: 'r', command: { type: 'vlan/add', vlan: { vid, name } } });
+  open('sw');
+  await user.click(screen.getByRole('button', { name: 'Manage ports' }));
+  const mgr = screen.getByRole('dialog', { name: 'SW-01 ports' });
+  const vlan = within(mgr).getByRole('group', { name: 'VLAN' });
+  await user.selectOptions(within(vlan).getByLabelText('Mode'), 'access');
+  expect(content().objects.flatMap((o) => (o.type === 'rack' ? o.devices : [])).find((d) => d.id === 'sw')!.ports![0]!.vlan).toEqual({ mode: 'access', vid: 10 });
+  expect(within(mgr).getByRole('button', { name: /^Port Gi1,/ })).toHaveTextContent('10');
+  await user.selectOptions(within(vlan).getByLabelText('Mode'), 'trunk');
+  await user.click(within(vlan).getByLabelText('All VLANs'));
+  await user.click(within(vlan).getByLabelText('99 · Mgmt'));
+  await user.selectOptions(within(vlan).getByLabelText('Native VLAN'), '10');
+  expect(content().objects.flatMap((o) => (o.type === 'rack' ? o.devices : [])).find((d) => d.id === 'sw')!.ports![0]!.vlan).toEqual({ mode: 'trunk', allowed: [10], native: 10 });
+});
+
+it('points to the Network tab when the room has no VLANs', async () => {
+  const user = userEvent.setup();
+  open('sw');
+  await user.click(screen.getByRole('button', { name: 'Manage ports' }));
+  expect(screen.getByRole('link', { name: 'Add VLANs on the Network tab' })).toHaveAttribute('href', '/rooms/r/network');
+});
