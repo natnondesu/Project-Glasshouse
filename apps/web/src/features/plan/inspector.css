@@ -202,3 +202,13 @@
 .rect-list__kind {
   margin: 2px 0 8px;
 }
+
+/* A source's single input: label above, then source and (for MCBs) way side by side. */
+.feed-list__item.feed-list__item--input {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.feed-list__item--input .feed-list__label {
+  grid-column: 1 / -1;
+  color: var(--ink-2);
+}

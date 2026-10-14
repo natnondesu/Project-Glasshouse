@@ -10,7 +10,7 @@ const FEED_COLORS = ['#1c64c8', '#c77700', '#11795a', '#7a4fc2'];
 export function feedLetter(feed: PowerFeed, content: Pick<PlanContent, 'feeds'>): string {
   const m = /([A-Z])$/.exec(feed.label.trim());
   if (m) return m[1]!;
-  return String(content.feeds.filter((f) => f.rackId === feed.rackId).indexOf(feed) + 1);
+  return String(content.feeds.filter((f) => f.targetId === feed.targetId).indexOf(feed) + 1);
 }
 
 export function feedColor(feed: PowerFeed, content: Pick<PlanContent, 'feeds'>): string {
@@ -54,7 +54,7 @@ export function FeedLayer({ content, view }: { content: PlanContent; view: View 
 export function RackFeeds({ rack, content, commit }: { rack: RoomObject; content: PlanContent; commit: CommitFn }) {
   const [error, setError] = useState<string | null>(null);
   const panels = content.objects.filter(isPowerSource);
-  const feeds = content.feeds.filter((f) => f.rackId === rack.id);
+  const feeds = content.feeds.filter((f) => f.targetId === rack.id);
   const act = (problem: string | null): void => setError(problem);
   return (
     <fieldset className="inspector__group" aria-label="Power feeds">
@@ -95,7 +95,7 @@ export function RackFeeds({ rack, content, commit }: { rack: RoomObject; content
         type="button"
         className="btn btn--sm"
         disabled={panels.length === 0}
-        onClick={() => act(commit({ type: 'feed/add', feed: { id: newId(), rackId: rack.id, sourceId: panels[0]!.id, label: nextFeedLabel(content, rack.id) } }))}
+        onClick={() => act(commit({ type: 'feed/add', feed: { id: newId(), targetId: rack.id, sourceId: panels[0]!.id, label: nextFeedLabel(content, rack.id) } }))}
       >
         <IconPlus />
         Add power feed
@@ -125,29 +125,70 @@ function WayPicker({ feed, content, onPick }: { feed: PowerFeed; content: PlanCo
   );
 }
 
-/** What a power source feeds, read-only: connections are made from the rack. MCB panels also open their ways. */
-export function PanelFeeds({ panel, content, onManage }: { panel: RoomObject; content: PlanContent; onManage?: (id: string) => void }) {
+/** A power source's own input: the one source upstream of it (a UPS fed from an MCB way, a PDU from a UPS…). */
+function SourceInput({ panel, content, commit }: { panel: RoomObject; content: PlanContent; commit: CommitFn }) {
+  const [error, setError] = useState<string | null>(null);
+  const input = content.feeds.find((f) => f.targetId === panel.id);
+  const upstream = content.objects.filter((o) => isPowerSource(o) && o.id !== panel.id);
+  const pick = (sourceId: string): void => {
+    if (!sourceId) setError(input ? commit({ type: 'feed/remove', id: input.id }) : null);
+    else if (input) setError(commit({ type: 'feed/update', id: input.id, patch: { sourceId } }));
+    else setError(commit({ type: 'feed/add', feed: { id: newId(), targetId: panel.id, sourceId, label: nextFeedLabel(content, panel.id) } }));
+  };
+  return (
+    <fieldset className="inspector__group" aria-label="Power input">
+      <legend className="lbl">Power input</legend>
+      <div className="feed-list__item feed-list__item--input">
+        <label className="feed-list__label" htmlFor={`${panel.id}-input`}>
+          Fed from
+        </label>
+        <select id={`${panel.id}-input`} className="feed-list__select" value={input?.sourceId ?? ''} onChange={(e) => pick(e.target.value)}>
+          <option value="">Not connected</option>
+          {upstream.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.name}
+            </option>
+          ))}
+        </select>
+        {input && content.objects.find((o) => o.id === input.sourceId)?.type === 'mcb' ? (
+          <WayPicker feed={input} content={content} onPick={(way) => setError(commit({ type: 'feed/update', id: input.id, patch: { way } }))} />
+        ) : null}
+      </div>
+      {error ? (
+        <p role="alert" className="field__error">
+          {error}
+        </p>
+      ) : null}
+    </fieldset>
+  );
+}
+
+/** What a power source feeds (racks and other sources), and its own input. MCB panels also open their ways. */
+export function PanelFeeds({ panel, content, commit, onManage }: { panel: RoomObject; content: PlanContent; commit: CommitFn; onManage?: (id: string) => void }) {
   const feeds = content.feeds.filter((f) => f.sourceId === panel.id);
   return (
-    <fieldset className="inspector__group">
-      <legend className="lbl">Feeds</legend>
-      {panel.type === 'mcb' && onManage ? (
-        <button type="button" className="btn btn--sm" onClick={() => onManage(panel.id)}>
-          Manage ways
-        </button>
-      ) : null}
-      {feeds.length === 0 ? (
-        <p className="inspector__note">No racks connected. Connect a rack from its own inspector.</p>
-      ) : (
-        <ul className="feed-list" aria-label={`Racks fed from ${panel.name}`}>
-          {feeds.map((f) => (
-            <li key={f.id} className="feed-list__item">
-              <span className="feed-list__swatch" style={{ background: feedColor(f, content) }} aria-hidden="true" />
-              <span>{`${content.objects.find((o) => o.id === f.rackId)?.name ?? 'Removed rack'} · ${f.label}${f.way ? ` · way ${f.way}` : ''}`}</span>
-            </li>
-          ))}
-        </ul>
-      )}
-    </fieldset>
+    <>
+      <SourceInput panel={panel} content={content} commit={commit} />
+      <fieldset className="inspector__group">
+        <legend className="lbl">Feeds out</legend>
+        {panel.type === 'mcb' && onManage ? (
+          <button type="button" className="btn btn--sm" onClick={() => onManage(panel.id)}>
+            Manage ways
+          </button>
+        ) : null}
+        {feeds.length === 0 ? (
+          <p className="inspector__note">Nothing connected. Connect a rack from its inspector, or another source from its Power input.</p>
+        ) : (
+          <ul className="feed-list" aria-label={`Feeds out of ${panel.name}`}>
+            {feeds.map((f) => (
+              <li key={f.id} className="feed-list__item">
+                <span className="feed-list__swatch" style={{ background: feedColor(f, content) }} aria-hidden="true" />
+                <span>{`${content.objects.find((o) => o.id === f.targetId)?.name ?? 'Removed object'} · ${f.label}${f.way ? ` · way ${f.way}` : ''}`}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </fieldset>
+    </>
   );
 }

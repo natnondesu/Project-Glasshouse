@@ -145,7 +145,7 @@ export function ObjectInspector({ object, content, commit, onDeleted, onManagePa
       ) : null}
 
       {rack ? <RackFeeds rack={rack} content={content} commit={commit} /> : null}
-      {isPowerSource(object) ? <PanelFeeds panel={object} content={content} onManage={onManagePanel} /> : null}
+      {isPowerSource(object) ? <PanelFeeds panel={object} content={content} commit={commit} onManage={onManagePanel} /> : null}
 
       <fieldset className="inspector__group">
         <legend className="visually-hidden">Notes</legend>

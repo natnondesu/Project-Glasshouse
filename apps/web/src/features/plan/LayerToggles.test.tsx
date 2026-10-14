@@ -17,7 +17,7 @@ beforeEach(() => {
   const plan = (command: Parameters<typeof s.dispatch>[0] extends infer C ? C : never) => s.dispatch(command);
   plan({ type: 'plan', roomId: 'r', command: { type: 'object/add', object: { ...(createObject('rack', { x: 2, y: 1.5 }, []) as Rack), id: 'rk', name: 'RK-01' } } });
   plan({ type: 'plan', roomId: 'r', command: { type: 'object/add', object: { ...createObject('mcb', { x: 0, y: 1 }, []), id: 'm', angle: 270 } } });
-  plan({ type: 'plan', roomId: 'r', command: { type: 'feed/add', feed: { id: 'f', rackId: 'rk', sourceId: 'm', label: 'Feed A' } } });
+  plan({ type: 'plan', roomId: 'r', command: { type: 'feed/add', feed: { id: 'f', targetId: 'rk', sourceId: 'm', label: 'Feed A' } } });
   plan({ type: 'plan', roomId: 'r', command: { type: 'dimension/add', dimension: { id: 'd', a: { kind: 'point', x: 0, y: 3 }, b: { kind: 'point', x: 2, y: 3 }, offset: 0 } } });
 });
 

@@ -97,7 +97,7 @@ export function BomTable({ rows, revision, titleBlock }: { rows: BomRow[]; revis
               const source = revision.content.objects.find((o) => o.id === f.sourceId);
               const way = source && source.type === 'mcb' && f.way ? panelOf(source).ways[f.way - 1] : undefined;
               const where = way && source && f.way ? ` · way ${f.way} (${wayPhase(panelOf(source), f.way)}, ${way.ratingA} A)` : '';
-              return { f, rack: revision.content.objects.find((o) => o.id === f.rackId)?.name ?? '', panel: `${source?.name ?? ''}${where}` };
+              return { f, rack: revision.content.objects.find((o) => o.id === f.targetId)?.name ?? '', panel: `${source?.name ?? ''}${where}` };
             })
             .sort((a, b) => a.rack.localeCompare(b.rack) || a.f.label.localeCompare(b.f.label))
             .map(({ f, rack, panel }) => (

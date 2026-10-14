@@ -24,7 +24,7 @@ test('open an approved revision from the review history, read-only', async ({ pa
   await expect(page.getByLabel('Width', { exact: true })).toBeEnabled();
 });
 
-test('place a UPS from the Power group, feed a rack from it, and wire an MCB feed to a way', async ({ page }) => {
+test('place a UPS, feed a rack from it, feed the UPS from the MCB, and wire feeds to ways', async ({ page }) => {
   await page.goto('/');
   await page.getByRole('link', { name: /MDF-1/ }).click();
   await expect(page.getByTestId('zoom-value')).not.toHaveText('100 px/m');
@@ -41,6 +41,12 @@ test('place a UPS from the Power group, feed a rack from it, and wire an MCB fee
   await feeds.getByLabel('Feed B source').selectOption({ label: 'UPS-01' });
   await expect(page.locator('.plan-canvas .feed__run')).toHaveCount(3);
 
+  // Chain: the UPS itself is fed from the MCB.
+  await page.getByRole('button', { name: 'UPS-01, UPS' }).focus();
+  await page.getByRole('group', { name: 'Power input' }).getByLabel('Fed from').selectOption({ label: 'MCB-01' });
+  await expect(page.locator('.plan-canvas .feed__run')).toHaveCount(4);
+  await expect(page.getByRole('list', { name: 'Feeds out of UPS-01' })).toHaveText(/RK-01 · Feed B/);
+
   // The MCB manager: double-click the panel, move RK-02's feed to way 5.
   const mcb = await page.locator('.obj--mcb .obj__body').boundingBox();
   if (!mcb) throw new Error('no mcb');
@@ -50,5 +56,6 @@ test('place a UPS from the Power group, feed a rack from it, and wire an MCB fee
   await manager.getByLabel('Way 2 feed').selectOption('');
   await manager.getByLabel('Way 5 feed').selectOption({ label: 'RK-02 · Feed A' });
   await expect(manager.getByLabel('Way 5 feed')).not.toHaveValue('');
+  await manager.getByLabel('Way 6 feed').selectOption({ label: 'UPS-01 · Feed A' });
   await expect(manager.getByText('Every feed from this panel is on a way.')).toBeVisible();
 });

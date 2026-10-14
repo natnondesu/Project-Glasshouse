@@ -13,7 +13,7 @@ function content(withFeeds = true): PlanContent {
   return {
     ...emptyContent(),
     objects: [mcb('m1', 'MCB-01', 1), mcb('m2', 'MCB-02', 2.5), rack],
-    feeds: withFeeds ? [{ id: 'f1', rackId: 'rk', sourceId: 'm1', label: 'Feed A' }, { id: 'f2', rackId: 'rk', sourceId: 'm2', label: 'Feed B' }] : [],
+    feeds: withFeeds ? [{ id: 'f1', targetId: 'rk', sourceId: 'm1', label: 'Feed A' }, { id: 'f2', targetId: 'rk', sourceId: 'm2', label: 'Feed B' }] : [],
   };
 }
 
@@ -41,7 +41,7 @@ it('adds, re-sources and removes a rack’s power feeds from its inspector', asy
   await user.click(within(feeds).getByRole('button', { name: 'Remove Feed B' }));
   expect(commit).toHaveBeenLastCalledWith({ type: 'feed/remove', id: 'f2' });
   await user.click(within(feeds).getByRole('button', { name: 'Add power feed' }));
-  expect(commit.mock.lastCall?.[0]).toMatchObject({ type: 'feed/add', feed: { rackId: 'rk', sourceId: 'm1', label: 'Feed C' } });
+  expect(commit.mock.lastCall?.[0]).toMatchObject({ type: 'feed/add', feed: { targetId: 'rk', sourceId: 'm1', label: 'Feed C' } });
 });
 
 it('asks for a power source before a feed can be added, and lists what a panel feeds', () => {
@@ -52,13 +52,13 @@ it('asks for a power source before a feed can be added, and lists what a panel f
   unmount();
   const c = content();
   render(<Inspector content={c} selected={c.objects[0]!} commit={() => null} onDeleted={() => {}} />);
-  expect(screen.getByRole('list', { name: 'Racks fed from MCB-01' })).toHaveTextContent('RK-01 · Feed A');
+  expect(screen.getByRole('list', { name: 'Feeds out of MCB-01' })).toHaveTextContent('RK-01 · Feed A');
 });
 
 it('picks the MCB way for a feed from the rack, and opens the panel manager from the panel', async () => {
   const user = userEvent.setup();
   const commit = vi.fn<(command: unknown, coalesceKey?: string) => string | null>(() => null);
-  const c: PlanContent = { ...content(), feeds: [{ id: 'f1', rackId: 'rk', sourceId: 'm1', label: 'Feed A', way: 2 }] };
+  const c: PlanContent = { ...content(), feeds: [{ id: 'f1', targetId: 'rk', sourceId: 'm1', label: 'Feed A', way: 2 }] };
   const { unmount } = render(<Inspector content={c} selected={rack} commit={commit} onDeleted={() => {}} />);
   expect(screen.getByLabelText('Feed A way')).toHaveValue('2');
   await user.selectOptions(screen.getByLabelText('Feed A way'), '5');
@@ -68,4 +68,33 @@ it('picks the MCB way for a feed from the rack, and opens the panel manager from
   render(<Inspector content={c} selected={c.objects[0]!} commit={commit} onDeleted={() => {}} onManagePanel={onManagePanel} />);
   await user.click(screen.getByRole('button', { name: 'Manage ways' }));
   expect(onManagePanel).toHaveBeenCalledWith('m1');
+});
+
+it('feeds a power source from another one, and lists what each source powers', async () => {
+  const user = userEvent.setup();
+  const commit = vi.fn<(command: unknown, coalesceKey?: string) => string | null>(() => null);
+  const ups: RoomObject = { ...createObject('ups', { x: 3, y: 3 }, []), id: 'u1', name: 'UPS-01' };
+  const c: PlanContent = { ...content(false), objects: [...content(false).objects, ups], feeds: [{ id: 'f1', targetId: 'rk', sourceId: 'u1', label: 'Feed A' }] };
+  render(<Inspector content={c} selected={ups} commit={commit} onDeleted={() => {}} />);
+  const input = screen.getByRole('group', { name: 'Power input' });
+  expect(within(input).getByLabelText('Fed from')).toHaveValue('');
+  // A source can't feed itself, so UPS-01 isn't offered.
+  expect(within(within(input).getByLabelText('Fed from')).queryByRole('option', { name: 'UPS-01' })).toBeNull();
+  await user.selectOptions(within(input).getByLabelText('Fed from'), 'm1');
+  expect(commit).toHaveBeenLastCalledWith({ type: 'feed/add', feed: expect.objectContaining({ targetId: 'u1', sourceId: 'm1', label: 'Feed A' }) });
+  expect(screen.getByRole('list', { name: 'Feeds out of UPS-01' })).toHaveTextContent('RK-01 · Feed A');
+});
+
+it('re-sources or disconnects an existing input', async () => {
+  const user = userEvent.setup();
+  const commit = vi.fn<(command: unknown, coalesceKey?: string) => string | null>(() => null);
+  const ups: RoomObject = { ...createObject('ups', { x: 3, y: 3 }, []), id: 'u1', name: 'UPS-01' };
+  const c: PlanContent = { ...content(false), objects: [...content(false).objects, ups], feeds: [{ id: 'in', targetId: 'u1', sourceId: 'm1', label: 'Feed A' }] };
+  render(<Inspector content={c} selected={ups} commit={commit} onDeleted={() => {}} />);
+  const input = screen.getByRole('group', { name: 'Power input' });
+  expect(within(input).getByLabelText('Fed from')).toHaveValue('m1');
+  await user.selectOptions(within(input).getByLabelText('Fed from'), 'm2');
+  expect(commit).toHaveBeenLastCalledWith({ type: 'feed/update', id: 'in', patch: { sourceId: 'm2' } });
+  await user.selectOptions(within(input).getByLabelText('Fed from'), '');
+  expect(commit).toHaveBeenLastCalledWith({ type: 'feed/remove', id: 'in' });
 });

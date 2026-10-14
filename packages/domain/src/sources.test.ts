@@ -30,7 +30,7 @@ describe('power source types', () => {
 
   it('feeds a rack from any source; floor-standing sources run straight across the floor', () => {
     const ups: RoomObject = { ...createObject('ups', { x: 4, y: 3 }, []), id: 'ups', name: 'UPS-01' };
-    const c = run({ ...emptyContent(), objects: [] }, { type: 'object/add', object: rack() }, { type: 'object/add', object: ups }, { type: 'feed/add', feed: { id: 'f', rackId: 'rk', sourceId: 'ups', label: 'Feed A' } });
+    const c = run({ ...emptyContent(), objects: [] }, { type: 'object/add', object: rack() }, { type: 'object/add', object: ups }, { type: 'feed/add', feed: { id: 'f', targetId: 'rk', sourceId: 'ups', label: 'Feed A' } });
     const route = feedRoute(c, c.feeds[0]!)!;
     const r = c.objects[0] as Rack;
     expect(route).toEqual([centerOf(ups), [localToWorld(r, [0, -r.d / 2])[0], centerOf(ups)[1]], localToWorld(r, [0, -r.d / 2])]);
@@ -45,7 +45,7 @@ describe('power source types', () => {
 });
 
 describe('MCB panel ways', () => {
-  const base = () => run(emptyContent(), { type: 'object/add', object: rack() }, { type: 'object/add', object: mcb() }, { type: 'feed/add', feed: { id: 'f', rackId: 'rk', sourceId: 'mcb', label: 'Feed A' } });
+  const base = () => run(emptyContent(), { type: 'object/add', object: rack() }, { type: 'object/add', object: mcb() }, { type: 'feed/add', feed: { id: 'f', targetId: 'rk', sourceId: 'mcb', label: 'Feed A' } });
 
   it('starts as a three-phase, 12-way panel at 16 A with phases rotating L1–L3', () => {
     const panel = panelOf(base().objects.find((o) => o.id === 'mcb')!);
@@ -59,7 +59,7 @@ describe('MCB panel ways', () => {
   it('assigns a feed to one way only, and only on its own MCB', () => {
     let c = run(base(), { type: 'feed/update', id: 'f', patch: { way: 3 } });
     expect(c.feeds[0]!.way).toBe(3);
-    c = run(c, { type: 'feed/add', feed: { id: 'g', rackId: 'rk', sourceId: 'mcb', label: 'Feed B' } });
+    c = run(c, { type: 'feed/add', feed: { id: 'g', targetId: 'rk', sourceId: 'mcb', label: 'Feed B' } });
     expect(applyPlanCommand(c, { type: 'feed/update', id: 'g', patch: { way: 3 } })).toMatchObject({ ok: false, error: { message: 'Way 3 on MCB-01 already has Feed A of RK-01.' } });
     expect(applyPlanCommand(c, { type: 'feed/update', id: 'g', patch: { way: 13 } })).toMatchObject({ ok: false, error: { message: 'MCB-01 has ways 1 to 12.' } });
     c = run(c, { type: 'feed/update', id: 'f', patch: { way: null } });

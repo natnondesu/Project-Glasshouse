@@ -1,8 +1,8 @@
 import { footprintOf } from './footprint';
 import { centerOf, localToWorld, type Point, type Ring } from './geometry/polygon';
-import type { Id, PlanContent, PowerFeed } from './model/types';
+import type { Id, PlanContent, PowerFeed, RoomObject } from './model/types';
 import { err, ok, type Result } from './result';
-import { isPowerSource, panelOf, WALL_MOUNTED_SOURCES } from './sources';
+import { isPowerSource, panelOf, rackCurrentA, WALL_MOUNTED_SOURCES } from './sources';
 import { closestOnRing, insetVertex, inward, type OnRing } from './walls';
 
 export const MAX_FEEDS_PER_RACK = 8;
@@ -13,8 +13,8 @@ const LANE_M = 0.07;
 const LANES = 5;
 const ENTRY_SPACING_M = 0.15;
 
-export function nextFeedLabel(content: PlanContent, rackId: Id): string {
-  const used = new Set(content.feeds.filter((f) => f.rackId === rackId).map((f) => f.label));
+export function nextFeedLabel(content: PlanContent, targetId: Id): string {
+  const used = new Set(content.feeds.filter((f) => f.targetId === targetId).map((f) => f.label));
   for (let i = 0; i < 26; i += 1) {
     const label = `Feed ${String.fromCharCode(65 + i)}`;
     if (!used.has(label)) return label;
@@ -22,18 +22,70 @@ export function nextFeedLabel(content: PlanContent, rackId: Id): string {
   return `Feed ${used.size + 1}`;
 }
 
-export const usesFeedObject = (feed: PowerFeed, objectId: Id): boolean => feed.rackId === objectId || feed.sourceId === objectId;
+export const usesFeedObject = (feed: PowerFeed, objectId: Id): boolean => feed.targetId === objectId || feed.sourceId === objectId;
 
 export type FeedCommand =
   | { type: 'feed/add'; feed: PowerFeed }
   | { type: 'feed/update'; id: Id; patch: { label?: string; sourceId?: Id; way?: number | null } }
   | { type: 'feed/remove'; id: Id };
 
+/** Everything powering `id`, nearest first: its sources, their sources, and so on. `skipFeedId` ignores one feed (the one being edited). */
+function upstreamIds(content: PlanContent, id: Id, skipFeedId?: Id): Id[] {
+  const out: Id[] = [];
+  const queue = [id];
+  while (queue.length > 0) {
+    const cur = queue.shift()!;
+    for (const f of content.feeds) {
+      if (f.id === skipFeedId || f.targetId !== cur || out.includes(f.sourceId)) continue;
+      out.push(f.sourceId);
+      queue.push(f.sourceId);
+    }
+  }
+  return out;
+}
+
+export const upstreamOf = (content: PlanContent, id: Id): RoomObject[] =>
+  upstreamIds(content, id).flatMap((sid) => content.objects.filter((o) => o.id === sid));
+
+/**
+ * Current drawn through a power source: every rack it ultimately powers, each counted once.
+ * Like a rack feed, it assumes the source may have to carry those racks alone.
+ */
+export function loadA(content: PlanContent, sourceId: Id): number {
+  const racks = new Set<Id>();
+  const seen = new Set<Id>([sourceId]);
+  const queue = [sourceId];
+  while (queue.length > 0) {
+    const cur = queue.shift()!;
+    for (const f of content.feeds) {
+      if (f.sourceId !== cur) continue;
+      const target = content.objects.find((o) => o.id === f.targetId);
+      if (target?.type === 'rack') racks.add(target.id);
+      else if (target && !seen.has(target.id)) {
+        seen.add(target.id);
+        queue.push(target.id);
+      }
+    }
+  }
+  return content.objects.filter((o) => racks.has(o.id)).reduce((sum, r) => sum + rackCurrentA(r), 0);
+}
+
 function validate(content: PlanContent, feed: PowerFeed): Result<PowerFeed> {
-  const rack = content.objects.find((o) => o.id === feed.rackId);
+  const target = content.objects.find((o) => o.id === feed.targetId);
   const source = content.objects.find((o) => o.id === feed.sourceId);
-  if (!rack || !source) return err('not_found', 'That object no longer exists.', [feed.rackId, feed.sourceId]);
-  if (rack.type !== 'rack' || !isPowerSource(source)) return err('invalid_value', 'Power feeds run from a power source to a rack.', [feed.rackId, feed.sourceId]);
+  if (!target || !source) return err('not_found', 'That object no longer exists.', [feed.targetId, feed.sourceId]);
+  if (!isPowerSource(source) || !(target.type === 'rack' || isPowerSource(target))) {
+    return err('invalid_value', 'Power feeds run from a power source to a rack or another power source.', [feed.targetId, feed.sourceId]);
+  }
+  if (target.id === source.id) return err('invalid_value', "A power source can't feed itself.", [feed.id]);
+  if (target.type !== 'rack') {
+    // Sources form a tree: one input each, and never a loop.
+    const input = content.feeds.find((f) => f.id !== feed.id && f.targetId === target.id);
+    if (input) return err('invalid_value', `${target.name} is already fed from ${content.objects.find((o) => o.id === input.sourceId)?.name ?? 'another source'}.`, [feed.id]);
+    if (upstreamIds(content, source.id, feed.id).includes(target.id)) {
+      return err('invalid_value', `That would loop power back into ${source.name}: ${target.name} already feeds it.`, [feed.id]);
+    }
+  }
   const label = feed.label.trim();
   if (label.length === 0 || label.length > LABEL_MAX) return err('invalid_value', `Feed names are 1 to ${LABEL_MAX} characters.`, [feed.id]);
   if (feed.way !== undefined) {
@@ -42,7 +94,7 @@ function validate(content: PlanContent, feed: PowerFeed): Result<PowerFeed> {
     if (!Number.isInteger(feed.way) || feed.way < 1 || feed.way > ways) return err('invalid_value', `${source.name} has ways 1 to ${ways}.`, [feed.id]);
     const taken = content.feeds.find((f) => f.id !== feed.id && f.sourceId === source.id && f.way === feed.way);
     if (taken) {
-      const owner = content.objects.find((o) => o.id === taken.rackId)?.name ?? 'a removed rack';
+      const owner = content.objects.find((o) => o.id === taken.targetId)?.name ?? 'a removed object';
       return err('invalid_value', `Way ${feed.way} on ${source.name} already has ${taken.label} of ${owner}.`, [feed.id]);
     }
   }
@@ -53,8 +105,8 @@ export function applyFeedCommand(content: PlanContent, cmd: FeedCommand): Result
   switch (cmd.type) {
     case 'feed/add': {
       if (content.feeds.some((f) => f.id === cmd.feed.id)) return err('invalid_value', 'That ID is already in use.', [cmd.feed.id]);
-      if (content.feeds.filter((f) => f.rackId === cmd.feed.rackId).length >= MAX_FEEDS_PER_RACK) {
-        return err('invalid_value', `A rack can have up to ${MAX_FEEDS_PER_RACK} power feeds.`, [cmd.feed.rackId]);
+      if (content.feeds.filter((f) => f.targetId === cmd.feed.targetId).length >= MAX_FEEDS_PER_RACK) {
+        return err('invalid_value', `A rack can have up to ${MAX_FEEDS_PER_RACK} power feeds.`, [cmd.feed.targetId]);
       }
       const valid = validate(content, cmd.feed);
       return valid.ok ? ok({ ...content, feeds: [...content.feeds, valid.value] }) : valid;
@@ -99,13 +151,13 @@ function walk(n: number, from: number, to: number, step: 1 | -1): number[] {
  */
 export function feedRoute(content: PlanContent, feed: PowerFeed): Point[] | null {
   const source = content.objects.find((o) => o.id === feed.sourceId);
-  const rack = content.objects.find((o) => o.id === feed.rackId);
-  if (!source || !rack) return null;
+  const target = content.objects.find((o) => o.id === feed.targetId);
+  if (!source || !target) return null;
   const from = centerOf(source);
-  // Several feeds enter the rear side by side, like separate cable entries.
-  const siblings = content.feeds.filter((f) => f.rackId === rack.id);
+  // Several feeds enter a rack's rear side by side, like separate cable entries; a source takes its one input at its centre.
+  const siblings = content.feeds.filter((f) => f.targetId === target.id);
   const slot = siblings.indexOf(feed) - (siblings.length - 1) / 2;
-  const to = localToWorld(rack, [slot * Math.min(ENTRY_SPACING_M, rack.w / (siblings.length + 1)), -rack.d / 2]);
+  const to = target.type === 'rack' ? localToWorld(target, [slot * Math.min(ENTRY_SPACING_M, target.w / (siblings.length + 1)), -target.d / 2]) : centerOf(target);
   // Floor-standing sources (UPS, PDU, floor box) run straight across the floor in an L.
   if (source.type === 'rack' || !WALL_MOUNTED_SOURCES.has(source.type)) return [from, [to[0], from[1]], to];
   const rings = footprintOf(content.survey).map((poly) => poly[0]!).filter((r) => r.length > 3);
