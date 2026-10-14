@@ -1,5 +1,6 @@
 import type { Revision, RoomLocation } from '@glasshouse/domain';
-import { pad2, STATE_LABEL } from '../../ui/StatusStamp';
+import { pad2 } from '../../ui/StatusStamp';
+import { useT } from '../../i18n';
 import { formatTime } from '../../ui/time';
 
 interface SheetTitleBlockProps {
@@ -9,30 +10,30 @@ interface SheetTitleBlockProps {
   section: string;
 }
 
-const unverified = (n: { name: string } | null): string => (n ? `${n.name} (unverified)` : 'not recorded');
-
 export function SheetTitleBlock({ location, revision, printedAt, section }: SheetTitleBlockProps) {
+  const m = useT();
+  const unverified = (n: { name: string } | null): string => (n ? m.sheet.unverified(n.name) : m.sheet.notRecorded);
   return (
     <header className="sheet-title">
       <div className="sheet-title__main">
-        <span className="sheet-title__kicker">Install sheet · {section}</span>
+        <span className="sheet-title__kicker">{m.sheet.kicker(section)}</span>
         <strong>{`${location.project.name} / ${location.site.name} / ${location.room.name}`}</strong>
       </div>
       <dl className="sheet-title__cells">
         <div>
-          <dt>Revision</dt>
-          <dd className="mono">{`R${pad2(revision.number)} ${STATE_LABEL[revision.state]}`}</dd>
+          <dt>{m.sheet.revision}</dt>
+          <dd className="mono">{`R${pad2(revision.number)} ${m.revision.stamp[revision.state]}`}</dd>
         </div>
         <div>
-          <dt>People</dt>
-          <dd>{`Designed by ${unverified(revision.designedBy)} · Approved by ${unverified(revision.approvedBy)}`}</dd>
+          <dt>{m.sheet.people}</dt>
+          <dd>{m.sheet.peopleLine(unverified(revision.designedBy), unverified(revision.approvedBy))}</dd>
         </div>
         <div>
-          <dt>Approved</dt>
+          <dt>{m.sheet.approved}</dt>
           <dd>{formatTime(revision.approvedAt)}</dd>
         </div>
         <div>
-          <dt>Printed</dt>
+          <dt>{m.sheet.printed}</dt>
           <dd className="sheet-title__printed">{formatTime(printedAt)}</dd>
         </div>
       </dl>

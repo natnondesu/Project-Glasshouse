@@ -1,6 +1,8 @@
 import { currentRevision, exportProjectFile } from '@glasshouse/domain';
 import { useState, type ReactNode } from 'react';
 import { Link } from 'react-router';
+import { LanguageSwitch } from '../i18n/LanguageSwitch';
+import { useT } from '../i18n';
 import { useRoomLocation, useViewedRevisionNumber } from '../store/hooks';
 import { useWorkspaceStore, type SaveState } from '../store/workspaceStore';
 import { downloadJson, slugify } from '../ui/files';
@@ -19,17 +21,18 @@ function Cell({ label, children, mono = false }: { label: string; children: Reac
 const time = (d: Date): string => d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
 function SaveStatus({ save }: { save: SaveState }) {
+  const m = useT();
   switch (save.kind) {
     case 'idle':
-      return <span className="save-status">Stored in this browser</span>;
+      return <span className="save-status">{m.shell.saveIdle}</span>;
     case 'saving':
-      return <span className="save-status">Saving…</span>;
+      return <span className="save-status">{m.shell.saving}</span>;
     case 'saved':
-      return <span className="save-status">Saved in this browser · {time(save.at)}</span>;
+      return <span className="save-status">{m.shell.saved(time(save.at))}</span>;
     case 'failed':
       return (
         <span className="save-status save-status--failed" role="alert">
-          Couldn't save: {save.reason}
+          {m.shell.saveFailed(save.reason)}
         </span>
       );
   }
@@ -43,6 +46,7 @@ export function TitleBlock({ roomId }: { roomId: string | null }) {
   const revision = viewed ?? (location ? currentRevision(location.room.plan) : null);
   const workspace = useWorkspaceStore((s) => s.workspace);
   const [exportError, setExportError] = useState<string | null>(null);
+  const m = useT();
   const exportProject = (): void => {
     if (!location) return;
     const file = exportProjectFile(workspace, location.project.id, new Date().toISOString());
@@ -60,22 +64,22 @@ export function TitleBlock({ roomId }: { roomId: string | null }) {
         <span>Glasshouse</span>
       </Link>
       <dl className="title-block__cells">
-        <Cell label="Project">
+        <Cell label={m.shell.project}>
           {location?.project.name ?? '—'}
-          {location?.project.isSample ? <span className="stamp">SAMPLE</span> : null}
+          {location?.project.isSample ? <span className="stamp">{m.common.sample}</span> : null}
         </Cell>
-        <Cell label="Site">{location?.site.name ?? '—'}</Cell>
-        <Cell label="Room">{location?.room.name ?? '—'}</Cell>
-        <Cell label="Rev" mono>
+        <Cell label={m.shell.site}>{location?.site.name ?? '—'}</Cell>
+        <Cell label={m.shell.room}>{location?.room.name ?? '—'}</Cell>
+        <Cell label={m.shell.rev} mono>
           {revision ? pad2(revision.number) : '—'}
         </Cell>
-        <Cell label="Status">{revision ? <StatusStamp state={revision.state} /> : '—'}</Cell>
+        <Cell label={m.shell.status}>{revision ? <StatusStamp state={revision.state} /> : '—'}</Cell>
       </dl>
       <div className="title-block__actions">
         {location ? (
           <button type="button" className="btn btn--sm" onClick={exportProject}>
             <IconDownload />
-            Export project file
+            {m.shell.exportProject}
           </button>
         ) : null}
         {exportError ? (
@@ -84,6 +88,7 @@ export function TitleBlock({ roomId }: { roomId: string | null }) {
           </span>
         ) : null}
         <SaveStatus save={save} />
+        <LanguageSwitch />
       </div>
     </header>
   );

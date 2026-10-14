@@ -6,7 +6,8 @@ import { readJsonFile } from '../../ui/files';
 import { usePersistentState } from '../../ui/usePersistentState';
 import { IconChevronLeft, IconPlus, IconUpload } from '../../ui/icons';
 import { ImportDialog } from '../handoff/ImportDialog';
-import { pad2, STATE_LABEL } from '../../ui/StatusStamp';
+import { pad2 } from '../../ui/StatusStamp';
+import { useT } from '../../i18n';
 import { BackupPanel } from './BackupPanel';
 import { TreeRow } from './TreeRow';
 import './tree.css';
@@ -16,6 +17,7 @@ export function ProjectTree({ activeRoomId, onCollapse }: { activeRoomId: string
   const templateCount = useWorkspaceStore((s) => s.workspace.catalog.length);
   const dispatch = useWorkspaceStore((s) => s.dispatch);
   const navigate = useNavigate();
+  const m = useT();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
@@ -58,22 +60,22 @@ export function ProjectTree({ activeRoomId, onCollapse }: { activeRoomId: string
 
   const addProject = (): void => {
     const id = newId();
-    if (run({ type: 'project/create', id, name: 'Untitled project' })) setEditingId(id);
+    if (run({ type: 'project/create', id, name: m.tree.untitledProject })) setEditingId(id);
   };
 
   return (
-    <aside className="tree glass" aria-label="Projects">
+    <aside className="tree glass" aria-label={m.tree.title}>
       <div className="tree__head">
-        <h2>Projects</h2>
+        <h2>{m.tree.title}</h2>
         <span className="tree__head-actions">
-          <button type="button" className="icon-btn" aria-label="Import project file" title="Import project file" onClick={() => fileInput.current?.click()}>
+          <button type="button" className="icon-btn" aria-label={m.tree.importFile} title={m.tree.importFile} onClick={() => fileInput.current?.click()}>
             <IconUpload />
           </button>
-          <button type="button" className="icon-btn" aria-label="New project" title="New project" onClick={addProject}>
+          <button type="button" className="icon-btn" aria-label={m.tree.newProject} title={m.tree.newProject} onClick={addProject}>
             <IconPlus />
           </button>
           {onCollapse ? (
-            <button type="button" className="icon-btn" aria-label="Hide projects" aria-expanded title="Hide projects" onClick={onCollapse}>
+            <button type="button" className="icon-btn" aria-label={m.tree.hide} aria-expanded title={m.tree.hide} onClick={onCollapse}>
               <IconChevronLeft />
             </button>
           ) : null}
@@ -83,14 +85,14 @@ export function ProjectTree({ activeRoomId, onCollapse }: { activeRoomId: string
           type="file"
           accept=".json,application/json"
           hidden
-          aria-label="Choose a project file"
+          aria-label={m.tree.chooseFile}
           onChange={(e) => {
             void onImportFile(e.target.files?.[0]);
             e.target.value = '';
           }}
         />
       </div>
-      {projects.length === 0 ? <p className="tree__empty">No projects yet.</p> : null}
+      {projects.length === 0 ? <p className="tree__empty">{m.tree.empty}</p> : null}
       <ul className="tree__list">
         {projects.map((project) => (
           <TreeRow
@@ -99,19 +101,19 @@ export function ProjectTree({ activeRoomId, onCollapse }: { activeRoomId: string
             label={project.name}
             expanded={isOpen(project.id)}
             onToggle={() => toggle(project.id)}
-            badge={project.isSample ? <span className="stamp stamp--sample">SAMPLE</span> : undefined}
+            badge={project.isSample ? <span className="stamp stamp--sample">{m.common.sample}</span> : undefined}
             {...editing(project.id)}
             onRename={(name) => rename({ type: 'project/rename', projectId: project.id, name })}
             onAdd={() => {
               const id = newId();
-              if (run({ type: 'site/create', projectId: project.id, id, name: 'New site' })) setEditingId(id);
+              if (run({ type: 'site/create', projectId: project.id, id, name: m.tree.newSite })) setEditingId(id);
             }}
-            addLabel={`Add site to ${project.name}`}
+            addLabel={m.tree.addSite(project.name)}
             onDelete={() => {
               const hadActive = project.sites.some((s) => s.rooms.some((r) => r.id === activeRoomId));
               if (run({ type: 'project/delete', projectId: project.id }) && hadActive) navigate('/');
             }}
-            deleteWarning={`Delete ${project.name} and all its sites and rooms?`}
+            deleteWarning={m.tree.deleteProject(project.name)}
           >
             {project.sites.length > 0 ? (
               <ul className="tree__list">
@@ -126,17 +128,17 @@ export function ProjectTree({ activeRoomId, onCollapse }: { activeRoomId: string
                     onRename={(name) => rename({ type: 'site/rename', siteId: site.id, name })}
                     onAdd={() => {
                       const id = newId();
-                      if (run({ type: 'room/create', siteId: site.id, id, name: 'New room' })) {
+                      if (run({ type: 'room/create', siteId: site.id, id, name: m.tree.newRoom })) {
                         setEditingId(id);
                         navigate(`/rooms/${id}/plan`);
                       }
                     }}
-                    addLabel={`Add room to ${site.name}`}
+                    addLabel={m.tree.addRoom(site.name)}
                     onDelete={() => {
                       const hadActive = site.rooms.some((r) => r.id === activeRoomId);
                       if (run({ type: 'site/delete', siteId: site.id }) && hadActive) navigate('/');
                     }}
-                    deleteWarning={`Delete ${site.name} and its rooms?`}
+                    deleteWarning={m.tree.deleteSite(site.name)}
                   >
                     {site.rooms.length > 0 ? (
                       <ul className="tree__list">
@@ -149,13 +151,13 @@ export function ProjectTree({ activeRoomId, onCollapse }: { activeRoomId: string
                               label={room.name}
                               to={`/rooms/${room.id}/plan`}
                               active={room.id === activeRoomId}
-                              badge={<span className={`stamp stamp--${revision.state}`}>{`R${pad2(revision.number)} ${STATE_LABEL[revision.state]}`}</span>}
+                              badge={<span className={`stamp stamp--${revision.state}`}>{`R${pad2(revision.number)} ${m.revision.stamp[revision.state]}`}</span>}
                               {...editing(room.id)}
                               onRename={(name) => rename({ type: 'room/rename', roomId: room.id, name })}
                               onDelete={() => {
                                 if (run({ type: 'room/delete', roomId: room.id }) && room.id === activeRoomId) navigate('/');
                               }}
-                              deleteWarning={`Delete ${room.name} and its plan?`}
+                              deleteWarning={m.tree.deleteRoom(room.name)}
                             />
                           );
                         })}
@@ -175,13 +177,13 @@ export function ProjectTree({ activeRoomId, onCollapse }: { activeRoomId: string
       ) : null}
       {projects.some((p) => p.isSample) ? null : (
         <button type="button" className="btn btn--sm btn--quiet tree__sample" onClick={() => run({ type: 'sample/load', at: new Date().toISOString() })}>
-          Load sample project
+          {m.tree.loadSample}
         </button>
       )}
       {importing ? <ImportDialog file={importing} onClose={() => setImporting(null)} /> : null}
       <BackupPanel />
       <Link to="/catalog" className="tree__catalog">
-        Device catalog · {templateCount} {templateCount === 1 ? 'template' : 'templates'}
+        {m.tree.catalog(templateCount)}
       </Link>
     </aside>
   );

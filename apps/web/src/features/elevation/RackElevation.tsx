@@ -1,7 +1,8 @@
-import { EQUIPMENT_STATE_LABEL, formatDemand, formatURange, type EquipmentState, rackPower, topU, usedU, type Chassis, type Rack, type RackDevice, type ReservedRange } from '@glasshouse/domain';
+import { formatDemand, formatURange, type EquipmentState, rackPower, topU, usedU, type Chassis, type Rack, type RackDevice, type ReservedRange } from '@glasshouse/domain';
 import type { DragEvent, KeyboardEvent, PointerEvent } from 'react';
 import { TEMPLATE_MIME } from './dnd';
 import { STATE_SYMBOL } from './EquipmentStateControl';
+import { useT } from '../../i18n';
 import type { DropPreview, RackHit } from './deviceDrag';
 import './elevation.css';
 import '../search/search.css';
@@ -47,6 +48,7 @@ interface RackElevationProps {
 const categoryOf = (d: RackDevice): string => (d.kind === 'chassis' ? 'chassis' : d.category);
 
 function ChassisSlots({ chassis, y, onSelect, stateOf }: { chassis: Chassis; y: number; onSelect: ((id: string) => void) | null; stateOf: (id: string) => EquipmentState }) {
+  const m = useT();
   const left = 66;
   const right = RACK_W - 12;
   const top = y + 5;
@@ -78,7 +80,7 @@ function ChassisSlots({ chassis, y, onSelect, stateOf }: { chassis: Chassis; y: 
             }
           >
             <rect x={x} y={cy} width={w} height={h} rx={2} className={cls}>
-              <title>{node ? `Slot ${slot}: ${node.name}` : `Slot ${slot}: empty`}</title>
+              <title>{m.elevation.slotTitle(slot, node ? node.name : null)}</title>
             </rect>
             <text x={x + w / 2} y={cy + h / 2 + 4} textAnchor="middle" className="slot-cell__n">
               {node && node.demand.kind === 'unknown' ? '?' : slot}
@@ -96,6 +98,7 @@ function control(isStatic: boolean, label: string, selected: boolean, onClick: (
 }
 
 function DeviceBlock(props: { device: RackDevice; y: number; selected: boolean; flagged: boolean; onSelect: (id: string) => void; onKey: (e: KeyboardEvent) => void; isStatic: boolean; pulse: boolean; state: EquipmentState; stateOf: (id: string) => EquipmentState; dragSource: boolean; onDragStart?: (e: PointerEvent) => void }) {
+  const m = useT();
   const { device, y, selected, flagged, onSelect, onKey, isStatic, pulse, state, stateOf, dragSource, onDragStart } = props;
   const h = device.heightU * U_PX;
   const textY = y + Math.min(h, 32) / 2 + 4;
@@ -107,7 +110,7 @@ function DeviceBlock(props: { device: RackDevice; y: number; selected: boolean; 
       onPointerDown={onDragStart}
       {...control(isStatic, `${device.name}, ${formatURange(device)}`, selected, () => onSelect(device.id), onKey)}
     >
-      <title>{`${device.name}, ${formatURange(device)} · ${EQUIPMENT_STATE_LABEL[state]}`}</title>
+      <title>{`${device.name}, ${formatURange(device)} · ${m.equipment.state[state]}`}</title>
       <rect x={4} y={y + 1} width={RACK_W - 8} height={h - 2} rx={3} className="dev__body" />
       <text x={STATE_X} y={textY} className="dev__state" textAnchor="middle">
         {STATE_SYMBOL[state]}
@@ -127,18 +130,19 @@ function DeviceBlock(props: { device: RackDevice; y: number; selected: boolean; 
 }
 
 function ReservedBlock(props: { range: ReservedRange; y: number; patternId: string; selected: boolean; onSelect: (id: string) => void; onKey: (e: KeyboardEvent) => void; isStatic: boolean; pulse: boolean }) {
+  const m = useT();
   const { range, y, patternId, selected, onSelect, onKey, isStatic, pulse } = props;
   const h = range.heightU * U_PX;
   const midY = y + h / 2;
   return (
-    <g className={`rsv${selected ? ' is-selected' : ''}${pulse ? ' is-search-pulse' : ''}`} data-elev-id={range.id} {...control(isStatic, `Reserved range ${formatURange(range)}, ${range.label}`, selected, () => onSelect(range.id), onKey)}>
-      <title>{`Reserved range ${formatURange(range)}, ${range.label}`}</title>
+    <g className={`rsv${selected ? ' is-selected' : ''}${pulse ? ' is-search-pulse' : ''}`} data-elev-id={range.id} {...control(isStatic, m.elevation.reservedLabel(formatURange(range), range.label), selected, () => onSelect(range.id), onKey)}>
+      <title>{m.elevation.reservedLabel(formatURange(range), range.label)}</title>
       <rect x={4} y={y + 1} width={RACK_W - 8} height={h - 2} rx={3} fill={`url(#${patternId})`} className="rsv__body" />
       {h >= 48 ? (
         <>
           <rect x={14} y={midY - 22} width={RACK_W - 28} height={44} rx={8} className="rsv__label-bg" />
           <text x={RACK_W / 2} y={midY - 6} textAnchor="middle" className="rsv__title">
-            {`RESERVED · ${formatURange(range)}`}
+            {m.elevation.reservedStamp(formatURange(range))}
           </text>
           <text x={RACK_W / 2} y={midY + 12} textAnchor="middle" className="rsv__sub">
             {fitText(`${range.label} · ${formatDemand(range.demand)}`, RACK_W - 40, SUB_CHAR_PX)}
@@ -154,13 +158,14 @@ function ReservedBlock(props: { range: ReservedRange; y: number; patternId: stri
 }
 
 function DropGhost({ preview, y }: { preview: DropPreview; y: number }) {
+  const m = useT();
   const h = preview.heightU * U_PX;
   const range = preview.heightU === 1 ? `U${preview.bottomU}` : `U${preview.bottomU}–U${preview.bottomU + preview.heightU - 1}`;
   return (
     <g className={`drop-ghost${preview.ok ? '' : ' is-bad'}`} aria-hidden="true">
       <rect x={2} y={y} width={RACK_W - 4} height={h} rx={4} />
       <text x={RACK_W / 2} y={y + Math.min(h, 32) / 2 + 4} textAnchor="middle">
-        {fitText(preview.ok ? `Move to ${range}` : (preview.reason ?? 'Not here'), RACK_W - 16, SUB_CHAR_PX)}
+        {fitText(preview.ok ? m.elevation.moveTo(range) : (preview.reason ?? m.elevation.notHere), RACK_W - 16, SUB_CHAR_PX)}
       </text>
     </g>
   );
@@ -179,6 +184,7 @@ export function rackHitAt(x: number, y: number): RackHit | null {
 }
 
 export function RackElevation({ rack, active, selectedId, flagged, onSelect, onActivate, onDropTemplate, isStatic = false, pulseId = null, stateOf = PLANNED, dragPreview = null, onDeviceDragStart }: RackElevationProps) {
+  const m = useT();
   const height = rack.capacityU * U_PX;
   const yTop = (top: number): number => PAD + (rack.capacityU - top) * U_PX;
   const power = rackPower(rack);
@@ -217,17 +223,17 @@ export function RackElevation({ rack, active, selectedId, flagged, onSelect, onA
           </button>
         )}
         <span className="rack-elev__meta">
-          {rack.owner === 'customer' ? 'Customer' : 'OxygenAI'} · <span className="mono">{`${usedU(rack)}/${rack.capacityU}U`}</span> ·{' '}
-          <span className="mono">{`${knownW.toLocaleString('en-US')} W${unknown ? ` + ${unknown} unknown` : ''}`}</span>
+          {m.inspector.ownerName[rack.owner]} · <span className="mono">{`${usedU(rack)}/${rack.capacityU}U`}</span> ·{' '}
+          <span className="mono">{`${knownW.toLocaleString('en-US')} W${m.elevation.unknownSuffix(unknown)}`}</span>
         </span>
-        <span className="rack-elev__depth mono">usable depth {rack.usableDepthMm} mm</span>
+        <span className="rack-elev__depth mono">{m.elevation.usableDepth(rack.usableDepthMm)}</span>
       </figcaption>
       <svg
         className="rack-elev__svg"
         width={LABEL_W * 2 + RACK_W}
         height={height + PAD * 2}
         viewBox={`0 0 ${LABEL_W * 2 + RACK_W} ${height + PAD * 2}`}
-        role="group" aria-label={`${rack.name} front elevation, ${rack.capacityU}U`} data-rack-id={rack.id} data-capacity-u={rack.capacityU} onDragOver={onDragOver} onDrop={onDrop}>
+        role="group" aria-label={m.elevation.rackFront(rack.name, rack.capacityU)} data-rack-id={rack.id} data-capacity-u={rack.capacityU} onDragOver={onDragOver} onDrop={onDrop}>
         <defs>
           <pattern id={patternId} width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(-45)">
             <path d="M0 0V8" className="rsv-hatch" />

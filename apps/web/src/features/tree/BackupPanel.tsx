@@ -3,12 +3,13 @@ import { useRef, useState } from 'react';
 import { useWorkspaceStore } from '../../store/workspaceStore';
 import { downloadJson, readJsonFile } from '../../ui/files';
 import { formatTime } from '../../ui/time';
+import { useT, type Messages } from '../../i18n';
 
-function statusText(ws: Workspace, now: Date): string {
+function statusText(m: Messages, ws: Workspace, now: Date): string {
   const days = daysSinceBackup(ws, now);
-  if (days === null) return ws.projects.some((p) => !p.isSample) ? 'Not backed up yet.' : 'Nothing to back up yet.';
-  if (days === 0) return 'Backed up today.';
-  return `${backupDue(ws, now) ? 'No backup for' : 'Backed up'} ${days} ${days === 1 ? 'day' : 'days'}${backupDue(ws, now) ? '.' : ' ago.'}`;
+  if (days === null) return ws.projects.some((p) => !p.isSample) ? m.backup.notYet : m.backup.nothing;
+  if (days === 0) return m.backup.today;
+  return backupDue(ws, now) ? m.backup.overdue(days) : m.backup.ago(days);
 }
 
 export function BackupPanel() {
@@ -19,6 +20,7 @@ export function BackupPanel() {
   const [pending, setPending] = useState<Workspace | null>(null);
   const [error, setError] = useState<string | null>(null);
   const now = new Date();
+  const m = useT();
   const due = backupDue(workspace, now);
 
   const backUp = (): void => {
@@ -44,7 +46,7 @@ export function BackupPanel() {
   const restore = (): void => {
     if (!pending) return;
     if (readOnly) {
-      setError('This tab is read-only because Glasshouse is open in another tab.');
+      setError(m.backup.readOnlyTab);
       return;
     }
     useWorkspaceStore.getState().replace(pending);
@@ -52,17 +54,17 @@ export function BackupPanel() {
   };
 
   return (
-    <section className={`backup${due ? ' backup--due' : ''}`} aria-label="Workspace backup">
+    <section className={`backup${due ? ' backup--due' : ''}`} aria-label={m.backup.region}>
       <p className="backup__status">
-        <strong>{statusText(workspace, now)}</strong>
-        {due ? ' This workspace only lives in this browser.' : ''}
+        <strong>{statusText(m, workspace, now)}</strong>
+        {due ? m.backup.onlyHere : ''}
       </p>
       <div className="backup__actions">
         <button type="button" className="btn btn--sm" onClick={backUp}>
-          Back up workspace
+          {m.backup.backUp}
         </button>
         <button type="button" className="btn btn--sm btn--quiet" onClick={() => fileInput.current?.click()}>
-          Restore…
+          {m.backup.restore}
         </button>
       </div>
       <input
@@ -70,26 +72,26 @@ export function BackupPanel() {
         type="file"
         accept=".json,application/json"
         hidden
-        aria-label="Choose a backup file"
+        aria-label={m.backup.chooseFile}
         onChange={(e) => {
           void onFile(e.target.files?.[0]);
           e.target.value = '';
         }}
       />
       {pending ? (
-        <div className="backup__confirm" role="group" aria-label="Confirm restore">
+        <div className="backup__confirm" role="group" aria-label={m.backup.confirm}>
           <p>
-            {`Replace everything in this browser with the backup from ${formatTime(pending.lastBackupAt)} (${pending.projects.length} ${pending.projects.length === 1 ? 'project' : 'projects'})? The current workspace will be lost.`}
+            {m.backup.replaceQuestion(formatTime(pending.lastBackupAt), pending.projects.length)}
           </p>
           <div className="backup__actions">
             <button type="button" className="btn btn--sm" onClick={backUp}>
-              Back up current first
+              {m.backup.backUpFirst}
             </button>
             <button type="button" className="btn btn--sm btn--danger" onClick={restore}>
-              Replace workspace
+              {m.backup.replace}
             </button>
             <button type="button" className="btn btn--sm btn--quiet" onClick={() => setPending(null)}>
-              Cancel
+              {m.common.cancel}
             </button>
           </div>
         </div>

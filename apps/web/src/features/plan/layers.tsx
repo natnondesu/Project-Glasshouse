@@ -15,7 +15,7 @@ import {
 } from '@glasshouse/domain';
 import { useMemo, type ReactElement } from 'react';
 import { toScreen, type View } from '../../viewport/math';
-import { TYPE_LABEL } from './labels';
+import { useT } from '../../i18n';
 import { polygonPath, multiPolygonPath } from './svgPath';
 import { DoorSymbol, fitLabel, HoverTag, McbSymbol, SourceSymbol } from './symbols';
 
@@ -159,6 +159,7 @@ interface ObjectsLayerProps {
 }
 
 export function ObjectsLayer({ objects, view, flagged, selectedId, onFocusObject, isStatic = false }: ObjectsLayerProps) {
+  const m = useT();
   return (
     <g>
       {objects.map((o) => {
@@ -168,7 +169,7 @@ export function ObjectsLayer({ objects, view, flagged, selectedId, onFocusObject
         // Labels must fit inside the object; doors and MCB panels are too thin and rely on the hover tag.
         const labelled = !UNLABELLED.has(o.type) && tall >= MIN_LABEL_PX * (o.type === 'rack' ? 1 : 0.6);
         const label = labelled ? fitLabel(o.name, bounds.w * view.scale) : null;
-        const sub = label && o.type === 'rack' && tall >= MIN_LABEL_PX * 1.4 ? fitLabel(o.owner === 'customer' ? 'CUST' : `${usedU(o)}/${o.capacityU}U`, bounds.w * view.scale, 6.7) : null;
+        const sub = label && o.type === 'rack' && tall >= MIN_LABEL_PX * 1.4 ? fitLabel(o.owner === 'customer' ? m.plan.customerShort : `${usedU(o)}/${o.capacityU}U`, bounds.w * view.scale, 6.7) : null;
         const topY = toScreen(view, [0, o.y])[1];
         const classes = ['obj', `obj--${o.type}`, o.type === 'rack' && o.owner === 'customer' ? 'obj--customer' : '', flagged.has(o.id) ? 'is-flagged' : '', o.id === selectedId ? 'is-selected' : '']
           .filter(Boolean)
@@ -180,7 +181,7 @@ export function ObjectsLayer({ objects, view, flagged, selectedId, onFocusObject
             data-object-id={o.id}
             {...(isStatic
               ? {}
-              : { role: 'button', tabIndex: 0, 'aria-label': `${o.name}, ${TYPE_LABEL[o.type]}`, 'aria-pressed': o.id === selectedId, onFocus: () => onFocusObject(o.id) })}
+              : { role: 'button', tabIndex: 0, 'aria-label': `${o.name}, ${m.objects.type[o.type]}`, 'aria-pressed': o.id === selectedId, onFocus: () => onFocusObject(o.id) })}
           >
             <path className="obj__body" d={polygonPath(placementPolygon(o), view)} />
             {o.type === 'existing_rack' ? <path className="obj__cross" d={crossPath(o, view)} /> : null}

@@ -2,6 +2,8 @@ import { formatMetres, placementPolygon, type Issue, type PlanContent, type Poin
 import { nearestGaps } from './gaps';
 import { toScreen, type View } from '../../viewport/math';
 import { CULPRIT_ONLY } from './flagged';
+import { issueText } from './issueText';
+import { useT } from '../../i18n';
 
 const CALLOUT_CHARS = 30;
 const CALLOUT_MAX_LINES = 3;
@@ -29,6 +31,7 @@ function wrap(text: string): string[] {
 
 /** One drafting callout per object that blocks approval: a leader from its corner to a short note, like a marked-up drawing. */
 export function CalloutLayer({ issues, objects, view, maxX = Infinity }: { issues: Issue[]; objects: RoomObject[]; view: View; maxX?: number }) {
+  const m = useT();
   const seen = new Set<string>();
   const callouts = issues.flatMap((issue) => {
     if (issue.severity !== 'block') return [];
@@ -41,7 +44,7 @@ export function CalloutLayer({ issues, objects, view, maxX = Infinity }: { issue
     const left = Math.min(...pts.map((p) => p[0]));
     const right = Math.max(...pts.map((p) => p[0]));
     const mid = (Math.min(...pts.map((p) => p[1])) + Math.max(...pts.map((p) => p[1]))) / 2;
-    const lines = wrap(issue.message);
+    const lines = wrap(issueText(m, issue).message);
     const width = Math.max(...lines.map((l) => l.length), 8) * CHAR_PX;
     // Flip to the left when the note would run under the inspector.
     const flip = right + LEADER_PX + width > maxX;
@@ -64,7 +67,7 @@ export function CalloutLayer({ issues, objects, view, maxX = Infinity }: { issue
             <circle className="callout__dot" cx={ax} cy={ay} r={2.5} />
             <path className="callout__leader" d={`M${ax} ${ay} L${knee} ${ly} H${flip ? knee - width : knee + width}`} />
             <text className="callout__title" x={textX} y={ly - 6}>
-              BLOCKING
+              {m.plan.blocking}
             </text>
             {lines.map((l, i) => (
               <text key={i} className="callout__text" x={textX} y={ly + 13 + i * LINE_PX}>
@@ -86,8 +89,9 @@ export function scaleBar(view: View): { metres: number; px: number } {
 
 export function PlanLegend({ view, clearance = true }: { view: View; clearance?: boolean }) {
   const bar = scaleBar(view);
+  const m = useT();
   return (
-    <div className="plan-legend" aria-label="Drawing legend">
+    <div className="plan-legend" aria-label={m.plan.legendLabel}>
       <span className="plan-legend__item">
         <span className="plan-legend__scale" style={{ width: bar.px }} />
         {bar.metres < 1 ? `${bar.metres * 100} cm` : `${bar.metres} m`}
@@ -95,16 +99,16 @@ export function PlanLegend({ view, clearance = true }: { view: View; clearance?:
       {clearance ? (
         <span className="plan-legend__item">
           <span className="plan-legend__swatch plan-legend__swatch--clearance" />
-          Clearance zone
+          {m.plan.clearanceZone}
         </span>
       ) : null}
       <span className="plan-legend__item">
         <span className="plan-legend__swatch plan-legend__swatch--front" />
-        Rack front
+        {m.plan.rackFront}
       </span>
       <span className="plan-legend__item">
         <span className="plan-legend__swatch plan-legend__swatch--block" />
-        Blocks approval
+        {m.plan.blocksApproval}
       </span>
     </div>
   );

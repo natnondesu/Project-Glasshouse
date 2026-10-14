@@ -47,8 +47,9 @@
   --hover: rgb(255 255 255 / 0.6);
   --shadow-float: 0 10px 30px -10px rgb(14 24 36 / 0.35);
 
-  --font-ui: 'Geist Sans', system-ui, sans-serif;
-  --font-mono: 'Geist Mono', ui-monospace, monospace;
+  /* Geist has no Thai glyphs; the browser falls through to IBM Plex Sans Thai for Thai text only. */
+  --font-ui: 'Geist Sans', 'IBM Plex Sans Thai', system-ui, sans-serif;
+  --font-mono: 'Geist Mono', 'IBM Plex Sans Thai', ui-monospace, monospace;
 
   --radius-panel: 16px;
   --radius-control: 10px;

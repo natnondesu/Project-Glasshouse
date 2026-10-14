@@ -1,6 +1,7 @@
 import { EQUIPMENT_STATE_LABEL, equipmentStateOf, type Plan, type PlanContent } from '@glasshouse/domain';
 import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react';
 import { searchRoom, type SearchHit } from './search';
+import { useT } from '../../i18n';
 import './search.css';
 
 interface SearchBoxProps {
@@ -23,7 +24,11 @@ export function SearchBox({ content, roomName, onPick, action, className, plan }
   const [active, setActive] = useState(0);
   const input = useRef<HTMLInputElement>(null);
   const listId = useId();
-  const hits = useMemo(() => searchRoom(content, query, undefined, plan ? (id) => EQUIPMENT_STATE_LABEL[equipmentStateOf(plan, id)].toLowerCase() : undefined), [content, query, plan]);
+  const m = useT();
+  const hits = useMemo(
+    () => searchRoom(content, query, { m, stateOf: plan ? (id) => `${EQUIPMENT_STATE_LABEL[equipmentStateOf(plan, id)]} ${m.equipment.state[equipmentStateOf(plan, id)]}`.toLowerCase() : undefined }),
+    [content, query, plan, m],
+  );
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
@@ -54,13 +59,13 @@ export function SearchBox({ content, roomName, onPick, action, className, plan }
       <input
         ref={input}
         role="combobox"
-        aria-label="Search this room"
+        aria-label={m.search.placeholder}
         aria-expanded={showList}
         aria-controls={listId}
         aria-activedescendant={showList && hits[active] ? `${listId}-${active}` : undefined}
         aria-autocomplete="list"
         className="search__input"
-        placeholder="Search this room"
+        placeholder={m.search.placeholder}
         value={query}
         onChange={(e) => {
           setQuery(e.target.value);
@@ -94,9 +99,9 @@ export function SearchBox({ content, roomName, onPick, action, className, plan }
       </kbd>
       {showList ? (
         hits.length === 0 ? (
-          <p className="search__empty" role="status">{`No matches in ${roomName}.`}</p>
+          <p className="search__empty" role="status">{m.search.noMatches(roomName)}</p>
         ) : (
-          <ul className="search__list" role="listbox" id={listId} aria-label="Search results">
+          <ul className="search__list" role="listbox" id={listId} aria-label={m.search.results}>
             {hits.map((hit, i) => (
               <li
                 key={hit.key}

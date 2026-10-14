@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { IconPlus, IconTrash } from '../../ui/icons';
 import { toScreen, type View } from '../../viewport/math';
 import type { CommitFn } from './usePlanGestures';
+import { useT } from '../../i18n';
 
 /** Feed colours by letter: A blue, B amber, C green, D violet, then repeat. */
 const FEED_COLORS = ['#1c64c8', '#c77700', '#11795a', '#7a4fc2'];
@@ -53,13 +54,14 @@ export function FeedLayer({ content, view }: { content: PlanContent; view: View 
 /** A rack's feeds in its inspector: which panel each comes from, add and remove. */
 export function RackFeeds({ rack, content, commit }: { rack: RoomObject; content: PlanContent; commit: CommitFn }) {
   const [error, setError] = useState<string | null>(null);
+  const m = useT();
   const panels = content.objects.filter(isPowerSource);
   const feeds = content.feeds.filter((f) => f.targetId === rack.id);
   const act = (problem: string | null): void => setError(problem);
   return (
-    <fieldset className="inspector__group" aria-label="Power feeds">
-      <legend className="lbl">Power feeds</legend>
-      {feeds.length === 0 ? <p className="inspector__note">Not connected to a panel yet.</p> : null}
+    <fieldset className="inspector__group" aria-label={m.feeds.group}>
+      <legend className="lbl">{m.feeds.group}</legend>
+      {feeds.length === 0 ? <p className="inspector__note">{m.feeds.notConnected}</p> : null}
       <ul className="feed-list">
         {feeds.map((f) => (
           <li key={f.id} className="feed-list__item">
@@ -69,7 +71,7 @@ export function RackFeeds({ rack, content, commit }: { rack: RoomObject; content
             </label>
             <select
               id={`${f.id}-source`}
-              aria-label={`${f.label} source`}
+              aria-label={m.feeds.source(f.label)}
               className="feed-list__select"
               value={f.sourceId}
               onChange={(e) => act(commit({ type: 'feed/update', id: f.id, patch: { sourceId: e.target.value } }))}
@@ -85,7 +87,7 @@ export function RackFeeds({ rack, content, commit }: { rack: RoomObject; content
             ) : (
               <span />
             )}
-            <button type="button" className="icon-btn icon-btn--sm" aria-label={`Remove ${f.label}`} title={`Remove ${f.label}`} onClick={() => act(commit({ type: 'feed/remove', id: f.id }))}>
+            <button type="button" className="icon-btn icon-btn--sm" aria-label={m.feeds.remove(f.label)} title={m.feeds.remove(f.label)} onClick={() => act(commit({ type: 'feed/remove', id: f.id }))}>
               <IconTrash />
             </button>
           </li>
@@ -98,9 +100,9 @@ export function RackFeeds({ rack, content, commit }: { rack: RoomObject; content
         onClick={() => act(commit({ type: 'feed/add', feed: { id: newId(), targetId: rack.id, sourceId: panels[0]!.id, label: nextFeedLabel(content, rack.id) } }))}
       >
         <IconPlus />
-        Add power feed
+        {m.feeds.add}
       </button>
-      {panels.length === 0 ? <p className="inspector__note">Place a power source (MCB panel, plug, socket, UPS…) on the plan to connect this rack.</p> : null}
+      {panels.length === 0 ? <p className="inspector__note">{m.feeds.needSource}</p> : null}
       {error ? (
         <p role="alert" className="field__error">
           {error}
@@ -114,12 +116,13 @@ export function RackFeeds({ rack, content, commit }: { rack: RoomObject; content
 function WayPicker({ feed, content, onPick }: { feed: PowerFeed; content: PlanContent; onPick: (way: number | null) => void }) {
   const source = content.objects.find((o) => o.id === feed.sourceId)!;
   const ways = panelOf(source).ways.length;
+  const m = useT();
   const taken = new Map(content.feeds.filter((f) => f.sourceId === source.id && f.id !== feed.id && f.way !== undefined).map((f) => [f.way!, f]));
   return (
-    <select className="feed-list__select feed-list__way" aria-label={`${feed.label} way`} value={feed.way ?? ''} onChange={(e) => onPick(e.target.value ? Number(e.target.value) : null)}>
-      <option value="">Way —</option>
+    <select className="feed-list__select feed-list__way" aria-label={m.feeds.way(feed.label)} value={feed.way ?? ''} onChange={(e) => onPick(e.target.value ? Number(e.target.value) : null)}>
+      <option value="">{m.feeds.wayNone}</option>
       {Array.from({ length: ways }, (_, i) => i + 1).map((n) => (
-        <option key={n} value={n} disabled={taken.has(n)}>{`Way ${n}${taken.has(n) ? ' (used)' : ''}`}</option>
+        <option key={n} value={n} disabled={taken.has(n)}>{m.feeds.wayOption(n, taken.has(n))}</option>
       ))}
     </select>
   );
@@ -128,6 +131,7 @@ function WayPicker({ feed, content, onPick }: { feed: PowerFeed; content: PlanCo
 /** A power source's own input: the one source upstream of it (a UPS fed from an MCB way, a PDU from a UPS…). */
 function SourceInput({ panel, content, commit }: { panel: RoomObject; content: PlanContent; commit: CommitFn }) {
   const [error, setError] = useState<string | null>(null);
+  const m = useT();
   const input = content.feeds.find((f) => f.targetId === panel.id);
   const upstream = content.objects.filter((o) => isPowerSource(o) && o.id !== panel.id);
   const pick = (sourceId: string): void => {
@@ -136,14 +140,14 @@ function SourceInput({ panel, content, commit }: { panel: RoomObject; content: P
     else setError(commit({ type: 'feed/add', feed: { id: newId(), targetId: panel.id, sourceId, label: nextFeedLabel(content, panel.id) } }));
   };
   return (
-    <fieldset className="inspector__group" aria-label="Power input">
-      <legend className="lbl">Power input</legend>
+    <fieldset className="inspector__group" aria-label={m.feeds.input}>
+      <legend className="lbl">{m.feeds.input}</legend>
       <div className="feed-list__item feed-list__item--input">
         <label className="feed-list__label" htmlFor={`${panel.id}-input`}>
-          Fed from
+          {m.feeds.fedFrom}
         </label>
         <select id={`${panel.id}-input`} className="feed-list__select" value={input?.sourceId ?? ''} onChange={(e) => pick(e.target.value)}>
-          <option value="">Not connected</option>
+          <option value="">{m.feeds.notConnectedOption}</option>
           {upstream.map((p) => (
             <option key={p.id} value={p.id}>
               {p.name}
@@ -166,24 +170,25 @@ function SourceInput({ panel, content, commit }: { panel: RoomObject; content: P
 /** What a power source feeds (racks and other sources), and its own input. MCB panels also open their ways. */
 export function PanelFeeds({ panel, content, commit, onManage }: { panel: RoomObject; content: PlanContent; commit: CommitFn; onManage?: (id: string) => void }) {
   const feeds = content.feeds.filter((f) => f.sourceId === panel.id);
+  const m = useT();
   return (
     <>
       <SourceInput panel={panel} content={content} commit={commit} />
       <fieldset className="inspector__group">
-        <legend className="lbl">Feeds out</legend>
+        <legend className="lbl">{m.feeds.out}</legend>
         {panel.type === 'mcb' && onManage ? (
           <button type="button" className="btn btn--sm" onClick={() => onManage(panel.id)}>
-            Manage ways
+            {m.feeds.manageWays}
           </button>
         ) : null}
         {feeds.length === 0 ? (
-          <p className="inspector__note">Nothing connected. Connect a rack from its inspector, or another source from its Power input.</p>
+          <p className="inspector__note">{m.feeds.nothingConnected}</p>
         ) : (
-          <ul className="feed-list" aria-label={`Feeds out of ${panel.name}`}>
+          <ul className="feed-list" aria-label={m.feeds.outOf(panel.name)}>
             {feeds.map((f) => (
               <li key={f.id} className="feed-list__item">
                 <span className="feed-list__swatch" style={{ background: feedColor(f, content) }} aria-hidden="true" />
-                <span>{`${content.objects.find((o) => o.id === f.targetId)?.name ?? 'Removed object'} · ${f.label}${f.way ? ` · way ${f.way}` : ''}`}</span>
+                <span>{`${content.objects.find((o) => o.id === f.targetId)?.name ?? m.feeds.removedObject} · ${f.label}${f.way ? m.feeds.onWay(f.way) : ''}`}</span>
               </li>
             ))}
           </ul>

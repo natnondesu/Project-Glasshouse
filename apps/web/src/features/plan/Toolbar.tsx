@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { IconChevronCorner } from '../../ui/icons';
 import { usePersistentState } from '../../ui/usePersistentState';
+import { useT } from '../../i18n';
 import { SOLO_TOOLS, TOOL_GROUPS, TOOL_SPECS, type Tool, type ToolGroupId } from './tools';
 
 const VIEW_ONLY: Tool[] = ['select', 'pan', 'measure'];
@@ -8,10 +9,11 @@ const VIEW_ONLY: Tool[] = ['select', 'pan', 'measure'];
 /** The hint card beside a tool: what it is, what it does, and its key. */
 function Hint({ tool, id }: { tool: Tool; id: string }) {
   const spec = TOOL_SPECS[tool];
+  const words = useT().tools.spec[tool];
   return (
     <span className="tool-hint" role="tooltip" id={id}>
-      <strong>{spec.label}</strong>
-      <span>{spec.hint}</span>
+      <strong>{words.label}</strong>
+      <span>{words.hint}</span>
       {spec.shortcut ? <kbd>{spec.shortcut}</kbd> : null}
     </span>
   );
@@ -19,6 +21,7 @@ function Hint({ tool, id }: { tool: Tool; id: string }) {
 
 function ToolButton({ tool, active, onTool }: { tool: Tool; active: boolean; onTool: (tool: Tool) => void }) {
   const spec = TOOL_SPECS[tool];
+  const label = useT().tools.spec[tool].label;
   const [hover, setHover] = useState(false);
   const hintId = `hint-${tool}`;
   return (
@@ -27,7 +30,7 @@ function ToolButton({ tool, active, onTool }: { tool: Tool; active: boolean; onT
         type="button"
         className="tool"
         aria-pressed={active}
-        aria-label={spec.label}
+        aria-label={label}
         aria-describedby={hover ? hintId : undefined}
         onFocus={() => setHover(true)}
         onBlur={() => setHover(false)}
@@ -50,6 +53,8 @@ interface GroupProps {
 function Group({ group, tool, current, onTool }: GroupProps) {
   const [open, setOpen] = useState(false);
   const cell = useRef<HTMLSpanElement>(null);
+  const m = useT();
+  const groupLabel = m.tools.group[group.id];
   useEffect(() => {
     if (!open) return;
     const close = (e: PointerEvent): void => {
@@ -62,13 +67,13 @@ function Group({ group, tool, current, onTool }: GroupProps) {
     <span ref={cell} className="tool-group" onKeyDown={(e) => e.key === 'Escape' && setOpen(false)}>
       <ToolButton tool={current} active={tool === current} onTool={onTool} />
       {group.tools.length > 1 ? (
-        <button type="button" className="tool-group__more" aria-label={`More ${group.label} tools`} aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
+        <button type="button" className="tool-group__more" aria-label={m.tools.more(groupLabel)} aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
           <IconChevronCorner />
         </button>
       ) : null}
       {open ? (
-        <span className="tool-flyout glass" role="menu" aria-label={`${group.label} tools`}>
-          <span className="tool-flyout__title">{group.label}</span>
+        <span className="tool-flyout glass" role="menu" aria-label={m.tools.groupTools(groupLabel)}>
+          <span className="tool-flyout__title">{groupLabel}</span>
           {group.tools.map((t) => {
             const spec = TOOL_SPECS[t];
             return (
@@ -84,7 +89,7 @@ function Group({ group, tool, current, onTool }: GroupProps) {
                 }}
               >
                 <spec.Icon aria-hidden="true" />
-                <span className="tool-flyout__name">{spec.name}</span>
+                <span className="tool-flyout__name">{m.tools.spec[t].name}</span>
                 {spec.shortcut ? <kbd aria-hidden="true">{spec.shortcut}</kbd> : null}
               </button>
             );
@@ -96,6 +101,7 @@ function Group({ group, tool, current, onTool }: GroupProps) {
 }
 
 export function Toolbar({ tool, onTool, readOnly = false }: { tool: Tool; onTool: (tool: Tool) => void; readOnly?: boolean }) {
+  const m = useT();
   const [last, setLast] = usePersistentState<Partial<Record<ToolGroupId, Tool>>>('glasshouse:tool-groups', {});
   const choose = (t: Tool): void => {
     const group = TOOL_GROUPS.find((g) => g.tools.includes(t));
@@ -107,7 +113,7 @@ export function Toolbar({ tool, onTool, readOnly = false }: { tool: Tool; onTool
 
   if (readOnly) {
     return (
-      <div className="toolbar glass" role="toolbar" aria-label="Plan tools" aria-orientation="vertical">
+      <div className="toolbar glass" role="toolbar" aria-label={m.tools.toolbar} aria-orientation="vertical">
         {VIEW_ONLY.map((t) => (
           <ToolButton key={t} tool={t} active={tool === t} onTool={onTool} />
         ))}
@@ -115,7 +121,7 @@ export function Toolbar({ tool, onTool, readOnly = false }: { tool: Tool; onTool
     );
   }
   return (
-    <div className="toolbar glass" role="toolbar" aria-label="Plan tools" aria-orientation="vertical">
+    <div className="toolbar glass" role="toolbar" aria-label={m.tools.toolbar} aria-orientation="vertical">
       {SOLO_TOOLS.map((t) => (
         <ToolButton key={t} tool={t} active={tool === t} onTool={choose} />
       ))}

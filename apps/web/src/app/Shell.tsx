@@ -5,6 +5,7 @@ import { PanelRail } from '../ui/PanelRail';
 import { usePersistentState } from '../ui/usePersistentState';
 import { useWorkspaceStore } from '../store/workspaceStore';
 import { useViewedRevisionNumber } from '../store/hooks';
+import { useT } from '../i18n';
 import { HintLayer } from './HintLayer';
 import { TitleBlock } from './TitleBlock';
 import './shell.css';
@@ -20,6 +21,7 @@ export function Shell() {
   const readOnly = useWorkspaceStore((s) => s.readOnly);
   const viewingPast = useViewedRevisionNumber() !== null;
   const [treeOpen, setTreeOpen] = usePersistentState('glasshouse:tree-open', true);
+  const m = useT();
 
   // Window-level so undo still works when focus falls back to <body>, e.g. right after a delete.
   useEffect(() => {
@@ -46,7 +48,7 @@ export function Shell() {
         </p>
       ) : null}
       <div className="shell__body">
-        {treeOpen ? <ProjectTree activeRoomId={roomId} onCollapse={() => setTreeOpen(false)} /> : <PanelRail label="Projects" side="left" onExpand={() => setTreeOpen(true)} />}
+        {treeOpen ? <ProjectTree activeRoomId={roomId} onCollapse={() => setTreeOpen(false)} /> : <PanelRail label={m.panels.projects} side="left" onExpand={() => setTreeOpen(true)} />}
         <main className="shell__main">
           <Outlet />
         </main>

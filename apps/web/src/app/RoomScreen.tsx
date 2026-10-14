@@ -14,14 +14,14 @@ import { NotFound } from './NotFound';
 // three.js is large and only this view needs it: keep it out of the main bundle.
 const Room3DView = lazy(() => import('../features/room3d/Room3DView'));
 import { ViewTabs } from './ViewTabs';
-
-const LABEL: Record<string, string> = { plan: 'the plan', elevation: 'the elevation', '3d': 'the 3D view', bom: 'the BOM', review: 'the review' };
+import { useT } from '../i18n';
 
 export function RoomScreen() {
   const { roomId = '', view = 'plan' } = useParams();
   const realLocation = useRoomLocation(roomId);
   const viewedNumber = useViewedRevisionNumber();
-  if (!realLocation) return <NotFound message="This room isn't in this browser's workspace." />;
+  const m = useT();
+  if (!realLocation) return <NotFound message={m.shell.roomMissing} />;
   const past = view === 'review' ? null : locationAtRevision(realLocation, viewedNumber);
   const location = past ?? realLocation;
   const revision = currentRevision(location.room.plan);
@@ -31,19 +31,19 @@ export function RoomScreen() {
   else if (view === 'elevation') body = <ElevationView key={`${roomId}:${revision.number}`} location={location} readOnly={readOnly} viewingPast={past !== null} />;
   else if (view === '3d')
     body = (
-      <Suspense fallback={<p className="room3d__fallback" role="status">Loading 3D…</p>}>
+      <Suspense fallback={<p className="room3d__fallback" role="status">{m.shell.loading3d}</p>}>
         <Room3DView key={roomId} location={location} />
       </Suspense>
     );
   else if (view === 'bom') body = <BomView key={roomId} location={location} />;
   else if (view === 'review') body = <ReviewView key={roomId} location={location} />;
-  else return <NotFound message="That view doesn't exist for this room." />;
+  else return <NotFound message={m.shell.viewMissing} />;
   return (
     <div className="room-screen">
       <ViewTabs roomId={roomId} />
       {past ? <RevisionBanner roomId={roomId} view={view} viewed={revision} current={currentRevision(realLocation.room.plan)} /> : null}
       {!past && readOnly && (view === 'plan' || view === 'elevation') ? <FrozenBanner roomId={roomId} revision={revision} /> : null}
-      <ErrorBoundary key={view} label={LABEL[view] ?? 'this view'}>
+      <ErrorBoundary key={view} label={m.views.drawing[view] ?? m.views.drawing.other!}>
         {body}
       </ErrorBoundary>
     </div>

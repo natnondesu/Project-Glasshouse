@@ -1,6 +1,7 @@
-import { panelOf, rackCurrentA, wayPhase, type PlanContent, type RoomObject } from '@glasshouse/domain';
+import { loadA, panelOf, rackCurrentA, wayPhase, type PlanContent, type RoomObject } from '@glasshouse/domain';
 import { useState } from 'react';
 import { useFloatingPanel } from '../../ui/useFloatingPanel';
+import { useT } from '../../i18n';
 import { feedColor } from './feeds';
 import type { CommitFn } from './usePlanGestures';
 import './panel-manager.css';
@@ -18,34 +19,35 @@ interface PanelManagerProps {
 /** Floating MCB panel schedule: which feed is on which way, at what rating and phase. */
 export function PanelManager({ panel, content, commit, onClose }: PanelManagerProps) {
   const config = panelOf(panel);
+  const m = useT();
   const [error, setError] = useState<string | null>(null);
   const { pos, headProps } = useFloatingPanel('glasshouse:panel-manager-pos', { x: 96, y: 72 });
   const feeds = content.feeds.filter((f) => f.sourceId === panel.id);
   const unassigned = feeds.filter((f) => f.way === undefined).length;
-  const rackName = (id: string): string => content.objects.find((o) => o.id === id)?.name ?? 'Removed object';
+  const rackName = (id: string): string => content.objects.find((o) => o.id === id)?.name ?? m.feeds.removedObject;
   const act = (problem: string | null): void => setError(problem);
 
   return (
-    <section className="panel-mgr glass" role="dialog" aria-label={`${panel.name} ways`} style={{ left: pos.x, top: pos.y }}>
+    <section className="panel-mgr glass" role="dialog" aria-label={m.panelMgr.title(panel.name)} style={{ left: pos.x, top: pos.y }}>
       <header className="panel-mgr__head" {...headProps}>
         <h2>
-          <span className="mono">{panel.name}</span> ways
+          <span className="mono">{m.panelMgr.title(panel.name)}</span>
         </h2>
-        <button type="button" className="icon-btn icon-btn--sm" aria-label={`Close ${panel.name} ways`} onClick={onClose}>
+        <button type="button" className="icon-btn icon-btn--sm" aria-label={m.panelMgr.close(panel.name)} onClick={onClose}>
           ×
         </button>
       </header>
       <div className="panel-mgr__config">
-        <div className="seg seg--compact" role="group" aria-label="Panel phase">
+        <div className="seg seg--compact" role="group" aria-label={m.panelMgr.phase}>
           <button type="button" aria-pressed={config.phase === 'single'} onClick={() => act(commit({ type: 'panel/configure', id: panel.id, patch: { phase: 'single' } }))}>
-            Single-phase
+            {m.panelMgr.single}
           </button>
           <button type="button" aria-pressed={config.phase === 'three'} onClick={() => act(commit({ type: 'panel/configure', id: panel.id, patch: { phase: 'three' } }))}>
-            Three-phase
+            {m.panelMgr.three}
           </button>
         </div>
         <label className="panel-mgr__count">
-          <span>Ways</span>
+          <span>{m.panelMgr.ways}</span>
           <select value={config.ways.length} onChange={(e) => act(commit({ type: 'panel/configure', id: panel.id, patch: { wayCount: Number(e.target.value) } }))}>
             {[...new Set([...WAY_COUNTS, config.ways.length])].sort((a, b) => a - b).map((n) => (
               <option key={n} value={n}>
@@ -64,27 +66,28 @@ export function PanelManager({ panel, content, commit, onClose }: PanelManagerPr
         <table className="panel-mgr__table">
           <thead>
             <tr>
-              <th scope="col">Way</th>
-              <th scope="col">Phase</th>
-              <th scope="col">Rating</th>
-              <th scope="col">Label</th>
-              <th scope="col">Feed</th>
-              <th scope="col">Load</th>
+              <th scope="col">{m.panelMgr.col.way}</th>
+              <th scope="col">{m.panelMgr.col.phase}</th>
+              <th scope="col">{m.panelMgr.col.rating}</th>
+              <th scope="col">{m.panelMgr.col.label}</th>
+              <th scope="col">{m.panelMgr.col.feed}</th>
+              <th scope="col">{m.panelMgr.col.load}</th>
             </tr>
           </thead>
           <tbody>
             {config.ways.map((way, i) => {
               const n = i + 1;
               const feed = feeds.find((f) => f.way === n);
-              const rack = feed ? content.objects.find((o) => o.id === feed.targetId) : undefined;
-              const amps = rack ? rackCurrentA(rack) : 0;
+              const target = feed ? content.objects.find((o) => o.id === feed.targetId) : undefined;
+              // A way feeding another source (UPS, PDU…) carries everything downstream of it.
+              const amps = !target ? 0 : target.type === 'rack' ? rackCurrentA(target) : loadA(content, target.id);
               const over = amps > way.ratingA;
               return (
                 <tr key={n} className={feed ? 'is-used' : undefined}>
                   <td className="mono">{n}</td>
                   <td className="mono">{wayPhase(config, n)}</td>
                   <td>
-                    <select aria-label={`Way ${n} rating`} value={way.ratingA} onChange={(e) => act(commit({ type: 'panel/way', id: panel.id, way: n, patch: { ratingA: Number(e.target.value) } }))}>
+                    <select aria-label={m.panelMgr.wayRating(n)} value={way.ratingA} onChange={(e) => act(commit({ type: 'panel/way', id: panel.id, way: n, patch: { ratingA: Number(e.target.value) } }))}>
                       {[...new Set([...RATINGS_A, way.ratingA])].sort((a, b) => a - b).map((a) => (
                         <option key={a} value={a}>{`${a} A`}</option>
                       ))}
@@ -97,7 +100,7 @@ export function PanelManager({ panel, content, commit, onClose }: PanelManagerPr
                     <span className="panel-mgr__feed">
                       {feed ? <span className="panel-mgr__swatch" style={{ background: feedColor(feed, content) }} aria-hidden="true" /> : null}
                       <select
-                        aria-label={`Way ${n} feed`}
+                        aria-label={m.panelMgr.wayFeed(n)}
                         value={feed?.id ?? ''}
                         onChange={(e) => {
                           const next = e.target.value;
@@ -122,8 +125,8 @@ export function PanelManager({ panel, content, commit, onClose }: PanelManagerPr
         </table>
       </div>
       <footer className="panel-mgr__foot">
-        {unassigned > 0 ? `${unassigned} ${unassigned === 1 ? 'feed' : 'feeds'} from this panel ${unassigned === 1 ? 'has' : 'have'} no way yet.` : 'Every feed from this panel is on a way.'}
-        <span className="panel-mgr__note">Load assumes 230 V with each feed carrying the whole rack.</span>
+        {unassigned > 0 ? m.panelMgr.unassigned(unassigned) : m.panelMgr.allAssigned}
+        <span className="panel-mgr__note">{m.panelMgr.loadNote}</span>
       </footer>
     </section>
   );
@@ -131,12 +134,13 @@ export function PanelManager({ panel, content, commit, onClose }: PanelManagerPr
 
 function WayLabel({ n, value, onCommit }: { n: number; value: string; onCommit: (label: string) => void }) {
   const [text, setText] = useState(value);
+  const m = useT();
   const save = (): void => {
     if (text !== value) onCommit(text);
   };
   return (
     <input
-      aria-label={`Way ${n} label`}
+      aria-label={m.panelMgr.wayLabel(n)}
       className="panel-mgr__label"
       value={text}
       placeholder="—"

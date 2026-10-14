@@ -3,11 +3,14 @@ import { useMemo, useState } from 'react';
 import { downloadText, slugify } from '../../ui/files';
 import { pad2 } from '../../ui/StatusStamp';
 import './bom.css';
+import { useT } from '../../i18n';
+import { bomCell, bomHeader } from './bomText';
 
 const VISIBLE = BOM_COLUMNS.filter((c) => c.key !== 'project' && c.key !== 'site' && c.key !== 'room');
 const NOWRAP = new Set<string>(['rack', 'chassis', 'slot', 'name', 'position', 'heightU', 'depthMm', 'demandW']);
 
 export function BomView({ location }: { location: RoomLocation }) {
+  const m = useT();
   const all = useMemo(() => bomRows(location), [location]);
   const [filter, setFilter] = useState<EquipmentState | 'all'>('all');
   // The CSV follows the filter, so "what's still to install" is one click away.
@@ -24,29 +27,29 @@ export function BomView({ location }: { location: RoomLocation }) {
   return (
     <section className="bom glass" aria-labelledby="bom-h">
       <header className="bom__head">
-        <h2 id="bom-h">Devices &amp; BOM</h2>
-        <span className="bom__count">{`${rows.length} ${rows.length === 1 ? 'Device' : 'Devices'}, each Node listed separately`}</span>
+        <h2 id="bom-h">{m.bom.title}</h2>
+        <span className="bom__count">{m.bom.count(rows.length)}</span>
         {cables.length > 0 ? (
           <button type="button" className="btn" onClick={downloadCables}>
-            {`Cable schedule CSV (${cables.length})`}
+            {m.bom.cablesCsv(cables.length)}
           </button>
         ) : null}
         <button type="button" className="btn btn--ink" onClick={download} disabled={rows.length === 0}>
-          Download CSV
+          {m.bom.download}
         </button>
       </header>
       {all.length > 0 ? (
-        <div className="seg seg--compact bom__filter" role="group" aria-label="Show equipment">
+        <div className="seg seg--compact bom__filter" role="group" aria-label={m.bom.filter}>
           {(['all', ...EQUIPMENT_STATES] as const).map((s) => (
             <button key={s} type="button" aria-pressed={filter === s} onClick={() => setFilter(s)}>
-              {s === 'all' ? 'All' : EQUIPMENT_STATE_LABEL[s]}
+              {s === 'all' ? m.bom.all : m.equipment.state[s]}
             </button>
           ))}
         </div>
       ) : null}
-      {rows.length === 0 && all.length > 0 ? <p className="bom__empty">Nothing in this state.</p> : null}
+      {rows.length === 0 && all.length > 0 ? <p className="bom__empty">{m.bom.noneInState}</p> : null}
       {all.length === 0 ? (
-        <p className="bom__empty">No Devices yet. Add them on the Elevation tab.</p>
+        <p className="bom__empty">{m.bom.empty}</p>
       ) : (
         <div className="bom__scroll">
           <table className="bom__table">
@@ -54,7 +57,7 @@ export function BomView({ location }: { location: RoomLocation }) {
               <tr>
                 {VISIBLE.map((c) => (
                   <th key={c.key} scope="col">
-                    {c.header}
+                    {bomHeader(m, c.key)}
                   </th>
                 ))}
               </tr>
@@ -64,7 +67,7 @@ export function BomView({ location }: { location: RoomLocation }) {
                 <tr key={`${r.rack}-${r.name}-${i}`} className={`bom__row bom__row--${r.kind.toLowerCase()}`}>
                   {VISIBLE.map((c) => (
                     <td key={c.key} className={NOWRAP.has(c.key) ? 'mono bom__nowrap' : undefined}>
-                      {r[c.key]}
+                      {bomCell(m, r, c.key)}
                     </td>
                   ))}
                 </tr>

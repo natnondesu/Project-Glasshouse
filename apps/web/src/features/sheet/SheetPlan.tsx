@@ -5,6 +5,7 @@ import { DimensionLayer } from '../plan/DimensionLayer';
 import { FeedLayer } from '../plan/feeds';
 import { fit, toScreen, type View } from '../../viewport/math';
 import '../plan/plan.css';
+import { useT } from '../../i18n';
 
 const SIZE = { width: 700, height: 760 };
 const NO_FLAGS = new Set<string>();
@@ -45,12 +46,13 @@ function GapDimension({ gap, view }: { gap: WallGap; view: View }) {
 }
 
 export function SheetPlan({ content, roomName }: { content: PlanContent; roomName: string }) {
+  const m = useT();
   const view = fit({ w: content.survey.width, d: content.survey.length }, SIZE, 56);
   const footprint = footprintOf(content.survey);
   const others = (self: RoomObject): Poly[] => content.objects.filter((o) => o.id !== self.id).map(placementPolygon);
   const gaps = racksOf(content).flatMap((r) => keyGaps(wallGaps(r, footprint), others(r)));
   return (
-    <svg className="sheet-plan plan-canvas" width={SIZE.width} height={SIZE.height} viewBox={`0 0 ${SIZE.width} ${SIZE.height}`} role="img" aria-label={`${roomName} plan`}>
+    <svg className="sheet-plan plan-canvas" width={SIZE.width} height={SIZE.height} viewBox={`0 0 ${SIZE.width} ${SIZE.height}`} role="img" aria-label={m.sheet.planOf(roomName)}>
       <HatchDefs />
       <FootprintLayer survey={content.survey} view={view} />
       <ClearanceLayer objects={content.objects} view={view} />

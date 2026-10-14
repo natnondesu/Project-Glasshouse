@@ -1,28 +1,30 @@
 import { approvalBlockers, currentRevision, latestApproved } from '@glasshouse/domain';
 import { Link, NavLink } from 'react-router';
 import { pad2 } from '../ui/StatusStamp';
+import { useT } from '../i18n';
 import { useRoomLocation, useViewedRevisionNumber } from '../store/hooks';
 
 const VIEWS = [
-  { id: 'plan', label: 'Plan' },
-  { id: 'elevation', label: 'Elevation' },
-  { id: '3d', label: '3D' },
-  { id: 'bom', label: 'Devices & BOM' },
-  { id: 'review', label: 'Review' },
+  { id: 'plan', key: 'plan' },
+  { id: 'elevation', key: 'elevation' },
+  { id: '3d', key: 'threeD' },
+  { id: 'bom', key: 'bom' },
+  { id: 'review', key: 'review' },
 ] as const;
 
 export function ViewTabs({ roomId }: { roomId: string }) {
   const location = useRoomLocation(roomId);
+  const m = useT();
   const rev = useViewedRevisionNumber();
   const plan = location?.room.plan;
   const approved = plan ? latestApproved(plan) : null;
   const blockers = plan && currentRevision(plan).state !== 'approved' ? approvalBlockers(plan).length : 0;
   return (
-    <nav className="view-tabs glass" aria-label="Room views">
+    <nav className="view-tabs glass" aria-label={m.views.nav}>
       <span className="view-tabs__seg">
         {VIEWS.map((v) => (
           <NavLink key={v.id} to={`/rooms/${roomId}/${v.id}${rev !== null && v.id !== 'review' ? `?rev=${rev}` : ''}`} className={({ isActive }) => `view-tab${isActive ? ' is-active' : ''}`}>
-            {v.label}
+            {m.views[v.key]}
             {v.id === 'review' && blockers > 0 ? (
               <span className="view-tab__badge mono" aria-hidden="true">
                 {blockers}
@@ -34,11 +36,11 @@ export function ViewTabs({ roomId }: { roomId: string }) {
       <span className="view-tabs__meta">
         {approved ? (
           <Link to={`/rooms/${roomId}/install-sheet`} className="btn btn--sm">
-            {`Install sheet · R${pad2(approved.number)}`}
+            {m.views.installSheet(pad2(approved.number))}
           </Link>
         ) : (
-          <span className="view-tabs__hint" title="The Install sheet prints from an Approved revision.">
-            Install sheet after approval
+          <span className="view-tabs__hint" title={m.views.installAfterHint}>
+            {m.views.installAfter}
           </span>
         )}
       </span>

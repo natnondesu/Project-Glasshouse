@@ -10,6 +10,7 @@ import { ALL_LAYERS, type PlanLayers } from './ViewMenu';
 import { FeedLayer } from './feeds';
 import { polygonPath } from './svgPath';
 import { MeasureLayer } from './MeasureLayer';
+import { useT } from '../../i18n';
 import type { MeasureState } from './usePlanGestures';
 import {
   ClearanceLayer,
@@ -61,6 +62,7 @@ const withPreview = (objects: RoomObject[], preview: Preview | null): RoomObject
 
 export function PlanCanvas({ content, issues, selectedId, viewport, preview, measure, cursor, svgHandlers, onFocusObject, inspectorOpen = true, ghost = null, showGaps = true, draftDimension = null, layers = ALL_LAYERS, pulse = null }: PlanCanvasProps) {
   const pulsed = pulse ? content.objects.find((o) => o.id === pulse.id) : undefined;
+  const m = useT();
   const calloutClearance = inspectorOpen ? INSPECTOR_CLEARANCE_PX : RAIL_CLEARANCE_PX;
   const { view } = viewport;
   const flagged = useMemo(() => flaggedObjectIds(issues), [issues]);
@@ -81,7 +83,7 @@ export function PlanCanvas({ content, issues, selectedId, viewport, preview, mea
       className="plan-canvas"
       style={{ cursor }}
       tabIndex={0}
-      aria-label="Room plan drawing. Tab moves between objects, arrow keys nudge, R rotates 45 degrees."
+      aria-label={m.plan.drawing}
       {...svgHandlers}
     >
       <HatchDefs />

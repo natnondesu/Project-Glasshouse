@@ -1,12 +1,14 @@
 import { Link } from 'react-router';
+import { useT } from '../i18n';
 
-export function NotFound({ message = "That page doesn't exist." }: { message?: string }) {
+export function NotFound({ message }: { message?: string }) {
+  const m = useT();
   return (
     <section className="home glass">
-      <h1>Nothing here</h1>
-      <p>{message}</p>
+      <h1>{m.shell.notFoundTitle}</h1>
+      <p>{message ?? m.shell.notFound}</p>
       <p>
-        <Link to="/">Back to your projects</Link>
+        <Link to="/">{m.shell.backToProjects}</Link>
       </p>
     </section>
   );

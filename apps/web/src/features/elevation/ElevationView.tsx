@@ -32,6 +32,7 @@ import { EquipmentInspector } from './EquipmentInspector';
 import { PowerBar } from './PowerBar';
 import { rackHitAt, RackElevation } from './RackElevation';
 import { useDeviceDrag } from './deviceDrag';
+import { useT } from '../../i18n';
 import './elevation.css';
 
 const MESSAGE_MS = 4000;
@@ -62,6 +63,7 @@ function revealInRacks(el: Element): void {
 
 export function ElevationView({ location, readOnly = false, viewingPast = false }: { location: RoomLocation; readOnly?: boolean; viewingPast?: boolean }) {
   const [inspectorOpen, setInspectorOpen] = usePersistentState('glasshouse:inspector-open', true);
+  const m = useT();
   const [catalogOpen, setCatalogOpen] = usePersistentState('glasshouse:elevation-catalog-open', true);
   const revision = currentRevision(location.room.plan);
   const content = revision.content;
@@ -97,12 +99,12 @@ export function ElevationView({ location, readOnly = false, viewingPast = false 
   const place = (template: Template, rack: Rack, atU?: number): void => {
     if (readOnly) return;
     if (template.mounting === 'slot') {
-      setMessage('Nodes go into a Chassis. Select one and use its slot map.');
+      setMessage(m.elevation.nodesInChassis);
       return;
     }
     const bottomU = atU === undefined ? lowestFreeBottomU(rack, template.heightU) : Math.max(1, Math.min(atU, rack.capacityU - template.heightU + 1));
     if (bottomU === null) {
-      setMessage(`${rack.name} has no free ${template.heightU}U space.`);
+      setMessage(m.elevation.noFreeSpace(rack.name, template.heightU));
       return;
     }
     const id = newId();
@@ -127,10 +129,10 @@ export function ElevationView({ location, readOnly = false, viewingPast = false 
   if (racks.length === 0) {
     return (
       <section className="elev-empty glass">
-        <h2>This room has no racks yet</h2>
-        <p>Place a rack on the Plan first, then come back to fill it.</p>
+        <h2>{m.elevation.noRacksTitle}</h2>
+        <p>{m.elevation.noRacksBody}</p>
         <Link className="btn btn--ink" to={`/rooms/${roomId}/plan`}>
-          Go to the plan
+          {m.elevation.goToPlan}
         </Link>
       </section>
     );
@@ -138,7 +140,7 @@ export function ElevationView({ location, readOnly = false, viewingPast = false 
 
   return (
     <div className={`elev${inspectorOpen ? '' : ' is-inspector-closed'}`}>
-      <aside className="elev__side" aria-label="Catalog and checks">
+      <aside className="elev__side" aria-label={m.elevation.side}>
         <SearchBox
           className="search--inline"
           content={content}
@@ -156,8 +158,8 @@ export function ElevationView({ location, readOnly = false, viewingPast = false 
           action={(hit) => {
             const target = content.objects.find((o) => o.id === hit.objectId);
             return !hit.elementId && target?.type !== 'rack' ? (
-              <Link to={`/rooms/${roomId}/plan?sel=${hit.objectId}`} aria-label={`Show ${hit.name} on plan`} onMouseDown={(e) => e.stopPropagation()}>
-                Plan
+              <Link to={`/rooms/${roomId}/plan?sel=${hit.objectId}`} aria-label={m.elevation.showOnPlan(hit.name)} onMouseDown={(e) => e.stopPropagation()}>
+                {m.elevation.plan}
               </Link>
             ) : null;
           }}
@@ -171,7 +173,7 @@ export function ElevationView({ location, readOnly = false, viewingPast = false 
         <PowerBar content={content} />
         <StateLegend />
       </div>
-      <section className="elev__racks" aria-label="Rack elevations">
+      <section className="elev__racks" aria-label={m.elevation.racks}>
         {racks.map((rack) => (
           <RackElevation
             key={rack.id}
@@ -194,11 +196,11 @@ export function ElevationView({ location, readOnly = false, viewingPast = false 
       </section>
       {inspectorOpen ? (
         <>
-          <PanelCollapseTab label="Inspector" side="right" className="elev__tab" onCollapse={() => setInspectorOpen(false)} />
+          <PanelCollapseTab label={m.panels.inspector} side="right" className="elev__tab" onCollapse={() => setInspectorOpen(false)} />
           <EquipmentInspector content={content} roomId={roomId} selectedId={selectedId} activeRack={activeRack} catalog={catalog} commit={commit} onSelect={select} readOnly={readOnly} plan={location.room.plan} stateLocked={viewingPast} onManagePorts={setPortsFor} />
         </>
       ) : (
-        <PanelRail label="Inspector" side="right" className="elev__rail" onExpand={() => setInspectorOpen(true)} />
+        <PanelRail label={m.panels.inspector} side="right" className="elev__rail" onExpand={() => setInspectorOpen(true)} />
       )}
       {portsFor && (findRackDevice(content, portsFor) || findNode(content, portsFor)) ? (
         <PortManager key={portsFor} content={content} deviceId={portsFor} commit={commit} readOnly={readOnly} onClose={() => setPortsFor(null)} />

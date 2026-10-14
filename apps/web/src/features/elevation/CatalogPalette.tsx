@@ -2,6 +2,7 @@ import { formatDemand, type Rack, type Template } from '@glasshouse/domain';
 import { Link } from 'react-router';
 import { IconChevronRight, IconPlus } from '../../ui/icons';
 import { TEMPLATE_MIME } from './dnd';
+import { useT } from '../../i18n';
 
 interface CatalogPaletteProps {
   catalog: Template[];
@@ -13,6 +14,7 @@ interface CatalogPaletteProps {
 }
 
 export function CatalogPalette({ catalog, activeRack, onAdd, disabled = false, collapsed = false, onToggle }: CatalogPaletteProps) {
+  const m = useT();
   return (
     <section className="palette" aria-labelledby="palette-h">
       <div className="palette__head">
@@ -21,21 +23,21 @@ export function CatalogPalette({ catalog, activeRack, onAdd, disabled = false, c
             type="button"
             className={`palette__toggle${collapsed ? '' : ' is-open'}`}
             aria-expanded={!collapsed}
-            aria-label={collapsed ? 'Expand catalog' : 'Collapse catalog'}
+            aria-label={collapsed ? m.palette.expand : m.palette.collapse}
             onClick={onToggle}
           >
             <IconChevronRight />
           </button>
         ) : null}
-        <h2 id="palette-h">Catalog</h2>
+        <h2 id="palette-h">{m.palette.title}</h2>
         <Link to="/catalog" className="palette__edit">
-          Edit catalog
+          {m.palette.edit}
         </Link>
       </div>
       {collapsed ? null : (
         <>
       <p className="palette__note">
-        {disabled ? 'This Revision is frozen. Start a new draft to add Devices.' : `Drag onto a rack, or add to ${activeRack ? activeRack.name : 'the selected rack'} at its lowest free U.`}
+        {disabled ? m.palette.frozen : m.palette.dragHint(activeRack?.name ?? null)}
       </p>
       <ul className="palette__list">
         {catalog.map((t) => (
@@ -48,16 +50,16 @@ export function CatalogPalette({ catalog, activeRack, onAdd, disabled = false, c
               e.dataTransfer.effectAllowed = 'copy';
             }}
           >
-            <span className="stamp">{t.mounting === 'slot' ? 'SLOT' : `${t.heightU}U`}</span>
+            <span className="stamp">{t.mounting === 'slot' ? m.palette.slot : `${t.heightU}U`}</span>
             <span className="palette__label">{t.label}</span>
             <span className="palette__w mono">{formatDemand(t.demand)}</span>
             {t.mounting === 'rack' && disabled ? null : t.mounting === 'rack' && activeRack ? (
-              <button type="button" className="icon-btn icon-btn--sm" aria-label={`Add ${t.label} to ${activeRack.name}`} title={`Add to ${activeRack.name}`} onClick={() => onAdd(t)}>
+              <button type="button" className="icon-btn icon-btn--sm" aria-label={m.palette.add(t.label, activeRack.name)} title={m.palette.addTo(activeRack.name)} onClick={() => onAdd(t)}>
                 <IconPlus />
               </button>
             ) : (
-              <span className="palette__hint" title="Add from a Chassis slot map">
-                in Chassis
+              <span className="palette__hint" title={m.palette.inChassisHint}>
+                {m.palette.inChassis}
               </span>
             )}
           </li>

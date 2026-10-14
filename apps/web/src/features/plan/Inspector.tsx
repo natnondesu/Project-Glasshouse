@@ -4,6 +4,7 @@ import { ObjectInspector } from './ObjectInspector';
 import { SurveyPanel } from './SurveyPanel';
 import type { CommitFn } from './usePlanGestures';
 import './inspector.css';
+import { useT } from '../../i18n';
 
 interface InspectorProps {
   content: PlanContent;
@@ -16,8 +17,9 @@ interface InspectorProps {
 }
 
 export function Inspector({ content, selected, commit, onDeleted, readOnly = false, dimension = null, onManagePanel }: InspectorProps) {
+  const m = useT();
   return (
-    <aside className="inspector glass" aria-label={dimension ? 'Dimension details' : selected ? `${selected.name} details` : 'Survey'}>
+    <aside className="inspector glass" aria-label={dimension ? m.inspector.dimensionDetails : selected ? m.inspector.details(selected.name) : m.inspector.surveyLabel}>
       <fieldset className="inspector__lock" disabled={readOnly}>
         {dimension ? (
           <DimensionInspector key={dimension.id} content={content} dimension={dimension} commit={commit} onDeleted={onDeleted} />

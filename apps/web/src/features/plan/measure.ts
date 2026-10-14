@@ -10,6 +10,10 @@ import {
   type Ring,
 } from '@glasshouse/domain';
 
+/** Snap labels for walls; MeasureLayer swaps them for the active language. Objects use their own names. */
+export const WALL_LABEL = 'Wall';
+export const WALL_CORNER_LABEL = 'Wall corner';
+
 export interface SnapTarget {
   point: Point;
   kind: 'corner' | 'edge' | 'free';
@@ -61,7 +65,7 @@ function closestOnSegment(p: Point, a: Point, b: Point): Point {
 const dist = (a: Point, b: Point): number => Math.hypot(a[0] - b[0], a[1] - b[1]);
 
 function features(content: PlanContent): Feature[] {
-  const walls = footprintOf(content.survey).flatMap((poly) => poly.map((ring) => ({ ring, label: 'Wall', cornerLabel: 'Wall corner', objectId: null })));
+  const walls = footprintOf(content.survey).flatMap((poly) => poly.map((ring) => ({ ring, label: WALL_LABEL, cornerLabel: WALL_CORNER_LABEL, objectId: null })));
   const objects = content.objects.flatMap((o) => placementPolygon(o).map((ring) => ({ ring, label: o.name, cornerLabel: o.name, objectId: o.id })));
   return [...walls, ...objects];
 }

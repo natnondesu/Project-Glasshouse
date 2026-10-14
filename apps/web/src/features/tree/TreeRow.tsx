@@ -2,11 +2,12 @@ import { useState, type ReactNode } from 'react';
 import { Link } from 'react-router';
 import { IconChevronRight, IconPencil, IconPlus, IconTrash } from '../../ui/icons';
 import { InlineRename } from './InlineRename';
+import { useT } from '../../i18n';
 
-const KIND_LABEL = { project: 'Project', site: 'Site', room: 'Room' } as const;
+type Kind = 'project' | 'site' | 'room';
 
 interface TreeRowProps {
-  kind: keyof typeof KIND_LABEL;
+  kind: Kind;
   label: string;
   to?: string;
   active?: boolean;
@@ -28,20 +29,21 @@ interface TreeRowProps {
 export function TreeRow(props: TreeRowProps) {
   const { kind, label, to, active = false, badge, editing, onAdd, addLabel, children, expanded, onToggle } = props;
   const [confirming, setConfirming] = useState(false);
+  const m = useT();
 
   let line: ReactNode;
   if (editing) {
-    line = <InlineRename label={`${KIND_LABEL[kind]} name`} initial={label} onCommit={props.onRename} onDone={props.onStopEdit} />;
+    line = <InlineRename label={m.tree.nameOf(m.tree.kind[kind])} initial={label} onCommit={props.onRename} onDone={props.onStopEdit} />;
   } else if (confirming) {
     line = (
-      <div className="tree-row__confirm" role="group" aria-label={`Confirm deleting ${label}`}>
+      <div className="tree-row__confirm" role="group" aria-label={m.tree.confirmDelete(label)}>
         <span>{props.deleteWarning}</span>
         <span className="tree-row__confirm-actions">
           <button type="button" className="btn btn--sm btn--danger" onClick={() => { setConfirming(false); props.onDelete(); }}>
-            Delete
+            {m.tree.delete}
           </button>
           <button type="button" className="btn btn--sm btn--quiet" onClick={() => setConfirming(false)}>
-            Cancel
+            {m.common.cancel}
           </button>
         </span>
       </div>
@@ -54,7 +56,7 @@ export function TreeRow(props: TreeRowProps) {
             type="button"
             className={`tree-row__toggle${expanded ? ' is-open' : ''}`}
             aria-expanded={expanded}
-            aria-label={`${expanded ? 'Collapse' : 'Expand'} ${label}`}
+            aria-label={expanded ? m.tree.collapse(label) : m.tree.expand(label)}
             onClick={onToggle}
           >
             <IconChevronRight />
@@ -77,10 +79,10 @@ export function TreeRow(props: TreeRowProps) {
               <IconPlus />
             </button>
           ) : null}
-          <button type="button" className="icon-btn icon-btn--sm" aria-label={`Rename ${label}`} title="Rename" onClick={props.onStartEdit}>
+          <button type="button" className="icon-btn icon-btn--sm" aria-label={m.tree.renameOf(label)} title={m.tree.rename} onClick={props.onStartEdit}>
             <IconPencil />
           </button>
-          <button type="button" className="icon-btn icon-btn--sm" aria-label={`Delete ${label}`} title="Delete" onClick={() => setConfirming(true)}>
+          <button type="button" className="icon-btn icon-btn--sm" aria-label={m.tree.deleteOf(label)} title={m.tree.delete} onClick={() => setConfirming(true)}>
             <IconTrash />
           </button>
         </span>
