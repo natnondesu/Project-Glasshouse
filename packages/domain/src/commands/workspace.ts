@@ -131,7 +131,8 @@ export function apply(ws: Workspace, cmd: WorkspaceCommand): Result<Workspace> {
     case 'template/create':
     case 'template/update':
     case 'template/delete':
-    case 'catalog/seed': {
+    case 'catalog/seed':
+    case 'catalog/import': {
       const result = applyCatalogCommand(ws.catalog, cmd);
       if (!result.ok) return result;
       return ok(produce(ws, (d) => void (d.catalog = castDraft(result.value))));
