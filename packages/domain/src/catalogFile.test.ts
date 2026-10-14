@@ -1,8 +1,7 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { seedTemplates, SEED_TEMPLATE_IDS } from './catalog';
 import { exportCatalog, parseCatalogFile, previewCatalogImport } from './catalogFile';
 import { applyCatalogCommand } from './commands/catalog';
-import defaultCatalog from './default-catalog.json';
 
 const AT = '2026-10-15T00:00:00.000Z';
 
@@ -39,8 +38,12 @@ describe('catalog file', () => {
     expect(r.value).toHaveLength(local.length + 1);
   });
 
-  it('ships a valid default catalog file that new workspaces start from', () => {
-    const parsed = parseCatalogFile(defaultCatalog);
-    expect(parsed.ok && parsed.value.map((t) => t.id)).toEqual(SEED_TEMPLATE_IDS);
+  it('ships a valid default catalog with the templates the Sample Project needs', async () => {
+    // The real file, not the generic fixture the other tests use.
+    const shipped = await vi.importActual<{ default: unknown }>('./default-catalog.json');
+    const parsed = parseCatalogFile(shipped.default);
+    if (!parsed.ok) throw new Error(parsed.error.message);
+    const ids = parsed.value.map((t) => t.id);
+    for (const needed of ['tpl-switch-1u', 'tpl-server-1u', 'tpl-server-2u', 'tpl-server-4u', 'tpl-chassis-6u', 'tpl-node']) expect(ids).toContain(needed);
   });
 });

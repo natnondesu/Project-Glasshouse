@@ -1,13 +1,13 @@
 {
   "format": "glasshouse.catalog",
   "schemaVersion": 3,
-  "exportedAt": "2026-10-15T00:00:00.000Z",
+  "exportedAt": "2026-10-14T12:40:43.145Z",
   "templates": [
     {
       "id": "tpl-switch-1u",
-      "version": 1,
+      "version": 3,
       "label": "Network switch",
-      "model": "Generic 48-port 1U",
+      "model": "Generic 1U Network Switch",
       "category": "network",
       "mounting": "rack",
       "heightU": 1,
@@ -20,50 +20,50 @@
       "defaultConfig": "",
       "slotCount": null,
       "slotsPerRow": null,
-      "illustrative": true
+      "illustrative": false
     },
     {
       "id": "tpl-server-1u",
-      "version": 1,
-      "label": "Server 1U",
+      "version": 2,
+      "label": "Cloudbridge 1U",
       "model": "Generic 1U server",
-      "category": "compute",
+      "category": "network",
       "mounting": "rack",
       "heightU": 1,
       "depthMm": 750,
       "demand": {
         "kind": "known",
-        "watts": 300
+        "watts": 50
       },
       "color": "",
       "defaultConfig": "",
       "slotCount": null,
       "slotsPerRow": null,
-      "illustrative": true
+      "illustrative": false
     },
     {
       "id": "tpl-server-2u",
-      "version": 1,
-      "label": "Server 2U",
+      "version": 2,
+      "label": "Cloudbridge 2U",
       "model": "Generic 2U server",
-      "category": "compute",
+      "category": "network",
       "mounting": "rack",
       "heightU": 2,
       "depthMm": 780,
       "demand": {
         "kind": "known",
-        "watts": 450
+        "watts": 50
       },
       "color": "",
       "defaultConfig": "",
       "slotCount": null,
       "slotsPerRow": null,
-      "illustrative": true
+      "illustrative": false
     },
     {
       "id": "tpl-server-4u",
-      "version": 1,
-      "label": "Server 4U",
+      "version": 2,
+      "label": "Compute Server 4U",
       "model": "Generic 4U server",
       "category": "compute",
       "mounting": "rack",
@@ -71,17 +71,17 @@
       "depthMm": 800,
       "demand": {
         "kind": "known",
-        "watts": 780
+        "watts": 500
       },
       "color": "",
       "defaultConfig": "",
       "slotCount": null,
       "slotsPerRow": null,
-      "illustrative": true
+      "illustrative": false
     },
     {
       "id": "tpl-chassis-6u",
-      "version": 1,
+      "version": 2,
       "label": "Chassis 6U · 5 slots",
       "model": "Generic 6U chassis",
       "category": "chassis",
@@ -90,17 +90,17 @@
       "depthMm": 780,
       "demand": {
         "kind": "known",
-        "watts": 20
+        "watts": 0
       },
       "color": "",
       "defaultConfig": "",
       "slotCount": 5,
       "slotsPerRow": 5,
-      "illustrative": true
+      "illustrative": false
     },
     {
       "id": "tpl-node",
-      "version": 1,
+      "version": 2,
       "label": "Node server",
       "model": "Generic chassis node",
       "category": "compute",
@@ -109,13 +109,89 @@
       "depthMm": 0,
       "demand": {
         "kind": "known",
-        "watts": 150
+        "watts": 500
       },
       "color": "",
       "defaultConfig": "",
       "slotCount": null,
       "slotsPerRow": null,
-      "illustrative": true
+      "illustrative": false
+    },
+    {
+      "id": "928fd975-d83b-4fab-b570-5aeba7aec40e",
+      "version": 1,
+      "label": "Storage Server 4U",
+      "model": "Generic 4U server",
+      "category": "storage",
+      "mounting": "rack",
+      "heightU": 4,
+      "depthMm": 750,
+      "demand": {
+        "kind": "known",
+        "watts": 500
+      },
+      "color": "",
+      "defaultConfig": "",
+      "slotCount": null,
+      "slotsPerRow": null,
+      "illustrative": false
+    },
+    {
+      "id": "aa64fda0-c841-4442-bb72-e28143a22bb0",
+      "version": 3,
+      "label": "Cable Management",
+      "model": "1U Cable Management",
+      "category": "misc",
+      "mounting": "rack",
+      "heightU": 1,
+      "depthMm": 750,
+      "demand": {
+        "kind": "known",
+        "watts": 0
+      },
+      "color": "",
+      "defaultConfig": "",
+      "slotCount": null,
+      "slotsPerRow": null,
+      "illustrative": false
+    },
+    {
+      "id": "f3c4072f-e1c1-4ee7-ad41-e3f96ee21eea",
+      "version": 1,
+      "label": "UTP Patch Panel",
+      "model": "1U UTP Patch Panel",
+      "category": "misc",
+      "mounting": "rack",
+      "heightU": 1,
+      "depthMm": 750,
+      "demand": {
+        "kind": "known",
+        "watts": 0
+      },
+      "color": "",
+      "defaultConfig": "",
+      "slotCount": null,
+      "slotsPerRow": null,
+      "illustrative": false
+    },
+    {
+      "id": "bf728205-d67a-418e-aadf-e7a6fea309a0",
+      "version": 1,
+      "label": "F.O. Patch Panel",
+      "model": "1U F.O. Patch Panel",
+      "category": "misc",
+      "mounting": "rack",
+      "heightU": 1,
+      "depthMm": 750,
+      "demand": {
+        "kind": "known",
+        "watts": 0
+      },
+      "color": "",
+      "defaultConfig": "",
+      "slotCount": null,
+      "slotsPerRow": null,
+      "illustrative": false
     }
   ]
 }

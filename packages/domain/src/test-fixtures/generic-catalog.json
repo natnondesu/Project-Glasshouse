@@ -1,0 +1,121 @@
+{
+  "format": "glasshouse.catalog",
+  "schemaVersion": 3,
+  "exportedAt": "2026-10-15T00:00:00.000Z",
+  "templates": [
+    {
+      "id": "tpl-switch-1u",
+      "version": 1,
+      "label": "Network switch",
+      "model": "Generic 48-port 1U",
+      "category": "network",
+      "mounting": "rack",
+      "heightU": 1,
+      "depthMm": 300,
+      "demand": {
+        "kind": "known",
+        "watts": 110
+      },
+      "color": "",
+      "defaultConfig": "",
+      "slotCount": null,
+      "slotsPerRow": null,
+      "illustrative": true
+    },
+    {
+      "id": "tpl-server-1u",
+      "version": 1,
+      "label": "Server 1U",
+      "model": "Generic 1U server",
+      "category": "compute",
+      "mounting": "rack",
+      "heightU": 1,
+      "depthMm": 750,
+      "demand": {
+        "kind": "known",
+        "watts": 300
+      },
+      "color": "",
+      "defaultConfig": "",
+      "slotCount": null,
+      "slotsPerRow": null,
+      "illustrative": true
+    },
+    {
+      "id": "tpl-server-2u",
+      "version": 1,
+      "label": "Server 2U",
+      "model": "Generic 2U server",
+      "category": "compute",
+      "mounting": "rack",
+      "heightU": 2,
+      "depthMm": 780,
+      "demand": {
+        "kind": "known",
+        "watts": 450
+      },
+      "color": "",
+      "defaultConfig": "",
+      "slotCount": null,
+      "slotsPerRow": null,
+      "illustrative": true
+    },
+    {
+      "id": "tpl-server-4u",
+      "version": 1,
+      "label": "Server 4U",
+      "model": "Generic 4U server",
+      "category": "compute",
+      "mounting": "rack",
+      "heightU": 4,
+      "depthMm": 800,
+      "demand": {
+        "kind": "known",
+        "watts": 780
+      },
+      "color": "",
+      "defaultConfig": "",
+      "slotCount": null,
+      "slotsPerRow": null,
+      "illustrative": true
+    },
+    {
+      "id": "tpl-chassis-6u",
+      "version": 1,
+      "label": "Chassis 6U · 5 slots",
+      "model": "Generic 6U chassis",
+      "category": "chassis",
+      "mounting": "rack",
+      "heightU": 6,
+      "depthMm": 780,
+      "demand": {
+        "kind": "known",
+        "watts": 20
+      },
+      "color": "",
+      "defaultConfig": "",
+      "slotCount": 5,
+      "slotsPerRow": 5,
+      "illustrative": true
+    },
+    {
+      "id": "tpl-node",
+      "version": 1,
+      "label": "Node server",
+      "model": "Generic chassis node",
+      "category": "compute",
+      "mounting": "slot",
+      "heightU": 0,
+      "depthMm": 0,
+      "demand": {
+        "kind": "known",
+        "watts": 150
+      },
+      "color": "",
+      "defaultConfig": "",
+      "slotCount": null,
+      "slotsPerRow": null,
+      "illustrative": true
+    }
+  ]
+}
