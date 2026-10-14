@@ -3,7 +3,9 @@ import type { ReactNode } from 'react';
 import { useT } from '../../i18n';
 import { bomCell, bomHeader } from '../bom/bomText';
 
-const SHEET_COLUMNS = BOM_COLUMNS.filter((c) => !['project', 'site', 'room', 'kind'].includes(c.key));
+// The sheet prints the approved design on A4: on-site state is live (it's on the elevations) and the
+// title block already names the project, site and room.
+const SHEET_COLUMNS = BOM_COLUMNS.filter((c) => !['project', 'site', 'room', 'kind', 'state'].includes(c.key));
 const SHORT = new Set<string>(['rack', 'chassis', 'slot', 'name', 'position', 'heightU', 'depthMm', 'demandW']);
 
 /**

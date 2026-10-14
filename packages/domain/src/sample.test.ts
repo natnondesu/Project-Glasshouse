@@ -9,7 +9,7 @@ import { createSampleProject, withSample } from './sample';
 import { feedRoute } from './feeds';
 import { footprintOf } from './footprint';
 import { pointInPolygon } from './geometry/polygon';
-import type { Chassis, Rack, Workspace } from './model/types';
+import type { Room, Chassis, Rack, Workspace } from './model/types';
 
 const AT = '2026-10-14T00:00:00.000Z';
 
@@ -38,7 +38,7 @@ describe('Sample Project', () => {
     const mdf = ws.projects[0]!.sites[0]!.rooms[1]!;
     const content = currentRevision(mdf.plan).content;
     expect(content.survey.floorAreas).toHaveLength(2);
-    expect(content.survey.cutOuts).toHaveLength(1);
+    expect(content.survey.cutOuts.map((c) => c.kind)).toEqual(['solid', 'void']);
     const racks = content.objects.filter((o): o is Rack => o.type === 'rack');
     expect(racks.filter((r) => r.owner === 'oxygenai')).toHaveLength(2);
     const customer = racks.filter((r) => r.owner === 'customer');
@@ -102,5 +102,22 @@ describe('Sample Project power feeds', () => {
     const rk01 = server.objects.find((o) => o.name === 'RK-01')!;
     expect(server.feeds.filter((f) => f.targetId === rk01.id).map((f) => f.label)).toEqual(['Feed A', 'Feed B']);
     expect(checkPlan(server).filter((i) => i.code === 'feed_no_way' || i.code === 'feed_overload')).toEqual([]);
+  });
+
+  it('shows every feature: power chains, all source types, ports and cables, dimensions, doors and on-site state', () => {
+    const ws = sampleWorkspace();
+    const [server, mdf] = ws.projects[0]!.sites[0]!.rooms as [Room, Room];
+    const sc = currentRevision(server.plan).content;
+    const mc = currentRevision(mdf.plan).content;
+    const types = new Set([...sc.objects, ...mc.objects].map((o) => o.type));
+    expect([...types].sort()).toEqual(['door', 'existing_rack', 'floor_box', 'furniture', 'industrial_socket', 'mcb', 'pdu', 'rack', 'ups', 'wall_plug']);
+    const sourceTargets = (c: typeof sc) => c.feeds.filter((f) => c.objects.find((o) => o.id === f.targetId)?.type !== 'rack');
+    expect(sourceTargets(sc).length + sourceTargets(mc).length).toBe(2);
+    expect(sc.links.length).toBeGreaterThan(5);
+    expect(mc.links.length).toBe(3);
+    expect(sc.dimensions.length + mc.dimensions.length).toBe(2);
+    expect(Object.values(server.plan.equipmentState)).toEqual(expect.arrayContaining(['deployed', 'maintenance']));
+    const mcb = sc.objects.find((o) => o.type === 'mcb' && o.name === 'MCB-01');
+    expect(mcb && mcb.type !== 'rack' && mcb.panel?.phase).toBe('three');
   });
 });
