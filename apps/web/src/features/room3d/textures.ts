@@ -135,25 +135,41 @@ export function railTexture(capacityU: number): CanvasTexture {
   return t;
 }
 
-/** A label for a sprite above a rack: name, then a quieter second line. */
-export function labelTexture(title: string, sub: string, accent: string): CanvasTexture {
-  const [c, ctx] = canvas(320, 112);
+const LABEL_H_PX = 112;
+const LABEL_MIN_W_PX = 240;
+const LABEL_PAD_PX = 28;
+const TITLE_FONT = '700 44px "Geist Mono", ui-monospace, monospace';
+const SUB_FONT = '600 30px "Geist Mono", ui-monospace, monospace';
+
+/**
+ * A label for a sprite above a rack: name, then a quieter second line.
+ * The canvas grows to fit the text, and `aspect` lets the sprite keep it undistorted.
+ */
+export function labelTexture(title: string, sub: string, accent: string): { map: CanvasTexture; aspect: number } {
+  const [probe, measure] = canvas(1, 1);
+  void probe;
+  measure.font = TITLE_FONT;
+  const titleW = measure.measureText(title).width;
+  measure.font = SUB_FONT;
+  const subW = measure.measureText(sub).width;
+  const w = Math.ceil(Math.max(LABEL_MIN_W_PX, titleW, subW) + LABEL_PAD_PX * 2);
+  const [c, ctx] = canvas(w, LABEL_H_PX);
   ctx.fillStyle = 'rgba(251, 252, 250, 0.94)';
   ctx.strokeStyle = accent;
   ctx.lineWidth = 3;
   ctx.beginPath();
-  ctx.roundRect(4, 4, 312, 104, 16);
+  ctx.roundRect(4, 4, w - 8, LABEL_H_PX - 8, 16);
   ctx.fill();
   ctx.stroke();
   ctx.fillStyle = '#111720';
-  ctx.font = '700 44px "Geist Mono", ui-monospace, monospace';
+  ctx.font = TITLE_FONT;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.fillText(title, 160, 42);
+  ctx.fillText(title, w / 2, 42);
   ctx.fillStyle = '#26303b';
-  ctx.font = '600 30px "Geist Mono", ui-monospace, monospace';
-  ctx.fillText(sub, 160, 84);
-  return texture(c);
+  ctx.font = SUB_FONT;
+  ctx.fillText(sub, w / 2, 84);
+  return { map: texture(c), aspect: w / LABEL_H_PX };
 }
 
 /** Diagonal hatch for Reserved ranges, matching the 2D elevation. */

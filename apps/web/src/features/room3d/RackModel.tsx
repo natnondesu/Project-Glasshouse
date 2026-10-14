@@ -11,8 +11,8 @@ const PANEL_M = 0.012;
 const RAIL_W_M = 0.022;
 /** Device fronts sit just behind the front rails, like real rack-mount gear. */
 const RAIL_SETBACK_M = 0.035;
-/** Labels keep a fixed on-screen size (no distance attenuation), so they stay readable at any zoom. */
-const LABEL_SCALE: [number, number, number] = [0.13, 0.0455, 1];
+/** Labels keep a fixed on-screen height (no distance attenuation), so they stay readable at any zoom. */
+const LABEL_H_SCREEN = 0.0455;
 const LABEL_LIFT_M = 0.35;
 const LABEL_STAGGER_M = 0.62;
 
@@ -25,6 +25,8 @@ interface RackModelProps {
   existing?: boolean;
   /** Lifts every other label so neighbouring racks' labels don't overlap. */
   stagger?: boolean;
+  /** Always show the label, or only on hover and selection. */
+  labels?: 'always' | 'hover';
 }
 
 function Frame({ w, h, d, color }: { w: number; h: number; d: number; color: string }) {
@@ -66,16 +68,16 @@ function Frame({ w, h, d, color }: { w: number; h: number; d: number; color: str
 
 function Label({ rack, accent, h, existing, stagger }: { rack: Rack3D; accent: string; h: number; existing: boolean; stagger: boolean }) {
   const sub = existing ? 'Existing rack' : rack.owner === 'customer' ? `Customer · ${rack.capacityU}U` : `${rack.usedU}/${rack.capacityU}U`;
-  const map = useMemo(() => labelTexture(rack.name, sub, accent), [rack.name, sub, accent]);
+  const { map, aspect } = useMemo(() => labelTexture(rack.name, sub, accent), [rack.name, sub, accent]);
   useEffect(() => () => map.dispose(), [map]);
   return (
-    <sprite position={[0, h / 2 + LABEL_LIFT_M + (stagger ? LABEL_STAGGER_M : 0), 0]} scale={LABEL_SCALE} renderOrder={10}>
+    <sprite position={[0, h / 2 + LABEL_LIFT_M + (stagger ? LABEL_STAGGER_M : 0), 0]} scale={[LABEL_H_SCREEN * aspect, LABEL_H_SCREEN, 1]} renderOrder={10}>
       <spriteMaterial map={map} depthTest={false} transparent sizeAttenuation={false} />
     </sprite>
   );
 }
 
-export function RackModel({ rack, palette, selected, onSelect, existing = false, stagger = false }: RackModelProps) {
+export function RackModel({ rack, palette, selected, onSelect, existing = false, stagger = false, labels = 'always' }: RackModelProps) {
   const [w, h, d] = rack.size;
   const [hover, setHover] = useState(false);
   const frontZ = d / 2 - RAIL_SETBACK_M;
@@ -157,7 +159,7 @@ export function RackModel({ rack, palette, selected, onSelect, existing = false,
           <meshBasicMaterial color={palette.front} transparent opacity={0.22} depthWrite={false} />
         </mesh>
       ) : null}
-      <Label rack={rack} accent={accent} h={h} existing={existing} stagger={stagger} />
+      {labels === 'always' || hover || selected ? <Label rack={rack} accent={accent} h={h} existing={existing} stagger={labels === 'always' && stagger} /> : null}
     </group>
   );
 }

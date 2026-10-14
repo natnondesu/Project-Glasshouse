@@ -3,6 +3,7 @@ import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { defaultCamera, type OrbitCamera } from './camera';
 import { readPalette } from './palette';
+import { usePersistentState } from '../../ui/usePersistentState';
 import { hasWebGL, Room3DCanvas } from './Room3DCanvas';
 import { buildScene } from './scene';
 import './room3d.css';
@@ -16,6 +17,7 @@ export default function Room3DView({ location }: { location: RoomLocation }) {
   const [camera, setCamera] = useState<OrbitCamera>(home);
   const [webgl] = useState(hasWebGL);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [labels, setLabels] = usePersistentState<'always' | 'hover'>('glasshouse:3d-labels', 'always');
   const racks = [...scene.racks].sort((a, b) => a.name.localeCompare(b.name));
   const selected = racksOf(content).find((r) => r.id === selectedId) ?? null;
   const power = selected ? rackPower(selected) : null;
@@ -24,7 +26,7 @@ export default function Room3DView({ location }: { location: RoomLocation }) {
   return (
     <section className="room3d" aria-label="Room 3D view">
       {webgl ? (
-        <Room3DCanvas scene={scene} palette={palette} camera={camera} onCamera={setCamera} selectedRackId={selectedId} onSelectRack={setSelectedId} />
+        <Room3DCanvas scene={scene} palette={palette} camera={camera} onCamera={setCamera} selectedRackId={selectedId} onSelectRack={setSelectedId} labels={labels} />
       ) : (
         <p className="room3d__fallback" role="status">
           This browser can't show 3D (WebGL is turned off or unavailable). The plan and elevation views show the same Room.
@@ -68,6 +70,14 @@ export default function Room3DView({ location }: { location: RoomLocation }) {
         <button type="button" className="btn btn--sm" onClick={() => setCamera(home)}>
           Reset view
         </button>
+        <div className="seg seg--compact" role="group" aria-label="Rack labels">
+          <button type="button" aria-pressed={labels === 'always'} onClick={() => setLabels('always')}>
+            Labels always
+          </button>
+          <button type="button" aria-pressed={labels === 'hover'} onClick={() => setLabels('hover')}>
+            On hover
+          </button>
+        </div>
         <span className="room3d__hint">Drag to orbit · two-finger scroll to pan · pinch to zoom · click a Rack to highlight it</span>
       </div>
     </section>
