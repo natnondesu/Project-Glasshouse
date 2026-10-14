@@ -21,7 +21,7 @@ export function Inspector({ content, selected, commit, onDeleted, readOnly = fal
         {dimension ? (
           <DimensionInspector key={dimension.id} content={content} dimension={dimension} commit={commit} onDeleted={onDeleted} />
         ) : selected ? (
-          <ObjectInspector key={selected.id} object={selected} commit={commit} onDeleted={onDeleted} />
+          <ObjectInspector key={selected.id} object={selected} content={content} commit={commit} onDeleted={onDeleted} />
         ) : (
           <SurveyPanel survey={content.survey} commit={commit} />
         )}

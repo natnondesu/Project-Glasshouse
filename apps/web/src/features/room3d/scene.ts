@@ -1,4 +1,4 @@
-import { effectiveHeight, footprintOf, localToWorld, usedU, type Category, type MultiPoly, type PlanContent, type Rack, type RoomObject, type SimpleObjectType } from '@glasshouse/domain';
+import { effectiveHeight, feedRoute, footprintOf, localToWorld, usedU, type PowerFeed, type Point, type Category, type MultiPoly, type PlanContent, type Rack, type RoomObject, type SimpleObjectType } from '@glasshouse/domain';
 
 /** One rack unit (EIA-310) in metres. */
 export const U_M = 0.04445;
@@ -76,6 +76,17 @@ export interface Column3D {
   size: Vec3;
 }
 
+export interface Feed3D {
+  feed: PowerFeed;
+  /** Floor-plan route: panel centre, then along the walls, then the rack's rear. */
+  route: Point[];
+  /** Height of the bottom of the panel cabinet, where the drop starts. */
+  dropFrom: number;
+}
+
+/** MCB cabinets hang from the top of their height; the drop leaves from the cabinet's underside. */
+const MCB_CABINET_M = 0.8;
+
 export interface Scene3D {
   width: number;
   length: number;
@@ -84,6 +95,7 @@ export interface Scene3D {
   racks: Rack3D[];
   others: Object3D[];
   columns: Column3D[];
+  feeds: Feed3D[];
 }
 
 /** Rotation about the world Y axis applied to (x, z), matching three.js Object3D.rotation.y. */
@@ -146,5 +158,10 @@ export function buildScene(content: PlanContent): Scene3D {
     else others.push({ id: o.id, name: o.name, type: o.type, ...p });
   }
   const columns = content.survey.cutOuts.map((c) => ({ id: c.id, position: [c.x + c.w / 2, COLUMN_HEIGHT_M / 2, c.y + c.d / 2] as Vec3, size: [c.w, COLUMN_HEIGHT_M, c.d] as Vec3 }));
-  return { width: content.survey.width, length: content.survey.length, floor: footprintOf(content.survey), racks, others, columns };
+  const feeds = content.feeds.flatMap((feed) => {
+    const route = feedRoute(content, feed);
+    const panel = content.objects.find((o) => o.id === feed.sourceId);
+    return route && panel ? [{ feed, route, dropFrom: Math.max(0.1, effectiveHeight(panel) - Math.min(MCB_CABINET_M, effectiveHeight(panel))) }] : [];
+  });
+  return { width: content.survey.width, length: content.survey.length, floor: footprintOf(content.survey), racks, others, columns, feeds };
 }

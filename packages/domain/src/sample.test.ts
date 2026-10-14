@@ -6,6 +6,9 @@ import { createWorkspace } from './factories';
 import { currentRevision, findRoom } from './lookup';
 import { approvalBlockers, latestApproved } from './readiness';
 import { createSampleProject, withSample } from './sample';
+import { feedRoute } from './feeds';
+import { footprintOf } from './footprint';
+import { pointInPolygon } from './geometry/polygon';
 import type { Chassis, Rack, Workspace } from './model/types';
 
 const AT = '2026-10-14T00:00:00.000Z';
@@ -80,5 +83,23 @@ describe('latestApproved and bomRowsFor', () => {
     expect(approved).toMatchObject({ number: 1, state: 'approved' });
     expect(bomRowsFor(loc, approved)).toEqual(bomRows(loc));
     expect(latestApproved(ws.projects[0]!.sites[0]!.rooms[1]!.plan)).toBeNull();
+  });
+});
+
+describe('Sample Project power feeds', () => {
+  it('feeds the racks from wall panels, with routes that stay inside the room', () => {
+    const ws = sampleWorkspace();
+    for (const room of ws.projects[0]!.sites[0]!.rooms) {
+      const content = currentRevision(room.plan).content;
+      expect(content.feeds.length).toBeGreaterThan(0);
+      const fp = footprintOf(content.survey);
+      for (const feed of content.feeds) {
+        const route = feedRoute(content, feed)!;
+        for (const p of route.slice(1, -1)) expect(fp.some((poly) => pointInPolygon(p, poly))).toBe(true);
+      }
+    }
+    const server = currentRevision(ws.projects[0]!.sites[0]!.rooms[0]!.plan).content;
+    const rk01 = server.objects.find((o) => o.name === 'RK-01')!;
+    expect(server.feeds.filter((f) => f.rackId === rk01.id).map((f) => f.label)).toEqual(['Feed A', 'Feed B']);
   });
 });

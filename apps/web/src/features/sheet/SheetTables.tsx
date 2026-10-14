@@ -85,6 +85,25 @@ export function BomTable({ rows, revision, titleBlock }: { rows: BomRow[]; revis
           </tr>
         ))}
       </tbody>
+      {revision.content.feeds.length > 0 ? (
+        <tbody aria-label="Power feeds">
+          <tr className="sheet-table__group">
+            <th colSpan={SHEET_COLUMNS.length} scope="rowgroup">
+              Power feeds
+            </th>
+          </tr>
+          {[...revision.content.feeds]
+            .map((f) => ({ f, rack: revision.content.objects.find((o) => o.id === f.rackId)?.name ?? '', panel: revision.content.objects.find((o) => o.id === f.sourceId)?.name ?? '' }))
+            .sort((a, b) => a.rack.localeCompare(b.rack) || a.f.label.localeCompare(b.f.label))
+            .map(({ f, rack, panel }) => (
+              <tr key={f.id}>
+                <td className="is-short">{rack}</td>
+                <td className="is-short">{f.label}</td>
+                <td colSpan={SHEET_COLUMNS.length - 2}>{panel}</td>
+              </tr>
+            ))}
+        </tbody>
+      ) : null}
       {acks.length > 0 ? (
         <tbody aria-label="Acknowledged unknowns">
           <tr className="sheet-table__group">

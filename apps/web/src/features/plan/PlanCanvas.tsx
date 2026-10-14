@@ -4,6 +4,7 @@ import type { ViewportApi } from '../../viewport/useViewport';
 import { flaggedObjectIds } from './flagged';
 import { CalloutLayer, GapLayer } from './drafting';
 import { DimensionLayer } from './DimensionLayer';
+import { FeedLayer } from './feeds';
 import { polygonPath } from './svgPath';
 import { MeasureLayer } from './MeasureLayer';
 import type { MeasureState } from './usePlanGestures';
@@ -76,6 +77,7 @@ export function PlanCanvas({ content, issues, selectedId, viewport, preview, mea
       <GridLayer survey={content.survey} view={view} />
       <FootprintLayer survey={content.survey} view={view} />
       <ClearanceLayer objects={objects} view={view} />
+      <FeedLayer content={liveContent} view={view} />
       <ObjectsLayer objects={objects} view={view} flagged={flagged} selectedId={selectedId} onFocusObject={onFocusObject} />
       {selected ? <SelectionLayer object={selected} view={view} /> : null}
       <DimensionsLayer survey={content.survey} view={view} />

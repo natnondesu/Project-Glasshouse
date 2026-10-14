@@ -7,6 +7,8 @@ type RawWorkspace = Record<string, unknown>;
 const MIGRATIONS: Record<number, (raw: RawWorkspace) => RawWorkspace> = {
   // 2026-10: persistent dimensions. Every revision gets an empty list.
   1: (raw) => ({ ...raw, schemaVersion: 2, projects: mapRevisions(raw.projects, (rev) => ({ ...rev, content: { ...asRecord(rev.content), dimensions: [] } })) }),
+  // 2026-10: power feeds from MCB panels to racks.
+  2: (raw) => ({ ...raw, schemaVersion: 3, projects: mapRevisions(raw.projects, (rev) => ({ ...rev, content: { ...asRecord(rev.content), feeds: [] } })) }),
 };
 
 const asRecord = (v: unknown): RawWorkspace => (typeof v === 'object' && v !== null ? (v as RawWorkspace) : {});

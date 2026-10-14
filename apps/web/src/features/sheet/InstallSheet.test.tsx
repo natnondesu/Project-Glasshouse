@@ -114,3 +114,11 @@ it('prints an older approved revision chosen from the picker', async () => {
   expect(router.state.location.search).toBe('?rev=1');
   expect(container.querySelector('.sheet-page')).toHaveTextContent('R01 APPROVED');
 });
+
+it('lists which panel feeds each rack, and draws the runs on the plan', () => {
+  const { container } = open(server);
+  const feeds = screen.getByRole('rowgroup', { name: 'Power feeds' });
+  expect(feeds).toHaveTextContent('RK-01Feed AMCB-01');
+  expect(feeds).toHaveTextContent('RK-01Feed BMCB-02');
+  expect(container.querySelectorAll('.sheet-plan .feed__run').length).toBe(3);
+});

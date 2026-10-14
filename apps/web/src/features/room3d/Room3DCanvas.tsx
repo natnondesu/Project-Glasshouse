@@ -4,6 +4,8 @@ import { Plane, Raycaster, Vector2, Vector3 } from 'three';
 import { wheelZoomFactor } from '../../viewport/math';
 import { cameraPosition, dollyToward, orbit, panGround, type OrbitCamera } from './camera';
 import type { Palette3D } from './palette';
+import { feedColor } from '../plan/feeds';
+import { FeedModel } from './FeedModel';
 import { RackModel } from './RackModel';
 import { Column, Floor, ObjectModel, Walls } from './RoomModels';
 import type { Rack3D, Scene3D } from './scene';
@@ -149,6 +151,9 @@ export function Room3DCanvas({ scene, palette, camera, onCamera, selectedRackId,
       })}
       {others.map((o) => (
         <ObjectModel key={o.id} object={o} palette={palette} />
+      ))}
+      {scene.feeds.map((f) => (
+        <FeedModel key={f.feed.id} feed={f} color={feedColor(f.feed, { feeds: scene.feeds.map((x) => x.feed) })} />
       ))}
       {scene.columns.map((c) => (
         <Column key={c.id} column={c} palette={palette} />

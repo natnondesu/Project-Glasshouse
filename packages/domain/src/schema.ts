@@ -71,10 +71,11 @@ const anchor = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('object'), objectId: id, u: num, v: num }),
 ]);
 const dimension = z.object({ id, a: anchor, b: anchor, offset: num });
+const feed = z.object({ id, rackId: id, sourceId: id, label: z.string() });
 const revision = z.object({
   number: int.positive(),
   state: z.enum(['draft', 'in_review', 'approved']),
-  content: z.object({ survey, objects: z.array(z.union([rack, simpleObject])), templatesUsed: z.array(template), dimensions: z.array(dimension) }),
+  content: z.object({ survey, objects: z.array(z.union([rack, simpleObject])), templatesUsed: z.array(template), dimensions: z.array(dimension), feeds: z.array(feed) }),
   designedBy: unverifiedName.nullable(),
   approvedBy: unverifiedName.nullable(),
   submittedAt: z.string().nullable(),
