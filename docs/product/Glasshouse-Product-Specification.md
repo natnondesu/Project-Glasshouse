@@ -231,6 +231,10 @@ The **Design limit** is a per-Plan percentage of the Power budget, default **80%
 
 There is no per-feed/PDU model, PSU failure scenario, cooling model or weight check in the MVP.
 
+### FR09a Power feeds (added 2026-10-14)
+
+A Rack can have one or more **power feeds** (Feed A, Feed B, …), each connected to an MCB panel in the same Room. Feeds are added, re-sourced and removed from the Rack's inspector; an MCB panel's inspector lists the Racks it feeds. A feed is drawn automatically, not as real wireway: from the panel down the wall, along the walls just inside the Room by the shorter way round, then across the floor to the Rack's rear. Parallel runs keep separate lanes, and several feeds enter a Rack side by side. Feeds show on the plan, in room 3D and on the Install sheet (which lists Rack, feed and panel). Removing a Rack or panel removes its feeds.
+
 ### FR10 Review and Revisions
 
 A Plan has numbered **Revisions** in one of three states: **Draft**, **In review**, **Approved**. Only the Draft Revision is editable.
@@ -241,7 +245,7 @@ Review notes can be added and resolved in Draft or In review. Approval is availa
 
 Editing an Approved Plan starts a new Draft Revision with an incremented number; prior Snapshots never change. There is no publish step or baseline in the MVP, and no UI may use the word "Published".
 
-Unverified names are labelled "unverified" everywhere they appear, including the Install sheet and exports. They are not audit records.
+Any earlier Revision can be opened read-only from the Review history (plan, elevation, 3D and BOM), with a clear way back to the current one; the Install sheet can print any Approved Revision. Unverified names are labelled "unverified" everywhere they appear, including the Install sheet and exports. They are not audit records.
 
 ### FR11 Persistence, hand-off and backup
 

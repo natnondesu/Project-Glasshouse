@@ -1,5 +1,6 @@
 import { createWorkspace, currentRevision, withSample, type Workspace } from '@glasshouse/domain';
 import { act, render, screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { createMemoryRouter, RouterProvider } from 'react-router';
 import { beforeEach, expect, it, vi } from 'vitest';
 import { routes } from '../../app/routes';
@@ -90,11 +91,34 @@ it('keeps printing the Approved revision after a new draft starts', () => {
   useWorkspaceStore.getState().dispatch({ type: 'review', roomId: server, command: { type: 'review/new-draft', at: AT } });
   const { container } = open(server);
   expect(container.querySelector('.sheet-page')).toHaveTextContent('R01 APPROVED');
-  expect(screen.getByText(/A newer Draft \(R02\) exists/)).toBeInTheDocument();
+  expect(screen.getByText(/R02 \(draft\) is newer/)).toBeInTheDocument();
 });
 
 it('AC17: is not available for a room without an Approved revision', () => {
   open(mdf);
   expect(screen.getByRole('heading', { name: 'No Approved revision yet' })).toBeInTheDocument();
   expect(screen.getByRole('link', { name: 'Open review' })).toHaveAttribute('href', `/rooms/${mdf}/review`);
+});
+
+it('prints an older approved revision chosen from the picker', async () => {
+  const s = useWorkspaceStore.getState();
+  s.dispatch({ type: 'review', roomId: server, command: { type: 'review/new-draft', at: AT } });
+  s.dispatch({ type: 'review', roomId: server, command: { type: 'review/submit', designedBy: 'Ploy', at: AT } });
+  const problem = s.dispatch({ type: 'review', roomId: server, command: { type: 'review/approve', reviewer: 'Nok', at: AT } });
+  if (problem) throw new Error(problem.message);
+  const router = createMemoryRouter(routes, { initialEntries: [`/rooms/${server}/install-sheet`] });
+  const { container } = render(<RouterProvider router={router} />);
+  expect(container.querySelector('.sheet-page')).toHaveTextContent('R02 APPROVED');
+  const picker = screen.getByLabelText('Approved revision');
+  await userEvent.setup().selectOptions(picker, '1');
+  expect(router.state.location.search).toBe('?rev=1');
+  expect(container.querySelector('.sheet-page')).toHaveTextContent('R01 APPROVED');
+});
+
+it('lists which panel feeds each rack, and draws the runs on the plan', () => {
+  const { container } = open(server);
+  const feeds = screen.getByRole('rowgroup', { name: 'Power feeds' });
+  expect(feeds).toHaveTextContent('RK-01Feed AMCB-01');
+  expect(feeds).toHaveTextContent('RK-01Feed BMCB-02');
+  expect(container.querySelectorAll('.sheet-plan .feed__run').length).toBe(3);
 });

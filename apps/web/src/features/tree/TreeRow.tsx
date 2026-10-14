@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from 'react';
 import { Link } from 'react-router';
-import { IconPencil, IconPlus, IconTrash } from '../../ui/icons';
+import { IconChevronRight, IconPencil, IconPlus, IconTrash } from '../../ui/icons';
 import { InlineRename } from './InlineRename';
 
 const KIND_LABEL = { project: 'Project', site: 'Site', room: 'Room' } as const;
@@ -20,10 +20,13 @@ interface TreeRowProps {
   onDelete: () => void;
   deleteWarning: string;
   children?: ReactNode;
+  /** Projects and sites fold; rooms don't. Undefined means not collapsible. */
+  expanded?: boolean;
+  onToggle?: () => void;
 }
 
 export function TreeRow(props: TreeRowProps) {
-  const { kind, label, to, active = false, badge, editing, onAdd, addLabel, children } = props;
+  const { kind, label, to, active = false, badge, editing, onAdd, addLabel, children, expanded, onToggle } = props;
   const [confirming, setConfirming] = useState(false);
 
   let line: ReactNode;
@@ -46,6 +49,17 @@ export function TreeRow(props: TreeRowProps) {
   } else {
     line = (
       <div className="tree-row__line">
+        {onToggle ? (
+          <button
+            type="button"
+            className={`tree-row__toggle${expanded ? ' is-open' : ''}`}
+            aria-expanded={expanded}
+            aria-label={`${expanded ? 'Collapse' : 'Expand'} ${label}`}
+            onClick={onToggle}
+          >
+            <IconChevronRight />
+          </button>
+        ) : null}
         {to ? (
           <Link to={to} className={`tree-row__label${active ? ' is-active' : ''}`} aria-current={active ? 'page' : undefined}>
             <span className="tree-row__name">{label}</span>
@@ -77,7 +91,7 @@ export function TreeRow(props: TreeRowProps) {
   return (
     <li className={`tree-row tree-row--${kind}`}>
       {line}
-      {children}
+      {expanded === false ? null : children}
     </li>
   );
 }

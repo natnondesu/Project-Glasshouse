@@ -4,6 +4,8 @@ import { Plane, Raycaster, Vector2, Vector3 } from 'three';
 import { wheelZoomFactor } from '../../viewport/math';
 import { cameraPosition, dollyToward, orbit, panGround, type OrbitCamera } from './camera';
 import type { Palette3D } from './palette';
+import { feedColor } from '../plan/feeds';
+import { FeedModel } from './FeedModel';
 import { RackModel } from './RackModel';
 import { Column, Floor, ObjectModel, Walls } from './RoomModels';
 import type { Rack3D, Scene3D } from './scene';
@@ -106,9 +108,10 @@ interface Room3DCanvasProps {
   onCamera: CameraUpdate;
   selectedRackId: string | null;
   onSelectRack: (id: string | null) => void;
+  labels: 'always' | 'hover';
 }
 
-export function Room3DCanvas({ scene, palette, camera, onCamera, selectedRackId, onSelectRack }: Room3DCanvasProps) {
+export function Room3DCanvas({ scene, palette, camera, onCamera, selectedRackId, onSelectRack, labels }: Room3DCanvasProps) {
   const existing = scene.others.filter((o) => o.type === 'existing_rack');
   const others = scene.others.filter((o) => o.type !== 'existing_rack');
   return (
@@ -140,14 +143,17 @@ export function Room3DCanvas({ scene, palette, camera, onCamera, selectedRackId,
       <Floor scene={scene} palette={palette} />
       <Walls scene={scene} palette={palette} />
       {scene.racks.map((r, i) => (
-        <RackModel key={r.id} rack={r} palette={palette} selected={r.id === selectedRackId} onSelect={onSelectRack} stagger={i % 2 === 1} />
+        <RackModel key={r.id} rack={r} palette={palette} selected={r.id === selectedRackId} onSelect={onSelectRack} stagger={i % 2 === 1} labels={labels} />
       ))}
       {existing.map((o) => {
         const asRack: Rack3D = { ...o, owner: 'oxygenai', faces: [], slots: [], reserved: [], capacityU: 42, usedU: 0 };
-        return <RackModel key={o.id} rack={asRack} palette={palette} selected={false} onSelect={() => undefined} existing />;
+        return <RackModel key={o.id} rack={asRack} palette={palette} selected={false} onSelect={() => undefined} existing labels={labels} />;
       })}
       {others.map((o) => (
         <ObjectModel key={o.id} object={o} palette={palette} />
+      ))}
+      {scene.feeds.map((f) => (
+        <FeedModel key={f.feed.id} feed={f} color={feedColor(f.feed, { feeds: scene.feeds.map((x) => x.feed) })} />
       ))}
       {scene.columns.map((c) => (
         <Column key={c.id} column={c} palette={palette} />

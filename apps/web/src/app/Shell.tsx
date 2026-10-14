@@ -4,6 +4,7 @@ import { ProjectTree } from '../features/tree/ProjectTree';
 import { PanelRail } from '../ui/PanelRail';
 import { usePersistentState } from '../ui/usePersistentState';
 import { useWorkspaceStore } from '../store/workspaceStore';
+import { useViewedRevisionNumber } from '../store/hooks';
 import { TitleBlock } from './TitleBlock';
 import './shell.css';
 
@@ -16,6 +17,7 @@ export function Shell() {
   const undo = useWorkspaceStore((s) => s.undo);
   const redo = useWorkspaceStore((s) => s.redo);
   const readOnly = useWorkspaceStore((s) => s.readOnly);
+  const viewingPast = useViewedRevisionNumber() !== null;
   const [treeOpen, setTreeOpen] = usePersistentState('glasshouse:tree-open', true);
 
   // Window-level so undo still works when focus falls back to <body>, e.g. right after a delete.
@@ -23,13 +25,15 @@ export function Shell() {
     if (!roomId) return;
     const onKeyDown = (e: KeyboardEvent): void => {
       if (e.target && isTextEntry(e.target) || !(e.metaKey || e.ctrlKey) || e.key.toLowerCase() !== 'z') return;
+      // An older revision is on screen: undoing the hidden current draft would be invisible and surprising.
+      if (viewingPast) return;
       e.preventDefault();
       if (e.shiftKey) redo(roomId);
       else undo(roomId);
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [roomId, undo, redo]);
+  }, [roomId, undo, redo, viewingPast]);
 
   return (
     <div className="shell">

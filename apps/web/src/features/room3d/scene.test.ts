@@ -71,3 +71,15 @@ describe('room 3D scene', () => {
     expect(withColumn.columns).toEqual([{ id: 'c', position: [2.2, 1.3, 1.2], size: [0.4, 2.6, 0.4] }]);
   });
 });
+
+describe('power feeds in 3D', () => {
+  it('drops from under the panel and ends at the rack rear', () => {
+    const base = contentWith(0);
+    const panel = { ...createObject('mcb', { x: 0, y: 2 }, []), id: 'm', angle: 90 };
+    const content = { ...base, objects: [...base.objects, panel], feeds: [{ id: 'f', rackId: 'rk', sourceId: 'm', label: 'Feed A' }] };
+    const [feed] = buildScene(content).feeds;
+    expect(feed!.dropFrom).toBeCloseTo(0.6, 6);
+    const rack = content.objects[0] as Rack;
+    expect(feed!.route[feed!.route.length - 1]).toEqual(localToWorld(rack, [0, -rack.d / 2]));
+  });
+});

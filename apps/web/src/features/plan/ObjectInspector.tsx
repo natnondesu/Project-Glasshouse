@@ -1,4 +1,5 @@
-import { formatMetres, rackAutoHeightM, type ObjectPatch, type RoomObject } from '@glasshouse/domain';
+import { formatMetres, rackAutoHeightM, type ObjectPatch, type PlanContent, type RoomObject } from '@glasshouse/domain';
+import { PanelFeeds, RackFeeds } from './feeds';
 import { useState } from 'react';
 import { IconRotateCcw, IconRotateCw } from '../../ui/icons';
 import { NumberField } from '../../ui/NumberField';
@@ -8,11 +9,12 @@ import type { CommitFn } from './usePlanGestures';
 
 interface ObjectInspectorProps {
   object: RoomObject;
+  content: PlanContent;
   commit: CommitFn;
   onDeleted: () => void;
 }
 
-export function ObjectInspector({ object, commit, onDeleted }: ObjectInspectorProps) {
+export function ObjectInspector({ object, content, commit, onDeleted }: ObjectInspectorProps) {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const update = (patch: ObjectPatch, key?: string): string | null =>
@@ -140,6 +142,9 @@ export function ObjectInspector({ object, commit, onDeleted }: ObjectInspectorPr
           </fieldset>
         </>
       ) : null}
+
+      {rack ? <RackFeeds rack={rack} content={content} commit={commit} /> : null}
+      {object.type === 'mcb' ? <PanelFeeds panel={object} content={content} /> : null}
 
       <fieldset className="inspector__group">
         <legend className="visually-hidden">Notes</legend>

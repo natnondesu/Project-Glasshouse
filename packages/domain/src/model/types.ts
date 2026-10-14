@@ -154,11 +154,21 @@ export interface Dimension {
   offset: Metres;
 }
 
+/** A rack's power connection to an MCB panel. A rack may have several (A and B feeds). */
+export interface PowerFeed {
+  id: Id;
+  rackId: Id;
+  /** The MCB panel it is fed from. */
+  sourceId: Id;
+  label: string;
+}
+
 export interface PlanContent {
   survey: Survey;
   objects: RoomObject[];
   templatesUsed: Template[];
   dimensions: Dimension[];
+  feeds: PowerFeed[];
 }
 
 export type RevisionState = 'draft' | 'in_review' | 'approved';

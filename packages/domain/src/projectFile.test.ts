@@ -40,7 +40,7 @@ const width = (ws: Workspace, roomId: string) => currentRevision(findRoom(ws, ro
 describe('project file', () => {
   it('exports the project with every revision and the template versions it uses', () => {
     const file = fileOf(source());
-    expect(file).toMatchObject({ format: 'glasshouse.project', schemaVersion: 2, exportedAt: AT, project: { id: 'p', name: 'Northgate' } });
+    expect(file).toMatchObject({ format: 'glasshouse.project', schemaVersion: 3, exportedAt: AT, project: { id: 'p', name: 'Northgate' } });
     expect(file.templates.map((t) => t.id)).toEqual(['tpl-server-2u']);
   });
 

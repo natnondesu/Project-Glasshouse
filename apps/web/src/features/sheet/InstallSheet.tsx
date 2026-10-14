@@ -1,9 +1,9 @@
 import { bomRowsFor, currentRevision, latestApproved, racksOf, type Chassis, type Rack } from '@glasshouse/domain';
 import { useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router';
+import { Link, useNavigate, useParams } from 'react-router';
 import { NotFound } from '../../app/NotFound';
-import { useRoomLocation } from '../../store/hooks';
-import { pad2 } from '../../ui/StatusStamp';
+import { useRoomLocation, useViewedRevisionNumber } from '../../store/hooks';
+import { pad2, STATE_LABEL } from '../../ui/StatusStamp';
 import { RackElevation } from '../elevation/RackElevation';
 import { SheetPlan } from './SheetPlan';
 import { BomTable, SlotMapsTable } from './SheetTables';
@@ -48,8 +48,11 @@ export function InstallSheet() {
   const { roomId = '' } = useParams();
   const location = useRoomLocation(roomId);
   const printedAt = usePrintTime();
+  const viewedNumber = useViewedRevisionNumber();
+  const navigate = useNavigate();
   if (!location) return <NotFound message="This room isn't in this browser's workspace." />;
-  const revision = latestApproved(location.room.plan);
+  const approved = location.room.plan.revisions.filter((r) => r.state === 'approved');
+  const revision = approved.find((r) => r.number === viewedNumber) ?? latestApproved(location.room.plan);
   const current = currentRevision(location.room.plan);
 
   if (!revision) {
@@ -74,7 +77,17 @@ export function InstallSheet() {
         <Link to={`/rooms/${roomId}/review`} className="btn btn--sm btn--quiet">
           Back to room
         </Link>
-        {current.number !== revision.number ? <span className="sheet-toolbar__note">{`A newer Draft (R${pad2(current.number)}) exists. This sheet shows the Approved R${pad2(revision.number)}.`}</span> : null}
+        {approved.length > 1 ? (
+          <label className="sheet-toolbar__picker">
+            <span>Approved revision</span>
+            <select value={revision.number} onChange={(e) => void navigate(`/rooms/${roomId}/install-sheet?rev=${e.target.value}`)}>
+              {[...approved].reverse().map((r) => (
+                <option key={r.number} value={r.number}>{`R${pad2(r.number)}`}</option>
+              ))}
+            </select>
+          </label>
+        ) : null}
+        {current.number !== revision.number ? <span className="sheet-toolbar__note">{`R${pad2(current.number)} (${STATE_LABEL[current.state].toLowerCase()}) is newer. This sheet shows R${pad2(revision.number)}.`}</span> : null}
         <button type="button" className="btn btn--sm btn--ink" onClick={() => window.print()}>
           Print / Save as PDF
         </button>

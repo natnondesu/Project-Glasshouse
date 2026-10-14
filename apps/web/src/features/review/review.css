@@ -198,3 +198,10 @@
 .stamp--warn {
   text-transform: uppercase;
 }
+
+.revisions__view {
+  margin-left: auto;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--acc-deep);
+}

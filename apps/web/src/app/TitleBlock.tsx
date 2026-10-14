@@ -1,7 +1,7 @@
 import { currentRevision, exportProjectFile } from '@glasshouse/domain';
 import { useState, type ReactNode } from 'react';
 import { Link } from 'react-router';
-import { useRoomLocation } from '../store/hooks';
+import { useRoomLocation, useViewedRevisionNumber } from '../store/hooks';
 import { useWorkspaceStore, type SaveState } from '../store/workspaceStore';
 import { downloadJson, slugify } from '../ui/files';
 import { GlasshouseMark, IconDownload } from '../ui/icons';
@@ -38,7 +38,9 @@ function SaveStatus({ save }: { save: SaveState }) {
 export function TitleBlock({ roomId }: { roomId: string | null }) {
   const location = useRoomLocation(roomId);
   const save = useWorkspaceStore((s) => s.save);
-  const revision = location ? currentRevision(location.room.plan) : null;
+  const viewedNumber = useViewedRevisionNumber();
+  const viewed = location && viewedNumber !== null ? location.room.plan.revisions.find((r) => r.number === viewedNumber) : undefined;
+  const revision = viewed ?? (location ? currentRevision(location.room.plan) : null);
   const workspace = useWorkspaceStore((s) => s.workspace);
   const [exportError, setExportError] = useState<string | null>(null);
   const exportProject = (): void => {

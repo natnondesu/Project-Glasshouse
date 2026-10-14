@@ -3,6 +3,7 @@ import { useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { useWorkspaceStore } from '../../store/workspaceStore';
 import { readJsonFile } from '../../ui/files';
+import { usePersistentState } from '../../ui/usePersistentState';
 import { IconChevronLeft, IconPlus, IconUpload } from '../../ui/icons';
 import { ImportDialog } from '../handoff/ImportDialog';
 import { pad2, STATE_LABEL } from '../../ui/StatusStamp';
@@ -41,6 +42,14 @@ export function ProjectTree({ activeRoomId, onCollapse }: { activeRoomId: string
     return problem === null;
   };
   const rename = (command: WorkspaceCommand): string | null => dispatch(command)?.message ?? null;
+  const [collapsed, setCollapsed] = usePersistentState<string[]>('glasshouse:tree-collapsed', []);
+  // The open room's project and site always show, so the current room is never hidden.
+  const activePath = new Set(
+    projects.flatMap((p) => p.sites.flatMap((s) => (s.rooms.some((r) => r.id === activeRoomId) ? [p.id, s.id] : []))),
+  );
+  const isOpen = (id: string): boolean => activePath.has(id) || !collapsed.includes(id);
+  const toggle = (id: string): void => setCollapsed(isOpen(id) ? [...collapsed, id] : collapsed.filter((c) => c !== id));
+
   const editing = (id: string) => ({
     editing: editingId === id,
     onStartEdit: () => setEditingId(id),
@@ -88,6 +97,8 @@ export function ProjectTree({ activeRoomId, onCollapse }: { activeRoomId: string
             key={project.id}
             kind="project"
             label={project.name}
+            expanded={isOpen(project.id)}
+            onToggle={() => toggle(project.id)}
             badge={project.isSample ? <span className="stamp stamp--sample">SAMPLE</span> : undefined}
             {...editing(project.id)}
             onRename={(name) => rename({ type: 'project/rename', projectId: project.id, name })}
@@ -109,6 +120,8 @@ export function ProjectTree({ activeRoomId, onCollapse }: { activeRoomId: string
                     key={site.id}
                     kind="site"
                     label={site.name}
+                    expanded={isOpen(site.id)}
+                    onToggle={() => toggle(site.id)}
                     {...editing(site.id)}
                     onRename={(name) => rename({ type: 'site/rename', siteId: site.id, name })}
                     onAdd={() => {
@@ -136,7 +149,7 @@ export function ProjectTree({ activeRoomId, onCollapse }: { activeRoomId: string
                               label={room.name}
                               to={`/rooms/${room.id}/plan`}
                               active={room.id === activeRoomId}
-                              badge={<span className="stamp">{`R${pad2(revision.number)} ${STATE_LABEL[revision.state]}`}</span>}
+                              badge={<span className={`stamp stamp--${revision.state}`}>{`R${pad2(revision.number)} ${STATE_LABEL[revision.state]}`}</span>}
                               {...editing(room.id)}
                               onRename={(name) => rename({ type: 'room/rename', roomId: room.id, name })}
                               onDelete={() => {

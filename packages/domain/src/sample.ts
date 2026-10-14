@@ -21,6 +21,11 @@ function rack(name: string, x: number, y: number, owner: RackOwner = 'oxygenai')
   return { ...(createObject('rack', { x, y }, []) as Rack), id: newId(), name, owner };
 }
 
+/** A wall-mounted MCB panel, turned so its back sits on the wall at x = 0 or y = 0. */
+function mcb(name: string, x: number, y: number, onLeftWall: boolean): SimpleObject {
+  return { ...(createObject('mcb', { x, y }, []) as SimpleObject), id: newId(), name, angle: onLeftWall ? 90 : 0 };
+}
+
 function existingRack(name: string, x: number, y: number): SimpleObject {
   return { ...(createObject('existing_rack', { x, y }, []) as SimpleObject), id: newId(), name };
 }
@@ -64,6 +69,14 @@ export function createSampleProject(at: string): Result<Project> {
   plan(serverId, { type: 'device/place', id: newId(), rackId: s1.id, bottomU: 7, template: template('tpl-server-2u') });
   plan(serverId, { type: 'device/place', id: newId(), rackId: s2.id, bottomU: 42, template: template('tpl-switch-1u') });
   for (let u = 1; u <= 4; u += 1) plan(serverId, { type: 'device/place', id: newId(), rackId: s2.id, bottomU: u, template: template('tpl-server-1u') });
+  // Two boards so RK-01 has independent A and B feeds.
+  const board1 = mcb('MCB-01', 0, 2.2, true);
+  const board2 = mcb('MCB-02', 3.6, 0, false);
+  plan(serverId, { type: 'object/add', object: board1 });
+  plan(serverId, { type: 'object/add', object: board2 });
+  plan(serverId, { type: 'feed/add', feed: { id: newId(), rackId: s1.id, sourceId: board1.id, label: 'Feed A' } });
+  plan(serverId, { type: 'feed/add', feed: { id: newId(), rackId: s1.id, sourceId: board2.id, label: 'Feed B' } });
+  plan(serverId, { type: 'feed/add', feed: { id: newId(), rackId: s2.id, sourceId: board1.id, label: 'Feed A' } });
   review(serverId, { type: 'review/submit', designedBy: 'Ploy', at });
   review(serverId, { type: 'review/approve', reviewer: 'Somchai', at });
 
@@ -86,6 +99,10 @@ export function createSampleProject(at: string): Result<Project> {
   for (let slot = 1; slot <= 5; slot += 1) plan(mdfId, { type: 'node/insert', id: newId(), chassisId, slot, template: template('tpl-node') });
   plan(mdfId, { type: 'device/place', id: newId(), rackId: m2.id, bottomU: 1, template: template('tpl-server-2u') });
   plan(mdfId, { type: 'device/place', id: newId(), rackId: m2.id, bottomU: 3, template: template('tpl-server-1u') });
+  const mdfBoard = mcb('MCB-01', 0, 3.6, true);
+  plan(mdfId, { type: 'object/add', object: mdfBoard });
+  plan(mdfId, { type: 'feed/add', feed: { id: newId(), rackId: m1.id, sourceId: mdfBoard.id, label: 'Feed A' } });
+  plan(mdfId, { type: 'feed/add', feed: { id: newId(), rackId: m2.id, sourceId: mdfBoard.id, label: 'Feed A' } });
   plan(mdfId, {
     type: 'reserved/add',
     rackId: customer.id,

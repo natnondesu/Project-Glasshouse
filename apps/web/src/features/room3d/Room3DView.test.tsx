@@ -52,3 +52,12 @@ it('resets the camera', async () => {
   await user.click(screen.getByRole('button', { name: 'Reset view' }));
   expect(screen.getByText(/^\d+\.\d m$/).textContent).toBe(before);
 });
+
+it('switches rack labels between always and on hover, and remembers it', async () => {
+  const user = userEvent.setup();
+  render(<RouterProvider router={createMemoryRouter(routes, { initialEntries: ['/rooms/r/3d'] })} />);
+  await screen.findByTestId('room3d-canvas');
+  expect(screen.getByRole('button', { name: 'Labels always' })).toHaveAttribute('aria-pressed', 'true');
+  await user.click(screen.getByRole('button', { name: 'On hover' }));
+  expect(localStorage.getItem('glasshouse:3d-labels')).toBe('"hover"');
+});
