@@ -13,6 +13,8 @@ export interface ViewportApi {
   zoomBy: (factor: number) => void;
   fitToContent: () => void;
   panBy: (dx: number, dy: number) => void;
+  /** Moves the view so `point` sits in the middle of the free drawing area, keeping the zoom. */
+  centerOn: (point: Point) => void;
 }
 
 export function useViewport(content: { w: number; d: number }, insetRight: number = FIT_INSETS.right): ViewportApi {
@@ -77,5 +79,11 @@ export function useViewport(content: { w: number; d: number }, insetRight: numbe
     zoomBy: (factor) => setView((v) => zoomAt(v, factor, size.width / 2, size.height / 2)),
     fitToContent: () => setView(fit({ w, d }, size, { ...FIT_INSETS, right: insetRight })),
     panBy: (dx, dy) => setView((v) => pan(v, dx, dy)),
+    centerOn: ([x, y]) =>
+      setView((v) => {
+        const cx = (FIT_INSETS.left + size.width - insetRight) / 2;
+        const cy = (FIT_INSETS.top + size.height - FIT_INSETS.bottom) / 2;
+        return { ...v, tx: cx - x * v.scale, ty: cy - y * v.scale };
+      }),
   };
 }

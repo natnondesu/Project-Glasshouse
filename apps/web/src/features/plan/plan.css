@@ -949,3 +949,10 @@
   font-size: 11px;
   color: var(--ink-2);
 }
+
+.plan-view__search {
+  left: 76px;
+  top: 12px;
+  width: min(320px, calc(100% - 640px));
+  min-width: 200px;
+}

@@ -1,0 +1,157 @@
+.search {
+  position: absolute;
+  z-index: 5;
+  width: min(340px, calc(100% - 24px));
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 10px;
+  height: 40px;
+  border-radius: 12px;
+}
+
+.search__icon {
+  flex: none;
+  color: var(--ink-2);
+}
+
+.search__input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: 13px;
+  color: var(--ink);
+  outline: none;
+}
+
+.search:focus-within {
+  box-shadow: 0 0 0 2px var(--acc-soft), var(--shadow-float);
+}
+
+.search__key {
+  padding: 0 5px;
+  border: 1px solid var(--line-strong);
+  border-radius: 4px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--ink-2);
+}
+
+.search__list,
+.search__empty {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(100% + 6px);
+  margin: 0;
+  padding: 6px;
+  list-style: none;
+  border-radius: 12px;
+  background: rgb(247 249 251 / 0.98);
+  box-shadow: var(--shadow-float);
+}
+
+.search__empty {
+  padding: 12px;
+  font-size: 13px;
+  color: var(--ink-2);
+}
+
+.search__hit {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas: 'name action' 'detail action';
+  gap: 1px 10px;
+  padding: 7px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.search__hit[aria-selected='true'] {
+  background: var(--ink);
+  color: #fff;
+}
+
+.search__name {
+  grid-area: name;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.search__detail {
+  grid-area: detail;
+  font-size: 11.5px;
+  color: var(--ink-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.search__hit[aria-selected='true'] .search__detail {
+  color: rgb(255 255 255 / 0.75);
+}
+
+.search__action {
+  grid-area: action;
+  align-self: center;
+  font-size: 12px;
+}
+
+.search__action a {
+  color: inherit;
+  font-weight: 600;
+  text-underline-offset: 3px;
+}
+
+/* Brief "here it is" ring after a search jump. */
+.search-pulse {
+  fill: none;
+  stroke: var(--acc);
+  stroke-width: 3;
+  pointer-events: none;
+  animation: search-pulse 1.6s ease-out forwards;
+}
+
+.is-search-pulse .dev__body,
+.is-search-pulse .rsv__body {
+  animation: search-pulse-fill 1.6s ease-out;
+}
+
+@keyframes search-pulse {
+  0% {
+    opacity: 1;
+    stroke-width: 6;
+  }
+  70% {
+    opacity: 1;
+    stroke-width: 2.5;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes search-pulse-fill {
+  0%,
+  60% {
+    stroke: var(--acc);
+    stroke-width: 4;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .search-pulse,
+  .is-search-pulse .dev__body,
+  .is-search-pulse .rsv__body {
+    animation-duration: 0.01ms;
+  }
+}
+
+.search--inline {
+  position: relative;
+  width: 100%;
+  flex: none;
+}

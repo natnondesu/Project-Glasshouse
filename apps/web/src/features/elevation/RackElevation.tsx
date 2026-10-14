@@ -2,6 +2,7 @@ import { formatDemand, formatURange, rackPower, topU, usedU, type Chassis, type 
 import type { DragEvent, KeyboardEvent } from 'react';
 import { TEMPLATE_MIME } from './dnd';
 import './elevation.css';
+import '../search/search.css';
 
 export const U_PX = 16;
 const LABEL_W = 24;
@@ -18,6 +19,8 @@ interface RackElevationProps {
   onDropTemplate: (templateId: string, bottomU: number) => void;
   /** Print: no controls, only the drawing. */
   isStatic?: boolean;
+  /** Device, node or reserved range to flash after a search jump. */
+  pulseId?: string | null;
 }
 
 const categoryOf = (d: RackDevice): string => (d.kind === 'chassis' ? 'chassis' : d.category);
@@ -43,6 +46,7 @@ function ChassisSlots({ chassis, y, onSelect }: { chassis: Chassis; y: number; o
         return (
           <g
             key={slot}
+            data-elev-id={node?.id}
             onClick={
               node && onSelect
                 ? (e) => {
@@ -70,13 +74,13 @@ function control(isStatic: boolean, label: string, selected: boolean, onClick: (
   return isStatic ? {} : { role: 'button', tabIndex: 0, 'aria-label': label, 'aria-pressed': selected, onClick, onKeyDown: onKey };
 }
 
-function DeviceBlock(props: { device: RackDevice; y: number; selected: boolean; flagged: boolean; onSelect: (id: string) => void; onKey: (e: KeyboardEvent) => void; isStatic: boolean }) {
-  const { device, y, selected, flagged, onSelect, onKey, isStatic } = props;
+function DeviceBlock(props: { device: RackDevice; y: number; selected: boolean; flagged: boolean; onSelect: (id: string) => void; onKey: (e: KeyboardEvent) => void; isStatic: boolean; pulse: boolean }) {
+  const { device, y, selected, flagged, onSelect, onKey, isStatic, pulse } = props;
   const h = device.heightU * U_PX;
   const textY = y + Math.min(h, 32) / 2 + 4;
   const classes = ['dev', `dev--${categoryOf(device)}`, selected ? 'is-selected' : '', flagged ? 'is-flagged' : ''].filter(Boolean).join(' ');
   return (
-    <g className={classes} {...control(isStatic, `${device.name}, ${formatURange(device)}`, selected, () => onSelect(device.id), onKey)}>
+    <g className={`${classes}${pulse ? ' is-search-pulse' : ''}`} data-elev-id={device.id} {...control(isStatic, `${device.name}, ${formatURange(device)}`, selected, () => onSelect(device.id), onKey)}>
       <rect x={4} y={y + 1} width={RACK_W - 8} height={h - 2} rx={3} className="dev__body" />
       <text x={12} y={textY} className="dev__name">
         {device.name}
@@ -92,12 +96,12 @@ function DeviceBlock(props: { device: RackDevice; y: number; selected: boolean; 
   );
 }
 
-function ReservedBlock(props: { range: ReservedRange; y: number; patternId: string; selected: boolean; onSelect: (id: string) => void; onKey: (e: KeyboardEvent) => void; isStatic: boolean }) {
-  const { range, y, patternId, selected, onSelect, onKey, isStatic } = props;
+function ReservedBlock(props: { range: ReservedRange; y: number; patternId: string; selected: boolean; onSelect: (id: string) => void; onKey: (e: KeyboardEvent) => void; isStatic: boolean; pulse: boolean }) {
+  const { range, y, patternId, selected, onSelect, onKey, isStatic, pulse } = props;
   const h = range.heightU * U_PX;
   const midY = y + h / 2;
   return (
-    <g className={`rsv${selected ? ' is-selected' : ''}`} {...control(isStatic, `Reserved range ${formatURange(range)}, ${range.label}`, selected, () => onSelect(range.id), onKey)}>
+    <g className={`rsv${selected ? ' is-selected' : ''}${pulse ? ' is-search-pulse' : ''}`} data-elev-id={range.id} {...control(isStatic, `Reserved range ${formatURange(range)}, ${range.label}`, selected, () => onSelect(range.id), onKey)}>
       <rect x={4} y={y + 1} width={RACK_W - 8} height={h - 2} rx={3} fill={`url(#${patternId})`} className="rsv__body" />
       {h >= 48 ? (
         <>
@@ -118,7 +122,7 @@ function ReservedBlock(props: { range: ReservedRange; y: number; patternId: stri
   );
 }
 
-export function RackElevation({ rack, active, selectedId, flagged, onSelect, onActivate, onDropTemplate, isStatic = false }: RackElevationProps) {
+export function RackElevation({ rack, active, selectedId, flagged, onSelect, onActivate, onDropTemplate, isStatic = false, pulseId = null }: RackElevationProps) {
   const height = rack.capacityU * U_PX;
   const yTop = (top: number): number => PAD + (rack.capacityU - top) * U_PX;
   const power = rackPower(rack);
@@ -188,10 +192,10 @@ export function RackElevation({ rack, active, selectedId, flagged, onSelect, onA
         <rect x={LABEL_W} y={PAD} width={RACK_W} height={height} className="rack-frame" />
         <g transform={`translate(${LABEL_W} 0)`}>
           {rack.reserved.map((r) => (
-            <ReservedBlock key={r.id} range={r} y={yTop(topU(r))} patternId={patternId} selected={r.id === selectedId} onSelect={onSelect} onKey={keySelect(r.id)} isStatic={isStatic} />
+            <ReservedBlock key={r.id} range={r} y={yTop(topU(r))} patternId={patternId} selected={r.id === selectedId} onSelect={onSelect} onKey={keySelect(r.id)} isStatic={isStatic} pulse={r.id === pulseId} />
           ))}
           {rack.devices.map((d) => (
-            <DeviceBlock key={d.id} device={d} y={yTop(topU(d))} selected={d.id === selectedId} flagged={flagged.has(d.id)} onSelect={onSelect} onKey={keySelect(d.id)} isStatic={isStatic} />
+            <DeviceBlock key={d.id} device={d} y={yTop(topU(d))} selected={d.id === selectedId} flagged={flagged.has(d.id)} onSelect={onSelect} onKey={keySelect(d.id)} isStatic={isStatic} pulse={d.id === pulseId || (d.kind === 'chassis' && d.nodes.some((n) => n.id === pulseId))} />
           ))}
         </g>
       </svg>
