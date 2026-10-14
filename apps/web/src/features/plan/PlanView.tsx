@@ -9,6 +9,8 @@ import { Toolbar } from './Toolbar';
 import type { Tool } from './tools';
 import { usePlanGestures } from './usePlanGestures';
 import { ZoomControls } from './ZoomControls';
+import { PlanLegend } from './drafting';
+import { usePersistentState } from '../../ui/usePersistentState';
 import './plan.css';
 
 export function PlanView({ location, readOnly = false }: { location: RoomLocation; readOnly?: boolean }) {
@@ -17,6 +19,7 @@ export function PlanView({ location, readOnly = false }: { location: RoomLocatio
   const commit = usePlanCommit(location.room.id);
   const [selectedParam, select] = useSearchParamState('sel');
   const [tool, setTool] = useState<Tool>('select');
+  const [legend, setLegend] = usePersistentState('glasshouse:plan-legend', true);
   useEffect(() => {
     if (readOnly && tool !== 'select' && tool !== 'pan' && tool !== 'measure') setTool('select');
   }, [readOnly, tool]);
@@ -41,7 +44,8 @@ export function PlanView({ location, readOnly = false }: { location: RoomLocatio
           svgHandlers={gestures.svgHandlers}
           onFocusObject={select}
         />
-        <ZoomControls viewport={viewport} />
+        <ZoomControls viewport={viewport} legend={legend} onLegend={setLegend} />
+        {legend ? <PlanLegend view={viewport.view} /> : null}
         {gestures.message ? (
           <p role="status" className="plan-view__message">
             {gestures.message}

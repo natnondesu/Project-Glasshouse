@@ -2,6 +2,7 @@ import type { Issue, PlanContent, RoomObject } from '@glasshouse/domain';
 import { useMemo, type DOMAttributes } from 'react';
 import type { ViewportApi } from '../../viewport/useViewport';
 import { flaggedObjectIds } from './flagged';
+import { CalloutLayer } from './drafting';
 import { MeasureLayer } from './MeasureLayer';
 import type { MeasureState } from './usePlanGestures';
 import {
@@ -20,6 +21,9 @@ export type SvgHandlers = Pick<
   DOMAttributes<SVGSVGElement>,
   'onPointerDown' | 'onPointerMove' | 'onPointerUp' | 'onPointerCancel' | 'onPointerLeave' | 'onContextMenu'
 >;
+
+/** Width the glass inspector covers on the right of the canvas. */
+const INSPECTOR_CLEARANCE_PX = 380;
 
 interface PlanCanvasProps {
   content: PlanContent;
@@ -59,6 +63,7 @@ export function PlanCanvas({ content, issues, selectedId, viewport, preview, mea
       {selected ? <SelectionLayer object={selected} view={view} /> : null}
       <DimensionsLayer survey={content.survey} view={view} />
       {preview?.kind === 'rect' ? <FloorPreview preview={preview} view={view} /> : null}
+      <CalloutLayer issues={issues} objects={objects} view={view} maxX={viewport.size.width - INSPECTOR_CLEARANCE_PX} />
       {measure ? <MeasureLayer measure={measure} content={content} view={view} /> : null}
     </svg>
   );
