@@ -29,7 +29,7 @@ export function SurveyPanel({ survey, commit }: { survey: Survey; commit: Commit
         <p className="inspector__note">The design limit is a planning rule, not an electrical rule.</p>
       </fieldset>
       <FloorRectList title="Floor areas" itemLabel="Area" rects={survey.floorAreas} commit={commit} emptyText="No floor yet. Drag a rectangle with Add floor area." />
-      <FloorRectList title="Cut-outs" itemLabel="Cut-out" rects={survey.cutOuts} commit={commit} emptyText="No cut-outs. Use Cut out for columns and notches." />
+      <FloorRectList title="Cut-outs" itemLabel="Cut-out" rects={survey.cutOuts} commit={commit} emptyText="No cut-outs. Use Cut out for columns, walls and voids." withKind />
       <fieldset className="inspector__group">
         <legend className="lbl">Notes</legend>
         <TextField id="survey-network" label="Network handoff" multiline value={survey.networkHandoff} onCommit={(v) => set({ networkHandoff: v }, 'network')} />

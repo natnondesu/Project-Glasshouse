@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { emptyContent } from '../factories';
 import type { PlanContent } from '../model/types';
 import { applyPlanCommand } from './plan';
+import { cutOutKind } from '../footprint';
 
 function run(content: PlanContent, ...cmds: Parameters<typeof applyPlanCommand>[1][]): PlanContent {
   return cmds.reduce((c, cmd) => {
@@ -93,5 +94,19 @@ describe('floor areas and cut-outs', () => {
     const before = JSON.parse(JSON.stringify(c)) as typeof c;
     applyPlanCommand(c, { type: 'survey/update', patch: { width: 8 } });
     expect(c).toEqual(before);
+  });
+});
+
+describe('cut-out kind', () => {
+  it('marks a cut-out as a void or a wall/column; areas have no kind', () => {
+    let c = emptyContent();
+    const cut = applyPlanCommand(c, { type: 'floor/cut', rect: { id: 'c', x: 1, y: 1, w: 0.5, d: 0.5 } });
+    if (!cut.ok) throw new Error(cut.error.message);
+    c = cut.value;
+    expect(cutOutKind(c.survey.cutOuts[0]!)).toBe('solid');
+    const voided = applyPlanCommand(c, { type: 'floor/update', id: 'c', patch: { kind: 'void' } });
+    expect(voided.ok && voided.value.survey.cutOuts[0]!.kind).toBe('void');
+    const areaId = c.survey.floorAreas[0]!.id;
+    expect(applyPlanCommand(c, { type: 'floor/update', id: areaId, patch: { kind: 'void' } })).toMatchObject({ ok: false, error: { message: 'Only cut-outs can be a void or a wall/column.' } });
   });
 });

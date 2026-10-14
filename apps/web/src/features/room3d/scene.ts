@@ -1,4 +1,4 @@
-import { effectiveHeight, feedRoute, footprintOf, localToWorld, usedU, type PowerFeed, type Point, type Category, type MultiPoly, type PlanContent, type Rack, type RoomObject, type SimpleObjectType } from '@glasshouse/domain';
+import { cutOutKind, effectiveHeight, feedRoute, footprintOf, localToWorld, usedU, type PowerFeed, type Point, type Category, type MultiPoly, type PlanContent, type Rack, type RoomObject, type SimpleObjectType } from '@glasshouse/domain';
 
 /** One rack unit (EIA-310) in metres. */
 export const U_M = 0.04445;
@@ -167,7 +167,7 @@ export function buildScene(content: PlanContent): Scene3D {
     if (o.type === 'rack') racks.push({ id: o.id, name: o.name, owner: o.owner, ...p, ...rackFaces(o), capacityU: o.capacityU, usedU: usedU(o) });
     else others.push({ id: o.id, name: o.name, type: o.type, ...p });
   }
-  const columns = content.survey.cutOuts.map((c) => ({ id: c.id, position: [c.x + c.w / 2, COLUMN_HEIGHT_M / 2, c.y + c.d / 2] as Vec3, size: [c.w, COLUMN_HEIGHT_M, c.d] as Vec3 }));
+  const columns = content.survey.cutOuts.filter((c) => cutOutKind(c) === 'solid').map((c) => ({ id: c.id, position: [c.x + c.w / 2, COLUMN_HEIGHT_M / 2, c.y + c.d / 2] as Vec3, size: [c.w, COLUMN_HEIGHT_M, c.d] as Vec3 }));
   const feeds = content.feeds.flatMap((feed) => {
     const route = feedRoute(content, feed);
     const panel = content.objects.find((o) => o.id === feed.sourceId);

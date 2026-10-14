@@ -1,4 +1,4 @@
-import type { Rect } from '@glasshouse/domain';
+import { cutOutKind, type CutOutKind, type Rect } from '@glasshouse/domain';
 import { IconTrash } from '../../ui/icons';
 import { NumberField } from '../../ui/NumberField';
 import type { CommitFn } from './usePlanGestures';
@@ -9,7 +9,14 @@ interface FloorRectListProps {
   rects: Rect[];
   commit: CommitFn;
   emptyText: string;
+  /** Cut-outs choose between a void and a wall/column. */
+  withKind?: boolean;
 }
+
+const KINDS: [CutOutKind, string][] = [
+  ['solid', 'Wall / column'],
+  ['void', 'Void'],
+];
 
 const FIELDS = [
   ['x', 'X'],
@@ -18,7 +25,7 @@ const FIELDS = [
   ['d', 'D'],
 ] as const;
 
-export function FloorRectList({ title, itemLabel, rects, commit, emptyText }: FloorRectListProps) {
+export function FloorRectList({ title, itemLabel, rects, commit, emptyText, withKind = false }: FloorRectListProps) {
   return (
     <fieldset className="inspector__group">
       <legend className="lbl">{title}</legend>
@@ -37,6 +44,21 @@ export function FloorRectList({ title, itemLabel, rects, commit, emptyText }: Fl
                 <IconTrash />
               </button>
             </div>
+            {withKind ? (
+              <div className="seg seg--compact rect-list__kind" role="group" aria-label={`${itemLabel} ${i + 1} kind`}>
+                {KINDS.map(([kind, label]) => (
+                  <button
+                    key={kind}
+                    type="button"
+                    aria-label={`${itemLabel} ${i + 1}: ${label}`}
+                    aria-pressed={cutOutKind(r) === kind}
+                    onClick={() => commit({ type: 'floor/update', id: r.id, patch: { kind } })}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            ) : null}
             <div className="field-quad">
               {FIELDS.map(([key, label]) => (
                 <NumberField
