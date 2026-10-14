@@ -6,16 +6,101 @@
   height: 100%;
 }
 
-.vlans {
-  grid-column: 2;
-  align-self: start;
+.network__main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.network__bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 18px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--line);
+  font-size: 12px;
+}
+
+.network__filter {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--ink-2);
+}
+
+.network__filter select {
+  padding: 5px 8px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--control-bg);
+  font: inherit;
+  color: var(--ink);
+}
+
+.network__legend {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--ink-2);
+}
+
+.network__swatch {
+  width: 22px;
+  height: 0;
+  margin-left: 6px;
+  border-top: 2px solid var(--ink-2);
+}
+
+.network__swatch--fibre {
+  border-top: 2px dashed var(--acc);
+}
+
+.network__zoom {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+}
+
+.network__canvas {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 8px;
+  /* Drafting paper, like the plan. */
+  background:
+    linear-gradient(var(--grid) 1px, transparent 1px) 0 0 / 24px 24px,
+    linear-gradient(90deg, var(--grid) 1px, transparent 1px) 0 0 / 24px 24px,
+    var(--floor);
+}
+
+.network__empty {
+  max-width: 380px;
+  margin: 48px auto;
+  font-size: 13px;
+  color: var(--ink-2);
+  text-align: center;
+}
+
+.network__side {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.vlans,
+.net-panel {
   display: flex;
   flex-direction: column;
   gap: 10px;
   padding: 16px;
   border-radius: 14px;
-  max-height: 100%;
-  overflow-y: auto;
 }
 
 .vlans h2 {
@@ -23,7 +108,8 @@
   font-weight: 700;
 }
 
-.vlans__note {
+.vlans__note,
+.net-details__hint {
   font-size: 12px;
   color: var(--ink-2);
 }
@@ -72,4 +158,211 @@
   grid-template-columns: 72px minmax(0, 1fr) auto;
   gap: 6px;
   margin-top: 6px;
+}
+
+/* Diagram */
+.topo {
+  display: block;
+  overflow: visible;
+}
+
+.topo-edge__line {
+  fill: none;
+  stroke: var(--ink-2);
+  stroke-width: 1.6;
+}
+
+.topo-edge.is-fibre .topo-edge__line {
+  stroke: var(--acc);
+  stroke-dasharray: 6 4;
+}
+
+.topo-edge__hit {
+  fill: none;
+  stroke: transparent;
+  stroke-width: 12;
+}
+
+.topo-edge[role='button'] {
+  cursor: pointer;
+}
+
+.topo-edge[role='button']:hover .topo-edge__line,
+.topo-edge.is-selected .topo-edge__line {
+  stroke-width: 3;
+}
+
+.topo-edge__badge rect {
+  fill: #fff;
+  stroke: var(--line-strong);
+}
+
+.topo-edge__badge text {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  fill: var(--ink);
+}
+
+.topo-node__body {
+  fill: #fff;
+  stroke: var(--line-strong);
+  stroke-width: 1.2;
+}
+
+.topo-node.is-leaf .topo-node__body {
+  fill: var(--panel-light);
+}
+
+.topo-node__stripe {
+  fill: var(--chassis);
+}
+
+.topo-node--network .topo-node__stripe {
+  fill: var(--network);
+}
+
+.topo-node--compute .topo-node__stripe,
+.topo-node--node .topo-node__stripe {
+  fill: var(--compute);
+}
+
+.topo-node__name {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 700;
+  fill: var(--ink);
+}
+
+.topo-node__where,
+.topo-node__state {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  fill: var(--ink-2);
+}
+
+.topo-node[role='button'] {
+  cursor: pointer;
+}
+
+.topo-node[role='button']:hover .topo-node__body {
+  stroke: var(--acc);
+}
+
+.topo-node.is-selected .topo-node__body,
+.topo-node:focus-visible .topo-node__body {
+  stroke: var(--acc);
+  stroke-width: 2.5;
+}
+
+.topo-node:focus,
+.topo-edge:focus {
+  outline: none;
+}
+
+.topo .is-dim {
+  opacity: 0.22;
+}
+
+/* Details */
+.net-details {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.net-details h3 {
+  font-size: 14px;
+}
+
+.net-details__where {
+  font-size: 12px;
+  color: var(--ink-2);
+}
+
+.net-details__actions {
+  display: flex;
+  gap: 6px;
+}
+
+.net-details__ports {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.net-details__ports th,
+.net-details__ports td {
+  padding: 4px 4px;
+  border-top: 1px solid var(--line);
+  text-align: left;
+  font-weight: 400;
+  vertical-align: top;
+}
+
+.net-details__vlan {
+  color: var(--acc-deep);
+  white-space: nowrap;
+}
+
+.net-details__none {
+  color: var(--ink-2);
+  font-style: italic;
+}
+
+.net-details__cables {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  font-size: 12px;
+}
+
+.net-details__cables li {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-top: 6px;
+  border-top: 1px solid var(--line);
+}
+
+.net-details__meta {
+  color: var(--ink-2);
+}
+
+.net-unlinked summary {
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-2);
+}
+
+.net-unlinked ul {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0;
+}
+
+.net-unlinked__item {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  padding: 4px 2px;
+  border: 0;
+  border-radius: 5px;
+  background: none;
+  font-size: 12px;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.net-unlinked__item:hover {
+  background: var(--hover);
+}
+
+/* On the Install sheet the diagram fills the page width. */
+.topo--static {
+  height: auto;
+  max-height: 200mm;
 }

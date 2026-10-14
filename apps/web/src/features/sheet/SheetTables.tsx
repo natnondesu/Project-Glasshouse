@@ -1,7 +1,8 @@
-import { BOM_COLUMNS, formatDemand, formatURange, panelOf, racksOf, wayPhase, type BomRow, type Chassis, type Rack, type Revision, type CableRow } from '@glasshouse/domain';
+import { BOM_COLUMNS, formatDemand, formatURange, panelOf, racksOf, wayPhase, type BomRow, type Chassis, type Rack, type Revision, type CableRow, type PlanContent } from '@glasshouse/domain';
 import type { ReactNode } from 'react';
 import { useT } from '../../i18n';
 import { bomCell, bomHeader } from '../bom/bomText';
+import { vlanUsage } from '../network/vlanUsage';
 
 // The sheet prints the approved design on A4: on-site state is live (it's on the elevations) and the
 // title block already names the project, site and room.
@@ -166,6 +167,32 @@ export function CableScheduleTable({ rows, titleBlock }: { rows: CableRow[]; tit
             <td className="mono is-short">{r.to.port}</td>
             <td>{r.cable}</td>
             <td className="mono">{r.vlan}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
+/** The room's VLANs under the network diagram. Short, so it never needs a repeating title block. */
+export function VlanTable({ content }: { content: PlanContent }) {
+  const m = useT();
+  const usage = vlanUsage(content);
+  return (
+    <table className="sheet-table sheet-vlans" aria-label={m.vlans.title}>
+      <thead>
+        <tr>
+          <th scope="col">{m.vlans.vid}</th>
+          <th scope="col">{m.vlans.name}</th>
+          <th scope="col">{m.vlans.ports}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {content.vlans.map((v) => (
+          <tr key={v.vid}>
+            <td className="mono is-short">{v.vid}</td>
+            <td>{v.name}</td>
+            <td className="mono is-short">{m.vlans.usedBy(usage.get(v.vid) ?? 0)}</td>
           </tr>
         ))}
       </tbody>

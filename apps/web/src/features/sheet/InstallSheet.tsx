@@ -7,7 +7,10 @@ import { pad2 } from '../../ui/StatusStamp';
 import { useT } from '../../i18n';
 import { RackElevation } from '../elevation/RackElevation';
 import { SheetPlan } from './SheetPlan';
-import { BomTable, CableScheduleTable, SlotMapsTable } from './SheetTables';
+import { BomTable, CableScheduleTable, SlotMapsTable, VlanTable } from './SheetTables';
+import { TopologyDiagram } from '../network/TopologyDiagram';
+import { buildTopology } from '../network/topology';
+import '../network/network.css';
 import { SheetTitleBlock } from './SheetTitleBlock';
 import './sheet.css';
 
@@ -115,6 +118,18 @@ export function InstallSheet() {
       {chassis.length > 0 ? (
         <section className="sheet-page sheet-page--flow">
           <SlotMapsTable chassis={chassis} titleBlock={title(m.sheet.slotMaps)} />
+        </section>
+      ) : null}
+
+      {revision.content.links.length > 0 || revision.content.vlans.length > 0 ? (
+        <section className="sheet-page">
+          {title(m.sheet.network)}
+          {revision.content.links.length > 0 ? (
+            <div className="sheet-topo">
+              <TopologyDiagram content={revision.content} topology={buildTopology(revision.content)} stateOf={(id) => equipmentStateOf(location.room.plan, id)} isStatic />
+            </div>
+          ) : null}
+          {revision.content.vlans.length > 0 ? <VlanTable content={revision.content} /> : null}
         </section>
       ) : null}
 
