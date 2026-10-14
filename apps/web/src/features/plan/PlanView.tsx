@@ -29,11 +29,12 @@ export function PlanView({ location, readOnly = false }: { location: RoomLocatio
     if (readOnly && tool !== 'select' && tool !== 'pan' && tool !== 'measure') setTool('select');
   }, [readOnly, tool]);
   const selected = content.objects.find((o) => o.id === selectedParam) ?? null;
+  const selectedDimension = content.dimensions.find((d) => d.id === selectedParam) ?? null;
 
   const issues = useMemo(() => revisionIssues(revision), [revision]);
   const [inspectorOpen, setInspectorOpen] = usePersistentState('glasshouse:inspector-open', true);
   const viewport = useViewport({ w: content.survey.width, d: content.survey.length }, inspectorOpen ? INSET_WITH_INSPECTOR : INSET_WITHOUT_INSPECTOR);
-  const gestures = usePlanGestures({ content, tool, setTool, selectedId: selected?.id ?? null, select, viewport, commit, readOnly });
+  const gestures = usePlanGestures({ content, tool, setTool, selectedId: selected?.id ?? selectedDimension?.id ?? null, select, viewport, commit, readOnly });
 
   return (
     <div className={`plan-view${inspectorOpen ? '' : ' is-inspector-closed'}`}>
@@ -42,10 +43,11 @@ export function PlanView({ location, readOnly = false }: { location: RoomLocatio
         <PlanCanvas
           content={content}
           issues={issues}
-          selectedId={selected?.id ?? null}
+          selectedId={selected?.id ?? selectedDimension?.id ?? null}
           viewport={viewport}
           preview={gestures.preview}
           ghost={gestures.ghost}
+          showGaps={tool !== 'measure' && tool !== 'dimension'}
           measure={gestures.measure}
           cursor={gestures.cursor}
           svgHandlers={gestures.svgHandlers}
@@ -64,7 +66,7 @@ export function PlanView({ location, readOnly = false }: { location: RoomLocatio
       {inspectorOpen ? (
         <>
           <PanelCollapseTab label="Inspector" side="right" className="plan-view__tab" onCollapse={() => setInspectorOpen(false)} />
-          <Inspector content={content} selected={selected} commit={commit} onDeleted={() => select(null)} readOnly={readOnly} />
+          <Inspector content={content} selected={selected} dimension={selectedDimension} commit={commit} onDeleted={() => select(null)} readOnly={readOnly} />
         </>
       ) : (
         <PanelRail label="Inspector" side="right" className="plan-view__rail" onExpand={() => setInspectorOpen(true)} />

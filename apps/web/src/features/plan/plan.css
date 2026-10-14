@@ -574,3 +574,44 @@
 .ghost .clearance {
   opacity: 0.6;
 }
+
+.pdim {
+  cursor: pointer;
+  outline: none;
+}
+
+.pdim__line {
+  fill: none;
+  stroke: var(--d-ink);
+  stroke-width: 1;
+}
+
+.pdim__ext {
+  fill: none;
+  stroke: var(--d-ink-2);
+  stroke-width: 0.75;
+}
+
+.pdim__hit {
+  fill: none;
+  stroke: transparent;
+}
+
+.pdim__label {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  font-weight: 600;
+  fill: var(--d-ink);
+}
+
+.pdim:hover .pdim__line,
+.pdim.is-selected .pdim__line,
+.pdim:focus-visible .pdim__line {
+  stroke: var(--d-sel);
+  stroke-width: 1.5;
+}
+
+.pdim.is-selected .pdim__label,
+.pdim:focus-visible .pdim__label {
+  fill: var(--d-sel);
+}

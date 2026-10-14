@@ -117,7 +117,7 @@ export function GapLayer({ object, content, view }: { object: RoomObject; conten
         const mx = (x1 + x2) / 2;
         const my = (y1 + y2) / 2;
         return (
-          <g key={g.side} data-testid={`gap-${g.side}`}>
+          <g key={g.side} data-testid={`clear-${g.side}`}>
             <path className="gap__line" d={`M${x1} ${y1} L${x2} ${y2} ${tick([x1, y1])} ${tick([x2, y2])}`} />
             <text className="gap__label" x={horizontal ? mx : mx + 6} y={horizontal ? my - 6 : my} textAnchor={horizontal ? 'middle' : 'start'} dominantBaseline={horizontal ? 'auto' : 'middle'}>
               {formatMetres(g.distance)}

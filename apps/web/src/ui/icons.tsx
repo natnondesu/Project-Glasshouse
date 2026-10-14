@@ -134,3 +134,9 @@ export const IconChevronRight = (p: IconProps) => (
     <path d="M5.5 3L9.5 7L5.5 11" />
   </svg>
 );
+export const IconDimension = (p: IconProps) => (
+  <svg {...frame(18)} {...p}>
+    <path d="M2.5 5V13M15.5 5V13M2.5 9H15.5" />
+    <path d="M1 10.5L4 7.5M14 10.5L17 7.5" strokeWidth={1.2} />
+  </svg>
+);

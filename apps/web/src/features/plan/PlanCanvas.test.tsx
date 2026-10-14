@@ -30,10 +30,10 @@ it('shows the clear distance to the nearest wall or object for the selected obje
     return <PlanCanvas content={content} issues={[]} selectedId={ghost ? null : 'rk'} viewport={viewport} preview={null} ghost={ghostObject} cursor="default" onFocusObject={() => {}} />;
   }
   const { unmount } = render(<WithSelection />);
-  expect(screen.getByTestId('gap-left')).toHaveTextContent('1.00');
-  expect(screen.getByTestId('gap-top')).toHaveTextContent('1.00');
+  expect(screen.getByTestId('clear-left')).toHaveTextContent('1.00');
+  expect(screen.getByTestId('clear-top')).toHaveTextContent('1.00');
   unmount();
   render(<WithSelection ghost />);
   // The ghost's left gap ends at RK-01's right edge: 3 − (1 + 0.6).
-  expect(screen.getByTestId('gap-left')).toHaveTextContent('1.40');
+  expect(screen.getByTestId('clear-left')).toHaveTextContent('1.40');
 });

@@ -3,6 +3,7 @@ import { useMemo, type DOMAttributes } from 'react';
 import type { ViewportApi } from '../../viewport/useViewport';
 import { flaggedObjectIds } from './flagged';
 import { CalloutLayer, GapLayer } from './drafting';
+import { DimensionLayer } from './DimensionLayer';
 import { polygonPath } from './svgPath';
 import { MeasureLayer } from './MeasureLayer';
 import type { MeasureState } from './usePlanGestures';
@@ -40,12 +41,14 @@ interface PlanCanvasProps {
   inspectorOpen?: boolean;
   /** The object a placement tool would drop at the cursor. */
   ghost?: RoomObject | null;
+  /** Off while measuring or dimensioning: those tools show their own distances. */
+  showGaps?: boolean;
 }
 
 const withPreview = (objects: RoomObject[], preview: Preview | null): RoomObject[] =>
   preview?.kind === 'object' ? objects.map((o) => (o.id === preview.id ? { ...o, ...preview.patch } : o)) : objects;
 
-export function PlanCanvas({ content, issues, selectedId, viewport, preview, measure, cursor, svgHandlers, onFocusObject, inspectorOpen = true, ghost = null }: PlanCanvasProps) {
+export function PlanCanvas({ content, issues, selectedId, viewport, preview, measure, cursor, svgHandlers, onFocusObject, inspectorOpen = true, ghost = null, showGaps = true }: PlanCanvasProps) {
   const calloutClearance = inspectorOpen ? INSPECTOR_CLEARANCE_PX : RAIL_CLEARANCE_PX;
   const { view } = viewport;
   const flagged = useMemo(() => flaggedObjectIds(issues), [issues]);
@@ -72,13 +75,14 @@ export function PlanCanvas({ content, issues, selectedId, viewport, preview, mea
       {selected ? <SelectionLayer object={selected} view={view} /> : null}
       <DimensionsLayer survey={content.survey} view={view} />
       {preview?.kind === 'rect' ? <FloorPreview preview={preview} view={view} /> : null}
+      <DimensionLayer content={liveContent} view={view} selectedId={selectedId} onFocusDimension={onFocusObject} />
       {ghost ? (
         <g className="ghost" aria-hidden="true">
           <ClearanceLayer objects={[ghost]} view={view} />
           <path className="ghost__body" d={polygonPath(placementPolygon(ghost), view)} />
         </g>
       ) : null}
-      {active && !measure?.a ? <GapLayer object={active} content={liveContent} view={view} /> : null}
+      {active && showGaps ? <GapLayer object={active} content={liveContent} view={view} /> : null}
       <CalloutLayer issues={issues} objects={objects} view={view} maxX={viewport.size.width - calloutClearance} />
       {measure ? <MeasureLayer measure={measure} content={content} view={view} /> : null}
     </svg>
