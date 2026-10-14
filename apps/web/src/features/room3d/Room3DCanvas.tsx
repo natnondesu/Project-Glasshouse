@@ -1,4 +1,4 @@
-import { Canvas, useFrame, useThree } from '@react-three/fiber';
+import { Canvas, useFrame, useThree, type ThreeEvent } from '@react-three/fiber';
 import { useEffect, useRef } from 'react';
 import { MeshBasicMaterial, Plane, Raycaster, Vector2, Vector3 } from 'three';
 import { wheelZoomFactor } from '../../viewport/math';
@@ -6,6 +6,7 @@ import { cameraPosition, dollyToward, orbit, panGround, type OrbitCamera } from 
 import type { Palette3D } from './palette';
 import { feedColor } from '../plan/feeds';
 import { FeedModel } from './FeedModel';
+import { LINE_PICK_THRESHOLD_M, NO_PICK } from './picking';
 import { RackModel } from './RackModel';
 import { Column, Floor, ObjectModel, Walls } from './RoomModels';
 import type { Rack3D, Scene3D } from './scene';
@@ -33,7 +34,10 @@ interface ControllerProps {
 
 /** Trackpad-first: drag orbits, two-finger scroll pans, pinch or ⌘/Ctrl+scroll zooms at the pointer; Shift- or right-drag also pans. */
 function CameraController({ camera, onChange }: ControllerProps) {
-  const { camera: three, gl, size } = useThree();
+  const { camera: three, gl, size, raycaster } = useThree();
+  useEffect(() => {
+    raycaster.params.Line = { ...raycaster.params.Line, threshold: LINE_PICK_THRESHOLD_M };
+  }, [raycaster]);
 
   useEffect(() => {
     const [x, y, z] = cameraPosition(camera);
@@ -120,6 +124,7 @@ export interface Focus3D {
 }
 
 const FOCUS_RING_MS = 1800;
+const CLICK_SLOP_PX = 4;
 
 /** A fading ring on the floor around a search hit. */
 function FocusRing({ focus, color }: { focus: Focus3D; color: string }) {
@@ -133,7 +138,7 @@ function FocusRing({ focus, color }: { focus: Focus3D; color: string }) {
     if (mat.current) mat.current.opacity = Math.max(0, 1 - t);
   });
   return (
-    <mesh position={[focus.position[0], 0.006, focus.position[2]]} rotation={[-Math.PI / 2, 0, 0]}>
+    <mesh position={[focus.position[0], 0.006, focus.position[2]]} rotation={[-Math.PI / 2, 0, 0]} raycast={NO_PICK}>
       <ringGeometry args={[focus.radius, focus.radius + 0.06, 48]} />
       <meshBasicMaterial ref={mat} color={color} transparent depthWrite={false} />
     </mesh>
@@ -142,6 +147,14 @@ function FocusRing({ focus, color }: { focus: Focus3D; color: string }) {
 
 export function Room3DCanvas({ scene, palette, camera, onCamera, selectedRackId, onSelectRack, labels, focus = null }: Room3DCanvasProps) {
   const existing = scene.others.filter((o) => o.type === 'existing_rack');
+  const blockClick = (e: ThreeEvent<MouseEvent>): void => {
+    e.stopPropagation();
+    if (e.delta <= CLICK_SLOP_PX) onSelectRack(null);
+  };
+  const blockHover = (e: ThreeEvent<PointerEvent>): void => {
+    e.stopPropagation();
+    document.body.style.cursor = '';
+  };
   const others = scene.others.filter((o) => o.type !== 'existing_rack');
   return (
     <Canvas
@@ -170,8 +183,20 @@ export function Room3DCanvas({ scene, palette, camera, onCamera, selectedRackId,
       />
       <CameraController camera={camera} onChange={onCamera} />
       {focus ? <FocusRing key={focus.n} focus={focus} color={palette.front} /> : null}
-      <Floor scene={scene} palette={palette} />
-      <Walls scene={scene} palette={palette} />
+      {/* Room geometry takes clicks too, so a wall or column in front of a rack blocks it. */}
+      <group onClick={blockClick} onPointerOver={blockHover}>
+        <Floor scene={scene} palette={palette} />
+        <Walls scene={scene} palette={palette} />
+        {others.map((o) => (
+          <ObjectModel key={o.id} object={o} palette={palette} />
+        ))}
+        {scene.columns.map((c) => (
+          <Column key={c.id} column={c} palette={palette} />
+        ))}
+        {scene.feeds.map((f) => (
+          <FeedModel key={f.feed.id} feed={f} color={feedColor(f.feed, { feeds: scene.feeds.map((x) => x.feed) })} />
+        ))}
+      </group>
       {scene.racks.map((r, i) => (
         <RackModel key={r.id} rack={r} palette={palette} selected={r.id === selectedRackId} onSelect={onSelectRack} stagger={i % 2 === 1} labels={labels} />
       ))}
@@ -179,15 +204,6 @@ export function Room3DCanvas({ scene, palette, camera, onCamera, selectedRackId,
         const asRack: Rack3D = { ...o, owner: 'oxygenai', faces: [], slots: [], reserved: [], capacityU: 42, usedU: 0 };
         return <RackModel key={o.id} rack={asRack} palette={palette} selected={false} onSelect={() => undefined} existing labels={labels} />;
       })}
-      {others.map((o) => (
-        <ObjectModel key={o.id} object={o} palette={palette} />
-      ))}
-      {scene.feeds.map((f) => (
-        <FeedModel key={f.feed.id} feed={f} color={feedColor(f.feed, { feeds: scene.feeds.map((x) => x.feed) })} />
-      ))}
-      {scene.columns.map((c) => (
-        <Column key={c.id} column={c} palette={palette} />
-      ))}
     </Canvas>
   );
 }

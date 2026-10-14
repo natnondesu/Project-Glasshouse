@@ -1,5 +1,6 @@
 import { useEffect, useMemo } from 'react';
 import { BoxGeometry, DoubleSide, EdgesGeometry, Shape, ShapeGeometry, Vector2 } from 'three';
+import { NO_PICK } from './picking';
 import type { Palette3D } from './palette';
 import type { Column3D, Object3D, Scene3D } from './scene';
 import { floorGridTexture } from './textures';
@@ -19,7 +20,7 @@ export function Edges({ size, color, opacity = 0.55 }: { size: [number, number, 
   }, [size]);
   useEffect(() => () => geometry.dispose(), [geometry]);
   return (
-    <lineSegments geometry={geometry}>
+    <lineSegments geometry={geometry} raycast={NO_PICK}>
       <lineBasicMaterial color={color} transparent opacity={opacity} />
     </lineSegments>
   );
