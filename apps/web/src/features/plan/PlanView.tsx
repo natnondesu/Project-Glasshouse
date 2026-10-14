@@ -45,6 +45,7 @@ export function PlanView({ location, readOnly = false }: { location: RoomLocatio
           selectedId={selected?.id ?? null}
           viewport={viewport}
           preview={gestures.preview}
+          ghost={gestures.ghost}
           measure={gestures.measure}
           cursor={gestures.cursor}
           svgHandlers={gestures.svgHandlers}

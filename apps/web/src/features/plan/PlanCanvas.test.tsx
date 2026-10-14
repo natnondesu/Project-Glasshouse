@@ -19,3 +19,21 @@ it('draws the footprint and labels racks with name and capacity', () => {
   expect(screen.getByText('5.00')).toBeInTheDocument();
   expect(screen.getByText('4.00')).toBeInTheDocument();
 });
+
+it('shows the clear distance to the nearest wall or object for the selected object and for a placement ghost', () => {
+  const base = emptyContent();
+  const rack = { ...(createObject('rack', { x: 1, y: 1 }, []) as Rack), id: 'rk', name: 'RK-01' };
+  function WithSelection({ ghost }: { ghost?: boolean }) {
+    const content = { ...base, objects: [rack] };
+    const viewport = useViewport({ w: 5, d: 4 });
+    const ghostObject = ghost ? { ...(createObject('rack', { x: 3, y: 1 }, []) as Rack), id: 'ghost', name: 'RK-02' } : null;
+    return <PlanCanvas content={content} issues={[]} selectedId={ghost ? null : 'rk'} viewport={viewport} preview={null} ghost={ghostObject} cursor="default" onFocusObject={() => {}} />;
+  }
+  const { unmount } = render(<WithSelection />);
+  expect(screen.getByTestId('gap-left')).toHaveTextContent('1.00');
+  expect(screen.getByTestId('gap-top')).toHaveTextContent('1.00');
+  unmount();
+  render(<WithSelection ghost />);
+  // The ghost's left gap ends at RK-01's right edge: 3 − (1 + 0.6).
+  expect(screen.getByTestId('gap-left')).toHaveTextContent('1.40');
+});

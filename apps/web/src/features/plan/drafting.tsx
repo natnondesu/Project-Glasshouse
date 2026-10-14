@@ -1,4 +1,5 @@
-import { placementPolygon, type Issue, type RoomObject } from '@glasshouse/domain';
+import { formatMetres, placementPolygon, type Issue, type PlanContent, type Point, type RoomObject } from '@glasshouse/domain';
+import { nearestGaps } from './gaps';
 import { toScreen, type View } from '../../viewport/math';
 import { CULPRIT_ONLY } from './flagged';
 
@@ -97,5 +98,33 @@ export function PlanLegend({ view }: { view: View }) {
         Blocks approval
       </span>
     </div>
+  );
+}
+
+const MIN_GAP_M = 0.005;
+const GAP_TICK_PX = 4;
+
+/** Live clearances from the active object to whatever is nearest on each side. */
+export function GapLayer({ object, content, view }: { object: RoomObject; content: PlanContent; view: View }) {
+  const gaps = nearestGaps(object, content).filter((g) => g.distance >= MIN_GAP_M);
+  return (
+    <g aria-hidden="true" className="gaps">
+      {gaps.map((g) => {
+        const [x1, y1] = toScreen(view, g.from);
+        const [x2, y2] = toScreen(view, g.to);
+        const horizontal = g.side === 'left' || g.side === 'right';
+        const tick = ([x, y]: Point) => (horizontal ? `M${x} ${y - GAP_TICK_PX} V${y + GAP_TICK_PX}` : `M${x - GAP_TICK_PX} ${y} H${x + GAP_TICK_PX}`);
+        const mx = (x1 + x2) / 2;
+        const my = (y1 + y2) / 2;
+        return (
+          <g key={g.side} data-testid={`gap-${g.side}`}>
+            <path className="gap__line" d={`M${x1} ${y1} L${x2} ${y2} ${tick([x1, y1])} ${tick([x2, y2])}`} />
+            <text className="gap__label" x={horizontal ? mx : mx + 6} y={horizontal ? my - 6 : my} textAnchor={horizontal ? 'middle' : 'start'} dominantBaseline={horizontal ? 'auto' : 'middle'}>
+              {formatMetres(g.distance)}
+            </text>
+          </g>
+        );
+      })}
+    </g>
   );
 }

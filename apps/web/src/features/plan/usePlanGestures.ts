@@ -1,5 +1,5 @@
 import type { CommitFn } from '../../store/hooks';
-import { createObject, newId, snapDrag, snapFloor, type Id, type PlanCommand, type PlanContent, type Point } from '@glasshouse/domain';
+import { createObject, newId, snapDrag, snapFloor, type Id, type PlanCommand, type PlanContent, type Point, type RoomObject, type RoomObjectType } from '@glasshouse/domain';
 import { useEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react';
 import type { ViewportApi } from '../../viewport/useViewport';
 import { clampIntoRoom } from './clamp';
@@ -60,8 +60,21 @@ export function usePlanGestures({ content, tool, setTool, selectedId, select, vi
   const [spaceHeld, setSpaceHeld] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [measure, setMeasure] = useState<MeasureState>(NO_MEASURE);
+  const [ghost, setGhost] = useState<RoomObject | null>(null);
 
-  useEffect(() => setMeasure(NO_MEASURE), [tool]);
+  useEffect(() => {
+    setMeasure(NO_MEASURE);
+    setGhost(null);
+  }, [tool]);
+
+  /** Where a placement tool drops its object for a cursor position; the ghost and the click share it. */
+  const placementAt = (type: RoomObjectType, world: Point): RoomObject => {
+    const draft = createObject(type, { x: 0, y: 0 }, content.objects);
+    const [px, py] = snapPoint(world);
+    const x = Math.min(Math.max(0, px), Math.max(0, content.survey.width - draft.w));
+    const y = Math.min(Math.max(0, py), Math.max(0, content.survey.length - draft.d));
+    return { ...draft, x: snapFloor(x), y: snapFloor(y) };
+  };
 
   useEffect(() => {
     if (!message) return;
@@ -107,11 +120,7 @@ export function usePlanGestures({ content, tool, setTool, selectedId, select, vi
       return;
     }
     if (isPlacementTool(tool)) {
-      const draft = createObject(tool, { x: 0, y: 0 }, content.objects);
-      const [px, py] = snapPoint(world);
-      const x = Math.min(Math.max(0, px), Math.max(0, content.survey.width - draft.w));
-      const y = Math.min(Math.max(0, py), Math.max(0, content.survey.length - draft.d));
-      const object = { ...draft, x: snapFloor(x), y: snapFloor(y) };
+      const object = placementAt(tool, world);
       if (run({ type: 'object/add', object })) {
         select(object.id);
         setTool('select');
@@ -138,6 +147,10 @@ export function usePlanGestures({ content, tool, setTool, selectedId, select, vi
       const world = viewport.clientToWorld(e.clientX, e.clientY);
       const cursorSnap = snapMeasurePoint(world, content, MEASURE_SNAP_PX / viewport.view.scale);
       setMeasure((m) => ({ ...m, cursor: cursorSnap, hoverId: hitTest(content.objects, world)?.id ?? null }));
+      return;
+    }
+    if (!g && isPlacementTool(tool) && !readOnly) {
+      setGhost(placementAt(tool, viewport.clientToWorld(e.clientX, e.clientY)));
       return;
     }
     if (!g) return;
@@ -232,7 +245,10 @@ export function usePlanGestures({ content, tool, setTool, selectedId, select, vi
 
   const panning = tool === 'pan' || spaceHeld || gesture.current?.kind === 'pan';
   const cursor = panning ? 'grab' : tool === 'select' ? 'default' : 'crosshair';
-  const onPointerLeave = (): void => setMeasure((m) => ({ ...m, cursor: null, hoverId: null }));
+  const onPointerLeave = (): void => {
+    setMeasure((m) => ({ ...m, cursor: null, hoverId: null }));
+    setGhost(null);
+  };
   const svgHandlers: SvgHandlers = {
     onPointerDown,
     onPointerMove,
@@ -242,5 +258,5 @@ export function usePlanGestures({ content, tool, setTool, selectedId, select, vi
     onContextMenu: (e) => e.preventDefault(),
   };
 
-  return { preview, cursor, message, measure, svgHandlers, onKeyDown, onKeyUp };
+  return { preview, ghost, cursor, message, measure, svgHandlers, onKeyDown, onKeyUp };
 }
