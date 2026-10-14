@@ -4,7 +4,7 @@ import { CanvasTexture, RepeatWrapping, SRGBColorSpace } from 'three';
 /** Pixels per rack unit on device-front textures: enough for crisp ports and LEDs up close. */
 const PX_PER_U = 48;
 const FRONT_W = 512;
-const MONO = '600 22px "Geist Mono", ui-monospace, monospace';
+const MONO = '600 22px "Geist Mono", "IBM Plex Sans Thai", ui-monospace, monospace';
 
 function canvas(w: number, h: number): [HTMLCanvasElement, CanvasRenderingContext2D] {
   const c = document.createElement('canvas');
@@ -124,7 +124,7 @@ export function railTexture(capacityU: number): CanvasTexture {
   ctx.fillStyle = '#1b2128';
   ctx.fillRect(0, 0, c.width, c.height);
   ctx.fillStyle = '#9aa6b2';
-  ctx.font = '500 16px "Geist Mono", ui-monospace, monospace';
+  ctx.font = '500 16px "Geist Mono", "IBM Plex Sans Thai", ui-monospace, monospace';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   for (let u = 1; u <= capacityU; u += 1) {
@@ -140,8 +140,8 @@ export function railTexture(capacityU: number): CanvasTexture {
 const LABEL_H_PX = 112;
 const LABEL_MIN_W_PX = 240;
 const LABEL_PAD_PX = 28;
-const TITLE_FONT = '700 44px "Geist Mono", ui-monospace, monospace';
-const SUB_FONT = '600 30px "Geist Mono", ui-monospace, monospace';
+const TITLE_FONT = '700 44px "Geist Mono", "IBM Plex Sans Thai", ui-monospace, monospace';
+const SUB_FONT = '600 30px "Geist Mono", "IBM Plex Sans Thai", ui-monospace, monospace';
 
 /**
  * A label for a sprite above a rack: name, then a quieter second line.

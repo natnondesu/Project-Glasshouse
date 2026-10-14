@@ -92,7 +92,15 @@ const revision = z.object({
 const plan = z.object({
   revisions: z.array(revision).min(1),
   notes: z.array(z.object({ id, text: z.string(), resolved: z.boolean(), createdAt: z.string() })),
-  history: z.array(z.object({ revision: int, action: z.string(), at: z.string() })),
+  history: z.array(
+    z.object({
+      revision: int,
+      action: z.string(),
+      at: z.string(),
+      code: z.enum(['submitted', 'approved', 'new_draft', 'acknowledged', 'unacknowledged', 'note_added', 'note_resolved', 'note_reopened']).optional(),
+      params: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
+    }),
+  ),
   equipmentState: z.record(z.string(), z.enum(['planned', 'deployed', 'maintenance'])),
 });
 const room = z.object({ id, name: z.string(), notes: z.string(), plan });

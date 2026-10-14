@@ -8,6 +8,7 @@ import { ErrorBoundary } from './ErrorBoundary';
 import { useWorkspaceStore } from '../store/workspaceStore';
 import { RecoveryScreen } from './RecoveryScreen';
 import { routes } from './routes';
+import { messagesFor, useLangStore } from '../i18n';
 
 const router = createBrowserRouter(routes);
 
@@ -25,7 +26,7 @@ export function App({ repository = idbRepository }: { repository?: Repository })
   if (load.kind === 'loading') {
     return (
       <p className="app-loading" role="status">
-        Opening your workspace…
+        {messagesFor(useLangStore.getState().lang).shell.opening}
       </p>
     );
   }

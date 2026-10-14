@@ -2,6 +2,7 @@ import { exportCatalog, parseCatalogFile, previewCatalogImport, type Template } 
 import { useRef, useState } from 'react';
 import { useWorkspaceStore } from '../../store/workspaceStore';
 import { downloadJson, readJsonFile } from '../../ui/files';
+import { useT } from '../../i18n';
 
 const list = (names: string[]): string => (names.length ? ` (${names.join(', ')})` : '');
 
@@ -9,6 +10,7 @@ const list = (names: string[]): string => (names.length ? ` (${names.join(', ')}
 export function CatalogFileActions({ guard }: { guard: (go: () => void) => void }) {
   const catalog = useWorkspaceStore((s) => s.workspace.catalog);
   const dispatch = useWorkspaceStore((s) => s.dispatch);
+  const m = useT();
   const input = useRef<HTMLInputElement>(null);
   const [pending, setPending] = useState<Template[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -28,17 +30,17 @@ export function CatalogFileActions({ guard }: { guard: (go: () => void) => void 
     <div className="catalog__files">
       <div className="catalog__files-actions">
         <button type="button" className="btn btn--sm" onClick={() => downloadJson(`glasshouse-catalog-${new Date().toISOString().slice(0, 10)}.json`, exportCatalog(catalog, new Date().toISOString()))}>
-          Export catalog
+          {m.catalog.export}
         </button>
         <button type="button" className="btn btn--sm btn--quiet" onClick={() => guard(() => input.current?.click())}>
-          Import catalog…
+          {m.catalog.import}
         </button>
         <input
           ref={input}
           type="file"
           accept=".json,application/json"
           hidden
-          aria-label="Choose a catalog file"
+          aria-label={m.catalog.chooseFile}
           onChange={(e) => {
             void onFile(e.target.files?.[0]);
             e.target.value = '';
@@ -46,9 +48,9 @@ export function CatalogFileActions({ guard }: { guard: (go: () => void) => void 
         />
       </div>
       {pending && preview ? (
-        <div className="catalog__confirm" role="group" aria-label="Confirm catalog import">
-          <p>{`${preview.added.length} new${list(preview.added)} · ${preview.updated.length} updated${list(preview.updated)} · ${preview.unchanged} unchanged`}</p>
-          <p className="catalog__note">Updated templates get a new version; Devices already placed keep theirs.</p>
+        <div className="catalog__confirm" role="group" aria-label={m.catalog.confirmImport}>
+          <p>{m.catalog.importSummary(preview.added.length, list(preview.added), preview.updated.length, list(preview.updated), preview.unchanged)}</p>
+          <p className="catalog__note">{m.catalog.importNote}</p>
           <div className="tpl-editor__actions">
             <button
               type="button"
@@ -59,10 +61,10 @@ export function CatalogFileActions({ guard }: { guard: (go: () => void) => void 
                 if (!problem) setPending(null);
               }}
             >
-              Import
+              {m.catalog.importAction}
             </button>
             <button type="button" className="btn btn--sm btn--quiet" onClick={() => setPending(null)}>
-              Cancel
+              {m.common.cancel}
             </button>
           </div>
         </div>

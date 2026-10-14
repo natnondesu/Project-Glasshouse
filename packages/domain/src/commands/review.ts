@@ -48,7 +48,7 @@ export function applyReviewCommand(plan: Plan, cmd: ReviewCommand): Result<Plan>
           r.state = 'in_review';
           r.submittedAt = cmd.at;
           r.designedBy = name.value ? { name: name.value, at: cmd.at } : null;
-          d.history.push({ revision: r.number, action: name.value ? `Submitted for review by ${name.value} (unverified)` : 'Submitted for review', at: cmd.at });
+          d.history.push({ revision: r.number, action: name.value ? `Submitted for review by ${name.value} (unverified)` : 'Submitted for review', at: cmd.at, code: 'submitted', params: name.value ? { by: name.value } : {} });
         }),
       );
     }
@@ -67,7 +67,7 @@ export function applyReviewCommand(plan: Plan, cmd: ReviewCommand): Result<Plan>
           r.state = 'approved';
           r.approvedAt = cmd.at;
           r.approvedBy = { name: reviewer.value, at: cmd.at };
-          d.history.push({ revision: r.number, action: `Approved by ${reviewer.value} (unverified)`, at: cmd.at });
+          d.history.push({ revision: r.number, action: `Approved by ${reviewer.value} (unverified)`, at: cmd.at, code: 'approved', params: { by: reviewer.value } });
         }),
       );
     }
@@ -76,7 +76,7 @@ export function applyReviewCommand(plan: Plan, cmd: ReviewCommand): Result<Plan>
       return ok(
         produce(plan, (d) => {
           d.revisions.push(castDraft(createDraftRevision(rev.number + 1, rev.content)));
-          d.history.push({ revision: rev.number + 1, action: `Started Draft revision ${rev.number + 1} from revision ${rev.number}`, at: cmd.at });
+          d.history.push({ revision: rev.number + 1, action: `Started Draft revision ${rev.number + 1} from revision ${rev.number}`, at: cmd.at, code: 'new_draft', params: { to: rev.number + 1, from: rev.number } });
         }),
       );
     }
@@ -96,7 +96,7 @@ export function applyReviewCommand(plan: Plan, cmd: ReviewCommand): Result<Plan>
             ...r.acknowledgements.filter((a) => a.reservedRangeId !== cmd.reservedRangeId),
             { reservedRangeId: cmd.reservedRangeId, reason: reason.value, by: { name: by.value, at: cmd.at } },
           ];
-          d.history.push({ revision: r.number, action: `${by.value} (unverified) acknowledged unknown demand for ${found.range.label}`, at: cmd.at });
+          d.history.push({ revision: r.number, action: `${by.value} (unverified) acknowledged unknown demand for ${found.range.label}`, at: cmd.at, code: 'acknowledged', params: { by: by.value, range: found.range.label } });
         }),
       );
     }
@@ -106,7 +106,7 @@ export function applyReviewCommand(plan: Plan, cmd: ReviewCommand): Result<Plan>
         produce(plan, (d) => {
           const r = lastRevision(d);
           r.acknowledgements = r.acknowledgements.filter((a) => a.reservedRangeId !== cmd.reservedRangeId);
-          d.history.push({ revision: r.number, action: 'Withdrew an acknowledgement', at: cmd.at });
+          d.history.push({ revision: r.number, action: 'Withdrew an acknowledgement', at: cmd.at, code: 'unacknowledged' });
         }),
       );
     }
@@ -118,7 +118,7 @@ export function applyReviewCommand(plan: Plan, cmd: ReviewCommand): Result<Plan>
       return ok(
         produce(plan, (d) => {
           d.notes.push({ id: cmd.id, text: text.value, resolved: false, createdAt: cmd.at });
-          d.history.push({ revision: rev.number, action: 'Added a review note', at: cmd.at });
+          d.history.push({ revision: rev.number, action: 'Added a review note', at: cmd.at, code: 'note_added' });
         }),
       );
     }
@@ -129,7 +129,7 @@ export function applyReviewCommand(plan: Plan, cmd: ReviewCommand): Result<Plan>
         produce(plan, (d) => {
           const note = d.notes.find((n) => n.id === cmd.id);
           if (note) note.resolved = cmd.resolved;
-          d.history.push({ revision: rev.number, action: cmd.resolved ? 'Resolved a review note' : 'Reopened a review note', at: cmd.at });
+          d.history.push({ revision: rev.number, action: cmd.resolved ? 'Resolved a review note' : 'Reopened a review note', at: cmd.at, code: cmd.resolved ? 'note_resolved' : 'note_reopened' });
         }),
       );
     }

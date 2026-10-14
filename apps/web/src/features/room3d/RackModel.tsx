@@ -5,6 +5,7 @@ import { NO_PICK } from './picking';
 import { Edges } from './RoomModels';
 import { RACK_BASE_M, type Rack3D } from './scene';
 import { deviceFrontTexture, labelTexture, railTexture, reservedTexture } from './textures';
+import { useT } from '../../i18n';
 
 const CLICK_SLOP_PX = 4;
 const POST_M = 0.04;
@@ -69,7 +70,8 @@ function Frame({ w, h, d, color }: { w: number; h: number; d: number; color: str
 }
 
 function Label({ rack, accent, h, existing, stagger }: { rack: Rack3D; accent: string; h: number; existing: boolean; stagger: boolean }) {
-  const sub = existing ? 'Existing rack' : rack.owner === 'customer' ? `Customer · ${rack.capacityU}U` : `${rack.usedU}/${rack.capacityU}U`;
+  const m = useT();
+  const sub = existing ? m.room3d.existingRack : rack.owner === 'customer' ? m.room3d.customerU(rack.capacityU) : `${rack.usedU}/${rack.capacityU}U`;
   const { map, aspect } = useMemo(() => labelTexture(rack.name, sub, accent), [rack.name, sub, accent]);
   useEffect(() => () => map.dispose(), [map]);
   return (

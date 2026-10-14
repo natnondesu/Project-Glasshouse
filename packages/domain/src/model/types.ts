@@ -255,10 +255,16 @@ export interface ReviewNote {
   createdAt: string;
 }
 
+export type HistoryCode = 'submitted' | 'approved' | 'new_draft' | 'acknowledged' | 'unacknowledged' | 'note_added' | 'note_resolved' | 'note_reopened';
+
 export interface HistoryEvent {
   revision: number;
+  /** English wording as recorded; events from before 2026-10 have only this. */
   action: string;
   at: string;
+  /** Lets the UI word the event in the viewer's language. */
+  code?: HistoryCode;
+  params?: Record<string, string | number>;
 }
 
 /** The last Revision is the current one; a Plan always has at least one. */

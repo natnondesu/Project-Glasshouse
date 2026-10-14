@@ -17,6 +17,7 @@ export function equipmentIssues(content: PlanContent, acknowledged: ReadonlySet<
           code: 'device_too_deep',
           severity: 'block',
           message: `${d.name} is ${d.depthMm} mm deep, but ${rack.name} accepts ${rack.usableDepthMm} mm.`,
+          params: { name: d.name, depth: d.depthMm, rack: rack.name, usable: rack.usableDepthMm },
           hint: 'Use a deeper rack, or a shorter Device.',
           targets: [d.id, rack.id],
         });
@@ -27,6 +28,7 @@ export function equipmentIssues(content: PlanContent, acknowledged: ReadonlySet<
           code: 'demand_unknown',
           severity: 'block',
           message: d.kind === 'chassis' ? `${d.name} has unknown chassis overhead.` : `${d.name} has unknown demand.`,
+          params: { name: d.name, form: d.kind === 'chassis' ? 'chassis' : 'device' },
           hint: UNKNOWN_HINT,
           targets: [d.id],
         });
@@ -39,6 +41,7 @@ export function equipmentIssues(content: PlanContent, acknowledged: ReadonlySet<
           code: 'demand_unknown',
           severity: 'block',
           message: `${n.name} in slot ${n.slot} of ${d.name} has unknown demand.`,
+          params: { name: n.name, form: 'node', slot: n.slot, chassis: d.name },
           hint: UNKNOWN_HINT,
           targets: [n.id, d.id],
         });
@@ -51,6 +54,7 @@ export function equipmentIssues(content: PlanContent, acknowledged: ReadonlySet<
         code: 'reserved_demand_unknown',
         severity: 'needs_ack',
         message: `Reserved range ${formatURange(r)} in ${rack.name} has unknown demand.`,
+        params: { range: formatURange(r), rack: rack.name },
         hint: 'A reviewer must acknowledge it with a reason before approval.',
         targets: [r.id, rack.id],
       });
@@ -63,6 +67,7 @@ export function equipmentIssues(content: PlanContent, acknowledged: ReadonlySet<
       code: 'over_design_limit',
       severity: 'block',
       message: `Known demand is ${formatWatts(power.knownW)}, above the ${formatWatts(power.limitW)} design limit (${power.limitPct}% of ${formatWatts(power.budgetW)}).`,
+      params: { known: formatWatts(power.knownW), limit: formatWatts(power.limitW), pct: power.limitPct, budget: formatWatts(power.budgetW) },
       hint: 'Move load to another room, or raise the power budget only if the site really has it.',
       targets: [],
     });

@@ -1,9 +1,11 @@
 import { formatURange, racksOf, type Rack, type ReservedRange, type Revision } from '@glasshouse/domain';
 import { useState, type FormEvent } from 'react';
 import { useReviewCommit } from '../../store/hooks';
+import { useT } from '../../i18n';
 
 function AcknowledgeForm({ roomId, range, disabled }: { roomId: string; range: ReservedRange; disabled: boolean }) {
   const review = useReviewCommit(roomId);
+  const m = useT();
   const [reason, setReason] = useState('');
   const [by, setBy] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -16,7 +18,7 @@ function AcknowledgeForm({ roomId, range, disabled }: { roomId: string; range: R
       <fieldset disabled={disabled} className="inspector__lock">
         <div className="field">
           <label htmlFor={`${range.id}-reason`} className="field__label">
-            Why is it acceptable?
+            {m.review.why}
           </label>
           <div className="field__box field__box--multiline">
             <textarea id={`${range.id}-reason`} className="field__input" rows={2} value={reason} onChange={(e) => setReason(e.target.value)} />
@@ -25,14 +27,14 @@ function AcknowledgeForm({ roomId, range, disabled }: { roomId: string; range: R
         <div className="ack-form__row">
           <div className="field">
             <label htmlFor={`${range.id}-by`} className="field__label">
-              Your name (unverified)
+              {m.review.yourName}
             </label>
             <div className="field__box">
               <input id={`${range.id}-by`} className="field__input" value={by} onChange={(e) => setBy(e.target.value)} />
             </div>
           </div>
           <button type="submit" className="btn">
-            Acknowledge
+            {m.review.acknowledge}
           </button>
         </div>
       </fieldset>
@@ -47,6 +49,7 @@ function AcknowledgeForm({ roomId, range, disabled }: { roomId: string; range: R
 
 export function UnknownsPanel({ roomId, revision }: { roomId: string; revision: Revision }) {
   const review = useReviewCommit(roomId);
+  const m = useT();
   const [withdrawError, setWithdrawError] = useState<string | null>(null);
   const frozen = revision.state === 'approved';
   const items: { rack: Rack; range: ReservedRange }[] = racksOf(revision.content).flatMap((rack) =>
@@ -54,27 +57,27 @@ export function UnknownsPanel({ roomId, revision }: { roomId: string; revision: 
   );
   return (
     <section className="review-card glass" aria-labelledby="unknowns-h">
-      <h2 id="unknowns-h">Unknown Reserved-range demand</h2>
-      {items.length === 0 ? <p className="review-note">No Reserved range has unknown demand.</p> : null}
+      <h2 id="unknowns-h">{m.review.unknowns}</h2>
+      {items.length === 0 ? <p className="review-note">{m.review.noUnknowns}</p> : null}
       <ul className="unknowns">
         {items.map(({ rack, range }) => {
           const ack = revision.acknowledgements.find((a) => a.reservedRangeId === range.id);
           return (
             <li key={range.id} className="unknowns__item">
-              {ack ? null : <p className="unknowns__issue">Unknown demand. Acknowledge it to unblock approval.</p>}
+              {ack ? null : <p className="unknowns__issue">{m.review.unknownIssue}</p>}
               <p className="unknowns__what">
                 <strong>{range.label}</strong> <span className="mono">{`${formatURange(range)} · ${rack.name}`}</span>
               </p>
               {ack ? (
                 <div className="unknowns__ack">
-                  <p>{`Accepted by ${ack.by.name} (unverified): ${ack.reason}`}</p>
+                  <p>{m.review.acceptedBy(ack.by.name, ack.reason)}</p>
                   <button
                     type="button"
                     className="btn btn--sm btn--quiet"
                     disabled={frozen}
                     onClick={() => setWithdrawError(review({ type: 'review/unacknowledge', reservedRangeId: range.id, at: new Date().toISOString() }))}
                   >
-                    Withdraw
+                    {m.review.withdraw}
                   </button>
                 </div>
               ) : (

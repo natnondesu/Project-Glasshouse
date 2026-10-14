@@ -10,6 +10,7 @@ import { LINE_PICK_THRESHOLD_M, NO_PICK } from './picking';
 import { RackModel } from './RackModel';
 import { Column, Floor, ObjectModel, Walls } from './RoomModels';
 import type { Rack3D, Scene3D } from './scene';
+import { useT } from '../../i18n';
 
 export const FOV_DEG = 45;
 
@@ -147,6 +148,7 @@ function FocusRing({ focus, color }: { focus: Focus3D; color: string }) {
 }
 
 export function Room3DCanvas({ scene, palette, camera, onCamera, selectedRackId, onSelectRack, labels, focus = null, showFeeds = true }: Room3DCanvasProps) {
+  const m = useT();
   const existing = scene.others.filter((o) => o.type === 'existing_rack');
   const blockClick = (e: ThreeEvent<MouseEvent>): void => {
     e.stopPropagation();
@@ -163,7 +165,7 @@ export function Room3DCanvas({ scene, palette, camera, onCamera, selectedRackId,
       shadows="percentage"
       dpr={[1, 2]}
       camera={{ fov: FOV_DEG, near: 0.05, far: 300, position: cameraPosition(camera) }}
-      aria-label="Room in 3D"
+      aria-label={m.room3d.canvas}
       onPointerMissed={(e) => {
         // A click on empty floor clears the highlight; a drag to orbit doesn't.
         if (e.type === 'click') onSelectRack(null);

@@ -1,3 +1,4 @@
+import { useT } from '../../i18n';
 import { PortsSummary } from '../ports/PortsSummary';
 import { EquipmentStateControl } from './EquipmentStateControl';
 import { findNode, findRackDevice, findReserved, racksOf, type PlanContent, type Rack, type Template, type Plan } from '@glasshouse/domain';
@@ -24,6 +25,7 @@ interface EquipmentInspectorProps {
 }
 
 export function EquipmentInspector({ content, roomId, selectedId, activeRack, catalog, commit, onSelect, readOnly = false, plan, stateLocked = false, onManagePorts }: EquipmentInspectorProps) {
+  const m = useT();
   const device = selectedId ? findRackDevice(content, selectedId) : null;
   const node = !device && selectedId ? findNode(content, selectedId) : null;
   const reserved = !device && !node && selectedId ? findReserved(content, selectedId) : null;
@@ -36,7 +38,7 @@ export function EquipmentInspector({ content, roomId, selectedId, activeRack, ca
   else body = <p className="inspector__empty">Select a Device to edit it.</p>;
 
   return (
-    <aside className="equip glass" aria-label="Equipment details">
+    <aside className="equip glass" aria-label={m.shell.equipmentDetails}>
       {device || node ? (
         // Outside the frozen fieldset: state records the site and ports can be inspected on any revision.
         <div className="equip-live">

@@ -44,7 +44,7 @@ export function Shell() {
       <TitleBlock roomId={roomId} />
       {readOnly ? (
         <p className="read-only-banner" role="alert">
-          Glasshouse is open in another tab, so this tab is read-only. Close the other tab and reload to edit here.
+          {m.shell.otherTab}
         </p>
       ) : null}
       <div className="shell__body">

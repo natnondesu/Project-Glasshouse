@@ -9,6 +9,7 @@ import { usePersistentState } from '../../ui/usePersistentState';
 import { hasWebGL, Room3DCanvas, type Focus3D } from './Room3DCanvas';
 import { buildScene } from './scene';
 import './room3d.css';
+import { useT } from '../../i18n';
 
 const FOCUS_HEIGHT_M = 0.8;
 const FOCUS_DISTANCE_M = 6;
@@ -23,6 +24,7 @@ export default function Room3DView({ location }: { location: RoomLocation }) {
   const [camera, setCamera] = useState<OrbitCamera>(home);
   const [webgl] = useState(hasWebGL);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const m = useT();
   const [labels, setLabels] = usePersistentState<'always' | 'hover'>('glasshouse:3d-labels', 'always');
   const [showFeeds, setShowFeeds] = usePersistentState('glasshouse:3d-feeds', true);
   const [focus, setFocus] = useState<Focus3D | null>(null);
@@ -41,12 +43,12 @@ export default function Room3DView({ location }: { location: RoomLocation }) {
   const openElevation = (id: string): void => void navigate(`/rooms/${location.room.id}/elevation?sel=${id}`);
 
   return (
-    <section className="room3d" aria-label="Room 3D view">
+    <section className="room3d" aria-label={m.room3d.region}>
       {webgl ? (
         <Room3DCanvas scene={scene} palette={palette} camera={camera} onCamera={setCamera} selectedRackId={selectedId} onSelectRack={setSelectedId} labels={labels} focus={focus} showFeeds={showFeeds} />
       ) : (
         <p className="room3d__fallback" role="status">
-          This browser can't show 3D (WebGL is turned off or unavailable). The plan and elevation views show the same Room.
+          {m.room3d.noWebgl}
         </p>
       )}
       <SearchBox
@@ -57,62 +59,62 @@ export default function Room3DView({ location }: { location: RoomLocation }) {
         onPick={pickHit}
         action={(hit) =>
           hit.elementId ? (
-            <Link to={`/rooms/${location.room.id}/elevation?sel=${hit.elementId}`} aria-label={`Open ${hit.name} in elevation`} onMouseDown={(e) => e.stopPropagation()}>
-              Elevation
+            <Link to={`/rooms/${location.room.id}/elevation?sel=${hit.elementId}`} aria-label={m.plan.openInElevation(hit.name)} onMouseDown={(e) => e.stopPropagation()}>
+              {m.plan.elevation}
             </Link>
           ) : null
         }
       />
-      <aside className="room3d__panel glass" aria-label="Racks in this room">
-        <h2>Racks</h2>
-        {racks.length === 0 ? <p className="room3d__note">No Racks yet. Place them on the Plan.</p> : null}
+      <aside className="room3d__panel glass" aria-label={m.room3d.racksHere}>
+        <h2>{m.room3d.racks}</h2>
+        {racks.length === 0 ? <p className="room3d__note">{m.room3d.noRacks}</p> : null}
         <ul>
           {racks.map((r) => (
             <li key={r.id}>
               <button type="button" className="room3d__rack" aria-pressed={r.id === selectedId} onClick={() => setSelectedId(r.id === selectedId ? null : r.id)}>
                 <span className="mono">{r.name}</span>
-                <span className="room3d__rack-sub">{r.owner === 'customer' ? 'Customer' : `${r.usedU}/${r.capacityU}U`}</span>
+                <span className="room3d__rack-sub">{r.owner === 'customer' ? m.room3d.customer : `${r.usedU}/${r.capacityU}U`}</span>
               </button>
             </li>
           ))}
         </ul>
         {selected && power ? (
-          <section className="room3d__card" aria-label={`${selected.name} details`}>
+          <section className="room3d__card" aria-label={m.inspector.details(selected.name)}>
             <dl>
-              <dt>Owner</dt>
-              <dd>{selected.owner === 'customer' ? 'Customer' : 'OxygenAI'}</dd>
-              <dt>Space</dt>
+              <dt>{m.room3d.owner}</dt>
+              <dd>{m.inspector.ownerName[selected.owner]}</dd>
+              <dt>{m.room3d.space}</dt>
               <dd className="mono">{`${scene.racks.find((r) => r.id === selected.id)?.usedU ?? 0}/${selected.capacityU}U`}</dd>
-              <dt>Devices</dt>
+              <dt>{m.room3d.devices}</dt>
               <dd className="mono">{selected.devices.length}</dd>
-              <dt>Demand</dt>
-              <dd className="mono">{`${(power.devices.knownW + power.reserved.knownW).toLocaleString('en-US')} W${power.devices.unknownCount + power.reserved.unknownCount ? ' + unknown' : ''}`}</dd>
+              <dt>{m.room3d.demand}</dt>
+              <dd className="mono">{`${(power.devices.knownW + power.reserved.knownW).toLocaleString('en-US')} W${power.devices.unknownCount + power.reserved.unknownCount ? m.room3d.unknownSuffix : ''}`}</dd>
             </dl>
-            <button type="button" className="btn btn--sm btn--ink" aria-label={`Open ${selected.name} elevation`} onClick={() => openElevation(selected.id)}>
-              Open elevation
+            <button type="button" className="btn btn--sm btn--ink" aria-label={m.room3d.openElevationOf(selected.name)} onClick={() => openElevation(selected.id)}>
+              {m.room3d.openElevation}
             </button>
           </section>
         ) : (
-          <p className="room3d__note">Click a Rack, here or in the room, to highlight it.</p>
+          <p className="room3d__note">{m.room3d.pickRack}</p>
         )}
       </aside>
       <div className="room3d__controls glass">
         <span className="mono room3d__zoom" aria-live="polite">{`${camera.distance.toFixed(1)} m`}</span>
         <button type="button" className="btn btn--sm" onClick={() => setCamera(home)}>
-          Reset view
+          {m.room3d.reset}
         </button>
-        <div className="seg seg--compact" role="group" aria-label="Rack labels">
+        <div className="seg seg--compact" role="group" aria-label={m.room3d.labels}>
           <button type="button" aria-pressed={labels === 'always'} onClick={() => setLabels('always')}>
-            Labels always
+            {m.room3d.labelsAlways}
           </button>
           <button type="button" aria-pressed={labels === 'hover'} onClick={() => setLabels('hover')}>
-            On hover
+            {m.room3d.labelsHover}
           </button>
         </div>
         <button type="button" className="btn btn--sm room3d__feeds" aria-pressed={showFeeds} onClick={() => setShowFeeds(!showFeeds)}>
-          {showFeeds ? 'Hide power lines' : 'Show power lines'}
+          {showFeeds ? m.room3d.hideFeeds : m.room3d.showFeeds}
         </button>
-        <span className="room3d__hint">Drag to orbit · two-finger scroll to pan · pinch to zoom · click a Rack to highlight it</span>
+        <span className="room3d__hint">{m.room3d.hint}</span>
       </div>
     </section>
   );
