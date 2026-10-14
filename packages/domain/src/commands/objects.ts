@@ -1,3 +1,4 @@
+import { usesObject } from '../dimensions';
 import { centerOf, placementWithin, rotatedBoundsSize, topLeftForCenter } from '../geometry/polygon';
 import { LIMITS } from '../model/defaults';
 import type { Id, Metres, Millimetres, PlanContent, Rack, RackOwner, RoomObject, Survey, Units } from '../model/types';
@@ -151,5 +152,6 @@ export function rotateObject(content: PlanContent, id: Id, by: 45 | -45): Result
 
 export function removeObject(content: PlanContent, id: Id): Result<PlanContent> {
   if (!content.objects.some((o) => o.id === id)) return err('not_found', 'That object no longer exists.', [id]);
-  return ok({ ...content, objects: content.objects.filter((o) => o.id !== id) });
+  // A dimension to a removed object would point at nothing, so it goes with it (undo restores both).
+  return ok({ ...content, objects: content.objects.filter((o) => o.id !== id), dimensions: content.dimensions.filter((d) => !usesObject(d, id)) });
 }

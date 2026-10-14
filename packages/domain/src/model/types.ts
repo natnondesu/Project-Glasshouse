@@ -136,10 +136,25 @@ export interface AcknowledgedUnknown {
   by: UnverifiedName;
 }
 
+/**
+ * One end of a persistent Dimension. An object anchor is stored in the object's own frame
+ * (u, v as fractions of w and d from its centre), so the dimension follows moves, rotations and resizes.
+ */
+export type DimensionAnchor = { kind: 'point'; x: Metres; y: Metres } | { kind: 'object'; objectId: Id; u: number; v: number };
+
+export interface Dimension {
+  id: Id;
+  a: DimensionAnchor;
+  b: DimensionAnchor;
+  /** Perpendicular distance of the dimension line from the measured points, left of a→b positive. */
+  offset: Metres;
+}
+
 export interface PlanContent {
   survey: Survey;
   objects: RoomObject[];
   templatesUsed: Template[];
+  dimensions: Dimension[];
 }
 
 export type RevisionState = 'draft' | 'in_review' | 'approved';

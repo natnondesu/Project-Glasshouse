@@ -66,10 +66,15 @@ const rack = z.object({
 });
 const simpleObject = z.object({ ...objectBase, type: z.enum(['existing_rack', 'door', 'mcb', 'furniture']) });
 const unverifiedName = z.object({ name: z.string(), at: z.string() });
+const anchor = z.discriminatedUnion('kind', [
+  z.object({ kind: z.literal('point'), x: num, y: num }),
+  z.object({ kind: z.literal('object'), objectId: id, u: num, v: num }),
+]);
+const dimension = z.object({ id, a: anchor, b: anchor, offset: num });
 const revision = z.object({
   number: int.positive(),
   state: z.enum(['draft', 'in_review', 'approved']),
-  content: z.object({ survey, objects: z.array(z.union([rack, simpleObject])), templatesUsed: z.array(template) }),
+  content: z.object({ survey, objects: z.array(z.union([rack, simpleObject])), templatesUsed: z.array(template), dimensions: z.array(dimension) }),
   designedBy: unverifiedName.nullable(),
   approvedBy: unverifiedName.nullable(),
   submittedAt: z.string().nullable(),
