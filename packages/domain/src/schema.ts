@@ -64,7 +64,7 @@ const rack = z.object({
   devices: z.array(z.discriminatedUnion('kind', [placedDevice, chassis])),
   reserved: z.array(reserved),
 });
-const simpleObject = z.object({ ...objectBase, type: z.enum(['existing_rack', 'door', 'mcb', 'furniture']) });
+const simpleObject = z.object({ ...objectBase, type: z.enum(['existing_rack', 'door', 'mcb', 'furniture']), hinge: z.enum(['left', 'right']).optional() });
 const unverifiedName = z.object({ name: z.string(), at: z.string() });
 const anchor = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('point'), x: num, y: num }),

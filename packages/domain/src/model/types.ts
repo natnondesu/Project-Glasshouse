@@ -118,8 +118,12 @@ export interface Rack extends ObjectBase {
 
 export type SimpleObjectType = 'existing_rack' | 'door' | 'mcb' | 'furniture';
 
+export type DoorHinge = 'left' | 'right';
+
 export interface SimpleObject extends ObjectBase {
   type: SimpleObjectType;
+  /** Doors only: the end the leaf hangs from, seen from the swing side. Absent means left. */
+  hinge?: DoorHinge;
 }
 
 export type RoomObject = Rack | SimpleObject;

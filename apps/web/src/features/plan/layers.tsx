@@ -6,6 +6,7 @@ import {
   frontEdge,
   localToWorld,
   placementPolygon,
+  rotatedBoundsSize,
   type Point,
   type RoomObject,
   type Survey,
@@ -15,6 +16,7 @@ import { useMemo, type ReactElement } from 'react';
 import { toScreen, type View } from '../../viewport/math';
 import { TYPE_LABEL } from './labels';
 import { polygonPath, multiPolygonPath } from './svgPath';
+import { DoorSymbol, fitLabel, HoverTag, McbSymbol } from './symbols';
 
 const GRID_STEP_M = 0.5;
 const MIN_LABEL_PX = 34;
@@ -142,7 +144,13 @@ export function ObjectsLayer({ objects, view, flagged, selectedId, onFocusObject
     <g>
       {objects.map((o) => {
         const [cx, cy] = toScreen(view, centerOf(o));
-        const showLabel = Math.min(o.w, o.d) * view.scale >= MIN_LABEL_PX || Math.max(o.w, o.d) * view.scale >= MIN_LABEL_PX * 2;
+        const bounds = rotatedBoundsSize(o.w, o.d, o.angle);
+        const tall = bounds.d * view.scale;
+        // Labels must fit inside the object; doors and MCB panels are too thin and rely on the hover tag.
+        const labelled = o.type !== 'door' && o.type !== 'mcb' && tall >= MIN_LABEL_PX * (o.type === 'rack' ? 1 : 0.6);
+        const label = labelled ? fitLabel(o.name, bounds.w * view.scale) : null;
+        const sub = label && o.type === 'rack' && tall >= MIN_LABEL_PX * 1.4 ? fitLabel(o.owner === 'customer' ? 'CUST' : `${usedU(o)}/${o.capacityU}U`, bounds.w * view.scale, 6.7) : null;
+        const topY = toScreen(view, [0, o.y])[1];
         const classes = ['obj', `obj--${o.type}`, o.type === 'rack' && o.owner === 'customer' ? 'obj--customer' : '', flagged.has(o.id) ? 'is-flagged' : '', o.id === selectedId ? 'is-selected' : '']
           .filter(Boolean)
           .join(' ');
@@ -157,17 +165,20 @@ export function ObjectsLayer({ objects, view, flagged, selectedId, onFocusObject
           >
             <path className="obj__body" d={polygonPath(placementPolygon(o), view)} />
             {o.type === 'existing_rack' ? <path className="obj__cross" d={crossPath(o, view)} /> : null}
+            {o.type === 'door' ? <DoorSymbol o={o} view={view} /> : null}
+            {o.type === 'mcb' ? <McbSymbol o={o} view={view} /> : null}
             {o.type === 'rack' ? <RackFront rack={o} view={view} /> : null}
-            {showLabel ? (
-              <text className="obj__label" x={cx} y={o.type === 'rack' ? cy - 7 : cy} textAnchor="middle" dominantBaseline="middle">
-                {o.name}
+            {label ? (
+              <text className="obj__label" x={cx} y={sub ? cy - 7 : cy} textAnchor="middle" dominantBaseline="middle">
+                {label}
               </text>
             ) : null}
-            {showLabel && o.type === 'rack' ? (
+            {sub ? (
               <text className="obj__sub" x={cx} y={cy + 9} textAnchor="middle" dominantBaseline="middle">
-                {o.owner === 'customer' ? 'CUST' : `${usedU(o)}/${o.capacityU}U`}
+                {sub}
               </text>
             ) : null}
+            {isStatic ? null : <HoverTag name={o.name} x={cx} y={topY} />}
           </g>
         );
       })}
