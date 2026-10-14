@@ -24,7 +24,7 @@ test('3D clicks pick the rack under the pointer and nothing beside it', async ({
     await page.mouse.click(box.x + 390, box.y + 600); // empty floor: clears
     await page.mouse.click(box.x + x, box.y + y);
   };
-  for (const [x, y] of [[386, 316], [496, 406], [626, 266]]) {
+  for (const [x, y] of [[386, 316], [496, 406], [626, 266]] as const) {
     await click(x, y);
     await expect.poll(() => selected(page)).toBe('none');
   }
