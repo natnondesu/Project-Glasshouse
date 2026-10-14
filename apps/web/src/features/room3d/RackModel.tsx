@@ -10,6 +10,7 @@ const CLICK_SLOP_PX = 4;
 const POST_M = 0.04;
 const PANEL_M = 0.012;
 const RAIL_W_M = 0.022;
+const GHOST_OPACITY = 0.45;
 /** Device fronts sit just behind the front rails, like real rack-mount gear. */
 const RAIL_SETBACK_M = 0.035;
 /** Labels keep a fixed on-screen height (no distance attenuation), so they stay readable at any zoom. */
@@ -167,19 +168,21 @@ export function RackModel({ rack, palette, selected, onSelect, existing = false,
 
 function DeviceModel({ face, width, h, frontZ, palette }: { face: Rack3D['faces'][number]; width: number; h: number; frontZ: number; palette: Palette3D }) {
   const map = useMemo(
-    () => deviceFrontTexture({ category: face.category, heightU: face.heightU, accent: palette.category[face.category], unknown: face.unknown, name: face.name }),
-    [face.category, face.heightU, face.unknown, face.name, palette],
+    () => deviceFrontTexture({ category: face.category, heightU: face.heightU, accent: palette.category[face.category], unknown: face.unknown, name: face.name, maintenance: face.state === 'maintenance' }),
+    [face.category, face.heightU, face.unknown, face.name, face.state, palette],
   );
   const y = face.y - h / 2;
+  // Planned equipment isn't there yet: drawn as a ghost.
+  const ghost = face.state === 'planned';
   return (
     <group position={[0, y, frontZ - face.depth / 2]}>
       <mesh castShadow>
         <boxGeometry args={[width, face.height, face.depth]} />
-        <meshStandardMaterial color="#2b333c" roughness={0.55} metalness={0.35} />
+        <meshStandardMaterial color="#2b333c" roughness={0.55} metalness={0.35} transparent={ghost} opacity={ghost ? GHOST_OPACITY : 1} />
       </mesh>
       <mesh position={[0, 0, face.depth / 2 + 0.0015]}>
         <planeGeometry args={[width, face.height]} />
-        <meshStandardMaterial map={map} roughness={0.5} metalness={0.2} />
+        <meshStandardMaterial map={map} roughness={0.5} metalness={0.2} transparent={ghost} opacity={ghost ? GHOST_OPACITY : 1} />
       </mesh>
     </group>
   );

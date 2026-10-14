@@ -9,6 +9,8 @@ const MIGRATIONS: Record<number, (raw: RawWorkspace) => RawWorkspace> = {
   1: (raw) => ({ ...raw, schemaVersion: 2, projects: mapRevisions(raw.projects, (rev) => ({ ...rev, content: { ...asRecord(rev.content), dimensions: [] } })) }),
   // 2026-10: power feeds from MCB panels to racks.
   2: (raw) => ({ ...raw, schemaVersion: 3, projects: mapRevisions(raw.projects, (rev) => ({ ...rev, content: { ...asRecord(rev.content), feeds: [] } })) }),
+  // 2026-10: equipment state (planned / deployed / maintenance), kept per plan outside revisions.
+  3: (raw) => ({ ...raw, schemaVersion: 4, projects: mapPlans(raw.projects, (plan) => ({ ...plan, equipmentState: {} })) }),
 };
 
 const asRecord = (v: unknown): RawWorkspace => (typeof v === 'object' && v !== null ? (v as RawWorkspace) : {});
@@ -55,4 +57,21 @@ export function migrate(raw: unknown): Result<unknown> {
     version = current.schemaVersion as number;
   }
   return ok(current);
+}
+
+/** Like mapRevisions, one level up: every room's plan. */
+function mapPlans(projects: unknown, fn: (plan: RawWorkspace) => RawWorkspace): unknown {
+  if (!Array.isArray(projects)) return projects;
+  return projects.map((p) => {
+    const project = asRecord(p);
+    if (!Array.isArray(project.sites)) return p;
+    return {
+      ...project,
+      sites: project.sites.map((s) => {
+        const site = asRecord(s);
+        if (!Array.isArray(site.rooms)) return s;
+        return { ...site, rooms: site.rooms.map((r) => ({ ...asRecord(r), plan: fn(asRecord(asRecord(r).plan)) })) };
+      }),
+    };
+  });
 }

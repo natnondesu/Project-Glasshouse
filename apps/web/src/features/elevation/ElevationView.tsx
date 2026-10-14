@@ -1,8 +1,10 @@
+import { StateLegend } from './EquipmentStateControl';
 import { SearchBox } from '../search/SearchBox';
 import type { SearchHit } from '../search/search';
 import { PanelCollapseTab, PanelRail } from '../../ui/PanelRail';
 import { usePersistentState } from '../../ui/usePersistentState';
 import {
+  equipmentStateOf,
   revisionIssues,
   currentRevision,
   findNode,
@@ -47,7 +49,7 @@ function entityNames(content: PlanContent): { id: string; name: string }[] {
 
 const PULSE_MS = 1700;
 
-export function ElevationView({ location, readOnly = false }: { location: RoomLocation; readOnly?: boolean }) {
+export function ElevationView({ location, readOnly = false, viewingPast = false }: { location: RoomLocation; readOnly?: boolean; viewingPast?: boolean }) {
   const [inspectorOpen, setInspectorOpen] = usePersistentState('glasshouse:inspector-open', true);
   const [catalogOpen, setCatalogOpen] = usePersistentState('glasshouse:elevation-catalog-open', true);
   const revision = currentRevision(location.room.plan);
@@ -56,6 +58,7 @@ export function ElevationView({ location, readOnly = false }: { location: RoomLo
   const commit = usePlanCommit(roomId);
   const catalog = useWorkspaceStore((s) => s.workspace.catalog);
   const [selectedId, select] = useSearchParamState('sel');
+  const stateOf = (id: string) => equipmentStateOf(location.room.plan, id);
   const navigate = useNavigate();
   const [pulse, setPulse] = useState<string | null>(null);
   useEffect(() => {
@@ -114,6 +117,7 @@ export function ElevationView({ location, readOnly = false }: { location: RoomLo
           className="search--inline"
           content={content}
           roomName={location.room.name}
+        plan={location.room.plan}
           onPick={(hit: SearchHit) => {
             const target = content.objects.find((o) => o.id === hit.objectId);
             if (!hit.elementId && target?.type !== 'rack') {
@@ -139,6 +143,7 @@ export function ElevationView({ location, readOnly = false }: { location: RoomLo
       </aside>
       <div className="elev__power">
         <PowerBar content={content} />
+        <StateLegend />
       </div>
       <section className="elev__racks" aria-label="Rack elevations">
         {racks.map((rack) => (
@@ -151,6 +156,7 @@ export function ElevationView({ location, readOnly = false }: { location: RoomLo
             onSelect={select}
             onActivate={() => select(rack.id)}
             pulseId={pulse}
+            stateOf={stateOf}
             onDropTemplate={(templateId, u) => {
               const template = catalog.find((t) => t.id === templateId);
               if (template) place(template, rack, u);
@@ -161,7 +167,7 @@ export function ElevationView({ location, readOnly = false }: { location: RoomLo
       {inspectorOpen ? (
         <>
           <PanelCollapseTab label="Inspector" side="right" className="elev__tab" onCollapse={() => setInspectorOpen(false)} />
-          <EquipmentInspector content={content} roomId={roomId} selectedId={selectedId} activeRack={activeRack} catalog={catalog} commit={commit} onSelect={select} readOnly={readOnly} />
+          <EquipmentInspector content={content} roomId={roomId} selectedId={selectedId} activeRack={activeRack} catalog={catalog} commit={commit} onSelect={select} readOnly={readOnly} plan={location.room.plan} stateLocked={viewingPast} />
         </>
       ) : (
         <PanelRail label="Inspector" side="right" className="elev__rail" onExpand={() => setInspectorOpen(true)} />

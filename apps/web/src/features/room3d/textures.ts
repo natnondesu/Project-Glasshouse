@@ -83,16 +83,16 @@ const frontCache = new Map<string, CanvasTexture>();
  * A device front drawn from its category: drive bays for compute and storage, ports for network,
  * vents for power. Cached per look, so a rack of identical servers shares one texture.
  */
-export function deviceFrontTexture(opts: { category: Category; heightU: number; accent: string; unknown: boolean; name: string }): CanvasTexture {
-  const key = `${opts.category}|${opts.heightU}|${opts.accent}|${opts.unknown}|${opts.name}`;
+export function deviceFrontTexture(opts: { category: Category; heightU: number; accent: string; unknown: boolean; name: string; maintenance?: boolean }): CanvasTexture {
+  const key = `${opts.category}|${opts.heightU}|${opts.accent}|${opts.unknown}|${opts.name}|${opts.maintenance ? 'm' : ''}`;
   const hit = frontCache.get(key);
   if (hit) return hit;
   const h = Math.max(1, opts.heightU) * PX_PER_U;
   const [c, ctx] = canvas(FRONT_W, h);
   ctx.fillStyle = '#262e37';
   ctx.fillRect(0, 0, FRONT_W, h);
-  ctx.fillStyle = opts.unknown ? '#c2382f' : opts.accent;
-  ctx.fillRect(0, 0, 10, h);
+  ctx.fillStyle = opts.unknown ? '#c2382f' : opts.maintenance ? '#e08a00' : opts.accent;
+  ctx.fillRect(0, 0, opts.maintenance ? 18 : 10, h);
   ctx.fillStyle = '#e8edf1';
   ctx.font = MONO;
   ctx.textBaseline = 'middle';
@@ -104,7 +104,7 @@ export function deviceFrontTexture(opts: { category: Category; heightU: number; 
   else if (opts.category === 'compute') driveBays(ctx, x0, h, Math.max(1, Math.min(3, opts.heightU)), opts.heightU > 1 ? 4 : 8);
   else if (opts.category === 'misc') ports(ctx, x0, h);
   // Passive gear (patch panels, cable management) has no status light.
-  if (opts.category !== 'misc') led(ctx, FRONT_W - 40, Math.min(h / 2, 24), opts.unknown ? '#ff6b5e' : '#4cd17a');
+  if (opts.category !== 'misc') led(ctx, FRONT_W - 40, Math.min(h / 2, 24), opts.unknown ? '#ff6b5e' : opts.maintenance ? '#ffb020' : '#4cd17a');
   ctx.strokeStyle = '#11161b';
   ctx.lineWidth = 4;
   ctx.strokeRect(2, 2, FRONT_W - 4, h - 4);

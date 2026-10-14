@@ -1,4 +1,4 @@
-import { bomRowsFor, currentRevision, latestApproved, racksOf, type Chassis, type Rack } from '@glasshouse/domain';
+import { bomRowsFor, equipmentStateOf, currentRevision, latestApproved, racksOf, type Chassis, type Rack } from '@glasshouse/domain';
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
 import { NotFound } from '../../app/NotFound';
@@ -104,7 +104,7 @@ export function InstallSheet() {
           {title('Rack elevations')}
           <div className="sheet-elevations">
             {group.map((rack) => (
-              <RackElevation key={rack.id} rack={rack} active={false} selectedId={null} flagged={NO_FLAGS} onSelect={noop} onActivate={noop} onDropTemplate={noop} isStatic />
+              <RackElevation key={rack.id} rack={rack} active={false} selectedId={null} flagged={NO_FLAGS} onSelect={noop} onActivate={noop} onDropTemplate={noop} isStatic stateOf={(id) => equipmentStateOf(location.room.plan, id)} />
             ))}
           </div>
         </section>

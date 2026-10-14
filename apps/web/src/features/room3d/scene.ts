@@ -1,4 +1,4 @@
-import { cutOutKind, effectiveHeight, feedRoute, footprintOf, localToWorld, usedU, type PowerFeed, type Point, type Category, type MultiPoly, type PlanContent, type Rack, type RoomObject, type SimpleObjectType } from '@glasshouse/domain';
+import { cutOutKind, effectiveHeight, feedRoute, footprintOf, localToWorld, usedU, type PowerFeed, type Point, type EquipmentState, type Category, type MultiPoly, type PlanContent, type Rack, type RoomObject, type SimpleObjectType } from '@glasshouse/domain';
 
 /** One rack unit (EIA-310) in metres. */
 export const U_M = 0.04445;
@@ -24,12 +24,14 @@ export interface Face3D {
   depth: number;
   heightU: number;
   kind: 'device' | 'chassis';
+  state: EquipmentState;
 }
 
 export interface Slot3D {
   chassisId: string;
   slot: number;
   filled: boolean;
+  state: EquipmentState;
   x: number;
   y: number;
   z: number;
@@ -124,7 +126,7 @@ function placement(o: RoomObject): { position: Vec3; yaw: number; size: Vec3 } {
 
 const REAR_CLEARANCE_M = 0.08;
 
-function rackFaces(rack: Rack): Pick<Rack3D, 'faces' | 'slots' | 'reserved'> {
+function rackFaces(rack: Rack, stateOf: StateOf): Pick<Rack3D, 'faces' | 'slots' | 'reserved'> {
   const z = rack.d / 2 + FRONT_OFFSET_M;
   const width = rack.w - FACE_INSET_M * 2;
   const faces: Face3D[] = [];
@@ -134,7 +136,7 @@ function rackFaces(rack: Rack): Pick<Rack3D, 'faces' | 'slots' | 'reserved'> {
     const y = RACK_BASE_M + (d.bottomU - 1) * U_M + (d.heightU * U_M) / 2;
     const unknown = d.demand.kind === 'unknown' || (d.kind === 'chassis' && d.nodes.some((n) => n.demand.kind === 'unknown'));
     const depth = Math.min(d.depthMm / 1000, rack.d - REAR_CLEARANCE_M);
-    faces.push({ id: d.id, name: d.name, category: d.kind === 'chassis' ? 'chassis' : d.category, y, z, width, height, unknown, depth, heightU: d.heightU, kind: d.kind });
+    faces.push({ id: d.id, name: d.name, category: d.kind === 'chassis' ? 'chassis' : d.category, y, z, width, height, unknown, depth, heightU: d.heightU, kind: d.kind, state: stateOf(d.id) });
     if (d.kind !== 'chassis') continue;
     const cols = d.slotsPerRow;
     const rows = Math.ceil(d.slotCount / cols);
@@ -147,6 +149,7 @@ function rackFaces(rack: Rack): Pick<Rack3D, 'faces' | 'slots' | 'reserved'> {
         chassisId: d.id,
         slot: i + 1,
         filled: d.nodes.some((n) => n.slot === i + 1),
+        state: stateOf(d.nodes.find((n) => n.slot === i + 1)?.id ?? ''),
         x: -width / 2 + cellW * (col + 0.5),
         y: y + height / 2 - cellH * (row + 0.5),
         z: z + FRONT_OFFSET_M,
@@ -159,12 +162,15 @@ function rackFaces(rack: Rack): Pick<Rack3D, 'faces' | 'slots' | 'reserved'> {
   return { faces, slots, reserved };
 }
 
-export function buildScene(content: PlanContent): Scene3D {
+type StateOf = (id: string) => EquipmentState;
+const ALL_PLANNED: StateOf = () => 'planned';
+
+export function buildScene(content: PlanContent, stateOf: StateOf = ALL_PLANNED): Scene3D {
   const racks: Rack3D[] = [];
   const others: Object3D[] = [];
   for (const o of content.objects) {
     const p = placement(o);
-    if (o.type === 'rack') racks.push({ id: o.id, name: o.name, owner: o.owner, ...p, ...rackFaces(o), capacityU: o.capacityU, usedU: usedU(o) });
+    if (o.type === 'rack') racks.push({ id: o.id, name: o.name, owner: o.owner, ...p, ...rackFaces(o, stateOf), capacityU: o.capacityU, usedU: usedU(o) });
     else others.push({ id: o.id, name: o.name, type: o.type, ...p });
   }
   const columns = content.survey.cutOuts.filter((c) => cutOutKind(c) === 'solid').map((c) => ({ id: c.id, position: [c.x + c.w / 2, COLUMN_HEIGHT_M / 2, c.y + c.d / 2] as Vec3, size: [c.w, COLUMN_HEIGHT_M, c.d] as Vec3 }));

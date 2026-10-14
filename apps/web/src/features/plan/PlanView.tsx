@@ -87,6 +87,7 @@ export function PlanView({ location, readOnly = false }: { location: RoomLocatio
           className="plan-view__search"
           content={content}
           roomName={location.room.name}
+        plan={location.room.plan}
           onPick={(hit: SearchHit) => {
             // Anything inside a rack highlights the rack on the plan; the elevation link goes to the device.
             const target = content.objects.find((o) => o.id === hit.objectId);

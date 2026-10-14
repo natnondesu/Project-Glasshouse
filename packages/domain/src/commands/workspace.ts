@@ -1,7 +1,7 @@
 import { castDraft, produce, type Draft } from 'immer';
 import { createPlan } from '../factories';
 import { currentRevision, findProject, findRoom, findSite } from '../lookup';
-import type { Id, PlanContent, Room, Site, Workspace } from '../model/types';
+import type { Id, PlanContent, Room, Site, Workspace, EquipmentState } from '../model/types';
 import { err, ok, type Result } from '../result';
 import { validateName } from '../validation';
 import { applyCatalogCommand, type CatalogCommand } from './catalog';
@@ -9,6 +9,7 @@ import { applyPlanCommand, type PlanCommand } from './plan';
 import { applyReviewCommand, type ReviewCommand } from './review';
 import { applyImport, type ImportResolution, type ProjectFile } from '../projectFile';
 import { withSample } from '../sample';
+import { setEquipmentState } from '../equipmentState';
 
 export type WorkspaceCommand =
   | { type: 'project/create'; id: Id; name: string }
@@ -24,6 +25,7 @@ export type WorkspaceCommand =
   | { type: 'review'; roomId: Id; command: ReviewCommand }
   | { type: 'backup/mark'; at: string }
   | { type: 'sample/load'; at: string }
+  | { type: 'equipment/state'; roomId: Id; ids: Id[]; state: EquipmentState }
   | { type: 'project/import'; file: ProjectFile; resolution: ImportResolution }
   | CatalogCommand;
 
@@ -139,6 +141,13 @@ export function apply(ws: Workspace, cmd: WorkspaceCommand): Result<Workspace> {
     }
     case 'project/import':
       return applyImport(ws, cmd.file, cmd.resolution);
+    case 'equipment/state': {
+      const loc = findRoom(ws, cmd.roomId);
+      if (!loc) return gone('room', cmd.roomId);
+      const result = setEquipmentState(loc.room.plan, cmd.ids, cmd.state);
+      if (!result.ok) return result;
+      return ok(produce(ws, (d) => void (draftRoom(d, cmd.roomId).plan = castDraft(result.value))));
+    }
     case 'sample/load':
       return withSample(ws, cmd.at);
     case 'backup/mark':

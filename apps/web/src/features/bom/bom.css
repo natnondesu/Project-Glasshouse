@@ -80,3 +80,8 @@
 .bom__table td.bom__nowrap {
   white-space: nowrap;
 }
+
+.bom__filter {
+  align-self: flex-start;
+  margin: 0 0 10px;
+}

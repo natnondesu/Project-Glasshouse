@@ -48,7 +48,7 @@ describe('BOM', () => {
   it('writes RFC 4180 CSV with a header and escaped cells', () => {
     const csv = bomCsv(bomRows(findRoom(seeded(), 'r')!));
     const [header] = csv.split('\r\n');
-    expect(header).toBe('Project,Site,Room,Rack,Parent chassis,Slot,Type,Name,Template / model,Category,Position,Height (U),Depth (mm),Demand (W),Configuration,Notes');
+    expect(header).toBe('Project,Site,Room,Rack,Parent chassis,Slot,Type,State,Name,Template / model,Category,Position,Height (U),Depth (mm),Demand (W),Configuration,Notes');
     expect(csv).toContain('"2× CPU, ""fast"" RAM\nhot-swap"');
     expect(csv.endsWith('\r\n')).toBe(true);
   });

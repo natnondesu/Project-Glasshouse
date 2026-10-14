@@ -49,7 +49,7 @@ test('AC06/AC08/AC14/AC19: fill a chassis, move it, flag an unknown node, export
   await page.getByRole('button', { name: 'Download CSV' }).click();
   const file = await (await downloading).path();
   const csv = readFileSync(file, 'utf8');
-  expect(csv).toContain('RK-02,CH-01,3,Node,NODE-03');
+  expect(csv).toContain('RK-02,CH-01,3,Node,Planned,NODE-03');
   expect(csv).toContain(',unknown,');
 });
 
@@ -67,7 +67,9 @@ test('AC09/AC10: template edits leave placed devices alone; a too-deep device bl
 
   await page.getByRole('link', { name: /MDF-1/ }).last().click();
   await page.getByRole('link', { name: 'Elevation' }).click();
-  await page.getByRole('button', { name: /^SRV-01,/ }).click();
+  // Select from the keyboard: Firefox's automation mis-scrolls SVG blocks near the bottom of a rack.
+  await page.getByRole('button', { name: /^SRV-01,/ }).focus();
+  await page.keyboard.press('Enter');
   await expect(page.getByLabel('Demand in watts')).toHaveValue('500');
 
   await page.getByLabel('Depth', { exact: true }).fill('1070');
