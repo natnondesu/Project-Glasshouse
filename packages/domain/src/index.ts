@@ -40,3 +40,5 @@ export * from './catalogFile';
 export * from './equipmentState';
 export * from './ports';
 export * from './checks/links';
+export * from './vlans';
+export * from './checks/vlans';

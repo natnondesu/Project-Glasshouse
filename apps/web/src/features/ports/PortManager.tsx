@@ -1,4 +1,4 @@
-import { describeEnd, findNode, findRackDevice, linkAt, nextPortName, otherEnd, PORT_MEDIA_LABEL, portsOf, type Id, type PlanContent, type Port } from '@glasshouse/domain';
+import { vlanLabel, describeEnd, findNode, findRackDevice, linkAt, nextPortName, otherEnd, PORT_MEDIA_LABEL, portsOf, type Id, type PlanContent, type Port } from '@glasshouse/domain';
 import { useState } from 'react';
 import type { CommitFn } from '../../store/hooks';
 import { IconPlus } from '../../ui/icons';
@@ -9,6 +9,7 @@ import { useT, type Messages } from '../../i18n';
 
 interface PortManagerProps {
   content: PlanContent;
+  roomId: Id;
   deviceId: Id;
   commit: CommitFn;
   readOnly: boolean;
@@ -46,7 +47,7 @@ function banksOf(ports: Port[]): Bank[] {
 }
 
 /** Floating port map for one device: a faceplate of its ports, and the selected port's link. */
-export function PortManager({ content, deviceId, commit, readOnly, onClose }: PortManagerProps) {
+export function PortManager({ content, roomId, deviceId, commit, readOnly, onClose }: PortManagerProps) {
   const m = useT();
   const name = findRackDevice(content, deviceId)?.device.name ?? findNode(content, deviceId)?.node.name ?? m.search.device;
   const ports = portsOf(content, deviceId);
@@ -117,11 +118,12 @@ export function PortManager({ content, deviceId, commit, readOnly, onClose }: Po
                       className={`port port--${p.media}${isLinked ? ' is-linked' : ''}`}
                       aria-pressed={p.name === selected}
                       aria-label={label}
-                      title={`${label} · ${PORT_MEDIA_LABEL[p.media]} ${p.speed}`}
+                      title={`${label} · ${PORT_MEDIA_LABEL[p.media]} ${p.speed}${p.vlan ? ` · ${vlanLabel(p.vlan)}` : ''}`}
                       onClick={() => setSelected(p.name)}
                     >
                       <span className="port__jack" aria-hidden="true" />
                       <span className="port__name mono">{short}</span>
+                      {p.vlan ? <span className="port__vlan mono">{p.vlan.mode === 'access' ? p.vlan.vid : m.vlans.tagTrunk}</span> : null}
                     </button>
                   );
                 })}
@@ -130,7 +132,7 @@ export function PortManager({ content, deviceId, commit, readOnly, onClose }: Po
           ))}
         </div>
       )}
-      {current ? <PortDetail key={ports.indexOf(current)} content={content} deviceId={deviceId} port={current} commit={commit} readOnly={readOnly} onRenamed={setSelected} onRemoved={() => setSelected(null)} /> : null}
+      {current ? <PortDetail key={ports.indexOf(current)} content={content} roomId={roomId} deviceId={deviceId} port={current} commit={commit} readOnly={readOnly} onRenamed={setSelected} onRemoved={() => setSelected(null)} /> : null}
     </section>
   );
 }

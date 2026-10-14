@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import type { CommitFn } from '../../store/hooks';
 import { TextField } from '../../ui/TextField';
 import { portOwners } from './portOwners';
+import { PortVlanField } from './PortVlanField';
 import { useT } from '../../i18n';
 
 /** Sentinel option: create a port on the far device as part of linking. */
@@ -11,6 +12,7 @@ const FIRST_PORT = 'eth0';
 
 interface PortDetailProps {
   content: PlanContent;
+  roomId: Id;
   deviceId: Id;
   port: Port;
   commit: CommitFn;
@@ -20,7 +22,7 @@ interface PortDetailProps {
 }
 
 /** The selected port: its own settings, then its link (or a picker to make one). */
-export function PortDetail({ content, deviceId, port, commit, readOnly, onRenamed, onRemoved }: PortDetailProps) {
+export function PortDetail({ content, roomId, deviceId, port, commit, readOnly, onRenamed, onRemoved }: PortDetailProps) {
   const m = useT();
   const [error, setError] = useState<string | null>(null);
   const ref = { deviceId, port: port.name };
@@ -72,6 +74,7 @@ export function PortDetail({ content, deviceId, port, commit, readOnly, onRename
           {m.ports.remove}
         </button>
       </div>
+      <PortVlanField content={content} roomId={roomId} deviceId={deviceId} port={port} commit={commit} />
       {link ? <LinkedTo content={content} linkId={link.id} far={otherEnd(link, ref)} commit={commit} onError={setError} /> : <LinkPicker content={content} from={ref} commit={commit} onError={setError} />}
       {error ? (
         <p role="alert" className="field__error">

@@ -2,6 +2,7 @@ import { currentRevision } from '@glasshouse/domain';
 import { lazy, Suspense } from 'react';
 import { useParams } from 'react-router';
 import { BomView } from '../features/bom/BomView';
+import { NetworkView } from '../features/network/NetworkView';
 import { ElevationView } from '../features/elevation/ElevationView';
 import { PlanView } from '../features/plan/PlanView';
 import { ReviewView } from '../features/review/ReviewView';
@@ -35,6 +36,7 @@ export function RoomScreen() {
         <Room3DView key={roomId} location={location} />
       </Suspense>
     );
+  else if (view === 'network') body = <NetworkView key={`${roomId}:${revision.number}`} location={location} readOnly={readOnly} />;
   else if (view === 'bom') body = <BomView key={roomId} location={location} />;
   else if (view === 'review') body = <ReviewView key={roomId} location={location} />;
   else return <NotFound message={m.shell.viewMissing} />;
@@ -42,7 +44,7 @@ export function RoomScreen() {
     <div className="room-screen">
       <ViewTabs roomId={roomId} />
       {past ? <RevisionBanner roomId={roomId} view={view} viewed={revision} current={currentRevision(realLocation.room.plan)} /> : null}
-      {!past && readOnly && (view === 'plan' || view === 'elevation') ? <FrozenBanner roomId={roomId} revision={revision} /> : null}
+      {!past && readOnly && (view === 'plan' || view === 'elevation' || view === 'network') ? <FrozenBanner roomId={roomId} revision={revision} /> : null}
       <ErrorBoundary key={view} label={m.views.drawing[view] ?? m.views.drawing.other!}>
         {body}
       </ErrorBoundary>

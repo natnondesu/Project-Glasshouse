@@ -46,7 +46,18 @@ export interface Port {
   name: string;
   media: PortMedia;
   speed: string;
+  /** Unset: not configured. */
+  vlan?: PortVlan;
 }
+
+/** A room VLAN; the VLAN ID is its identity, as on the switches. */
+export interface Vlan {
+  vid: number;
+  name: string;
+}
+
+/** Access carries one VLAN untagged; a trunk carries `allowed` tagged, plus `native` untagged. */
+export type PortVlan = { mode: 'access'; vid: number } | { mode: 'trunk'; allowed: number[] | 'all'; native: number | null };
 
 export type CableType = 'cat6' | 'cat6a' | 'om3' | 'om4' | 'os2' | 'dac' | 'aoc';
 
@@ -233,6 +244,7 @@ export interface PlanContent {
   dimensions: Dimension[];
   feeds: PowerFeed[];
   links: NetLink[];
+  vlans: Vlan[];
 }
 
 export type RevisionState = 'draft' | 'in_review' | 'approved';

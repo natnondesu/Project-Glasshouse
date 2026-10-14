@@ -241,3 +241,48 @@
   align-self: flex-start;
   width: auto;
 }
+
+.port__vlan {
+  margin-top: -2px;
+  font-size: 9px;
+  line-height: 1;
+  color: #8fc2ff;
+}
+
+.port-vlan {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+}
+
+.port-vlan__row {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.port-vlan__note {
+  font-size: 12px;
+  color: var(--ink-2);
+}
+
+.port-vlan__allowed {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  font-size: 13px;
+}
+
+.port-vlan__allowed legend {
+  width: 100%;
+  margin-bottom: 4px;
+}
+
+.port-vlan__check {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}

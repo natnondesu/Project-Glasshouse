@@ -8,6 +8,7 @@ const VIEWS = [
   { id: 'plan', key: 'plan' },
   { id: 'elevation', key: 'elevation' },
   { id: '3d', key: 'threeD' },
+  { id: 'network', key: 'network' },
   { id: 'bom', key: 'bom' },
   { id: 'review', key: 'review' },
 ] as const;

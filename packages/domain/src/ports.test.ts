@@ -105,7 +105,7 @@ describe('links', () => {
 
   it('lists a cable schedule with rack, device and port on each end', () => {
     const c = run(room(), link('l1', ['srv', 'eth0'], ['sw', 'Gi1/0/1'], 'C-001'), { type: 'link/update', id: 'l1', patch: { cable: 'cat6' } });
-    expect(cableSchedule(c)).toEqual([{ id: 'l1', from: { rack: 'RK-01', device: 'SRV-01', port: 'eth0' }, to: { rack: 'RK-01', device: 'SW-01', port: 'Gi1/0/1' }, label: 'C-001', cable: 'Cat 6' }]);
+    expect(cableSchedule(c)).toEqual([{ id: 'l1', from: { rack: 'RK-01', device: 'SRV-01', port: 'eth0' }, to: { rack: 'RK-01', device: 'SW-01', port: 'Gi1/0/1' }, label: 'C-001', cable: 'Cat 6', vlan: '' }]);
   });
 
   it('upgrades schema 5 revisions with an empty link list', () => {
@@ -119,6 +119,6 @@ describe('port summaries', () => {
     const { portMix, cableCsv } = await import('./ports');
     const c = run(room(), link('l1', ['srv', 'eth0'], ['sw', 'Gi1/0/1'], 'C, 001'));
     expect(portMix(portsOf(c, 'sw'))).toBe('4× RJ45 1G, 2× SFP+ 10G');
-    expect(cableCsv(cableSchedule(c)).split('\r\n')).toEqual(['Label,From rack,From device,From port,To rack,To device,To port,Cable', '"C, 001",RK-01,SRV-01,eth0,RK-01,SW-01,Gi1/0/1,']);
+    expect(cableCsv(cableSchedule(c)).split('\r\n')).toEqual(['Label,From rack,From device,From port,To rack,To device,To port,Cable,VLAN', '"C, 001",RK-01,SRV-01,eth0,RK-01,SW-01,Gi1/0/1,,']);
   });
 });

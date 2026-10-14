@@ -131,6 +131,7 @@ it('prints the cable schedule of the approved server room', () => {
   const table = screen.getByRole('table', { name: 'Cable schedule' });
   expect(table.querySelector('thead .sheet-title')).not.toBeNull();
   const row = within(table).getByText('C-001').closest('tr')!;
-  expect([...row.querySelectorAll('td')].map((td) => td.textContent)).toEqual(['C-001', 'RK-01', 'SRV-01', 'eth0', 'RK-01', 'SW-01', 'Gi1/0/1', 'Cat 6']);
+  expect([...row.querySelectorAll('td')].map((td) => td.textContent)).toEqual(['C-001', 'RK-01', 'SRV-01', 'eth0', 'RK-01', 'SW-01', 'Gi1/0/1', 'Cat 6', '10']);
   expect(within(table).getByText('UPL-01').closest('tr')).toHaveTextContent('Fibre OM4');
+  expect(within(table).getByText('UPL-01').closest('tr')).toHaveTextContent('Trunk all · native 99');
 });

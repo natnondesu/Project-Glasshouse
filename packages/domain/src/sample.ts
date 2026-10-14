@@ -94,6 +94,21 @@ export function createSampleProject(at: string): Result<Project> {
   s1Servers.forEach((id, i) => cable(serverId, [id, 'eth0'], [sw1, `Gi1/0/${i + 1}`], `C-${String(i + 1).padStart(3, '0')}`, 'cat6'));
   s2Servers.forEach((id, i) => cable(serverId, [id, 'eth0'], [sw2, `Gi1/0/${i + 1}`], `C-${String(i + 11).padStart(3, '0')}`, 'cat6'));
   cable(serverId, [sw1, 'Te1/1/1'], [sw2, 'Te1/1/1'], 'UPL-01', 'om4');
+  // VLANs: servers on access VLAN 10, the switch-to-switch uplink trunks everything with management native.
+  const vlan = (roomId: Id, vid: number, name: string): void => plan(roomId, { type: 'vlan/add', vlan: { vid, name } });
+  const access = (roomId: Id, deviceId: Id, port: string, vid: number): void => plan(roomId, { type: 'port/vlan', deviceId, name: port, vlan: { mode: 'access', vid } });
+  vlan(serverId, 10, 'Servers');
+  vlan(serverId, 20, 'Storage');
+  vlan(serverId, 99, 'Management');
+  s1Servers.forEach((id, i) => {
+    access(serverId, id, 'eth0', 10);
+    access(serverId, sw1, `Gi1/0/${i + 1}`, 10);
+  });
+  s2Servers.forEach((id, i) => {
+    access(serverId, id, 'eth0', 10);
+    access(serverId, sw2, `Gi1/0/${i + 1}`, 10);
+  });
+  for (const sw of [sw1, sw2]) plan(serverId, { type: 'port/vlan', deviceId: sw, name: 'Te1/1/1', vlan: { mode: 'trunk', allowed: 'all', native: 99 } });
   // Two boards so RK-01 has independent A and B feeds.
   const board1 = mcb('MCB-01', 0, 2.2, true);
   const board2 = mcb('MCB-02', 3.6, 0, false);
@@ -151,6 +166,12 @@ export function createSampleProject(at: string): Result<Project> {
   nodes.forEach((id, i) => {
     ports(mdfId, id, [{ name: 'eth0', media: 'rj45', speed: '1G' }]);
     if (i < 3) cable(mdfId, [id, 'eth0'], [mdfSwitch, `Gi1/0/${i + 1}`], `N-${String(i + 1).padStart(2, '0')}`, 'cat6a');
+  });
+  vlan(mdfId, 10, 'Compute');
+  vlan(mdfId, 99, 'Management');
+  nodes.slice(0, 3).forEach((id, i) => {
+    access(mdfId, id, 'eth0', 10);
+    access(mdfId, mdfSwitch, `Gi1/0/${i + 1}`, 10);
   });
   const mdfBoard = mcb('MCB-01', 0, 3.6, true);
   plan(mdfId, { type: 'object/add', object: mdfBoard });

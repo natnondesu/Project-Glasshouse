@@ -9,6 +9,7 @@ import { applyDimensionCommand, type DimensionCommand } from '../dimensions';
 import { applyFeedCommand, type FeedCommand } from '../feeds';
 import { applyPanelCommand, type PanelCommand } from '../sources';
 import { applyPortCommand, pruneLinks, type PortCommand } from '../ports';
+import { applyVlanCommand, type VlanCommand } from '../vlans';
 
 export type PlanCommand =
   | { type: 'survey/update'; patch: SurveyPatch }
@@ -22,7 +23,8 @@ export type PlanCommand =
   | DimensionCommand
   | FeedCommand
   | PanelCommand
-  | PortCommand;
+  | PortCommand
+  | VlanCommand;
 
 export function applyPlanCommand(content: PlanContent, cmd: PlanCommand): Result<PlanContent> {
   const result = applyOne(content, cmd);
@@ -81,5 +83,10 @@ function applyOne(content: PlanContent, cmd: PlanCommand): Result<PlanContent> {
     case 'link/update':
     case 'link/remove':
       return applyPortCommand(content, cmd);
+    case 'vlan/add':
+    case 'vlan/update':
+    case 'vlan/remove':
+    case 'port/vlan':
+      return applyVlanCommand(content, cmd);
   }
 }

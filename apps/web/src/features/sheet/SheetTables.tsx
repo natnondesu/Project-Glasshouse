@@ -141,7 +141,7 @@ export function CableScheduleTable({ rows, titleBlock }: { rows: CableRow[]; tit
   const m = useT();
   return (
     <table className="sheet-table" aria-label={m.sheet.cableSchedule}>
-      <TitleHead span={8} titleBlock={titleBlock}>
+      <TitleHead span={9} titleBlock={titleBlock}>
         <tr>
           <th scope="col">{m.sheet.cable.label}</th>
           <th scope="col">{m.sheet.cable.fromRack}</th>
@@ -151,6 +151,7 @@ export function CableScheduleTable({ rows, titleBlock }: { rows: CableRow[]; tit
           <th scope="col">{m.sheet.cable.toDevice}</th>
           <th scope="col">{m.sheet.cable.port}</th>
           <th scope="col">{m.sheet.cable.cable}</th>
+          <th scope="col">{m.sheet.cable.vlan}</th>
         </tr>
       </TitleHead>
       <tbody>
@@ -164,6 +165,7 @@ export function CableScheduleTable({ rows, titleBlock }: { rows: CableRow[]; tit
             <td className="mono is-short">{r.to.device}</td>
             <td className="mono is-short">{r.to.port}</td>
             <td>{r.cable}</td>
+            <td className="mono">{r.vlan}</td>
           </tr>
         ))}
       </tbody>

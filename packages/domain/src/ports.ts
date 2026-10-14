@@ -1,6 +1,7 @@
 import { findNode, findRackDevice } from './devices';
 import type { CableType, Id, NetLink, PlanContent, Port, PortGroup, PortMedia, PortRef, Rack, RoomObject } from './model/types';
 import { err, ok, type Result } from './result';
+import { vlanLabel } from './vlans';
 
 export const PORT_MEDIA: PortMedia[] = ['rj45', 'sfp', 'sfp_plus', 'qsfp'];
 export const PORT_MEDIA_LABEL: Record<PortMedia, string> = { rj45: 'RJ45', sfp: 'SFP', sfp_plus: 'SFP+', qsfp: 'QSFP' };
@@ -52,7 +53,7 @@ function ownerOf(content: PlanContent, deviceId: Id): PortOwner | null {
 
 export const portsOf = (content: PlanContent, deviceId: Id): Port[] => ownerOf(content, deviceId)?.ports ?? [];
 
-function withPorts(content: PlanContent, deviceId: Id, ports: Port[]): PlanContent {
+export function withPorts(content: PlanContent, deviceId: Id, ports: Port[]): PlanContent {
   const objects = content.objects.map((o): RoomObject => {
     if (o.type !== 'rack') return o;
     return {
@@ -185,6 +186,8 @@ export interface CableRow {
   to: CableEnd;
   label: string;
   cable: string;
+  /** Each end's VLAN setting; one value when both ends agree. */
+  vlan: string;
 }
 
 /** The cable schedule for the Install sheet: every link, labelled ones first in label order. */
@@ -195,7 +198,7 @@ export function cableSchedule(content: PlanContent): CableRow[] {
   };
   const key = (row: CableRow): string => `${row.label === '' ? '1' : '0'}${row.label}|${row.from.rack}|${row.from.device}|${row.from.port}`;
   return content.links
-    .map((l) => ({ id: l.id, from: end(l.a), to: end(l.b), label: l.label, cable: l.cable ? CABLE_LABEL[l.cable] : '' }))
+    .map((l) => ({ id: l.id, from: end(l.a), to: end(l.b), label: l.label, cable: l.cable ? CABLE_LABEL[l.cable] : '', vlan: linkVlan(content, l) }))
     .sort((x, y) => key(x).localeCompare(key(y), 'en', { numeric: true }));
 }
 
@@ -229,7 +232,13 @@ export function portMix(ports: Port[]): string {
 /** RFC 4180 CSV of the cable schedule, for printing labels or a cabling contractor. */
 export function cableCsv(rows: CableRow[]): string {
   const cell = (v: string): string => (/[",\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v);
-  const header = ['Label', 'From rack', 'From device', 'From port', 'To rack', 'To device', 'To port', 'Cable'];
-  const lines = rows.map((r) => [r.label, r.from.rack, r.from.device, r.from.port, r.to.rack, r.to.device, r.to.port, r.cable].map(cell).join(','));
+  const header = ['Label', 'From rack', 'From device', 'From port', 'To rack', 'To device', 'To port', 'Cable', 'VLAN'];
+  const lines = rows.map((r) => [r.label, r.from.rack, r.from.device, r.from.port, r.to.rack, r.to.device, r.to.port, r.cable, r.vlan].map(cell).join(','));
   return [header.join(','), ...lines].join('\r\n');
+}
+
+function linkVlan(content: PlanContent, link: NetLink): string {
+  const a = vlanLabel(describeEnd(content, link.a).port?.vlan);
+  const b = vlanLabel(describeEnd(content, link.b).port?.vlan);
+  return a === b || !b ? a : !a ? b : `${a} / ${b}`;
 }
