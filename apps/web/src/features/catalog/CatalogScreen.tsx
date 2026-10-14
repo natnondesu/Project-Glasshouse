@@ -1,6 +1,7 @@
 import { CATEGORY_LABEL, formatDemand, SEED_TEMPLATE_IDS, type Template } from '@glasshouse/domain';
 import { useCallback, useState } from 'react';
 import { useBlocker } from 'react-router';
+import { CatalogFileActions } from './CatalogFileActions';
 import { useSearchParamState } from '../../store/hooks';
 import { useWorkspaceStore } from '../../store/workspaceStore';
 import { blankTemplate, CATEGORY_ORDER, TemplateEditor } from './TemplateEditor';
@@ -58,9 +59,10 @@ export function CatalogScreen() {
           </button>
         </header>
         <p className="catalog__note">Shared by every Project in this browser. Editing a Template never changes Devices already placed.</p>
+        <CatalogFileActions guard={guard} />
         {missing > 0 ? (
           <button type="button" className="btn btn--sm" onClick={() => dispatch({ type: 'catalog/seed' })}>
-            Add {missing} illustrative {missing === 1 ? 'template' : 'templates'}
+            Add {missing} default {missing === 1 ? 'template' : 'templates'}
           </button>
         ) : null}
         {CATEGORY_ORDER.map((category) => {

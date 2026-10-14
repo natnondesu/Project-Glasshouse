@@ -42,10 +42,10 @@ it('creates a template, shows save errors, and deletes after confirmation', asyn
   expect(catalog().some((t) => t.label === 'GPU node 4U')).toBe(false);
 });
 
-it('restores missing illustrative templates', async () => {
+it('restores missing default templates', async () => {
   const user = userEvent.setup();
   useWorkspaceStore.getState().dispatch({ type: 'template/delete', id: 'tpl-node' });
   open();
-  await user.click(screen.getByRole('button', { name: 'Add 1 illustrative template' }));
+  await user.click(screen.getByRole('button', { name: 'Add 1 default template' }));
   expect(catalog().some((t) => t.id === 'tpl-node')).toBe(true);
 });

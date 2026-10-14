@@ -1,3 +1,4 @@
+import defaultCatalog from './default-catalog.json';
 import { validateDemand } from './demand';
 import { LIMITS } from './model/defaults';
 import type { Category, Template } from './model/types';
@@ -12,37 +13,11 @@ export const CATEGORY_LABEL: Record<Category, string> = {
   chassis: 'Chassis',
 };
 
-type SeedInput = Pick<Template, 'id' | 'label' | 'model' | 'category' | 'mounting' | 'heightU' | 'depthMm' | 'demand'> & Partial<Template>;
-
-const seed = (t: SeedInput): Template => ({
-  version: 1,
-  color: '',
-  defaultConfig: '',
-  slotCount: null,
-  slotsPerRow: null,
-  illustrative: true,
-  ...t,
-});
-
-const SEED: readonly Template[] = [
-  seed({ id: 'tpl-switch-1u', label: 'Network switch', model: 'Generic 48-port 1U', category: 'network', mounting: 'rack', heightU: 1, depthMm: 300, demand: { kind: 'known', watts: 110 } }),
-  seed({ id: 'tpl-server-1u', label: 'Server 1U', model: 'Generic 1U server', category: 'compute', mounting: 'rack', heightU: 1, depthMm: 750, demand: { kind: 'known', watts: 300 } }),
-  seed({ id: 'tpl-server-2u', label: 'Server 2U', model: 'Generic 2U server', category: 'compute', mounting: 'rack', heightU: 2, depthMm: 780, demand: { kind: 'known', watts: 450 } }),
-  seed({ id: 'tpl-server-4u', label: 'Server 4U', model: 'Generic 4U server', category: 'compute', mounting: 'rack', heightU: 4, depthMm: 800, demand: { kind: 'known', watts: 780 } }),
-  seed({
-    id: 'tpl-chassis-6u',
-    label: 'Chassis 6U · 5 slots',
-    model: 'Generic 6U chassis',
-    category: 'chassis',
-    mounting: 'rack',
-    heightU: 6,
-    depthMm: 780,
-    demand: { kind: 'known', watts: 20 },
-    slotCount: 5,
-    slotsPerRow: 5,
-  }),
-  seed({ id: 'tpl-node', label: 'Node server', model: 'Generic chassis node', category: 'compute', mounting: 'slot', heightU: 0, depthMm: 0, demand: { kind: 'known', watts: 150 } }),
-];
+/**
+ * The catalog every new workspace starts with. Replace this file with an export from the Catalog screen
+ * ("Export catalog") to change the default; it is checked against the editor's rules in the tests.
+ */
+const SEED: readonly Template[] = (defaultCatalog as { templates: Template[] }).templates;
 
 export const SEED_TEMPLATE_IDS: string[] = SEED.map((t) => t.id);
 

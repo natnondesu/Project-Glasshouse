@@ -106,3 +106,15 @@
   background: var(--warn-bg);
   font-size: 13px;
 }
+
+.catalog__files {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.catalog__files-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}

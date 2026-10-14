@@ -36,3 +36,4 @@ export * from './dimensions';
 export * from './feeds';
 export * from './sources';
 export { snapToWall } from './walls';
+export * from './catalogFile';

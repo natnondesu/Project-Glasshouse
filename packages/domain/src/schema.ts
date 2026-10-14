@@ -12,7 +12,7 @@ const demand = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('unknown') }),
 ]);
 const category = z.enum(['compute', 'storage', 'network', 'power', 'chassis']);
-const template = z.object({
+export const templateSchema = z.object({
   id,
   version: int.positive(),
   label: z.string(),
@@ -78,7 +78,7 @@ const feed = z.object({ id, rackId: id, sourceId: id, label: z.string(), way: in
 const revision = z.object({
   number: int.positive(),
   state: z.enum(['draft', 'in_review', 'approved']),
-  content: z.object({ survey, objects: z.array(z.union([rack, simpleObject])), templatesUsed: z.array(template), dimensions: z.array(dimension), feeds: z.array(feed) }),
+  content: z.object({ survey, objects: z.array(z.union([rack, simpleObject])), templatesUsed: z.array(templateSchema), dimensions: z.array(dimension), feeds: z.array(feed) }),
   designedBy: unverifiedName.nullable(),
   approvedBy: unverifiedName.nullable(),
   submittedAt: z.string().nullable(),
@@ -97,7 +97,7 @@ const project = z.object({ id, name: z.string(), notes: z.string(), isSample: z.
 export const workspaceSchema = z.object({
   schemaVersion: z.literal(CURRENT_SCHEMA_VERSION),
   projects: z.array(project),
-  catalog: z.array(template),
+  catalog: z.array(templateSchema),
   lastBackupAt: z.string().nullable(),
 });
 
