@@ -82,7 +82,8 @@ test('AC17 print layout: 60U racks still fit one A4 page each with the title blo
   await page.setViewportSize({ width: 703, height: 1032 });
   await page.emulateMedia({ media: 'print' });
   const fixedPages = page.locator('.sheet-page:not(.sheet-page--flow)');
-  await expect(fixedPages).toHaveCount(3);
+  // Plan, two elevation pages and the Network page; each must fit one sheet.
+  await expect(fixedPages).toHaveCount(4);
   for (const height of await fixedPages.evaluateAll((els) => els.map((el) => el.scrollHeight))) expect(height).toBeLessThanOrEqual(1032);
   expect((await page.pdf({ format: 'A4' })).byteLength).toBeGreaterThan(10_000);
 });
