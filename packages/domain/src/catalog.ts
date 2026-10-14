@@ -11,6 +11,7 @@ export const CATEGORY_LABEL: Record<Category, string> = {
   network: 'Network',
   power: 'Power',
   chassis: 'Chassis',
+  misc: 'Misc',
 };
 
 /**

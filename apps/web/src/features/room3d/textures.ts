@@ -102,7 +102,9 @@ export function deviceFrontTexture(opts: { category: Category; heightU: number; 
   else if (opts.category === 'power') vents(ctx, x0, h);
   else if (opts.category === 'storage') driveBays(ctx, x0, h, Math.max(1, opts.heightU), 6);
   else if (opts.category === 'compute') driveBays(ctx, x0, h, Math.max(1, Math.min(3, opts.heightU)), opts.heightU > 1 ? 4 : 8);
-  led(ctx, FRONT_W - 40, Math.min(h / 2, 24), opts.unknown ? '#ff6b5e' : '#4cd17a');
+  else if (opts.category === 'misc') ports(ctx, x0, h);
+  // Passive gear (patch panels, cable management) has no status light.
+  if (opts.category !== 'misc') led(ctx, FRONT_W - 40, Math.min(h / 2, 24), opts.unknown ? '#ff6b5e' : '#4cd17a');
   ctx.strokeStyle = '#11161b';
   ctx.lineWidth = 4;
   ctx.strokeRect(2, 2, FRONT_W - 4, h - 4);

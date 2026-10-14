@@ -108,6 +108,12 @@
   stroke: #5c6875;
 }
 
+.dev--misc .dev__body {
+  fill: rgb(176 166 150 / 0.28);
+  stroke: #7a6f5f;
+  stroke-dasharray: 4 2;
+}
+
 .dev.is-selected .dev__body,
 .rsv.is-selected .rsv__body {
   stroke: var(--acc);

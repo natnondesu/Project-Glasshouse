@@ -26,7 +26,7 @@ const FALLBACK: Palette3D = {
   column: '#cbd4dc',
   wallFill: '#dfe5ea',
   sky: '#e9eef2',
-  category: { compute: '#7fa2e8', storage: '#8fc7b4', network: '#b79af0', power: '#e2b46a', chassis: '#9aa6b2' },
+  category: { compute: '#7fa2e8', storage: '#8fc7b4', network: '#b79af0', power: '#e2b46a', chassis: '#9aa6b2', misc: '#a89f90' },
   object: { existing_rack: '#9aa6b2', door: '#b4a794', mcb: '#e2b46a', furniture: '#e2d8ca', wall_plug: '#f4f1ea', industrial_socket: '#2f6fd1', floor_box: '#8b96a1', ups: '#2b333c', pdu: '#3a4554' },
 };
 
@@ -51,6 +51,7 @@ export function readPalette(el: Element = document.documentElement): Palette3D {
       network: v('--network', FALLBACK.category.network),
       power: v('--power', FALLBACK.category.power),
       chassis: v('--chassis', FALLBACK.category.chassis),
+      misc: FALLBACK.category.misc,
     },
     object: {
       existing_rack: v('--existing', FALLBACK.object.existing_rack),
