@@ -115,6 +115,7 @@ interface Room3DCanvasProps {
   labels: 'always' | 'hover';
   /** A search hit to mark with a ring on the floor. */
   focus?: Focus3D | null;
+  showFeeds?: boolean;
 }
 
 export interface Focus3D {
@@ -145,7 +146,7 @@ function FocusRing({ focus, color }: { focus: Focus3D; color: string }) {
   );
 }
 
-export function Room3DCanvas({ scene, palette, camera, onCamera, selectedRackId, onSelectRack, labels, focus = null }: Room3DCanvasProps) {
+export function Room3DCanvas({ scene, palette, camera, onCamera, selectedRackId, onSelectRack, labels, focus = null, showFeeds = true }: Room3DCanvasProps) {
   const existing = scene.others.filter((o) => o.type === 'existing_rack');
   const blockClick = (e: ThreeEvent<MouseEvent>): void => {
     e.stopPropagation();
@@ -193,7 +194,7 @@ export function Room3DCanvas({ scene, palette, camera, onCamera, selectedRackId,
         {scene.columns.map((c) => (
           <Column key={c.id} column={c} palette={palette} />
         ))}
-        {scene.feeds.map((f) => (
+        {(showFeeds ? scene.feeds : []).map((f) => (
           <FeedModel key={f.feed.id} feed={f} color={feedColor(f.feed, { feeds: scene.feeds.map((x) => x.feed) })} />
         ))}
       </group>

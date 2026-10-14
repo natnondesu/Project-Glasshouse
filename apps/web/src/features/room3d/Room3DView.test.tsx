@@ -61,3 +61,12 @@ it('switches rack labels between always and on hover, and remembers it', async (
   await user.click(screen.getByRole('button', { name: 'On hover' }));
   expect(localStorage.getItem('glasshouse:3d-labels')).toBe('"hover"');
 });
+
+it('hides and shows power lines, and remembers it', async () => {
+  const user = userEvent.setup();
+  render(<RouterProvider router={createMemoryRouter(routes, { initialEntries: ['/rooms/r/3d'] })} />);
+  await screen.findByTestId('room3d-canvas');
+  await user.click(screen.getByRole('button', { name: 'Hide power lines' }));
+  expect(screen.getByRole('button', { name: 'Show power lines' })).toHaveAttribute('aria-pressed', 'false');
+  expect(localStorage.getItem('glasshouse:3d-feeds')).toBe('false');
+});

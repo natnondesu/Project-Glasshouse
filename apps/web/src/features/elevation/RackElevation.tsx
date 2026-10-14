@@ -8,6 +8,17 @@ export const U_PX = 16;
 const LABEL_W = 24;
 const RACK_W = 200;
 const PAD = 2;
+const NAME_CHAR_PX = 7.3;
+const SUB_CHAR_PX = 6.7;
+/** Room for a name left of the wattage, and left of a chassis's slot cells. */
+const DEVICE_NAME_PX = RACK_W - 80;
+const CHASSIS_NAME_PX = 50;
+
+/** Shortens text to fit `px` at a monospace character width; the full text is in the block's <title>. */
+function fitText(text: string, px: number, charPx = NAME_CHAR_PX): string {
+  const max = Math.floor(px / charPx);
+  return text.length <= max ? text : `${text.slice(0, Math.max(1, max - 1))}…`;
+}
 
 interface RackElevationProps {
   rack: Rack;
@@ -81,9 +92,10 @@ function DeviceBlock(props: { device: RackDevice; y: number; selected: boolean; 
   const classes = ['dev', `dev--${categoryOf(device)}`, selected ? 'is-selected' : '', flagged ? 'is-flagged' : ''].filter(Boolean).join(' ');
   return (
     <g className={`${classes}${pulse ? ' is-search-pulse' : ''}`} data-elev-id={device.id} {...control(isStatic, `${device.name}, ${formatURange(device)}`, selected, () => onSelect(device.id), onKey)}>
+      <title>{`${device.name}, ${formatURange(device)}`}</title>
       <rect x={4} y={y + 1} width={RACK_W - 8} height={h - 2} rx={3} className="dev__body" />
       <text x={12} y={textY} className="dev__name">
-        {device.name}
+        {fitText(device.name, device.kind === 'chassis' ? CHASSIS_NAME_PX : DEVICE_NAME_PX)}
       </text>
       {device.kind === 'chassis' ? (
         <ChassisSlots chassis={device} y={y} onSelect={isStatic ? null : onSelect} />
@@ -102,6 +114,7 @@ function ReservedBlock(props: { range: ReservedRange; y: number; patternId: stri
   const midY = y + h / 2;
   return (
     <g className={`rsv${selected ? ' is-selected' : ''}${pulse ? ' is-search-pulse' : ''}`} data-elev-id={range.id} {...control(isStatic, `Reserved range ${formatURange(range)}, ${range.label}`, selected, () => onSelect(range.id), onKey)}>
+      <title>{`Reserved range ${formatURange(range)}, ${range.label}`}</title>
       <rect x={4} y={y + 1} width={RACK_W - 8} height={h - 2} rx={3} fill={`url(#${patternId})`} className="rsv__body" />
       {h >= 48 ? (
         <>
@@ -110,12 +123,12 @@ function ReservedBlock(props: { range: ReservedRange; y: number; patternId: stri
             {`RESERVED · ${formatURange(range)}`}
           </text>
           <text x={RACK_W / 2} y={midY + 12} textAnchor="middle" className="rsv__sub">
-            {`${range.label} · ${formatDemand(range.demand)}`}
+            {fitText(`${range.label} · ${formatDemand(range.demand)}`, RACK_W - 40, SUB_CHAR_PX)}
           </text>
         </>
       ) : (
         <text x={12} y={y + Math.min(h, 32) / 2 + 4} className="rsv__sub">
-          {`${range.label} · ${formatURange(range)}`}
+          {fitText(`${range.label} · ${formatURange(range)}`, RACK_W - 24, SUB_CHAR_PX)}
         </text>
       )}
     </g>
