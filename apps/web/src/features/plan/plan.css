@@ -956,3 +956,18 @@
   width: min(320px, calc(100% - 640px));
   min-width: 200px;
 }
+
+.cut-out--void {
+  fill: var(--paper);
+  stroke: var(--d-ink);
+  stroke-width: 1.5;
+  stroke-dasharray: 6 3;
+}
+
+.cut-out__void-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  fill: var(--d-ink-2);
+}

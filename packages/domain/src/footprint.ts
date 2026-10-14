@@ -1,3 +1,4 @@
+import type { CutOutKind, Rect } from './model/types';
 import { difference, rectPolygon, union, type MultiPoly } from './geometry/polygon';
 import type { Survey } from './model/types';
 
@@ -9,3 +10,5 @@ export function footprintOf(survey: Pick<Survey, 'floorAreas' | 'cutOuts'>): Mul
 }
 
 export const isDisconnected = (fp: MultiPoly): boolean => fp.length > 1;
+
+export const cutOutKind = (r: Rect): CutOutKind => r.kind ?? 'solid';

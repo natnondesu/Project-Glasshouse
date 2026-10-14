@@ -19,7 +19,7 @@ function findFloorRect(s: Survey, id: Id): { kind: FloorKind; rect: Rect } | nul
 }
 
 function validateRect(r: Rect, survey: Survey): Result<Rect> {
-  const n: Rect = { id: r.id, x: snapFloor(r.x), y: snapFloor(r.y), w: snapFloor(r.w), d: snapFloor(r.d) };
+  const n: Rect = { id: r.id, x: snapFloor(r.x), y: snapFloor(r.y), w: snapFloor(r.w), d: snapFloor(r.d), ...(r.kind ? { kind: r.kind } : {}) };
   if (![n.x, n.y, n.w, n.d].every(Number.isFinite)) return err('invalid_value', 'Enter numbers for every side.', [r.id]);
   if (n.w < LIMITS.minFloorRectM || n.d < LIMITS.minFloorRectM) {
     return err('invalid_value', 'Areas must be at least 0.10 m on each side.', [r.id]);
@@ -44,6 +44,7 @@ export function addFloorRect(content: PlanContent, kind: FloorKind, rect: Rect):
 export function updateFloorRect(content: PlanContent, id: Id, patch: Partial<Omit<Rect, 'id'>>): Result<PlanContent> {
   const found = findFloorRect(content.survey, id);
   if (!found) return err('not_found', 'That area no longer exists.', [id]);
+  if (patch.kind !== undefined && found.kind !== 'cutOuts') return err('invalid_value', 'Only cut-outs can be a void or a wall/column.', [id]);
   const valid = validateRect({ ...found.rect, ...patch, id }, content.survey);
   if (!valid.ok) return valid;
   const list = content.survey[found.kind].map((r) => (r.id === id ? valid.value : r));

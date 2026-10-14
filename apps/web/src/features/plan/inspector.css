@@ -198,3 +198,7 @@
 .feed-list__way {
   max-width: 96px;
 }
+
+.rect-list__kind {
+  margin: 2px 0 8px;
+}

@@ -1,6 +1,7 @@
 import {
   centerOf,
   clearanceZones,
+  cutOutKind,
   footprintOf,
   formatMetres,
   frontEdge,
@@ -23,6 +24,7 @@ const UNLABELLED = new Set<string>(['door', 'mcb', 'wall_plug', 'industrial_sock
 
 const GRID_STEP_M = 0.5;
 const MIN_LABEL_PX = 34;
+const VOID_LABEL_MIN_PX = 28;
 const DIM_OFFSET_PX = 28;
 
 export type Preview =
@@ -80,9 +82,22 @@ export function FootprintLayer({ survey, view }: { survey: Survey; view: View })
         const [x, y] = toScreen(view, [r.x, r.y]);
         const w = r.w * view.scale;
         const h = r.d * view.scale;
+        if (cutOutKind(r) === 'void') {
+          // An opening in the floor (shaft, stair, riser): outlined, not filled.
+          return (
+            <g key={r.id}>
+              <rect className="cut-out cut-out--void" x={x} y={y} width={w} height={h} />
+              {Math.min(w, h) >= VOID_LABEL_MIN_PX ? (
+                <text className="cut-out__void-label" x={x + w / 2} y={y + h / 2} textAnchor="middle" dominantBaseline="middle">
+                  VOID
+                </text>
+              ) : null}
+            </g>
+          );
+        }
         return (
           <g key={r.id}>
-            <rect className="cut-out" x={x} y={y} width={w} height={h} />
+            <rect className="cut-out cut-out--solid" x={x} y={y} width={w} height={h} />
             <path className="cut-out__cross" d={`M${x} ${y} L${x + w} ${y + h} M${x + w} ${y} L${x} ${y + h}`} />
           </g>
         );

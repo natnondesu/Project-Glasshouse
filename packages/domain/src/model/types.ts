@@ -27,12 +27,17 @@ export interface Template {
   illustrative: boolean;
 }
 
+/** A cut-out is either a void (no floor: a shaft or opening) or solid (a wall or column). */
+export type CutOutKind = 'void' | 'solid';
+
 export interface Rect {
   id: Id;
   x: Metres;
   y: Metres;
   w: Metres;
   d: Metres;
+  /** Cut-outs only; absent means solid. */
+  kind?: CutOutKind;
 }
 
 /** width/length are the room's bounding canvas; the Footprint is floorAreas minus cutOuts. */

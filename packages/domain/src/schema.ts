@@ -28,7 +28,7 @@ const template = z.object({
   slotsPerRow: int.positive().nullable(),
   illustrative: z.boolean(),
 });
-const rect = z.object({ id, x: num, y: num, w: num, d: num });
+const rect = z.object({ id, x: num, y: num, w: num, d: num, kind: z.enum(['void', 'solid']).optional() });
 const survey = z.object({
   width: num,
   length: num,
