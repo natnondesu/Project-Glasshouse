@@ -1,6 +1,6 @@
 import { formatDemand, type Rack, type Template } from '@glasshouse/domain';
 import { Link } from 'react-router';
-import { IconPlus } from '../../ui/icons';
+import { IconChevronRight, IconPlus } from '../../ui/icons';
 import { TEMPLATE_MIME } from './dnd';
 
 interface CatalogPaletteProps {
@@ -8,17 +8,32 @@ interface CatalogPaletteProps {
   activeRack: Rack | null;
   onAdd: (template: Template) => void;
   disabled?: boolean;
+  collapsed?: boolean;
+  onToggle?: () => void;
 }
 
-export function CatalogPalette({ catalog, activeRack, onAdd, disabled = false }: CatalogPaletteProps) {
+export function CatalogPalette({ catalog, activeRack, onAdd, disabled = false, collapsed = false, onToggle }: CatalogPaletteProps) {
   return (
     <section className="palette" aria-labelledby="palette-h">
       <div className="palette__head">
+        {onToggle ? (
+          <button
+            type="button"
+            className={`palette__toggle${collapsed ? '' : ' is-open'}`}
+            aria-expanded={!collapsed}
+            aria-label={collapsed ? 'Expand catalog' : 'Collapse catalog'}
+            onClick={onToggle}
+          >
+            <IconChevronRight />
+          </button>
+        ) : null}
         <h2 id="palette-h">Catalog</h2>
         <Link to="/catalog" className="palette__edit">
           Edit catalog
         </Link>
       </div>
+      {collapsed ? null : (
+        <>
       <p className="palette__note">
         {disabled ? 'This Revision is frozen. Start a new draft to add Devices.' : `Drag onto a rack, or add to ${activeRack ? activeRack.name : 'the selected rack'} at its lowest free U.`}
       </p>
@@ -48,6 +63,8 @@ export function CatalogPalette({ catalog, activeRack, onAdd, disabled = false }:
           </li>
         ))}
       </ul>
+        </>
+      )}
     </section>
   );
 }

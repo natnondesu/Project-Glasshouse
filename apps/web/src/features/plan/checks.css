@@ -110,3 +110,13 @@
   position: static;
   max-height: 220px;
 }
+
+/* Long object names: keep the button inside the strip; the full name shows in the hint. */
+.checks__select {
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: inline-block;
+}

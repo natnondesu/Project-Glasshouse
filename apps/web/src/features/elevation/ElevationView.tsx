@@ -49,6 +49,7 @@ const PULSE_MS = 1700;
 
 export function ElevationView({ location, readOnly = false }: { location: RoomLocation; readOnly?: boolean }) {
   const [inspectorOpen, setInspectorOpen] = usePersistentState('glasshouse:inspector-open', true);
+  const [catalogOpen, setCatalogOpen] = usePersistentState('glasshouse:elevation-catalog-open', true);
   const revision = currentRevision(location.room.plan);
   const content = revision.content;
   const roomId = location.room.id;
@@ -131,8 +132,8 @@ export function ElevationView({ location, readOnly = false }: { location: RoomLo
             ) : null;
           }}
         />
-        <div className="glass elev__palette">
-          <CatalogPalette catalog={catalog} activeRack={activeRack} onAdd={(t) => activeRack && place(t, activeRack)} disabled={readOnly} />
+        <div className={`glass elev__palette${catalogOpen ? '' : ' is-collapsed'}`}>
+          <CatalogPalette catalog={catalog} activeRack={activeRack} onAdd={(t) => activeRack && place(t, activeRack)} disabled={readOnly} collapsed={!catalogOpen} onToggle={() => setCatalogOpen(!catalogOpen)} />
         </div>
         <ChecksStrip className="checks--static checks--narrow" issues={issues} objects={names} onSelect={select} />
       </aside>

@@ -23,6 +23,7 @@ export default function Room3DView({ location }: { location: RoomLocation }) {
   const [webgl] = useState(hasWebGL);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [labels, setLabels] = usePersistentState<'always' | 'hover'>('glasshouse:3d-labels', 'always');
+  const [showFeeds, setShowFeeds] = usePersistentState('glasshouse:3d-feeds', true);
   const [focus, setFocus] = useState<Focus3D | null>(null);
   const pickHit = (hit: SearchHit): void => {
     const target = scene.racks.find((r) => r.id === hit.objectId) ?? scene.others.find((o) => o.id === hit.objectId);
@@ -41,7 +42,7 @@ export default function Room3DView({ location }: { location: RoomLocation }) {
   return (
     <section className="room3d" aria-label="Room 3D view">
       {webgl ? (
-        <Room3DCanvas scene={scene} palette={palette} camera={camera} onCamera={setCamera} selectedRackId={selectedId} onSelectRack={setSelectedId} labels={labels} focus={focus} />
+        <Room3DCanvas scene={scene} palette={palette} camera={camera} onCamera={setCamera} selectedRackId={selectedId} onSelectRack={setSelectedId} labels={labels} focus={focus} showFeeds={showFeeds} />
       ) : (
         <p className="room3d__fallback" role="status">
           This browser can't show 3D (WebGL is turned off or unavailable). The plan and elevation views show the same Room.
@@ -106,6 +107,9 @@ export default function Room3DView({ location }: { location: RoomLocation }) {
             On hover
           </button>
         </div>
+        <button type="button" className="btn btn--sm room3d__feeds" aria-pressed={showFeeds} onClick={() => setShowFeeds(!showFeeds)}>
+          {showFeeds ? 'Hide power lines' : 'Show power lines'}
+        </button>
         <span className="room3d__hint">Drag to orbit · two-finger scroll to pan · pinch to zoom · click a Rack to highlight it</span>
       </div>
     </section>

@@ -5,6 +5,7 @@ import { PanelRail } from '../ui/PanelRail';
 import { usePersistentState } from '../ui/usePersistentState';
 import { useWorkspaceStore } from '../store/workspaceStore';
 import { useViewedRevisionNumber } from '../store/hooks';
+import { HintLayer } from './HintLayer';
 import { TitleBlock } from './TitleBlock';
 import './shell.css';
 
@@ -37,6 +38,7 @@ export function Shell() {
 
   return (
     <div className="shell">
+      <HintLayer />
       <TitleBlock roomId={roomId} />
       {readOnly ? (
         <p className="read-only-banner" role="alert">

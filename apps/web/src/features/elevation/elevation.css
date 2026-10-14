@@ -320,11 +320,12 @@
 
 .palette__head {
   display: flex;
-  align-items: baseline;
-  justify-content: space-between;
+  align-items: center;
+  gap: 4px;
 }
 
 .palette__head h2 {
+  flex: 1;
   font-size: 14px;
   font-weight: 700;
 }
@@ -440,7 +441,7 @@
   padding: 14px 10px;
 }
 
-.checks--narrow {
+.checks.checks--narrow {
   flex: 1 1 auto;
   min-height: 120px;
   max-height: none;
@@ -590,4 +591,36 @@
 
 .elev__tab {
   right: 324px;
+}
+
+.palette__toggle {
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  margin-right: 2px;
+  padding: 0;
+  border: 0;
+  border-radius: 5px;
+  background: none;
+  color: var(--ink-2);
+  cursor: pointer;
+}
+
+.palette__toggle svg {
+  transition: transform var(--duration-fast) ease-out;
+}
+
+.palette__toggle.is-open svg {
+  transform: rotate(90deg);
+}
+
+.palette__toggle:hover {
+  background: var(--hover);
+  color: var(--ink);
+}
+
+.elev__palette.is-collapsed {
+  flex: none;
+  padding-bottom: 10px;
 }

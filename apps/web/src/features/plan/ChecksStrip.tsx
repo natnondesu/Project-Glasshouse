@@ -36,7 +36,7 @@ export function ChecksStrip({ issues, objects, onSelect, className }: ChecksStri
                   <p className="checks__hint">{issue.hint}</p>
                 </div>
                 {target ? (
-                  <button type="button" className="btn btn--sm" onClick={() => onSelect(target)}>
+                  <button type="button" className="btn btn--sm checks__select" data-hint={`Select ${names.get(target)}`} onClick={() => onSelect(target)}>
                     Select {names.get(target)}
                   </button>
                 ) : null}
