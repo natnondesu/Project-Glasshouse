@@ -24,6 +24,10 @@ async function dragTo(page: Page, block: Locator, rack: Locator, u: number): Pro
   const to = await rack.boundingBox();
   if (!to) throw new Error('Not rendered');
   await page.mouse.move(to.x + to.width / 2, to.y + rowY, { steps: 8 });
+  // The path may pass the area's edge and auto-scroll it; re-measure and land exactly on the row.
+  const settled = await rack.boundingBox();
+  if (!settled) throw new Error('Not rendered');
+  await page.mouse.move(settled.x + settled.width / 2, settled.y + rowY);
 }
 
 test('drags a device to another U and across racks; a blocked spot explains itself', async ({ page }) => {

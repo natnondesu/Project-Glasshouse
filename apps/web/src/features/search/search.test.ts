@@ -13,7 +13,7 @@ function room(): PlanContent {
     { type: 'device/place', id: 'ch', rackId: 'rk', bottomU: 10, template: t('tpl-chassis-6u') },
     { type: 'node/insert', id: 'n1', chassisId: 'ch', slot: 1, template: t('tpl-node') },
     { type: 'reserved/add', rackId: 'rk', range: { id: 'rsv', label: 'Customer core', bottomU: 30, heightU: 4, demand: { kind: 'unknown' }, notes: '' } },
-    { type: 'feed/add', feed: { id: 'f', rackId: 'rk', sourceId: 'mcb', label: 'Feed A' } },
+    { type: 'feed/add', feed: { id: 'f', targetId: 'rk', sourceId: 'mcb', label: 'Feed A' } },
   ];
   return cmds.reduce((c, cmd) => {
     const r = applyPlanCommand(c, cmd);

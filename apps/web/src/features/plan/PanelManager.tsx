@@ -23,7 +23,7 @@ export function PanelManager({ panel, content, commit, onClose }: PanelManagerPr
   const drag = useRef<{ dx: number; dy: number } | null>(null);
   const feeds = content.feeds.filter((f) => f.sourceId === panel.id);
   const unassigned = feeds.filter((f) => f.way === undefined).length;
-  const rackName = (id: string): string => content.objects.find((o) => o.id === id)?.name ?? 'Removed rack';
+  const rackName = (id: string): string => content.objects.find((o) => o.id === id)?.name ?? 'Removed object';
   const act = (problem: string | null): void => setError(problem);
 
   const onGrab = (e: PointerEvent<HTMLElement>): void => {
@@ -86,7 +86,7 @@ export function PanelManager({ panel, content, commit, onClose }: PanelManagerPr
             {config.ways.map((way, i) => {
               const n = i + 1;
               const feed = feeds.find((f) => f.way === n);
-              const rack = feed ? content.objects.find((o) => o.id === feed.rackId) : undefined;
+              const rack = feed ? content.objects.find((o) => o.id === feed.targetId) : undefined;
               const amps = rack ? rackCurrentA(rack) : 0;
               const over = amps > way.ratingA;
               return (
@@ -119,7 +119,7 @@ export function PanelManager({ panel, content, commit, onClose }: PanelManagerPr
                         {feeds
                           .filter((f) => f.way === undefined || f.way === n)
                           .map((f) => (
-                            <option key={f.id} value={f.id}>{`${rackName(f.rackId)} · ${f.label}`}</option>
+                            <option key={f.id} value={f.id}>{`${rackName(f.targetId)} · ${f.label}`}</option>
                           ))}
                       </select>
                     </span>

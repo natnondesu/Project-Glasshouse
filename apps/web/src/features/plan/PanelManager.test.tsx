@@ -16,8 +16,8 @@ const content = (): PlanContent => ({
   ...emptyContent(),
   objects: [panel, rack],
   feeds: [
-    { id: 'fa', rackId: 'rk', sourceId: 'm', label: 'Feed A', way: 1 },
-    { id: 'fb', rackId: 'rk', sourceId: 'm', label: 'Feed B' },
+    { id: 'fa', targetId: 'rk', sourceId: 'm', label: 'Feed A', way: 1 },
+    { id: 'fb', targetId: 'rk', sourceId: 'm', label: 'Feed B' },
   ],
 });
 

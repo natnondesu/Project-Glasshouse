@@ -36,7 +36,7 @@ export type PanelCommand =
 function feedOnWay(content: PlanContent, panelId: Id, way: number): string | null {
   const feed = content.feeds.find((f) => f.sourceId === panelId && f.way === way);
   if (!feed) return null;
-  return `${feed.label} of ${content.objects.find((o) => o.id === feed.rackId)?.name ?? 'a removed rack'}`;
+  return `${feed.label} of ${content.objects.find((o) => o.id === feed.targetId)?.name ?? 'a removed rack'}`;
 }
 
 export function applyPanelCommand(content: PlanContent, cmd: PanelCommand): Result<PlanContent> {

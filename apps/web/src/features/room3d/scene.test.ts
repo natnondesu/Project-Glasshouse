@@ -76,7 +76,7 @@ describe('power feeds in 3D', () => {
   it('drops from under the panel and ends at the rack rear', () => {
     const base = contentWith(0);
     const panel = { ...createObject('mcb', { x: 0, y: 2 }, []), id: 'm', angle: 90 };
-    const content = { ...base, objects: [...base.objects, panel], feeds: [{ id: 'f', rackId: 'rk', sourceId: 'm', label: 'Feed A' }] };
+    const content = { ...base, objects: [...base.objects, panel], feeds: [{ id: 'f', targetId: 'rk', sourceId: 'm', label: 'Feed A' }] };
     const [feed] = buildScene(content).feeds;
     expect(feed!.dropFrom).toBeCloseTo(0.6, 6);
     const rack = content.objects[0] as Rack;

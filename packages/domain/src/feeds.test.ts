@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { applyPlanCommand } from './commands/plan';
 import { emptyContent } from './factories';
-import { feedRoute, nextFeedLabel } from './feeds';
+import { feedIssues } from './checks/feeds';
+import { feedRoute, loadA, nextFeedLabel, upstreamOf } from './feeds';
+import { centerOf } from './geometry/polygon';
 import { migrate } from './migrations';
 import type { PlanContent, Rack, RoomObject } from './model/types';
 import { createObject } from './objects';
@@ -19,7 +21,7 @@ function room(): PlanContent {
   return c;
 }
 function add(c: PlanContent, id: string, label = nextFeedLabel(c, 'rk')): PlanContent {
-  const r = applyPlanCommand(c, { type: 'feed/add', feed: { id, rackId: 'rk', sourceId: 'mcb', label } });
+  const r = applyPlanCommand(c, { type: 'feed/add', feed: { id, targetId: 'rk', sourceId: 'mcb', label } });
   if (!r.ok) throw new Error(r.error.message);
   return r.value;
 }
@@ -33,11 +35,11 @@ describe('power feeds', () => {
     expect(c.feeds.map((f) => f.label)).toEqual(['Feed A', 'Feed B']);
   });
 
-  it('only connects a rack to a power source', () => {
+  it('runs from a power source to a rack or another power source', () => {
     const c = room();
-    expect(applyPlanCommand(c, { type: 'feed/add', feed: { id: 'f', rackId: 'mcb', sourceId: 'rk', label: 'Feed A' } })).toMatchObject({
+    expect(applyPlanCommand(c, { type: 'feed/add', feed: { id: 'f', targetId: 'mcb', sourceId: 'rk', label: 'Feed A' } })).toMatchObject({
       ok: false,
-      error: { message: 'Power feeds run from a power source to a rack.' },
+      error: { message: 'Power feeds run from a power source to a rack or another power source.' },
     });
   });
 
@@ -87,5 +89,66 @@ describe('power feeds', () => {
     const raw = { schemaVersion: 2, catalog: [], lastBackupAt: null, projects: [{ id: 'p', name: 'P', notes: '', isSample: false, sites: [{ id: 's', name: 'S', notes: '', rooms: [{ id: 'r', name: 'R', notes: '', plan: { notes: [], history: [], revisions: [{ content: {} }] } }] }] }] };
     const m = migrate(raw);
     expect(m.ok && (m.value as typeof raw).projects[0]!.sites[0]!.rooms[0]!.plan.revisions[0]!.content).toEqual({ feeds: [] });
+  });
+});
+
+describe('power chains', () => {
+  // MCB on the wall feeds a UPS on the floor, which feeds a PDU, which feeds the rack.
+  function chain(): PlanContent {
+    let c = room();
+    for (const object of [
+      { ...createObject('ups', { x: 1, y: 4 }, []), id: 'ups', name: 'UPS-01' },
+      { ...createObject('pdu', { x: 2, y: 4 }, []), id: 'pdu', name: 'PDU-01' },
+    ] as RoomObject[]) {
+      const r = applyPlanCommand(c, { type: 'object/add', object });
+      if (!r.ok) throw new Error(r.error.message);
+      c = r.value;
+    }
+    return c;
+  }
+  const feed = (c: PlanContent, id: string, sourceId: string, targetId: string, extra: { way?: number } = {}) =>
+    applyPlanCommand(c, { type: 'feed/add', feed: { id, targetId, sourceId, label: nextFeedLabel(c, targetId), ...extra } });
+  const must = (r: ReturnType<typeof feed>): PlanContent => {
+    if (!r.ok) throw new Error(r.error.message);
+    return r.value;
+  };
+
+  it('feeds a source from another source', () => {
+    let c = must(feed(chain(), 'a', 'mcb', 'ups'));
+    c = must(feed(c, 'b', 'ups', 'pdu'));
+    c = must(feed(c, 'c', 'pdu', 'rk'));
+    expect(upstreamOf(c, 'rk').map((o) => o.name)).toEqual(['PDU-01', 'UPS-01', 'MCB-01']);
+  });
+
+  it('gives a source one input, and refuses loops and self-feeds', () => {
+    let c = must(feed(chain(), 'a', 'mcb', 'ups'));
+    c = must(feed(c, 'b', 'ups', 'pdu'));
+    expect(feed(c, 'x', 'mcb', 'pdu')).toMatchObject({ ok: false, error: { message: 'PDU-01 is already fed from UPS-01.' } });
+    expect(feed(c, 'y', 'pdu', 'mcb')).toMatchObject({ ok: false, error: { message: 'That would loop power back into PDU-01: MCB-01 already feeds it.' } });
+    expect(feed(c, 'z', 'ups', 'ups')).toMatchObject({ ok: false, error: { message: 'A power source can\'t feed itself.' } });
+    expect(applyPlanCommand(c, { type: 'feed/update', id: 'a', patch: { sourceId: 'pdu' } })).toMatchObject({ ok: false });
+  });
+
+  it('rolls downstream racks up into the feed that powers a source', () => {
+    let c = must(feed(chain(), 'a', 'mcb', 'ups', { way: 1 }));
+    c = must(feed(c, 'b', 'ups', 'rk'));
+    expect(loadA(c, 'ups')).toBe(0);
+    const rack = c.objects.find((o) => o.id === 'rk') as Rack;
+    const heavy: Rack = { ...rack, reserved: [{ id: 'rs', label: 'Load', bottomU: 1, heightU: 10, demand: { kind: 'known', watts: 4600 }, notes: '' }] };
+    c = { ...c, objects: c.objects.map((o) => (o.id === 'rk' ? heavy : o)) };
+    expect(loadA(c, 'ups')).toBeCloseTo(20);
+    expect(feedIssues(c).map((i) => i.message)).toContain('Feed A of UPS-01 needs 20.0 A at 230 V, but MCB-01 way 1 is rated 16 A.');
+  });
+
+  it('routes into a source, ending at it', () => {
+    const c = must(feed(chain(), 'a', 'mcb', 'ups'));
+    const route = feedRoute(c, c.feeds[0]!)!;
+    expect(route[route.length - 1]).toEqual(centerOf(c.objects.find((o) => o.id === 'ups')!));
+  });
+
+  it('upgrades schema 4 feeds from rackId to targetId', () => {
+    const m = migrate({ schemaVersion: 4, catalog: [], lastBackupAt: null, projects: [{ sites: [{ rooms: [{ plan: { revisions: [{ content: { feeds: [{ id: 'f', rackId: 'rk', sourceId: 's', label: 'Feed A' }] } }] } }] }] }] });
+    expect(JSON.stringify(m.ok && m.value)).toContain('"targetId":"rk"');
+    expect(JSON.stringify(m.ok && m.value)).not.toContain('rackId');
   });
 });

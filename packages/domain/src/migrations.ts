@@ -11,6 +11,19 @@ const MIGRATIONS: Record<number, (raw: RawWorkspace) => RawWorkspace> = {
   2: (raw) => ({ ...raw, schemaVersion: 3, projects: mapRevisions(raw.projects, (rev) => ({ ...rev, content: { ...asRecord(rev.content), feeds: [] } })) }),
   // 2026-10: equipment state (planned / deployed / maintenance), kept per plan outside revisions.
   3: (raw) => ({ ...raw, schemaVersion: 4, projects: mapPlans(raw.projects, (plan) => ({ ...plan, equipmentState: {} })) }),
+  // 2026-10: feeds can end at another power source, so `rackId` became `targetId`.
+  4: (raw) => ({
+    ...raw,
+    schemaVersion: 5,
+    projects: mapRevisions(raw.projects, (rev) => {
+      const content = asRecord(rev.content);
+      const feeds = Array.isArray(content.feeds) ? content.feeds.map((f) => {
+        const { rackId, ...rest } = asRecord(f);
+        return { ...rest, targetId: rackId };
+      }) : content.feeds;
+      return { ...rev, content: { ...content, feeds } };
+    }),
+  }),
 };
 
 const asRecord = (v: unknown): RawWorkspace => (typeof v === 'object' && v !== null ? (v as RawWorkspace) : {});

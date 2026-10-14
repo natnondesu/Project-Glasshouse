@@ -100,7 +100,7 @@ describe('Sample Project power feeds', () => {
     }
     const server = currentRevision(ws.projects[0]!.sites[0]!.rooms[0]!.plan).content;
     const rk01 = server.objects.find((o) => o.name === 'RK-01')!;
-    expect(server.feeds.filter((f) => f.rackId === rk01.id).map((f) => f.label)).toEqual(['Feed A', 'Feed B']);
+    expect(server.feeds.filter((f) => f.targetId === rk01.id).map((f) => f.label)).toEqual(['Feed A', 'Feed B']);
     expect(checkPlan(server).filter((i) => i.code === 'feed_no_way' || i.code === 'feed_overload')).toEqual([]);
   });
 });

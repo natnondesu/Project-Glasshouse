@@ -179,8 +179,9 @@ export interface Dimension {
 /** A rack's power connection to an MCB panel. A rack may have several (A and B feeds). */
 export interface PowerFeed {
   id: Id;
-  rackId: Id;
-  /** The MCB panel it is fed from. */
+  /** What it powers: a rack, or another power source (a UPS fed from an MCB, a PDU from a UPS…). */
+  targetId: Id;
+  /** The power source it is fed from. */
   sourceId: Id;
   label: string;
   /** The MCB way (1-based) this feed is wired to; only for MCB sources. */

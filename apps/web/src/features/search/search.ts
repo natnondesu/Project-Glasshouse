@@ -68,9 +68,9 @@ function entries(content: PlanContent, stateOf: (id: string) => string): Entry[]
     out.push({
       key: f.id,
       kind: 'feed',
-      name: `${name(f.rackId)} ${f.label}`,
+      name: `${name(f.targetId)} ${f.label}`,
       detail: `Power feed · from ${source}${f.way ? `, way ${f.way}` : ''}`,
-      objectId: f.rackId,
+      objectId: f.targetId,
       elementId: null,
       text: `power feed ${source}`,
     });

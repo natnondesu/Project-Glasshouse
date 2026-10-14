@@ -84,12 +84,16 @@ export interface Feed3D {
   route: Point[];
   /** Height of the bottom of the panel cabinet, where the drop starts. */
   dropFrom: number;
+  /** Where the run ends: up into a rack, or up to another source's input. */
+  riseTo: number;
 }
 
 /** MCB cabinets hang from the top of their height; the drop leaves from the cabinet's underside. */
 const MCB_CABINET_M = 0.8;
 const FACEPLATE_M = 0.16;
 const FLOOR_LEVEL_M = 0.02;
+/** Runs enter a rack through its base, a little above the floor. */
+const RACK_RISER_M = 0.3;
 
 /** Where a feed leaves its source: under a wall cabinet or faceplate, or at floor level for standing sources. */
 function dropHeight(source: RoomObject): number {
@@ -177,7 +181,9 @@ export function buildScene(content: PlanContent, stateOf: StateOf = ALL_PLANNED)
   const feeds = content.feeds.flatMap((feed) => {
     const route = feedRoute(content, feed);
     const panel = content.objects.find((o) => o.id === feed.sourceId);
-    return route && panel ? [{ feed, route, dropFrom: dropHeight(panel) }] : [];
+    const target = content.objects.find((o) => o.id === feed.targetId);
+    if (!route || !panel || !target) return [];
+    return [{ feed, route, dropFrom: dropHeight(panel), riseTo: target.type === 'rack' ? RACK_RISER_M : dropHeight(target) }];
   });
   return { width: content.survey.width, length: content.survey.length, floor: footprintOf(content.survey), racks, others, columns, feeds };
 }

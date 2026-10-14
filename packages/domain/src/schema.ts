@@ -74,7 +74,7 @@ const anchor = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('object'), objectId: id, u: num, v: num }),
 ]);
 const dimension = z.object({ id, a: anchor, b: anchor, offset: num });
-const feed = z.object({ id, rackId: id, sourceId: id, label: z.string(), way: int.positive().optional() });
+const feed = z.object({ id, targetId: id, sourceId: id, label: z.string(), way: int.positive().optional() });
 const revision = z.object({
   number: int.positive(),
   state: z.enum(['draft', 'in_review', 'approved']),
