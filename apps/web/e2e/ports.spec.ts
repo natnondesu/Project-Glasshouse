@@ -10,7 +10,7 @@ test('gives two devices ports, links them, and prints the cable on the BOM CSV',
     await box.click();
     await box.fill('');
     await box.pressSequentially(name.toLowerCase());
-    await page.getByRole('option').first().waitFor();
+    await page.getByRole('listbox', { name: 'Search results' }).getByRole('option').first().waitFor();
     await page.keyboard.press('Enter');
     await page.getByRole('button', { name: 'Manage ports' }).click();
     const mgr = page.getByRole('dialog', { name: `${name} ports` });
@@ -29,7 +29,8 @@ test('gives two devices ports, links them, and prints the cable on the BOM CSV',
 
   await page.getByRole('link', { name: 'Devices & BOM' }).click();
   const download = page.waitForEvent('download');
-  await page.getByRole('button', { name: 'Cable schedule CSV (1)' }).click();
+  // The sample already cables three nodes in MDF-1; ours is the fourth.
+  await page.getByRole('button', { name: 'Cable schedule CSV (4)' }).click();
   const file = await (await download).path();
   const { readFileSync } = await import('node:fs');
   expect(readFileSync(file, 'utf8')).toContain('UPLINK-1,RK-02,SW-02,port1,RK-02,SW-03,port1,Cat 6A');

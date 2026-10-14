@@ -198,6 +198,8 @@
   border-bottom: 1px solid var(--line);
   padding: 4px 6px;
   vertical-align: top;
+  /* Long configuration text and port lists wrap instead of widening the table past the page. */
+  overflow-wrap: break-word;
 }
 
 .sheet-table__title td {
