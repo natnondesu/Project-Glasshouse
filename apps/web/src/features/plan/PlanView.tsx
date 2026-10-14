@@ -19,6 +19,7 @@ import { PanelManager } from './PanelManager';
 import { ALL_LAYERS, type PlanLayers } from './ViewMenu';
 import { usePersistentState } from '../../ui/usePersistentState';
 import './plan.css';
+import { useT } from '../../i18n';
 
 /** Room the fit leaves on the right for the inspector, or for its collapsed rail. */
 const INSET_WITH_INSPECTOR = FIT_INSETS.right;
@@ -48,6 +49,7 @@ export function PlanView({ location, readOnly = false }: { location: RoomLocatio
   const selectedDimension = content.dimensions.find((d) => d.id === selectedParam) ?? null;
 
   const issues = useMemo(() => revisionIssues(revision), [revision]);
+  const m = useT();
   const [inspectorOpen, setInspectorOpen] = usePersistentState('glasshouse:inspector-open', true);
   const viewport = useViewport({ w: content.survey.width, d: content.survey.length }, inspectorOpen ? INSET_WITH_INSPECTOR : INSET_WITHOUT_INSPECTOR);
   const gestures = usePlanGestures({ content, tool, setTool, selectedId: selected?.id ?? selectedDimension?.id ?? null, select, viewport, commit, readOnly });
@@ -56,7 +58,7 @@ export function PlanView({ location, readOnly = false }: { location: RoomLocatio
     <div className={`plan-view${inspectorOpen ? '' : ' is-inspector-closed'}`}>
       <section
         className="plan-view__canvas"
-        aria-label="Room plan"
+        aria-label={m.plan.canvas}
         onKeyDown={gestures.onKeyDown}
         onKeyUp={gestures.onKeyUp}
         onDoubleClick={(e) => {
@@ -97,8 +99,8 @@ export function PlanView({ location, readOnly = false }: { location: RoomLocatio
           }}
           action={(hit) =>
             hit.elementId ? (
-              <Link to={`/rooms/${location.room.id}/elevation?sel=${hit.elementId}`} aria-label={`Open ${hit.name} in elevation`} onMouseDown={(e) => e.stopPropagation()}>
-                Elevation
+              <Link to={`/rooms/${location.room.id}/elevation?sel=${hit.elementId}`} aria-label={m.plan.openInElevation(hit.name)} onMouseDown={(e) => e.stopPropagation()}>
+                {m.plan.elevation}
               </Link>
             ) : null
           }
@@ -119,11 +121,11 @@ export function PlanView({ location, readOnly = false }: { location: RoomLocatio
       <ChecksStrip issues={issues} objects={content.objects} onSelect={select} />
       {inspectorOpen ? (
         <>
-          <PanelCollapseTab label="Inspector" side="right" className="plan-view__tab" onCollapse={() => setInspectorOpen(false)} />
+          <PanelCollapseTab label={m.panels.inspector} side="right" className="plan-view__tab" onCollapse={() => setInspectorOpen(false)} />
           <Inspector content={content} selected={selected} dimension={selectedDimension} commit={commit} onDeleted={() => select(null)} readOnly={readOnly} onManagePanel={setManagedPanel} />
         </>
       ) : (
-        <PanelRail label="Inspector" side="right" className="plan-view__rail" onExpand={() => setInspectorOpen(true)} />
+        <PanelRail label={m.panels.inspector} side="right" className="plan-view__rail" onExpand={() => setInspectorOpen(true)} />
       )}
     </div>
   );

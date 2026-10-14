@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useT } from '../../i18n';
 
 export interface PlanLayers {
   dimensions: boolean;
@@ -8,16 +9,13 @@ export interface PlanLayers {
 
 export const ALL_LAYERS: PlanLayers = { dimensions: true, clearance: true, feeds: true };
 
-const ITEMS: { key: keyof PlanLayers; label: string }[] = [
-  { key: 'dimensions', label: 'Dimensions' },
-  { key: 'clearance', label: 'Clearance zones' },
-  { key: 'feeds', label: 'Power feeds' },
-];
+const ITEMS: (keyof PlanLayers)[] = ['dimensions', 'clearance', 'feeds'];
 
 /** Show or hide drawing layers on screen. The Install sheet always prints everything. */
 export function ViewMenu({ layers, onChange }: { layers: PlanLayers; onChange: (next: PlanLayers) => void }) {
   const [open, setOpen] = useState(false);
   const root = useRef<HTMLDivElement>(null);
+  const m = useT();
   useEffect(() => {
     if (!open) return;
     const close = (e: PointerEvent): void => {
@@ -26,30 +24,31 @@ export function ViewMenu({ layers, onChange }: { layers: PlanLayers; onChange: (
     window.addEventListener('pointerdown', close);
     return () => window.removeEventListener('pointerdown', close);
   }, [open]);
-  const hidden = ITEMS.filter((i) => !layers[i.key]).length;
+  const hidden = ITEMS.filter((k) => !layers[k]).length;
   return (
     <div ref={root} className="view-menu" onKeyDown={(e) => e.key === 'Escape' && setOpen(false)}>
-      <button type="button" className="zoom__fit" aria-haspopup="menu" aria-expanded={open} aria-label="View" onClick={() => setOpen((o) => !o)}>
-        View{hidden > 0 ? <span className="view-menu__count">{`${hidden} hidden`}</span> : null}
+      <button type="button" className="zoom__fit" aria-haspopup="menu" aria-expanded={open} aria-label={m.viewMenu.view} onClick={() => setOpen((o) => !o)}>
+        {m.viewMenu.view}
+        {hidden > 0 ? <span className="view-menu__count">{m.viewMenu.hidden(hidden)}</span> : null}
       </button>
       {open ? (
-        <div className="view-menu__pop glass" role="menu" aria-label="Show on plan">
-          {ITEMS.map((item) => (
+        <div className="view-menu__pop glass" role="menu" aria-label={m.viewMenu.showOnPlan}>
+          {ITEMS.map((key) => (
             <button
-              key={item.key}
+              key={key}
               type="button"
               role="menuitemcheckbox"
-              aria-checked={layers[item.key]}
+              aria-checked={layers[key]}
               className="view-menu__item"
-              onClick={() => onChange({ ...layers, [item.key]: !layers[item.key] })}
+              onClick={() => onChange({ ...layers, [key]: !layers[key] })}
             >
               <span className="view-menu__box" aria-hidden="true">
-                {layers[item.key] ? '✓' : ''}
+                {layers[key] ? '✓' : ''}
               </span>
-              {item.label}
+              {m.viewMenu[key]}
             </button>
           ))}
-          <p className="view-menu__note">Only hides them here; the Install sheet still prints them.</p>
+          <p className="view-menu__note">{m.viewMenu.note}</p>
         </div>
       ) : null}
     </div>

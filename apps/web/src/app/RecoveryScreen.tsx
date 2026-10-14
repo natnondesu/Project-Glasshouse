@@ -1,6 +1,7 @@
 import { createWorkspace } from '@glasshouse/domain';
 import { useState } from 'react';
 import type { Repository } from '../storage/repository';
+import { useT } from '../i18n';
 import { useWorkspaceStore } from '../store/workspaceStore';
 
 interface RecoveryScreenProps {
@@ -12,6 +13,7 @@ interface RecoveryScreenProps {
 export function RecoveryScreen({ reason, raw, repository }: RecoveryScreenProps) {
   const [confirming, setConfirming] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const m = useT();
 
   const download = (): void => {
     const blob = new Blob([JSON.stringify(raw, null, 2)], { type: 'application/json' });
@@ -28,7 +30,7 @@ export function RecoveryScreen({ reason, raw, repository }: RecoveryScreenProps)
     try {
       await repository.save(fresh);
     } catch (e) {
-      setError(`Couldn't write a fresh workspace: ${e instanceof Error ? e.message : String(e)}`);
+      setError(m.crash.writeFailed(e instanceof Error ? e.message : String(e)));
       return;
     }
     const store = useWorkspaceStore.getState();
@@ -38,25 +40,25 @@ export function RecoveryScreen({ reason, raw, repository }: RecoveryScreenProps)
 
   return (
     <main className="recovery">
-      <h1>Glasshouse couldn't open your saved workspace</h1>
+      <h1>{m.crash.loadTitle}</h1>
       <p className="recovery__reason mono">{reason}</p>
-      <p>Nothing has been deleted. Download the saved data first so it can be recovered, then start a fresh workspace if you need to keep working.</p>
+      <p>{m.crash.loadBody}</p>
       <div className="recovery__actions">
         <button type="button" className="btn" onClick={download} disabled={raw === null}>
-          Download saved data
+          {m.crash.downloadSaved}
         </button>
         {confirming ? (
           <>
             <button type="button" className="btn btn--danger" onClick={() => void startFresh()}>
-              Replace it with a fresh workspace
+              {m.crash.replace}
             </button>
             <button type="button" className="btn btn--quiet" onClick={() => setConfirming(false)}>
-              Cancel
+              {m.common.cancel}
             </button>
           </>
         ) : (
           <button type="button" className="btn" onClick={() => setConfirming(true)}>
-            Start a fresh workspace
+            {m.crash.startFresh}
           </button>
         )}
       </div>

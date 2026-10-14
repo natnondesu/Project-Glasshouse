@@ -2,6 +2,7 @@ import { cutOutKind, type CutOutKind, type Rect } from '@glasshouse/domain';
 import { IconTrash } from '../../ui/icons';
 import { NumberField } from '../../ui/NumberField';
 import type { CommitFn } from './usePlanGestures';
+import { useT } from '../../i18n';
 
 interface FloorRectListProps {
   title: string;
@@ -13,10 +14,7 @@ interface FloorRectListProps {
   withKind?: boolean;
 }
 
-const KINDS: [CutOutKind, string][] = [
-  ['solid', 'Wall / column'],
-  ['void', 'Void'],
-];
+const KINDS: CutOutKind[] = ['solid', 'void'];
 
 const FIELDS = [
   ['x', 'X'],
@@ -26,6 +24,7 @@ const FIELDS = [
 ] as const;
 
 export function FloorRectList({ title, itemLabel, rects, commit, emptyText, withKind = false }: FloorRectListProps) {
+  const m = useT();
   return (
     <fieldset className="inspector__group">
       <legend className="lbl">{title}</legend>
@@ -34,27 +33,27 @@ export function FloorRectList({ title, itemLabel, rects, commit, emptyText, with
         {rects.map((r, i) => (
           <li key={r.id} className="rect-list__item">
             <div className="rect-list__head">
-              <span className="rect-list__name">{`${itemLabel} ${i + 1}`}</span>
+              <span className="rect-list__name">{m.survey.item(itemLabel, i + 1)}</span>
               <button
                 type="button"
                 className="icon-btn icon-btn--sm"
-                aria-label={`Remove ${itemLabel.toLowerCase()} ${i + 1}`}
+                aria-label={m.survey.removeItem(itemLabel, i + 1)}
                 onClick={() => commit({ type: 'floor/remove', id: r.id })}
               >
                 <IconTrash />
               </button>
             </div>
             {withKind ? (
-              <div className="seg seg--compact rect-list__kind" role="group" aria-label={`${itemLabel} ${i + 1} kind`}>
-                {KINDS.map(([kind, label]) => (
+              <div className="seg seg--compact rect-list__kind" role="group" aria-label={m.survey.kindOf(itemLabel, i + 1)}>
+                {KINDS.map((kind) => (
                   <button
                     key={kind}
                     type="button"
-                    aria-label={`${itemLabel} ${i + 1}: ${label}`}
+                    aria-label={m.survey.kindChoice(itemLabel, i + 1, m.survey.kind[kind])}
                     aria-pressed={cutOutKind(r) === kind}
                     onClick={() => commit({ type: 'floor/update', id: r.id, patch: { kind } })}
                   >
-                    {label}
+                    {m.survey.kind[kind]}
                   </button>
                 ))}
               </div>

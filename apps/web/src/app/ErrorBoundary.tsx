@@ -1,4 +1,5 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react';
+import { messagesFor, useLangStore } from '../i18n';
 import { useWorkspaceStore } from '../store/workspaceStore';
 
 interface Props {
@@ -35,17 +36,19 @@ export class ErrorBoundary extends Component<Props, State> {
   override render(): ReactNode {
     const { error } = this.state;
     if (!error) return this.props.children;
+    // A class component can't use hooks; read the language directly.
+    const m = messagesFor(useLangStore.getState().lang);
     return (
       <section className="recovery" role="alert">
-        <h1>Glasshouse hit a problem drawing {this.props.label}.</h1>
+        <h1>{m.crash.title(this.props.label)}</h1>
         <p className="recovery__reason mono">{error.message}</p>
-        <p>Your work is still saved in this browser. Download a copy before trying again.</p>
+        <p>{m.crash.stillSaved}</p>
         <div className="recovery__actions">
           <button type="button" className="btn" onClick={downloadWorkspace}>
-            Download workspace
+            {m.crash.download}
           </button>
           <button type="button" className="btn btn--quiet" onClick={() => this.setState({ error: null })}>
-            Try again
+            {m.crash.retry}
           </button>
         </div>
       </section>

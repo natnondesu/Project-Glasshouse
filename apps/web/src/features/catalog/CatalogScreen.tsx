@@ -1,4 +1,4 @@
-import { CATEGORY_LABEL, formatDemand, SEED_TEMPLATE_IDS, type Template } from '@glasshouse/domain';
+import { formatDemand, SEED_TEMPLATE_IDS, type Template } from '@glasshouse/domain';
 import { useCallback, useState } from 'react';
 import { useBlocker } from 'react-router';
 import { CatalogFileActions } from './CatalogFileActions';
@@ -7,6 +7,7 @@ import { useWorkspaceStore } from '../../store/workspaceStore';
 import { blankTemplate, CATEGORY_ORDER, TemplateEditor } from './TemplateEditor';
 import '../plan/inspector.css';
 import './catalog.css';
+import { useT } from '../../i18n';
 
 export function CatalogScreen() {
   const catalog = useWorkspaceStore((s) => s.workspace.catalog);
@@ -19,6 +20,7 @@ export function CatalogScreen() {
   const setDirty = useCallback((d: boolean) => setDirtyState(d), []);
   const [pending, setPending] = useState<(() => void) | null>(null);
   // Only leaving the Catalog is blocked here; switching Templates inside it goes through guard().
+  const m = useT();
   const blocker = useBlocker(({ currentLocation, nextLocation }) => dirty && currentLocation.pathname !== nextLocation.pathname);
   const editingLabel = draft ? draft.label || 'the new template' : (selected?.label ?? 'this template');
   // Explicit Save means switching away must never drop edits silently.
@@ -44,7 +46,7 @@ export function CatalogScreen() {
     <div className="catalog">
       <section className="catalog__list glass" aria-labelledby="catalog-h">
         <header className="catalog__head">
-          <h1 id="catalog-h">Device catalog</h1>
+          <h1 id="catalog-h">{m.catalog.title}</h1>
           <button
             type="button"
             className="btn btn--sm btn--ink"
@@ -55,14 +57,14 @@ export function CatalogScreen() {
               })
             }
           >
-            New template
+            {m.catalog.newTemplate}
           </button>
         </header>
-        <p className="catalog__note">Shared by every Project in this browser. Editing a Template never changes Devices already placed.</p>
+        <p className="catalog__note">{m.catalog.note}</p>
         <CatalogFileActions guard={guard} />
         {missing > 0 ? (
           <button type="button" className="btn btn--sm" onClick={() => dispatch({ type: 'catalog/seed' })}>
-            Add {missing} default {missing === 1 ? 'template' : 'templates'}
+            {m.catalog.addDefaults(missing)}
           </button>
         ) : null}
         {CATEGORY_ORDER.map((category) => {
@@ -70,7 +72,7 @@ export function CatalogScreen() {
           if (items.length === 0) return null;
           return (
             <div key={category} className="catalog__group">
-              <h2 className="lbl">{CATEGORY_LABEL[category]}</h2>
+              <h2 className="lbl">{m.categories[category]}</h2>
               <ul>
                 {items.map((t) => (
                   <li key={t.id}>
@@ -86,9 +88,9 @@ export function CatalogScreen() {
                       }
                     >
                       <span className="catalog__name">{t.label}</span>
-                      <span className="stamp">{t.mounting === 'slot' ? 'SLOT' : `${t.heightU}U`}</span>
+                      <span className="stamp">{t.mounting === 'slot' ? m.catalog.slot : `${t.heightU}U`}</span>
                       <span className="catalog__w mono">{formatDemand(t.demand)}</span>
-                      {t.illustrative ? <span className="catalog__flag">illustrative</span> : null}
+                      {t.illustrative ? <span className="catalog__flag">{m.catalog.illustrative}</span> : null}
                     </button>
                   </li>
                 ))}
@@ -97,16 +99,16 @@ export function CatalogScreen() {
           );
         })}
       </section>
-      <section className="catalog__editor glass" aria-label="Template editor">
+      <section className="catalog__editor glass" aria-label={m.catalog.editor}>
         {asking ? (
-          <div className="catalog__confirm" role="group" aria-label="Unsaved changes">
-            <p>{`Discard your changes to ${editingLabel}?`}</p>
+          <div className="catalog__confirm" role="group" aria-label={m.catalog.unsaved}>
+            <p>{m.catalog.discardQuestion(editingLabel)}</p>
             <div className="tpl-editor__actions">
               <button type="button" className="btn btn--sm btn--danger" onClick={discardAndGo}>
-                Discard changes and continue
+                {m.catalog.discardContinue}
               </button>
               <button type="button" className="btn btn--sm" onClick={keepEditing}>
-                Keep editing
+                {m.catalog.keepEditing}
               </button>
             </div>
           </div>
@@ -125,7 +127,7 @@ export function CatalogScreen() {
         ) : selected ? (
           <TemplateEditor key={`${selected.id}:${selected.version}`} mode="edit" initial={selected} onDone={(id) => select(id)} onDirtyChange={setDirty} />
         ) : (
-          <p className="catalog__empty">Pick a Template to edit it, or create a new one.</p>
+          <p className="catalog__empty">{m.catalog.pick}</p>
         )}
       </section>
     </div>

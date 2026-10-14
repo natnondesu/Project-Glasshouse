@@ -6,6 +6,7 @@ import { clampIntoRoom } from './clamp';
 import { hitTest } from './hitTest';
 import { placementAt as placeObject } from './placement';
 import { describeRackContents } from './labels';
+import { useT } from '../../i18n';
 import { snapMeasurePoint, type SnapTarget } from './measure';
 import type { Preview } from './layers';
 import type { SvgHandlers } from './PlanCanvas';
@@ -62,6 +63,7 @@ function rectPreview(mode: 'area' | 'cut', a: Point, b: Point): Extract<Preview,
 }
 
 export function usePlanGestures({ content, tool, setTool, selectedId, select, viewport, commit, readOnly = false }: Args) {
+  const m = useT();
   const gesture = useRef<Gesture | null>(null);
   const previewRef = useRef<Preview | null>(null);
   const [preview, setPreviewState] = useState<Preview | null>(null);
@@ -132,7 +134,7 @@ export function usePlanGestures({ content, tool, setTool, selectedId, select, vi
       }
       if (draft.b === null) {
         if (Math.hypot(snap.point[0] - draft.a.point[0], snap.point[1] - draft.a.point[1]) < 0.01) {
-          setMessage('Pick two different points.');
+          setMessage(m.plan.pickTwoPoints);
           return;
         }
         dimensionDraft.current = { a: draft.a, b: snap };
@@ -291,9 +293,9 @@ export function usePlanGestures({ content, tool, setTool, selectedId, select, vi
     if (!selected) return;
     if (e.key === 'Delete' || e.key === 'Backspace') {
       e.preventDefault();
-      const contents = selected.type === 'rack' ? describeRackContents(selected) : null;
+      const contents = selected.type === 'rack' ? describeRackContents(m, selected) : null;
       if (contents) {
-        setMessage(`${selected.name} holds ${contents}. Remove it from the inspector to confirm.`);
+        setMessage(m.plan.holdsContents(selected.name, contents));
         return;
       }
       if (run({ type: 'object/remove', id: selected.id })) select(null);

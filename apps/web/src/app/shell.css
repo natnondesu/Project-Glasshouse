@@ -275,3 +275,11 @@
   border-color: rgb(28 100 200 / 0.3);
   background: rgb(232 240 252 / 0.9);
 }
+
+.lang-switch {
+  margin-left: 4px;
+}
+
+.lang-switch button {
+  min-width: 38px;
+}

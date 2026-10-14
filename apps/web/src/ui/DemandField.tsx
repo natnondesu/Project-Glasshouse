@@ -1,6 +1,7 @@
 import type { Demand } from '@glasshouse/domain';
 import { useEffect, useState } from 'react';
 import { NumberField } from './NumberField';
+import { useT } from '../i18n';
 import './fields.css';
 
 interface DemandFieldProps {
@@ -12,7 +13,8 @@ interface DemandFieldProps {
 }
 
 /** Unknown is a deliberate choice, never an empty number: switching to Known commits nothing until watts are typed. */
-export function DemandField({ id, label, value, onCommit, unknownHint = 'Blocks approval until the watts are known.' }: DemandFieldProps) {
+export function DemandField({ id, label, value, onCommit, unknownHint }: DemandFieldProps) {
+  const m = useT();
   const [mode, setMode] = useState<Demand['kind']>(value.kind);
   const [error, setError] = useState<string | null>(null);
 
@@ -36,23 +38,23 @@ export function DemandField({ id, label, value, onCommit, unknownHint = 'Blocks 
       </span>
       <div className="seg seg--compact" role="group" aria-labelledby={`${id}-label`}>
         <button type="button" aria-pressed={mode === 'known'} onClick={() => choose('known')}>
-          Known
+          {m.fields.known}
         </button>
         <button type="button" aria-pressed={mode === 'unknown'} onClick={() => choose('unknown')}>
-          Unknown
+          {m.fields.unknown}
         </button>
       </div>
       {mode === 'known' ? (
         <NumberField
           id={id}
-          label={`${label} in watts`}
+          label={m.fields.inWatts(label)}
           unit="W"
           decimals={0}
           value={value.kind === 'known' ? value.watts : null}
           onCommit={(watts) => (watts === null ? null : onCommit({ kind: 'known', watts }))}
         />
       ) : (
-        <p className="field__hint">{unknownHint}</p>
+        <p className="field__hint">{unknownHint ?? m.fields.unknownBlocks}</p>
       )}
       {error ? <p className="field__error">{error}</p> : null}
     </div>

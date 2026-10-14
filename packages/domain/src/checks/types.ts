@@ -22,7 +22,9 @@ export interface Issue {
   key: string;
   code: IssueCode;
   severity: Severity;
+  /** English wording; the UI rebuilds it from `code` and `params` in the active language. */
   message: string;
   hint: string;
+  params: Record<string, string | number>;
   targets: Id[];
 }

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import './fields.css';
+import { useT } from '../i18n';
 
 export type ParsedNumber = { kind: 'empty' } | { kind: 'invalid' } | { kind: 'ok'; value: number };
 
@@ -32,6 +33,7 @@ interface NumberFieldProps {
 }
 
 export function NumberField({ id, label, value, onCommit, unit, decimals = 2, allowEmpty = false, placeholder, commitOn = 'change' }: NumberFieldProps) {
+  const m = useT();
   const [text, setText] = useState(() => format(value, decimals));
   const [error, setError] = useState<string | null>(null);
   const focused = useRef(false);
@@ -44,7 +46,7 @@ export function NumberField({ id, label, value, onCommit, unit, decimals = 2, al
 
   const commitText = (t: string): string | null => {
     const parsed = parseNumber(t);
-    const problem = parsed.kind === 'empty' ? (allowEmpty ? onCommit(null) : 'Enter a value.') : parsed.kind === 'invalid' ? 'Enter a number.' : onCommit(parsed.value);
+    const problem = parsed.kind === 'empty' ? (allowEmpty ? onCommit(null) : m.fields.enterValue) : parsed.kind === 'invalid' ? m.fields.enterNumber : onCommit(parsed.value);
     setError(problem);
     return problem;
   };
@@ -54,7 +56,7 @@ export function NumberField({ id, label, value, onCommit, unit, decimals = 2, al
       commitText(next);
       return;
     }
-    setError(parseNumber(next).kind === 'invalid' ? 'Enter a number.' : null);
+    setError(parseNumber(next).kind === 'invalid' ? m.fields.enterNumber : null);
   };
 
   const errorId = `${id}-error`;

@@ -3,7 +3,8 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
 import { NotFound } from '../../app/NotFound';
 import { useRoomLocation, useViewedRevisionNumber } from '../../store/hooks';
-import { pad2, STATE_LABEL } from '../../ui/StatusStamp';
+import { pad2 } from '../../ui/StatusStamp';
+import { useT } from '../../i18n';
 import { RackElevation } from '../elevation/RackElevation';
 import { SheetPlan } from './SheetPlan';
 import { BomTable, CableScheduleTable, SlotMapsTable } from './SheetTables';
@@ -50,7 +51,8 @@ export function InstallSheet() {
   const printedAt = usePrintTime();
   const viewedNumber = useViewedRevisionNumber();
   const navigate = useNavigate();
-  if (!location) return <NotFound message="This room isn't in this browser's workspace." />;
+  const m = useT();
+  if (!location) return <NotFound message={m.shell.roomMissing} />;
   const approved = location.room.plan.revisions.filter((r) => r.state === 'approved');
   const revision = approved.find((r) => r.number === viewedNumber) ?? latestApproved(location.room.plan);
   const current = currentRevision(location.room.plan);
@@ -58,10 +60,10 @@ export function InstallSheet() {
   if (!revision) {
     return (
       <main className="sheet sheet--empty">
-        <h1>No Approved revision yet</h1>
-        <p>{`The Install sheet is printed from an Approved revision. ${location.room.name} is at R${pad2(current.number)} and hasn't been approved.`}</p>
+        <h1>{m.sheet.noApprovedTitle}</h1>
+        <p>{m.sheet.noApproved(location.room.name, pad2(current.number))}</p>
         <Link to={`/rooms/${roomId}/review`} className="btn btn--ink">
-          Open review
+          {m.revision.openReview}
         </Link>
       </main>
     );
@@ -73,13 +75,13 @@ export function InstallSheet() {
 
   return (
     <main className="sheet">
-      <nav className="sheet-toolbar" aria-label="Install sheet">
+      <nav className="sheet-toolbar" aria-label={m.sheet.nav}>
         <Link to={`/rooms/${roomId}/review`} className="btn btn--sm btn--quiet">
-          Back to room
+          {m.sheet.backToRoom}
         </Link>
         {approved.length > 1 ? (
           <label className="sheet-toolbar__picker">
-            <span>Approved revision</span>
+            <span>{m.sheet.approvedRevision}</span>
             <select value={revision.number} onChange={(e) => void navigate(`/rooms/${roomId}/install-sheet?rev=${e.target.value}`)}>
               {[...approved].reverse().map((r) => (
                 <option key={r.number} value={r.number}>{`R${pad2(r.number)}`}</option>
@@ -87,21 +89,21 @@ export function InstallSheet() {
             </select>
           </label>
         ) : null}
-        {current.number !== revision.number ? <span className="sheet-toolbar__note">{`R${pad2(current.number)} (${STATE_LABEL[current.state].toLowerCase()}) is newer. This sheet shows R${pad2(revision.number)}.`}</span> : null}
+        {current.number !== revision.number ? <span className="sheet-toolbar__note">{m.sheet.newer(pad2(current.number), m.revision.state[current.state].toLowerCase(), pad2(revision.number))}</span> : null}
         <button type="button" className="btn btn--sm btn--ink" onClick={() => window.print()}>
-          Print / Save as PDF
+          {m.sheet.print}
         </button>
       </nav>
 
       <section className="sheet-page">
-        {title('Room plan')}
+        {title(m.sheet.roomPlan)}
         <SheetPlan content={revision.content} roomName={location.room.name} />
-        <p className="sheet-legend">Distances in metres from each Rack to the nearest walls. Hatched bands are Clearance zones; the arrow marks each Rack's Front.</p>
+        <p className="sheet-legend">{m.sheet.planLegend}</p>
       </section>
 
       {elevationPages(racks).map((group, i) => (
         <section key={`elev-${i}`} className="sheet-page">
-          {title('Rack elevations')}
+          {title(m.sheet.rackElevations)}
           <div className="sheet-elevations">
             {group.map((rack) => (
               <RackElevation key={rack.id} rack={rack} active={false} selectedId={null} flagged={NO_FLAGS} onSelect={noop} onActivate={noop} onDropTemplate={noop} isStatic stateOf={(id) => equipmentStateOf(location.room.plan, id)} />
@@ -112,18 +114,18 @@ export function InstallSheet() {
 
       {chassis.length > 0 ? (
         <section className="sheet-page sheet-page--flow">
-          <SlotMapsTable chassis={chassis} titleBlock={title('Slot maps')} />
+          <SlotMapsTable chassis={chassis} titleBlock={title(m.sheet.slotMaps)} />
         </section>
       ) : null}
 
       {revision.content.links.length > 0 ? (
         <section className="sheet-page sheet-page--flow">
-          <CableScheduleTable rows={cableSchedule(revision.content)} titleBlock={title('Cable schedule')} />
+          <CableScheduleTable rows={cableSchedule(revision.content)} titleBlock={title(m.sheet.cableSchedule)} />
         </section>
       ) : null}
 
       <section className="sheet-page sheet-page--flow">
-        <BomTable rows={bomRowsFor(location, revision)} revision={revision} titleBlock={title('Bill of materials')} />
+        <BomTable rows={bomRowsFor(location, revision)} revision={revision} titleBlock={title(m.sheet.bom)} />
       </section>
     </main>
   );

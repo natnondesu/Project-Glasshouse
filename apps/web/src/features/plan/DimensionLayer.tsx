@@ -1,5 +1,6 @@
 import { dimensionPoints, footprintOf, formatMetres, type Dimension, type DimensionAnchor, type PlanContent, type Point } from '@glasshouse/domain';
 import { toScreen, type View } from '../../viewport/math';
+import { useT, type Messages } from '../../i18n';
 
 const TICK_PX = 5;
 const ON_WALL_M = 1e-4;
@@ -21,13 +22,13 @@ function onWall(content: PlanContent, [x, y]: Point): boolean {
   );
 }
 
-export function describeAnchor(content: PlanContent, anchor: DimensionAnchor): string {
-  if (anchor.kind === 'object') return content.objects.find((o) => o.id === anchor.objectId)?.name ?? 'removed object';
-  return onWall(content, [anchor.x, anchor.y]) ? 'wall' : 'point';
+export function describeAnchor(m: Messages, content: PlanContent, anchor: DimensionAnchor): string {
+  if (anchor.kind === 'object') return content.objects.find((o) => o.id === anchor.objectId)?.name ?? m.dimension.removedObject;
+  return onWall(content, [anchor.x, anchor.y]) ? m.dimension.wall : m.dimension.point;
 }
 
-export function dimensionLabel(content: PlanContent, dim: Dimension, length: number): string {
-  return `Dimension ${formatMetres(length)} m, ${describeAnchor(content, dim.a)} to ${describeAnchor(content, dim.b)}`;
+export function dimensionLabel(m: Messages, content: PlanContent, dim: Dimension, length: number): string {
+  return m.dimension.label(formatMetres(length), describeAnchor(m, content, dim.a), describeAnchor(m, content, dim.b));
 }
 
 interface DimensionLayerProps {
@@ -41,6 +42,7 @@ interface DimensionLayerProps {
 
 /** Saved drafting dimensions: offset line, extension lines, 45° ticks and the length above the line. */
 export function DimensionLayer({ content, view, selectedId = null, onFocusDimension, isStatic = false }: DimensionLayerProps) {
+  const m = useT();
   return (
     <g className="pdims">
       {content.dimensions.map((dim) => {
@@ -65,7 +67,7 @@ export function DimensionLayer({ content, view, selectedId = null, onFocusDimens
         const selected = dim.id === selectedId;
         const interactive = isStatic
           ? {}
-          : { role: 'button', tabIndex: 0, 'aria-label': dimensionLabel(content, dim, length), 'aria-pressed': selected, onFocus: () => onFocusDimension?.(dim.id) };
+          : { role: 'button', tabIndex: 0, 'aria-label': dimensionLabel(m, content, dim, length), 'aria-pressed': selected, onFocus: () => onFocusDimension?.(dim.id) };
         return (
           <g
             key={dim.id}

@@ -1,11 +1,10 @@
 import { previewImport, type ProjectFile } from '@glasshouse/domain';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useWorkspaceStore } from '../../store/workspaceStore';
-import { pad2, STATE_LABEL } from '../../ui/StatusStamp';
+import { pad2 } from '../../ui/StatusStamp';
+import { useT } from '../../i18n';
 import { formatTime } from '../../ui/time';
 import './handoff.css';
-
-const plural = (n: number, one: string, many: string): string => `${n} ${n === 1 ? one : many}`;
 
 export function ImportDialog({ file, onClose }: { file: ProjectFile; onClose: () => void }) {
   const workspace = useWorkspaceStore((s) => s.workspace);
@@ -15,6 +14,7 @@ export function ImportDialog({ file, onClose }: { file: ProjectFile; onClose: ()
   const [take, setTake] = useState<ReadonlySet<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
   const ref = useRef<HTMLDialogElement>(null);
+  const m = useT();
 
   // A native modal gives a focus trap, an inert page, Escape and the top layer (no backdrop-filter trap).
   useEffect(() => {
@@ -52,32 +52,32 @@ export function ImportDialog({ file, onClose }: { file: ProjectFile; onClose: ()
         onClose();
       }}
     >
-        <h2 id="import-h">{`Import “${preview.projectName}”`}</h2>
+        <h2 id="import-h">{m.importFile.title(preview.projectName)}</h2>
         <p className="dialog__meta">
-          {`${plural(preview.newRooms, 'new room', 'new rooms')} · ${plural(preview.conflicts.length, 'room already here', 'rooms already here')} · ${plural(preview.newTemplates, 'new template', 'new templates')}`}
-          {file.exportedAt ? ` · exported ${formatTime(file.exportedAt)}` : ''}
+          {m.importFile.summary(preview.newRooms, preview.conflicts.length, preview.newTemplates)}
+          {file.exportedAt ? m.importFile.exported(formatTime(file.exportedAt)) : ''}
         </p>
-        <div className="seg" role="group" aria-label="How to import">
+        <div className="seg" role="group" aria-label={m.importFile.how}>
           <button type="button" aria-pressed={mode === 'merge'} disabled={preview.idClash} onClick={() => setMode('merge')}>
-            Merge into this browser
+            {m.importFile.merge}
           </button>
           <button type="button" aria-pressed={mode === 'copy'} onClick={() => setMode('copy')}>
-            Import as a copy
+            {m.importFile.copy}
           </button>
         </div>
         {preview.differingTemplates.length > 0 ? (
-          <p className="dialog__note">{`${preview.differingTemplates.join(', ')}: a different version is in the file. Your catalog keeps its own; placed Devices keep the version they were placed with.`}</p>
+          <p className="dialog__note">{m.importFile.differing(preview.differingTemplates.join(', '))}</p>
         ) : null}
-        {preview.idClash ? <p className="dialog__note">Some rooms in this file belong to another project here, so it can only be imported as a copy.</p> : null}
-        {mode === 'copy' ? <p className="dialog__note">The copy gets new IDs and “(copy)” after its name. Nothing here changes.</p> : null}
+        {preview.idClash ? <p className="dialog__note">{m.importFile.idClash}</p> : null}
+        {mode === 'copy' ? <p className="dialog__note">{m.importFile.copyNote}</p> : null}
         {mode === 'merge' && preview.conflicts.length > 0 ? (
           <table className="conflicts">
             <thead>
               <tr>
-                <th scope="col">Room</th>
-                <th scope="col">Here</th>
-                <th scope="col">In the file</th>
-                <th scope="col">Use</th>
+                <th scope="col">{m.importFile.room}</th>
+                <th scope="col">{m.importFile.here}</th>
+                <th scope="col">{m.importFile.inFile}</th>
+                <th scope="col">{m.importFile.use}</th>
               </tr>
             </thead>
             <tbody>
@@ -87,15 +87,15 @@ export function ImportDialog({ file, onClose }: { file: ProjectFile; onClose: ()
                     <strong>{c.roomName}</strong>
                     <span className="conflicts__site">{c.siteName}</span>
                   </td>
-                  <td className="mono">{`R${pad2(c.local.revision)} ${STATE_LABEL[c.local.state]}`}</td>
-                  <td className="mono">{`R${pad2(c.incoming.revision)} ${STATE_LABEL[c.incoming.state]}`}</td>
+                  <td className="mono">{`R${pad2(c.local.revision)} ${m.revision.stamp[c.local.state]}`}</td>
+                  <td className="mono">{`R${pad2(c.incoming.revision)} ${m.revision.stamp[c.incoming.state]}`}</td>
                   <td>
-                    <div className="seg seg--compact" role="group" aria-label={`${c.roomName} choice`}>
-                      <button type="button" aria-label={`${c.roomName}: keep mine`} aria-pressed={!take.has(c.roomId)} onClick={() => choose(c.roomId, false)}>
-                        Keep mine
+                    <div className="seg seg--compact" role="group" aria-label={m.importFile.choice(c.roomName)}>
+                      <button type="button" aria-label={m.importFile.keepMineOf(c.roomName)} aria-pressed={!take.has(c.roomId)} onClick={() => choose(c.roomId, false)}>
+                        {m.importFile.keepMine}
                       </button>
-                      <button type="button" aria-label={`${c.roomName}: take incoming`} aria-pressed={take.has(c.roomId)} onClick={() => choose(c.roomId, true)}>
-                        Take incoming
+                      <button type="button" aria-label={m.importFile.takeIncomingOf(c.roomName)} aria-pressed={take.has(c.roomId)} onClick={() => choose(c.roomId, true)}>
+                        {m.importFile.takeIncoming}
                       </button>
                     </div>
                   </td>
@@ -104,7 +104,7 @@ export function ImportDialog({ file, onClose }: { file: ProjectFile; onClose: ()
             </tbody>
           </table>
         ) : null}
-        {mode === 'merge' && preview.conflicts.length > 0 ? <p className="dialog__note">Keep mine leaves that Room exactly as it is in this browser.</p> : null}
+        {mode === 'merge' && preview.conflicts.length > 0 ? <p className="dialog__note">{m.importFile.keepNote}</p> : null}
         {error ? (
           <p role="alert" className="field__error">
             {error}
@@ -112,10 +112,10 @@ export function ImportDialog({ file, onClose }: { file: ProjectFile; onClose: ()
         ) : null}
         <div className="dialog__actions">
           <button type="button" className="btn btn--ink" onClick={confirm}>
-            Import
+            {m.importFile.import}
           </button>
           <button type="button" className="btn btn--quiet" onClick={onClose}>
-            Cancel
+            {m.common.cancel}
           </button>
         </div>
     </dialog>

@@ -1,7 +1,8 @@
 import { footprintOf, formatMetres, placementPolygon, pointInPolygon, type PlanContent, type Point, type Poly } from '@glasshouse/domain';
 import { useMemo } from 'react';
 import { toScreen, type View } from '../../viewport/math';
-import { measureBetween, wallGaps } from './measure';
+import { measureBetween, WALL_CORNER_LABEL, WALL_LABEL, wallGaps } from './measure';
+import { useT } from '../../i18n';
 import type { MeasureState } from './usePlanGestures';
 
 const PILL_H = 22;
@@ -49,6 +50,7 @@ function Segment({ a, b, view, live = false }: { a: Point; b: Point; view: View;
 }
 
 export function MeasureLayer({ measure, content, view }: { measure: MeasureState; content: PlanContent; view: View }) {
+  const m = useT();
   const footprint = useMemo(() => footprintOf(content.survey), [content.survey]);
   const hovered = content.objects.find((o) => o.id === measure.hoverId) ?? null;
   const obstacles = useMemo(() => content.objects.map((o) => placementPolygon(o)), [content.objects]);
@@ -85,7 +87,7 @@ export function MeasureLayer({ measure, content, view }: { measure: MeasureState
             <g className="measure__snap">
               <circle cx={cx} cy={cy} r={6} />
               <text x={cx + 10} y={cy - 8}>
-                {measure.cursor.label}
+                {measure.cursor.label === WALL_LABEL ? m.plan.wall : measure.cursor.label === WALL_CORNER_LABEL ? m.plan.wallCorner : measure.cursor.label}
               </text>
             </g>
           );

@@ -1,5 +1,7 @@
 import { BOM_COLUMNS, formatDemand, formatURange, panelOf, racksOf, wayPhase, type BomRow, type Chassis, type Rack, type Revision, type CableRow } from '@glasshouse/domain';
 import type { ReactNode } from 'react';
+import { useT } from '../../i18n';
+import { bomCell, bomHeader } from '../bom/bomText';
 
 const SHEET_COLUMNS = BOM_COLUMNS.filter((c) => !['project', 'site', 'room', 'kind'].includes(c.key));
 const SHORT = new Set<string>(['rack', 'chassis', 'slot', 'name', 'position', 'heightU', 'depthMm', 'demandW']);
@@ -20,27 +22,28 @@ function TitleHead({ span, titleBlock, children }: { span: number; titleBlock: R
 }
 
 export function SlotMapsTable({ chassis, titleBlock }: { chassis: { rack: Rack; chassis: Chassis }[]; titleBlock: ReactNode }) {
+  const m = useT();
   return (
-    <table className="sheet-table" aria-label="Slot maps">
+    <table className="sheet-table" aria-label={m.sheet.slotMaps}>
       <TitleHead span={4} titleBlock={titleBlock}>
         <tr>
-          <th scope="col">Slot</th>
-          <th scope="col">Node</th>
-          <th scope="col">Demand</th>
-          <th scope="col">Configuration</th>
+          <th scope="col">{m.sheet.slot}</th>
+          <th scope="col">{m.sheet.node}</th>
+          <th scope="col">{m.sheet.demand}</th>
+          <th scope="col">{m.sheet.config}</th>
         </tr>
       </TitleHead>
       {chassis.map(({ rack, chassis: c }) => (
-        <tbody key={c.id} aria-label={`${c.name} slot map`}>
+        <tbody key={c.id} aria-label={m.sheet.slotMapOf(c.name)}>
           <tr className="sheet-table__group">
-            <th colSpan={4} scope="rowgroup">{`${c.name} in ${rack.name}, ${formatURange(c)} · ${c.slotCount} slots`}</th>
+            <th colSpan={4} scope="rowgroup">{m.sheet.chassisLine(c.name, rack.name, formatURange(c), c.slotCount)}</th>
           </tr>
           {Array.from({ length: c.slotCount }, (_, i) => {
             const node = c.nodes.find((n) => n.slot === i + 1);
             return (
               <tr key={i}>
                 <td className="mono">{i + 1}</td>
-                <td>{node ? node.name : <span className="sheet-empty">empty</span>}</td>
+                <td>{node ? node.name : <span className="sheet-empty">{m.sheet.empty}</span>}</td>
                 <td className="mono">{node ? formatDemand(node.demand) : ''}</td>
                 <td>{node?.config ?? ''}</td>
               </tr>
@@ -62,14 +65,15 @@ function acknowledged(revision: Revision) {
 
 /** Acknowledged unknowns live in the BOM table too, so they can never land on a page without a title block. */
 export function BomTable({ rows, revision, titleBlock }: { rows: BomRow[]; revision: Revision; titleBlock: ReactNode }) {
+  const m = useT();
   const acks = acknowledged(revision);
   return (
-    <table className="sheet-table sheet-table--bom" aria-label="Bill of materials">
+    <table className="sheet-table sheet-table--bom" aria-label={m.sheet.bom}>
       <TitleHead span={SHEET_COLUMNS.length} titleBlock={titleBlock}>
         <tr>
           {SHEET_COLUMNS.map((c) => (
             <th key={c.key} scope="col">
-              {c.header}
+              {bomHeader(m, c.key)}
             </th>
           ))}
         </tr>
@@ -79,24 +83,24 @@ export function BomTable({ rows, revision, titleBlock }: { rows: BomRow[]; revis
           <tr key={i} className={r.kind === 'Node' ? 'is-node' : undefined}>
             {SHEET_COLUMNS.map((c) => (
               <td key={c.key} className={SHORT.has(c.key) ? 'is-short' : undefined}>
-                {r[c.key]}
+                {bomCell(m, r, c.key)}
               </td>
             ))}
           </tr>
         ))}
       </tbody>
       {revision.content.feeds.length > 0 ? (
-        <tbody aria-label="Power feeds">
+        <tbody aria-label={m.sheet.powerFeeds}>
           <tr className="sheet-table__group">
             <th colSpan={SHEET_COLUMNS.length} scope="rowgroup">
-              Power feeds
+              {m.sheet.powerFeeds}
             </th>
           </tr>
           {[...revision.content.feeds]
             .map((f) => {
               const source = revision.content.objects.find((o) => o.id === f.sourceId);
               const way = source && source.type === 'mcb' && f.way ? panelOf(source).ways[f.way - 1] : undefined;
-              const where = way && source && f.way ? ` · way ${f.way} (${wayPhase(panelOf(source), f.way)}, ${way.ratingA} A)` : '';
+              const where = way && source && f.way ? m.sheet.wayDetail(f.way, wayPhase(panelOf(source), f.way), way.ratingA) : '';
               return { f, rack: revision.content.objects.find((o) => o.id === f.targetId)?.name ?? '', panel: `${source?.name ?? ''}${where}` };
             })
             .sort((a, b) => a.rack.localeCompare(b.rack) || a.f.label.localeCompare(b.f.label))
@@ -110,17 +114,17 @@ export function BomTable({ rows, revision, titleBlock }: { rows: BomRow[]; revis
         </tbody>
       ) : null}
       {acks.length > 0 ? (
-        <tbody aria-label="Acknowledged unknowns">
+        <tbody aria-label={m.sheet.acknowledged}>
           <tr className="sheet-table__group">
             <th colSpan={SHEET_COLUMNS.length} scope="rowgroup">
-              Acknowledged unknowns
+              {m.sheet.acknowledged}
             </th>
           </tr>
           {acks.map(({ rack, range, ack }) => (
             <tr key={range.id}>
               <td colSpan={SHEET_COLUMNS.length}>
                 <strong>{`${range.label} · ${formatURange(range)} · ${rack.name}`}</strong>
-                {`: ${ack.reason} — accepted by ${ack.by.name} (unverified)`}
+                {m.sheet.ackLine(ack.reason, ack.by.name)}
               </td>
             </tr>
           ))}
@@ -132,24 +136,25 @@ export function BomTable({ rows, revision, titleBlock }: { rows: BomRow[]; revis
 
 /** Every cable as a row an installer can tick off: label, both ends, and the cable to pull. */
 export function CableScheduleTable({ rows, titleBlock }: { rows: CableRow[]; titleBlock: ReactNode }) {
+  const m = useT();
   return (
-    <table className="sheet-table" aria-label="Cable schedule">
+    <table className="sheet-table" aria-label={m.sheet.cableSchedule}>
       <TitleHead span={8} titleBlock={titleBlock}>
         <tr>
-          <th scope="col">Label</th>
-          <th scope="col">From rack</th>
-          <th scope="col">From device</th>
-          <th scope="col">Port</th>
-          <th scope="col">To rack</th>
-          <th scope="col">To device</th>
-          <th scope="col">Port</th>
-          <th scope="col">Cable</th>
+          <th scope="col">{m.sheet.cable.label}</th>
+          <th scope="col">{m.sheet.cable.fromRack}</th>
+          <th scope="col">{m.sheet.cable.fromDevice}</th>
+          <th scope="col">{m.sheet.cable.port}</th>
+          <th scope="col">{m.sheet.cable.toRack}</th>
+          <th scope="col">{m.sheet.cable.toDevice}</th>
+          <th scope="col">{m.sheet.cable.port}</th>
+          <th scope="col">{m.sheet.cable.cable}</th>
         </tr>
       </TitleHead>
       <tbody>
         {rows.map((r) => (
           <tr key={r.id}>
-            <td className="mono is-short">{r.label || <span className="sheet-empty">unlabelled</span>}</td>
+            <td className="mono is-short">{r.label || <span className="sheet-empty">{m.sheet.unlabelled}</span>}</td>
             <td className="mono is-short">{r.from.rack}</td>
             <td className="mono is-short">{r.from.device}</td>
             <td className="mono is-short">{r.from.port}</td>

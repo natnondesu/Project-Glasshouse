@@ -5,6 +5,7 @@ import { IconPlus } from '../../ui/icons';
 import { useFloatingPanel } from '../../ui/useFloatingPanel';
 import { PortDetail } from './PortDetail';
 import './ports.css';
+import { useT, type Messages } from '../../i18n';
 
 interface PortManagerProps {
   content: PlanContent;
@@ -14,12 +15,12 @@ interface PortManagerProps {
   onClose: () => void;
 }
 
-export function portLabel(content: PlanContent, deviceId: Id, port: Port): string {
+export function portLabel(m: Messages, content: PlanContent, deviceId: Id, port: Port): string {
   const ref = { deviceId, port: port.name };
   const link = linkAt(content, ref);
-  if (!link) return `Port ${port.name}, free`;
+  if (!link) return m.ports.portFree(port.name);
   const far = otherEnd(link, ref);
-  return `Port ${port.name}, linked to ${describeEnd(content, far).device} ${far.port}`;
+  return m.ports.portLinked(port.name, describeEnd(content, far).device, far.port);
 }
 
 interface Bank {
@@ -46,7 +47,8 @@ function banksOf(ports: Port[]): Bank[] {
 
 /** Floating port map for one device: a faceplate of its ports, and the selected port's link. */
 export function PortManager({ content, deviceId, commit, readOnly, onClose }: PortManagerProps) {
-  const name = findRackDevice(content, deviceId)?.device.name ?? findNode(content, deviceId)?.node.name ?? 'Device';
+  const m = useT();
+  const name = findRackDevice(content, deviceId)?.device.name ?? findNode(content, deviceId)?.node.name ?? m.search.device;
   const ports = portsOf(content, deviceId);
   const [selected, setSelected] = useState<string | null>(ports[0]?.name ?? null);
   const [error, setError] = useState<string | null>(null);
@@ -68,28 +70,28 @@ export function PortManager({ content, deviceId, commit, readOnly, onClose }: Po
   };
 
   return (
-    <section className="port-mgr glass" role="dialog" aria-label={`${name} ports`} style={{ left: pos.x, top: pos.y }}>
+    <section className="port-mgr glass" role="dialog" aria-label={m.ports.title(name)} style={{ left: pos.x, top: pos.y }}>
       <header className="port-mgr__head" {...headProps}>
         <h2>
-          <span className="mono">{name}</span> ports
+          <span className="mono">{m.ports.title(name)}</span>
         </h2>
-        <span className="port-mgr__count mono">{`${ports.length} ports · ${linked} linked`}</span>
-        <button type="button" className="icon-btn icon-btn--sm" aria-label={`Close ${name} ports`} onClick={onClose}>
+        <span className="port-mgr__count mono">{m.ports.summary(ports.length, linked)}</span>
+        <button type="button" className="icon-btn icon-btn--sm" aria-label={m.ports.close(name)} onClick={onClose}>
           ×
         </button>
       </header>
       <div className="port-mgr__tools">
         <button type="button" className="btn btn--sm" disabled={readOnly} onClick={addPort}>
           <IconPlus />
-          Add port
+          {m.ports.add}
         </button>
         <button type="button" className="btn btn--sm btn--quiet" disabled={readOnly} onClick={reset}>
-          Reset to template
+          {m.ports.reset}
         </button>
-        <ul className="port-mgr__legend" aria-label="Port legend">
-          <li className="is-linked">Linked</li>
-          <li>Free</li>
-          <li className="is-fibre">Fibre cage</li>
+        <ul className="port-mgr__legend" aria-label={m.ports.legend}>
+          <li className="is-linked">{m.ports.linked}</li>
+          <li>{m.ports.free}</li>
+          <li className="is-fibre">{m.ports.fibre}</li>
         </ul>
       </div>
       {error ? (
@@ -98,15 +100,15 @@ export function PortManager({ content, deviceId, commit, readOnly, onClose }: Po
         </p>
       ) : null}
       {ports.length === 0 ? (
-        <p className="port-mgr__empty">No ports yet. Add one, or reset to the template’s ports.</p>
+        <p className="port-mgr__empty">{m.ports.empty}</p>
       ) : (
-        <div className="port-mgr__face" role="group" aria-label="Ports">
+        <div className="port-mgr__face" role="group" aria-label={m.ports.face}>
           {banksOf(ports).map((bank, b) => (
             <div key={b} className="port-mgr__bank">
               {bank.prefix ? <span className="port-mgr__bank-label mono">{bank.prefix}</span> : null}
               <div className="port-mgr__jacks">
                 {bank.ports.map(({ port: p, short }) => {
-                  const label = portLabel(content, deviceId, p);
+                  const label = portLabel(m, content, deviceId, p);
                   const isLinked = Boolean(linkAt(content, { deviceId, port: p.name }));
                   return (
                     <button

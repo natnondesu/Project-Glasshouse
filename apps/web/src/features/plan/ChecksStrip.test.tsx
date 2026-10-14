@@ -10,6 +10,7 @@ const issue = (over: Partial<Issue>): Issue => ({
   severity: 'block',
   message: 'EX-01 sits inside the front clearance zone of RK-C1.',
   hint: 'Move EX-01.',
+  params: { other: 'EX-01', side: 'front', rack: 'RK-C1' },
   targets: ['ex'],
   ...over,
 });

@@ -1,5 +1,5 @@
 import { cableSchedule, findNode, findRackDevice, formatURange, racksOf, type PlanContent, type Template } from '@glasshouse/domain';
-import { TYPE_LABEL } from '../plan/labels';
+import { en, type Messages } from '../../i18n/en';
 
 export type HitKind = 'object' | 'device' | 'node' | 'reserved' | 'feed' | 'link';
 
@@ -28,11 +28,11 @@ const templateText = (content: PlanContent, id: string, version: number): string
 const templateLabel = (content: PlanContent, id: string, version: number): string =>
   content.templatesUsed.find((x) => x.id === id && x.version === version)?.label ?? 'Device';
 
-function entries(content: PlanContent, stateOf: (id: string) => string): Entry[] {
+function entries(content: PlanContent, stateOf: (id: string) => string, m: Messages): Entry[] {
   const out: Entry[] = [];
   const name = (id: string): string => content.objects.find((o) => o.id === id)?.name ?? '';
   for (const o of content.objects) {
-    out.push({ key: o.id, kind: 'object', name: o.name, detail: TYPE_LABEL[o.type], objectId: o.id, elementId: null, text: `${TYPE_LABEL[o.type]} ${o.notes}` });
+    out.push({ key: o.id, kind: 'object', name: o.name, detail: m.objects.type[o.type], objectId: o.id, elementId: null, text: `${m.objects.type[o.type]} ${en.objects.type[o.type]} ${o.notes}` });
   }
   for (const rack of racksOf(content)) {
     for (const d of rack.devices) {
@@ -41,7 +41,7 @@ function entries(content: PlanContent, stateOf: (id: string) => string): Entry[]
         key: d.id,
         kind: 'device',
         name: d.name,
-        detail: `${d.kind === 'chassis' ? 'Chassis' : 'Device'} · ${model} in ${rack.name}, ${formatURange(d)}`,
+        detail: m.search.deviceDetail(d.kind === 'chassis' ? m.search.chassis : m.search.device, model, rack.name, formatURange(d)),
         objectId: rack.id,
         elementId: d.id,
         text: `${templateText(content, d.templateId, d.templateVersion)} ${d.config} ${d.notes} ${d.kind === 'chassis' ? 'chassis' : d.category} ${stateOf(d.id)}`,
@@ -52,7 +52,7 @@ function entries(content: PlanContent, stateOf: (id: string) => string): Entry[]
           key: n.id,
           kind: 'node',
           name: n.name,
-          detail: `Node · slot ${n.slot} of ${d.name} in ${rack.name}`,
+          detail: m.search.nodeDetail(n.slot, d.name, rack.name),
           objectId: rack.id,
           elementId: n.id,
           text: `node ${templateText(content, n.templateId, n.templateVersion)} ${n.config} ${n.notes} ${stateOf(n.id)}`,
@@ -60,7 +60,7 @@ function entries(content: PlanContent, stateOf: (id: string) => string): Entry[]
       }
     }
     for (const r of rack.reserved) {
-      out.push({ key: r.id, kind: 'reserved', name: r.label, detail: `Reserved range · ${formatURange(r)} in ${rack.name}`, objectId: rack.id, elementId: r.id, text: `reserved ${r.notes}` });
+      out.push({ key: r.id, kind: 'reserved', name: r.label, detail: m.search.reservedDetail(formatURange(r), rack.name), objectId: rack.id, elementId: r.id, text: `reserved ${r.notes}` });
     }
   }
   for (const f of content.feeds) {
@@ -69,7 +69,7 @@ function entries(content: PlanContent, stateOf: (id: string) => string): Entry[]
       key: f.id,
       kind: 'feed',
       name: `${name(f.targetId)} ${f.label}`,
-      detail: `Power feed · from ${source}${f.way ? `, way ${f.way}` : ''}`,
+      detail: m.search.feedDetail(source, f.way ?? null),
       objectId: f.targetId,
       elementId: null,
       text: `power feed ${source}`,
@@ -84,7 +84,7 @@ function entries(content: PlanContent, stateOf: (id: string) => string): Entry[]
       key: row.id,
       kind: 'link',
       name: row.label || `${row.from.device} ${row.from.port}`,
-      detail: `Cable · ${row.from.device} ${row.from.port} ↔ ${row.to.device} ${row.to.port}`,
+      detail: m.search.cableDetail(`${row.from.device} ${row.from.port}`, `${row.to.device} ${row.to.port}`),
       objectId: rackId,
       elementId: link.a.deviceId,
       text: `cable link ${row.from.device} ${row.from.port} ${row.to.device} ${row.to.port} ${row.cable}`,
@@ -102,11 +102,19 @@ const ELSEWHERE = 10;
  * Full-text search over everything in a room. Every word must appear in the item's name or its other
  * text; name matches rank first. Room-scoped: the views that use it all show one room.
  */
-export function searchRoom(content: PlanContent, query: string, limit = MAX_HITS, stateOf: (id: string) => string = () => ''): SearchHit[] {
+interface SearchOptions {
+  limit?: number;
+  /** On-site state words per device or node, so "maintenance" finds equipment in that state. */
+  stateOf?: (id: string) => string;
+  /** Wording for details; English words stay searchable in any language. */
+  m?: Messages;
+}
+
+export function searchRoom(content: PlanContent, query: string, { limit = MAX_HITS, stateOf = () => '', m = en }: SearchOptions = {}): SearchHit[] {
   const words = query.toLowerCase().split(/\s+/).filter(Boolean);
   if (words.length === 0) return [];
   const phrase = words.join(' ');
-  return entries(content, stateOf)
+  return entries(content, stateOf, m)
     .flatMap((e) => {
       const nameLc = e.name.toLowerCase();
       const all = `${nameLc} ${e.text.toLowerCase()}`;

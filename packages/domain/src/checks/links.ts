@@ -18,6 +18,7 @@ export function linkIssues(content: PlanContent): Issue[] {
         severity: 'warn',
         message: `${a.device} ${link.a.port} (${PORT_MEDIA_LABEL[a.port.media]}) is linked to ${b.device} ${link.b.port} (${PORT_MEDIA_LABEL[b.port.media]}).`,
         hint: 'Check the cable or transceiver: these ports take different connectors.',
+        params: { a: a.device, aPort: link.a.port, aMedia: PORT_MEDIA_LABEL[a.port.media], b: b.device, bPort: link.b.port, bMedia: PORT_MEDIA_LABEL[b.port.media] },
         targets: [link.a.deviceId, link.b.deviceId],
       },
     ];

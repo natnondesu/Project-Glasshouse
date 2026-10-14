@@ -1,16 +1,19 @@
-import { approvalBlockers, currentRevision, isSelfApproved, type Plan } from '@glasshouse/domain';
+import { approvalBlockerItems, currentRevision, isSelfApproved, type Plan } from '@glasshouse/domain';
 import { useState, type FormEvent } from 'react';
 import { Link } from 'react-router';
 import { useReviewCommit } from '../../store/hooks';
 import { pad2, StatusStamp } from '../../ui/StatusStamp';
 import { formatTime } from '../../ui/time';
+import { useT } from '../../i18n';
+import { blockerText } from '../plan/issueText';
 
 const now = (): string => new Date().toISOString();
 
 export function ApprovalPanel({ roomId, plan }: { roomId: string; plan: Plan }) {
   const revision = currentRevision(plan);
   const review = useReviewCommit(roomId);
-  const blockers = approvalBlockers(plan);
+  const blockers = approvalBlockerItems(plan);
+  const m = useT();
   const [name, setName] = useState('');
   const [error, setError] = useState<string | null>(null);
 
@@ -31,18 +34,18 @@ export function ApprovalPanel({ roomId, plan }: { roomId: string; plan: Plan }) 
   return (
     <section className="review-card glass" aria-labelledby="approval-h">
       <header className="review-card__head">
-        <h2 id="approval-h">{`Revision ${pad2(revision.number)}`}</h2>
+        <h2 id="approval-h">{m.review.revision(pad2(revision.number))}</h2>
         <StatusStamp state={revision.state} />
-        {isSelfApproved(revision) ? <span className="stamp stamp--warn">Self-approved</span> : null}
+        {isSelfApproved(revision) ? <span className="stamp stamp--warn">{m.review.selfApproved}</span> : null}
       </header>
       <dl className="review-facts">
-        <dt>Designed by</dt>
-        <dd>{revision.designedBy ? `${revision.designedBy.name} (unverified)` : '—'}</dd>
-        <dt>Submitted</dt>
+        <dt>{m.review.designedBy}</dt>
+        <dd>{revision.designedBy ? m.review.unverified(revision.designedBy.name) : '—'}</dd>
+        <dt>{m.review.submitted}</dt>
         <dd>{formatTime(revision.submittedAt)}</dd>
-        <dt>Approved by</dt>
-        <dd>{revision.approvedBy ? `${revision.approvedBy.name} (unverified)` : '—'}</dd>
-        <dt>Approved</dt>
+        <dt>{m.review.approvedBy}</dt>
+        <dd>{revision.approvedBy ? m.review.unverified(revision.approvedBy.name) : '—'}</dd>
+        <dt>{m.review.approved}</dt>
         <dd>{formatTime(revision.approvedAt)}</dd>
       </dl>
 
@@ -50,16 +53,16 @@ export function ApprovalPanel({ roomId, plan }: { roomId: string; plan: Plan }) 
         <form className="review-form" onSubmit={submit}>
           <div className="field">
             <label htmlFor="designer" className="field__label">
-              Designed by (optional, unverified)
+              {m.review.designerField}
             </label>
             <div className="field__box">
               <input id="designer" className="field__input" value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" />
             </div>
           </div>
           <button type="submit" className="btn btn--ink">
-            Submit for review
+            {m.review.submit}
           </button>
-          <p className="review-note">Submitting freezes this Revision as a Snapshot. The checks don't have to pass yet.</p>
+          <p className="review-note">{m.review.submitNote}</p>
         </form>
       ) : null}
 
@@ -67,7 +70,7 @@ export function ApprovalPanel({ roomId, plan }: { roomId: string; plan: Plan }) 
         <form className="review-form" onSubmit={approve}>
           <div className="field">
             <label htmlFor="reviewer" className="field__label">
-              Reviewer name (unverified)
+              {m.review.reviewerField}
             </label>
             <div className="field__box">
               <input id="reviewer" className="field__input" value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" />
@@ -75,10 +78,10 @@ export function ApprovalPanel({ roomId, plan }: { roomId: string; plan: Plan }) 
           </div>
           <div className="review-form__actions">
             <button type="submit" className="btn btn--ink" disabled={blockers.length > 0}>
-              Approve revision
+              {m.review.approve}
             </button>
             <button type="button" className="btn" onClick={newDraft}>
-              Start new draft
+              {m.review.startDraft}
             </button>
           </div>
         </form>
@@ -86,12 +89,12 @@ export function ApprovalPanel({ roomId, plan }: { roomId: string; plan: Plan }) 
 
       {revision.state === 'approved' ? (
         <div className="review-form">
-          <p className="review-note">Approved Revisions never change. To make changes, start a new Draft.</p>
+          <p className="review-note">{m.review.approvedNote}</p>
           <Link to={`/rooms/${roomId}/install-sheet`} className="btn">
-            Open Install sheet
+            {m.review.openSheet}
           </Link>
           <button type="button" className="btn btn--ink" onClick={newDraft}>
-            Start new draft
+            {m.review.startDraft}
           </button>
         </div>
       ) : null}
@@ -99,15 +102,15 @@ export function ApprovalPanel({ roomId, plan }: { roomId: string; plan: Plan }) 
       {revision.state !== 'approved' ? (
         blockers.length > 0 ? (
           <div className="blockers">
-            <h3>Approval is blocked by</h3>
+            <h3>{m.review.blockedBy}</h3>
             <ul>
-              {blockers.map((b) => (
-                <li key={b}>{b}</li>
+              {blockers.map((b, i) => (
+                <li key={`${b.code}-${i}`}>{blockerText(m, b)}</li>
               ))}
             </ul>
           </div>
         ) : (
-          <p className="review-ready">Ready for approval: no blocking issues.</p>
+          <p className="review-ready">{m.review.ready}</p>
         )
       ) : null}
       {error ? (

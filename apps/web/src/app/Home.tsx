@@ -1,15 +1,13 @@
+import { useT } from '../i18n';
 import { useWorkspaceStore } from '../store/workspaceStore';
 
 export function Home() {
   const hasProjects = useWorkspaceStore((s) => s.workspace.projects.length > 0);
+  const m = useT();
   return (
     <section className="home glass">
-      <h1>{hasProjects ? 'Open a room to plan it' : 'Start with a project'}</h1>
-      <p>
-        {hasProjects
-          ? 'Pick a room in the project tree, or add one to a site.'
-          : 'Create a project in the tree, add a site, then add the room you are surveying.'}
-      </p>
+      <h1>{m.shell.homeTitle(hasProjects)}</h1>
+      <p>{m.shell.homeBody(hasProjects)}</p>
     </section>
   );
 }

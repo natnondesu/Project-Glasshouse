@@ -2,7 +2,7 @@ import type { Issue } from '@glasshouse/domain';
 import { expect, it } from 'vitest';
 import { flaggedObjectIds } from './flagged';
 
-const issue = (code: Issue['code'], severity: Issue['severity'], targets: string[]): Issue => ({ key: code + targets.join(), code, severity, message: '', hint: '', targets });
+const issue = (code: Issue['code'], severity: Issue['severity'], targets: string[]): Issue => ({ key: code + targets.join(), code, severity, message: '', hint: '', params: {}, targets });
 
 it('flags the obstacle, not the rack whose clearance it blocks', () => {
   expect([...flaggedObjectIds([issue('clearance_obstructed', 'block', ['ex', 'rack'])])]).toEqual(['ex']);

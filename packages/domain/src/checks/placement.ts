@@ -21,6 +21,7 @@ export function placementIssues(content: PlanContent): Issue[] {
       code: 'footprint_empty',
       severity: 'block',
       message: 'The room has no floor area.',
+      params: {},
       hint: 'Add a floor area with the Add area tool.',
       targets: [],
     });
@@ -30,6 +31,7 @@ export function placementIssues(content: PlanContent): Issue[] {
       code: 'footprint_disconnected',
       severity: 'warn',
       message: 'The floor has separate, unconnected areas.',
+      params: {},
       hint: 'Check this matches the survey. Approval is still allowed.',
       targets: [],
     });
@@ -45,6 +47,7 @@ export function placementIssues(content: PlanContent): Issue[] {
         code: 'object_outside_footprint',
         severity: 'block',
         message: `${object.name} is not fully on the floor.`,
+        params: { name: object.name },
         hint: 'Move it onto the floor, or adjust the floor areas.',
         targets: [object.id],
       });
@@ -60,6 +63,7 @@ export function placementIssues(content: PlanContent): Issue[] {
         code: 'object_overlap',
         severity: 'block',
         message: `${a.object.name} overlaps ${b.object.name}.`,
+        params: { a: a.object.name, b: b.object.name },
         hint: 'Move one of them. Touching edges is fine.',
         targets: [a.object.id, b.object.id],
       });
@@ -78,6 +82,7 @@ export function placementIssues(content: PlanContent): Issue[] {
           code: 'clearance_outside_footprint',
           severity: 'block',
           message: `The ${side} clearance of ${rack.name} runs outside the floor.`,
+          params: { side, rack: rack.name },
           hint: `Turn or move the rack, or reduce its ${side} clearance.`,
           targets: [rack.id],
         });
@@ -89,6 +94,7 @@ export function placementIssues(content: PlanContent): Issue[] {
           key: `clearance:${rack.id}:${side}:${other.object.id}`,
           code: isDoor ? 'clearance_door' : 'clearance_obstructed',
           severity: isDoor ? 'warn' : 'block',
+          params: { other: other.object.name, side, rack: rack.name },
           message: isDoor
             ? `${other.object.name} is inside the ${side} clearance of ${rack.name}.`
             : `${other.object.name} sits inside the ${side} clearance zone of ${rack.name}.`,
