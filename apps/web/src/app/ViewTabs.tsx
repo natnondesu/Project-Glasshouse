@@ -1,7 +1,7 @@
 import { approvalBlockers, currentRevision, latestApproved } from '@glasshouse/domain';
 import { Link, NavLink } from 'react-router';
 import { pad2 } from '../ui/StatusStamp';
-import { useRoomLocation } from '../store/hooks';
+import { useRoomLocation, useViewedRevisionNumber } from '../store/hooks';
 
 const VIEWS = [
   { id: 'plan', label: 'Plan' },
@@ -13,6 +13,7 @@ const VIEWS = [
 
 export function ViewTabs({ roomId }: { roomId: string }) {
   const location = useRoomLocation(roomId);
+  const rev = useViewedRevisionNumber();
   const plan = location?.room.plan;
   const approved = plan ? latestApproved(plan) : null;
   const blockers = plan && currentRevision(plan).state !== 'approved' ? approvalBlockers(plan).length : 0;
@@ -20,7 +21,7 @@ export function ViewTabs({ roomId }: { roomId: string }) {
     <nav className="view-tabs glass" aria-label="Room views">
       <span className="view-tabs__seg">
         {VIEWS.map((v) => (
-          <NavLink key={v.id} to={`/rooms/${roomId}/${v.id}`} className={({ isActive }) => `view-tab${isActive ? ' is-active' : ''}`}>
+          <NavLink key={v.id} to={`/rooms/${roomId}/${v.id}${rev !== null && v.id !== 'review' ? `?rev=${rev}` : ''}`} className={({ isActive }) => `view-tab${isActive ? ' is-active' : ''}`}>
             {v.label}
             {v.id === 'review' && blockers > 0 ? (
               <span className="view-tab__badge mono" aria-hidden="true">

@@ -44,3 +44,21 @@ export function useReviewCommit(roomId: Id): ReviewFn {
   const dispatch = useWorkspaceStore((s) => s.dispatch);
   return useCallback<ReviewFn>((command) => dispatch({ type: 'review', roomId, command })?.message ?? null, [dispatch, roomId]);
 }
+
+/** The revision number in `?rev=` when an older revision is being viewed; null for the current one. */
+export function useViewedRevisionNumber(): number | null {
+  const [params] = useSearchParams();
+  const raw = params.get('rev');
+  const n = raw === null ? NaN : Number(raw);
+  return Number.isInteger(n) && n > 0 ? n : null;
+}
+
+/**
+ * The room as it was at revision `n`, for read-only viewing: later revisions are dropped,
+ * so every view that reads the "current" revision shows that one. Null if `n` is current or unknown.
+ */
+export function locationAtRevision(location: RoomLocation, n: number | null): RoomLocation | null {
+  const revisions = location.room.plan.revisions;
+  if (n === null || n === revisions[revisions.length - 1]?.number || !revisions.some((r) => r.number === n)) return null;
+  return { ...location, room: { ...location.room, plan: { ...location.room.plan, revisions: revisions.filter((r) => r.number <= n) } } };
+}

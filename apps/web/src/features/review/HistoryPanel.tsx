@@ -1,8 +1,10 @@
+import { Link } from 'react-router';
 import { isSelfApproved, type Plan } from '@glasshouse/domain';
 import { pad2, StatusStamp } from '../../ui/StatusStamp';
 import { formatTime } from '../../ui/time';
 
-export function HistoryPanel({ plan }: { plan: Plan }) {
+export function HistoryPanel({ plan, roomId }: { plan: Plan; roomId: string }) {
+  const currentNumber = plan.revisions[plan.revisions.length - 1]?.number;
   const revisions = [...plan.revisions].reverse();
   const events = [...plan.history].reverse();
   return (
@@ -19,6 +21,11 @@ export function HistoryPanel({ plan }: { plan: Plan }) {
               {r.designedBy || r.approvedBy ? ' (unverified)' : ''}
               {isSelfApproved(r) ? ' · self-approved' : ''}
             </span>
+            {r.number !== currentNumber ? (
+              <Link className="revisions__view" to={`/rooms/${roomId}/plan?rev=${r.number}`} aria-label={`View R${pad2(r.number)}`}>
+                View
+              </Link>
+            ) : null}
           </li>
         ))}
       </ul>
