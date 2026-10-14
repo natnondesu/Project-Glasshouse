@@ -1,7 +1,7 @@
-import { formatURange, racksOf, type PlanContent, type Template } from '@glasshouse/domain';
+import { cableSchedule, findNode, findRackDevice, formatURange, racksOf, type PlanContent, type Template } from '@glasshouse/domain';
 import { TYPE_LABEL } from '../plan/labels';
 
-export type HitKind = 'object' | 'device' | 'node' | 'reserved' | 'feed';
+export type HitKind = 'object' | 'device' | 'node' | 'reserved' | 'feed' | 'link';
 
 export interface SearchHit {
   key: string;
@@ -73,6 +73,21 @@ function entries(content: PlanContent, stateOf: (id: string) => string): Entry[]
       objectId: f.targetId,
       elementId: null,
       text: `power feed ${source}`,
+    });
+  }
+  // Cables: found by label, either device or either port; they open the first end in the elevation.
+  for (const row of cableSchedule(content)) {
+    const link = content.links.find((l) => l.id === row.id)!;
+    const rackId = findRackDevice(content, link.a.deviceId)?.rack.id ?? findNode(content, link.a.deviceId)?.rack.id;
+    if (!rackId) continue;
+    out.push({
+      key: row.id,
+      kind: 'link',
+      name: row.label || `${row.from.device} ${row.from.port}`,
+      detail: `Cable · ${row.from.device} ${row.from.port} ↔ ${row.to.device} ${row.to.port}`,
+      objectId: rackId,
+      elementId: link.a.deviceId,
+      text: `cable link ${row.from.device} ${row.from.port} ${row.to.device} ${row.to.port} ${row.cable}`,
     });
   }
   return out;

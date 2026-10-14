@@ -1,3 +1,4 @@
+import { validatePortGroups } from './ports';
 import defaultCatalog from './default-catalog.json';
 import { validateDemand } from './demand';
 import { LIMITS } from './model/defaults';
@@ -32,6 +33,10 @@ export function validateTemplate(t: Template): Result<Template> {
   const demandError = validateDemand(t.demand);
   if (demandError) return err('invalid_value', demandError, [t.id]);
   if (t.defaultConfig.length > LIMITS.textMaxLength) return err('invalid_value', 'Default configuration must be 2000 characters or fewer.', [t.id]);
+  if (t.ports) {
+    const portError = validatePortGroups(t.ports);
+    if (portError) return err('invalid_value', portError, [t.id]);
+  }
   const base = { ...t, label: label.value, model };
 
   if (t.mounting === 'slot') {

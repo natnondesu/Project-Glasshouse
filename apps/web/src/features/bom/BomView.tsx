@@ -1,4 +1,4 @@
-import { BOM_COLUMNS, bomCsv, bomRows, currentRevision, EQUIPMENT_STATE_LABEL, EQUIPMENT_STATES, type EquipmentState, type RoomLocation } from '@glasshouse/domain';
+import { BOM_COLUMNS, bomCsv, bomRows, cableCsv, cableSchedule, currentRevision, EQUIPMENT_STATE_LABEL, EQUIPMENT_STATES, type EquipmentState, type RoomLocation } from '@glasshouse/domain';
 import { useMemo, useState } from 'react';
 import { downloadText, slugify } from '../../ui/files';
 import { pad2 } from '../../ui/StatusStamp';
@@ -14,6 +14,9 @@ export function BomView({ location }: { location: RoomLocation }) {
   const rows = filter === 'all' ? all : all.filter((r) => r.state === EQUIPMENT_STATE_LABEL[filter]);
   const revision = currentRevision(location.room.plan);
 
+  const cables = useMemo(() => cableSchedule(revision.content), [revision]);
+  const downloadCables = (): void =>
+    downloadText(`${slugify(location.room.name)}-R${pad2(revision.number)}-cables.csv`, `\uFEFF${cableCsv(cables)}`, 'text/csv;charset=utf-8');
   const download = (): void =>
     // The UTF-8 byte-order mark makes Excel read en dashes and Thai text correctly.
     downloadText(`${slugify(location.room.name)}-R${pad2(revision.number)}-bom.csv`, `\uFEFF${bomCsv(rows)}`, 'text/csv;charset=utf-8');
@@ -23,6 +26,11 @@ export function BomView({ location }: { location: RoomLocation }) {
       <header className="bom__head">
         <h2 id="bom-h">Devices &amp; BOM</h2>
         <span className="bom__count">{`${rows.length} ${rows.length === 1 ? 'Device' : 'Devices'}, each Node listed separately`}</span>
+        {cables.length > 0 ? (
+          <button type="button" className="btn" onClick={downloadCables}>
+            {`Cable schedule CSV (${cables.length})`}
+          </button>
+        ) : null}
         <button type="button" className="btn btn--ink" onClick={download} disabled={rows.length === 0}>
           Download CSV
         </button>

@@ -118,3 +118,34 @@
   flex-wrap: wrap;
   gap: 6px;
 }
+
+.port-groups {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+}
+
+.port-groups__row {
+  display: grid;
+  grid-template-columns: 52px 10px minmax(0, 1fr) minmax(0, 0.8fr) minmax(0, 1.2fr) 44px auto;
+  align-items: center;
+  gap: 6px;
+}
+
+.port-groups__row .field__input {
+  min-width: 0;
+  padding: 6px 8px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--control-bg);
+  font-size: 13px;
+}
+
+.port-groups__preview {
+  grid-column: 1 / -1;
+  font-size: 11px;
+  color: var(--ink-2);
+}

@@ -26,6 +26,42 @@ export interface Template {
   slotCount: number | null;
   slotsPerRow: number | null;
   illustrative: boolean;
+  /** Network ports every device from this template starts with, as compact groups. */
+  ports?: PortGroup[];
+}
+
+export type PortMedia = 'rj45' | 'sfp' | 'sfp_plus' | 'qsfp';
+
+/** `count` ports named prefix+start, prefix+(start+1)…: "48 × RJ45 1G named Gi1/0/1–48". */
+export interface PortGroup {
+  count: number;
+  prefix: string;
+  start: number;
+  media: PortMedia;
+  speed: string;
+}
+
+/** A device's own port. Names are unique per device and are how links refer to it. */
+export interface Port {
+  name: string;
+  media: PortMedia;
+  speed: string;
+}
+
+export type CableType = 'cat6' | 'cat6a' | 'om3' | 'om4' | 'os2' | 'dac' | 'aoc';
+
+export interface PortRef {
+  deviceId: Id;
+  port: string;
+}
+
+/** One cable between two ports, either end on a device, chassis or node. */
+export interface NetLink {
+  id: Id;
+  a: PortRef;
+  b: PortRef;
+  label: string;
+  cable: CableType | null;
 }
 
 /** A cut-out is either a void (no floor: a shaft or opening) or solid (a wall or column). */
@@ -76,6 +112,8 @@ export interface DeviceBase {
   demand: Demand;
   config: string;
   notes: string;
+  /** Copied from the template when placed, then the device's own; absent means none. */
+  ports?: Port[];
 }
 
 export interface PlacedDevice extends DeviceBase {
@@ -194,6 +232,7 @@ export interface PlanContent {
   templatesUsed: Template[];
   dimensions: Dimension[];
   feeds: PowerFeed[];
+  links: NetLink[];
 }
 
 export type RevisionState = 'draft' | 'in_review' | 'approved';

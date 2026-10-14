@@ -3,6 +3,7 @@ import { racksOf } from './devices';
 import { currentRevision, type RoomLocation } from './lookup';
 import type { Demand, Id, PlanContent, Revision } from './model/types';
 import { formatURange } from './occupancy';
+import { portMix } from './ports';
 import { EQUIPMENT_STATE_LABEL, equipmentStateOf } from './equipmentState';
 
 export interface BomRow {
@@ -21,6 +22,7 @@ export interface BomRow {
   heightU: string;
   depthMm: string;
   demandW: string;
+  ports: string;
   config: string;
   notes: string;
 }
@@ -41,6 +43,7 @@ export const BOM_COLUMNS: readonly { key: keyof BomRow; header: string }[] = [
   { key: 'heightU', header: 'Height (U)' },
   { key: 'depthMm', header: 'Depth (mm)' },
   { key: 'demandW', header: 'Demand (W)' },
+  { key: 'ports', header: 'Ports' },
   { key: 'config', header: 'Configuration' },
   { key: 'notes', header: 'Notes' },
 ];
@@ -78,6 +81,7 @@ export function bomRowsFor(loc: RoomLocation, revision: Revision): BomRow[] {
           heightU: String(d.heightU),
           depthMm: String(d.depthMm),
           demandW: demandText(d.demand),
+          ports: portMix(d.ports ?? []),
           config: d.config,
           notes: d.notes,
         };
@@ -99,6 +103,7 @@ export function bomRowsFor(loc: RoomLocation, revision: Revision): BomRow[] {
               heightU: '0',
               depthMm: '',
               demandW: demandText(n.demand),
+              ports: portMix(n.ports ?? []),
               config: n.config,
               notes: n.notes,
             }),

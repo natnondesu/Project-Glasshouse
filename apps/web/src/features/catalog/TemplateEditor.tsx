@@ -4,6 +4,7 @@ import { useWorkspaceStore } from '../../store/workspaceStore';
 import { DemandField } from '../../ui/DemandField';
 import { NumberField } from '../../ui/NumberField';
 import { TextField } from '../../ui/TextField';
+import { PortGroupsField } from './PortGroupsField';
 
 export const CATEGORY_ORDER: Category[] = ['compute', 'chassis', 'network', 'storage', 'power', 'misc'];
 
@@ -140,6 +141,8 @@ export function TemplateEditor({ mode, initial, onDone, onDirtyChange }: Templat
         <DemandField id={`${draft.id}-demand`} label={isChassis ? 'Chassis overhead' : 'Demand'} value={draft.demand} onCommit={(d) => set({ demand: d })} />
         <TextField id={`${draft.id}-config`} label="Default configuration" multiline value={draft.defaultConfig} onCommit={(v) => set({ defaultConfig: v })} />
       </fieldset>
+
+      <PortGroupsField id={draft.id} groups={draft.ports ?? []} onChange={(ports) => set(ports.length ? { ports } : { ports: undefined })} />
 
       {error ? (
         <p role="alert" className="field__error">

@@ -24,6 +24,8 @@ const MIGRATIONS: Record<number, (raw: RawWorkspace) => RawWorkspace> = {
       return { ...rev, content: { ...content, feeds } };
     }),
   }),
+  // 2026-10: network links between device ports.
+  5: (raw) => ({ ...raw, schemaVersion: 6, projects: mapRevisions(raw.projects, (rev) => ({ ...rev, content: { ...asRecord(rev.content), links: [] } })) }),
 };
 
 const asRecord = (v: unknown): RawWorkspace => (typeof v === 'object' && v !== null ? (v as RawWorkspace) : {});

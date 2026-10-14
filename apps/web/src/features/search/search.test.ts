@@ -43,4 +43,17 @@ describe('searchRoom', () => {
     expect(searchRoom(room(), '   ')).toEqual([]);
     expect(searchRoom(room(), 'MCB-01')[0]!.name).toBe('MCB-01');
   });
+
+  it('finds cables by label, device or port, opening the first end', () => {
+    const r = (c: PlanContent, cmd: PlanCommand): PlanContent => {
+      const x = applyPlanCommand(c, cmd);
+      if (!x.ok) throw new Error(x.error.message);
+      return x.value;
+    };
+    let c = r(room(), { type: 'port/add', deviceId: 'srv', port: { name: 'eth0', media: 'rj45', speed: '1G' } });
+    c = r(c, { type: 'port/add', deviceId: 'ch', port: { name: 'mgmt', media: 'rj45', speed: '1G' } });
+    c = r(c, { type: 'link/add', link: { id: 'l1', a: { deviceId: 'srv', port: 'eth0' }, b: { deviceId: 'ch', port: 'mgmt' }, label: 'C-042', cable: null } });
+    expect(searchRoom(c, 'c-042')[0]).toMatchObject({ kind: 'link', objectId: 'rk', elementId: 'srv', detail: 'Cable · SRV-01 eth0 ↔ CH-01 mgmt' });
+    expect(searchRoom(c, 'mgmt').some((h) => h.key === 'l1')).toBe(true);
+  });
 });
