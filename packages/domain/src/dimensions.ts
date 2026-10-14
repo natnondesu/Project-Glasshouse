@@ -61,3 +61,18 @@ export function applyDimensionCommand(content: PlanContent, cmd: DimensionComman
       return ok({ ...content, dimensions: content.dimensions.filter((d) => d.id !== cmd.id) });
   }
 }
+
+const OFFSET_SNAP_M = 0.05;
+
+/**
+ * Where to put the dimension line for a cursor at `p`: its signed distance from a→b,
+ * using the same left-hand normal the drawing uses, snapped to 5 cm.
+ */
+export function offsetFromPoint(a: Point, b: Point, p: Point): number {
+  const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
+  if (len === 0) return 0;
+  const nx = -(b[1] - a[1]) / len;
+  const ny = (b[0] - a[0]) / len;
+  const raw = (p[0] - a[0]) * nx + (p[1] - a[1]) * ny;
+  return Math.round(raw / OFFSET_SNAP_M) * OFFSET_SNAP_M + 0;
+}

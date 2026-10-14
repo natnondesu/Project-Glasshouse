@@ -47,6 +47,7 @@ export function PlanView({ location, readOnly = false }: { location: RoomLocatio
           viewport={viewport}
           preview={gestures.preview}
           ghost={gestures.ghost}
+          draftDimension={gestures.draftDimension}
           showGaps={tool !== 'measure' && tool !== 'dimension'}
           measure={gestures.measure}
           cursor={gestures.cursor}

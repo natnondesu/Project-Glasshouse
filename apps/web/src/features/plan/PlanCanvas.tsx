@@ -1,4 +1,4 @@
-import { placementPolygon, type Issue, type PlanContent, type RoomObject } from '@glasshouse/domain';
+import { placementPolygon, type Dimension, type Issue, type PlanContent, type RoomObject } from '@glasshouse/domain';
 import { useMemo, type DOMAttributes } from 'react';
 import type { ViewportApi } from '../../viewport/useViewport';
 import { flaggedObjectIds } from './flagged';
@@ -43,12 +43,14 @@ interface PlanCanvasProps {
   ghost?: RoomObject | null;
   /** Off while measuring or dimensioning: those tools show their own distances. */
   showGaps?: boolean;
+  /** The Dimension tool's line while its offset is being placed. */
+  draftDimension?: Dimension | null;
 }
 
 const withPreview = (objects: RoomObject[], preview: Preview | null): RoomObject[] =>
   preview?.kind === 'object' ? objects.map((o) => (o.id === preview.id ? { ...o, ...preview.patch } : o)) : objects;
 
-export function PlanCanvas({ content, issues, selectedId, viewport, preview, measure, cursor, svgHandlers, onFocusObject, inspectorOpen = true, ghost = null, showGaps = true }: PlanCanvasProps) {
+export function PlanCanvas({ content, issues, selectedId, viewport, preview, measure, cursor, svgHandlers, onFocusObject, inspectorOpen = true, ghost = null, showGaps = true, draftDimension = null }: PlanCanvasProps) {
   const calloutClearance = inspectorOpen ? INSPECTOR_CLEARANCE_PX : RAIL_CLEARANCE_PX;
   const { view } = viewport;
   const flagged = useMemo(() => flaggedObjectIds(issues), [issues]);
@@ -56,7 +58,10 @@ export function PlanCanvas({ content, issues, selectedId, viewport, preview, mea
   const selected = objects.find((o) => o.id === selectedId) ?? null;
   const moving = preview?.kind === 'object' ? (objects.find((o) => o.id === preview.id) ?? null) : null;
   const active = ghost ?? moving ?? selected;
-  const liveContent = useMemo(() => ({ ...content, objects }), [content, objects]);
+  const liveContent = useMemo(() => {
+    const dims = content.dimensions.map((d) => (preview?.kind === 'dimension' && preview.id === d.id ? { ...d, offset: preview.offset } : d));
+    return { ...content, objects, dimensions: draftDimension ? [...dims, draftDimension] : dims };
+  }, [content, objects, preview, draftDimension]);
 
   return (
     <svg

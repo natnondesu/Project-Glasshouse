@@ -672,3 +672,20 @@
 .obj:focus-visible .obj__hover-tag {
   opacity: 1;
 }
+
+.pdim.is-draft {
+  pointer-events: none;
+}
+
+.pdim.is-draft .pdim__line {
+  stroke: var(--d-sel);
+  stroke-dasharray: 5 3;
+}
+
+.pdim.is-draft .pdim__label {
+  fill: var(--d-sel);
+}
+
+.pdim:not(.is-draft) .pdim__hit {
+  cursor: move;
+}

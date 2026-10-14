@@ -12,9 +12,22 @@ test('draw a saved dimension from the wall to a rack; it follows the rack and su
   await page.getByRole('button', { name: 'Dimension' }).click();
   await page.mouse.click(...at(0, 0.6));
   await page.mouse.click(...at(0.4, 0.6));
+  // Third click places the dimension line 0.3 m above the measured points.
+  await page.mouse.move(...at(0.2, 0.3));
+  await page.mouse.click(...at(0.2, 0.3));
   const dim = page.getByRole('button', { name: 'Dimension 0.40 m, wall to RK-01' });
   await expect(dim).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Dimension' })).toBeVisible();
+  await expect(page.getByLabel('Line offset')).toHaveValue('-0.30');
+
+  // Drag the line further from the rack with the mouse.
+  await page.getByRole('button', { name: 'Select', exact: true }).click();
+  await page.mouse.move(...at(0.2, 0.3));
+  await page.mouse.down();
+  await page.mouse.move(...at(0.2, 0.2), { steps: 4 });
+  await page.mouse.move(...at(0.2, 0.1), { steps: 4 });
+  await page.mouse.up();
+  await expect(page.getByLabel('Line offset')).toHaveValue('-0.50');
 
   await page.getByRole('button', { name: 'Select', exact: true }).click();
   await page.getByRole('button', { name: 'RK-01, Rack' }).focus();

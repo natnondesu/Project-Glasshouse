@@ -24,7 +24,8 @@ const DIM_OFFSET_PX = 28;
 
 export type Preview =
   | { kind: 'object'; id: string; patch: { x: number; y: number; w?: number; d?: number } }
-  | { kind: 'rect'; mode: 'area' | 'cut'; x: number; y: number; w: number; d: number };
+  | { kind: 'rect'; mode: 'area' | 'cut'; x: number; y: number; w: number; d: number }
+  | { kind: 'dimension'; id: string; offset: number };
 
 export function HatchDefs() {
   return (

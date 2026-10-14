@@ -150,7 +150,7 @@ export interface Dimension {
   id: Id;
   a: DimensionAnchor;
   b: DimensionAnchor;
-  /** Perpendicular distance of the dimension line from the measured points, left of a→b positive. */
+  /** Perpendicular distance of the dimension line from the measured points; positive along (−Δy, Δx) of a→b. */
   offset: Metres;
 }
 
