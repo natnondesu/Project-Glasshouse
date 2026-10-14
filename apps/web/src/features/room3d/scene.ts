@@ -1,4 +1,4 @@
-import { effectiveHeight, footprintOf, localToWorld, type Category, type MultiPoly, type PlanContent, type Rack, type RoomObject, type SimpleObjectType } from '@glasshouse/domain';
+import { effectiveHeight, footprintOf, localToWorld, usedU, type Category, type MultiPoly, type PlanContent, type Rack, type RoomObject, type SimpleObjectType } from '@glasshouse/domain';
 
 /** One rack unit (EIA-310) in metres. */
 export const U_M = 0.04445;
@@ -20,6 +20,10 @@ export interface Face3D {
   width: number;
   height: number;
   unknown: boolean;
+  /** Metres from the front rails back into the rack, capped so a device never pokes out of the rear. */
+  depth: number;
+  heightU: number;
+  kind: 'device' | 'chassis';
 }
 
 export interface Slot3D {
@@ -42,6 +46,16 @@ export interface Rack3D {
   yaw: number;
   faces: Face3D[];
   slots: Slot3D[];
+  reserved: Reserved3D[];
+  capacityU: number;
+  usedU: number;
+}
+
+export interface Reserved3D {
+  id: string;
+  label: string;
+  y: number;
+  height: number;
 }
 
 export interface Object3D {
@@ -86,7 +100,9 @@ function placement(o: RoomObject): { position: Vec3; yaw: number; size: Vec3 } {
   return { position: [cx, h / 2, cz], yaw, size: [o.w, h, o.d] };
 }
 
-function rackFaces(rack: Rack): Pick<Rack3D, 'faces' | 'slots'> {
+const REAR_CLEARANCE_M = 0.08;
+
+function rackFaces(rack: Rack): Pick<Rack3D, 'faces' | 'slots' | 'reserved'> {
   const z = rack.d / 2 + FRONT_OFFSET_M;
   const width = rack.w - FACE_INSET_M * 2;
   const faces: Face3D[] = [];
@@ -94,7 +110,9 @@ function rackFaces(rack: Rack): Pick<Rack3D, 'faces' | 'slots'> {
   for (const d of rack.devices) {
     const height = d.heightU * U_M - FACE_GAP_M;
     const y = RACK_BASE_M + (d.bottomU - 1) * U_M + (d.heightU * U_M) / 2;
-    faces.push({ id: d.id, name: d.name, category: d.kind === 'chassis' ? 'chassis' : d.category, y, z, width, height, unknown: d.demand.kind === 'unknown' });
+    const unknown = d.demand.kind === 'unknown' || (d.kind === 'chassis' && d.nodes.some((n) => n.demand.kind === 'unknown'));
+    const depth = Math.min(d.depthMm / 1000, rack.d - REAR_CLEARANCE_M);
+    faces.push({ id: d.id, name: d.name, category: d.kind === 'chassis' ? 'chassis' : d.category, y, z, width, height, unknown, depth, heightU: d.heightU, kind: d.kind });
     if (d.kind !== 'chassis') continue;
     const cols = d.slotsPerRow;
     const rows = Math.ceil(d.slotCount / cols);
@@ -115,7 +133,8 @@ function rackFaces(rack: Rack): Pick<Rack3D, 'faces' | 'slots'> {
       });
     }
   }
-  return { faces, slots };
+  const reserved = rack.reserved.map((r) => ({ id: r.id, label: r.label, y: RACK_BASE_M + (r.bottomU - 1) * U_M + (r.heightU * U_M) / 2, height: r.heightU * U_M - FACE_GAP_M }));
+  return { faces, slots, reserved };
 }
 
 export function buildScene(content: PlanContent): Scene3D {
@@ -123,7 +142,7 @@ export function buildScene(content: PlanContent): Scene3D {
   const others: Object3D[] = [];
   for (const o of content.objects) {
     const p = placement(o);
-    if (o.type === 'rack') racks.push({ id: o.id, name: o.name, owner: o.owner, ...p, ...rackFaces(o) });
+    if (o.type === 'rack') racks.push({ id: o.id, name: o.name, owner: o.owner, ...p, ...rackFaces(o), capacityU: o.capacityU, usedU: usedU(o) });
     else others.push({ id: o.id, name: o.name, type: o.type, ...p });
   }
   const columns = content.survey.cutOuts.map((c) => ({ id: c.id, position: [c.x + c.w / 2, COLUMN_HEIGHT_M / 2, c.y + c.d / 2] as Vec3, size: [c.w, COLUMN_HEIGHT_M, c.d] as Vec3 }));

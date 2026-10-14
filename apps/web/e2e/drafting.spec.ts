@@ -3,6 +3,8 @@ import { expect, test } from '@playwright/test';
 test('draw a saved dimension from the wall to a rack; it follows the rack and survives a reload', async ({ page }) => {
   await page.goto('/');
   await page.getByRole('link', { name: /MDF-1/ }).click();
+  // The first fit runs after the canvas is measured; read the footprint only once it has settled.
+  await expect(page.getByTestId('zoom-value')).not.toHaveText('100 px/m');
   const box = await page.getByTestId('footprint').boundingBox();
   if (!box) throw new Error('Footprint not rendered');
   // MDF-1 is 6 × 5 m; RK-01's top-left corner sits at (0.4, 0.6).

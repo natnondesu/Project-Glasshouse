@@ -9,6 +9,8 @@ export interface Palette3D {
   slotEmpty: string;
   unknown: string;
   column: string;
+  wallFill: string;
+  sky: string;
   category: Record<Category, string>;
   object: Record<SimpleObjectType, string>;
 }
@@ -22,6 +24,8 @@ const FALLBACK: Palette3D = {
   slotEmpty: '#56626f',
   unknown: '#b8322a',
   column: '#cbd4dc',
+  wallFill: '#dfe5ea',
+  sky: '#e9eef2',
   category: { compute: '#7fa2e8', storage: '#8fc7b4', network: '#b79af0', power: '#e2b46a', chassis: '#9aa6b2' },
   object: { existing_rack: '#9aa6b2', door: '#b4a794', mcb: '#e2b46a', furniture: '#e2d8ca' },
 };
@@ -39,6 +43,8 @@ export function readPalette(el: Element = document.documentElement): Palette3D {
     slotEmpty: v('--rack-front', FALLBACK.slotEmpty),
     unknown: v('--block', FALLBACK.unknown),
     column: v('--column', FALLBACK.column),
+    wallFill: FALLBACK.wallFill,
+    sky: FALLBACK.sky,
     category: {
       compute: v('--compute', FALLBACK.category.compute),
       storage: v('--storage', FALLBACK.category.storage),

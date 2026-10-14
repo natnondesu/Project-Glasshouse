@@ -1,0 +1,23 @@
+import { chromium } from '@playwright/test';
+const out = process.argv[2];
+const browser = await chromium.launch({ args: ['--use-angle=metal', '--enable-gpu'] });
+const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+const errors = [];
+page.on('pageerror', (e) => errors.push(String(e)));
+page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
+await page.goto('http://localhost:5199/');
+await page.getByRole('link', { name: /MDF-1/ }).click();
+await page.getByRole('link', { name: '3D' }).click();
+await page.locator('.room3d canvas').waitFor();
+await page.waitForTimeout(1200);
+await page.screenshot({ path: `${out}/3d-default.png` });
+await page.getByRole('button', { name: /^RK-01/ }).click();
+await page.waitForTimeout(500);
+await page.screenshot({ path: `${out}/3d-selected.png` });
+const box = await page.locator('.room3d canvas').boundingBox();
+await page.mouse.move(box.x + box.width * 0.36, box.y + box.height * 0.45);
+for (let i = 0; i < 8; i++) { await page.keyboard.down('Control'); await page.mouse.wheel(0, -30); await page.keyboard.up('Control'); }
+await page.waitForTimeout(600);
+await page.screenshot({ path: `${out}/3d-close.png` });
+console.log(errors.length ? errors.join('\n') : 'no console errors');
+await browser.close();
