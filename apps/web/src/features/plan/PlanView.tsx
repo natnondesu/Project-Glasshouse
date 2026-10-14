@@ -13,6 +13,7 @@ import { ZoomControls } from './ZoomControls';
 import { PlanLegend } from './drafting';
 import { hitTest } from './hitTest';
 import { PanelManager } from './PanelManager';
+import { ALL_LAYERS, type PlanLayers } from './ViewMenu';
 import { usePersistentState } from '../../ui/usePersistentState';
 import './plan.css';
 
@@ -27,6 +28,7 @@ export function PlanView({ location, readOnly = false }: { location: RoomLocatio
   const [selectedParam, select] = useSearchParamState('sel');
   const [tool, setTool] = useState<Tool>('select');
   const [legend, setLegend] = usePersistentState('glasshouse:plan-legend', true);
+  const [layers, setLayers] = usePersistentState<PlanLayers>('glasshouse:plan-layers', ALL_LAYERS);
   const [managedPanel, setManagedPanel] = useState<string | null>(null);
   const managed = content.objects.find((o) => o.id === managedPanel && o.type === 'mcb') ?? null;
   useEffect(() => {
@@ -63,14 +65,15 @@ export function PlanView({ location, readOnly = false }: { location: RoomLocatio
           ghost={gestures.ghost}
           draftDimension={gestures.draftDimension}
           showGaps={tool !== 'measure' && tool !== 'dimension'}
+          layers={{ ...ALL_LAYERS, ...layers }}
           measure={gestures.measure}
           cursor={gestures.cursor}
           svgHandlers={gestures.svgHandlers}
           onFocusObject={select}
           inspectorOpen={inspectorOpen}
         />
-        <ZoomControls viewport={viewport} legend={legend} onLegend={setLegend} />
-        {legend ? <PlanLegend view={viewport.view} /> : null}
+        <ZoomControls viewport={viewport} legend={legend} onLegend={setLegend} layers={layers} onLayers={setLayers} />
+        {legend ? <PlanLegend view={viewport.view} clearance={layers.clearance !== false} /> : null}
         {managed ? (
           <fieldset className="inspector__lock" disabled={readOnly}>
             <PanelManager panel={managed} content={content} commit={commit} onClose={() => setManagedPanel(null)} />

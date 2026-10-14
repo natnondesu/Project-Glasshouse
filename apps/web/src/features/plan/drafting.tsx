@@ -84,7 +84,7 @@ export function scaleBar(view: View): { metres: number; px: number } {
   return { metres, px: metres * view.scale };
 }
 
-export function PlanLegend({ view }: { view: View }) {
+export function PlanLegend({ view, clearance = true }: { view: View; clearance?: boolean }) {
   const bar = scaleBar(view);
   return (
     <div className="plan-legend" aria-label="Drawing legend">
@@ -92,10 +92,12 @@ export function PlanLegend({ view }: { view: View }) {
         <span className="plan-legend__scale" style={{ width: bar.px }} />
         {bar.metres < 1 ? `${bar.metres * 100} cm` : `${bar.metres} m`}
       </span>
-      <span className="plan-legend__item">
-        <span className="plan-legend__swatch plan-legend__swatch--clearance" />
-        Clearance zone
-      </span>
+      {clearance ? (
+        <span className="plan-legend__item">
+          <span className="plan-legend__swatch plan-legend__swatch--clearance" />
+          Clearance zone
+        </span>
+      ) : null}
       <span className="plan-legend__item">
         <span className="plan-legend__swatch plan-legend__swatch--front" />
         Rack front

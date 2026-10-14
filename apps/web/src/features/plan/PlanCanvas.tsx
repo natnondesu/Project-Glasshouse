@@ -4,6 +4,7 @@ import type { ViewportApi } from '../../viewport/useViewport';
 import { flaggedObjectIds } from './flagged';
 import { CalloutLayer, GapLayer } from './drafting';
 import { DimensionLayer } from './DimensionLayer';
+import { ALL_LAYERS, type PlanLayers } from './ViewMenu';
 import { FeedLayer } from './feeds';
 import { polygonPath } from './svgPath';
 import { MeasureLayer } from './MeasureLayer';
@@ -46,12 +47,14 @@ interface PlanCanvasProps {
   showGaps?: boolean;
   /** The Dimension tool's line while its offset is being placed. */
   draftDimension?: Dimension | null;
+  /** Drawing layers the viewer has switched off. */
+  layers?: PlanLayers;
 }
 
 const withPreview = (objects: RoomObject[], preview: Preview | null): RoomObject[] =>
   preview?.kind === 'object' ? objects.map((o) => (o.id === preview.id ? { ...o, ...preview.patch } : o)) : objects;
 
-export function PlanCanvas({ content, issues, selectedId, viewport, preview, measure, cursor, svgHandlers, onFocusObject, inspectorOpen = true, ghost = null, showGaps = true, draftDimension = null }: PlanCanvasProps) {
+export function PlanCanvas({ content, issues, selectedId, viewport, preview, measure, cursor, svgHandlers, onFocusObject, inspectorOpen = true, ghost = null, showGaps = true, draftDimension = null, layers = ALL_LAYERS }: PlanCanvasProps) {
   const calloutClearance = inspectorOpen ? INSPECTOR_CLEARANCE_PX : RAIL_CLEARANCE_PX;
   const { view } = viewport;
   const flagged = useMemo(() => flaggedObjectIds(issues), [issues]);
@@ -61,8 +64,10 @@ export function PlanCanvas({ content, issues, selectedId, viewport, preview, mea
   const active = ghost ?? moving ?? selected;
   const liveContent = useMemo(() => {
     const dims = content.dimensions.map((d) => (preview?.kind === 'dimension' && preview.id === d.id ? { ...d, offset: preview.offset } : d));
-    return { ...content, objects, dimensions: draftDimension ? [...dims, draftDimension] : dims };
-  }, [content, objects, preview, draftDimension]);
+    // A hidden dimensions layer still shows the one being drawn, so the tool stays usable.
+    const shown = layers.dimensions ? dims : [];
+    return { ...content, objects, dimensions: draftDimension ? [...shown, draftDimension] : shown };
+  }, [content, objects, preview, draftDimension, layers.dimensions]);
 
   return (
     <svg
@@ -76,16 +81,16 @@ export function PlanCanvas({ content, issues, selectedId, viewport, preview, mea
       <HatchDefs />
       <GridLayer survey={content.survey} view={view} />
       <FootprintLayer survey={content.survey} view={view} />
-      <ClearanceLayer objects={objects} view={view} />
-      <FeedLayer content={liveContent} view={view} />
+      {layers.clearance ? <ClearanceLayer objects={objects} view={view} /> : null}
+      {layers.feeds ? <FeedLayer content={liveContent} view={view} /> : null}
       <ObjectsLayer objects={objects} view={view} flagged={flagged} selectedId={selectedId} onFocusObject={onFocusObject} />
       {selected ? <SelectionLayer object={selected} view={view} /> : null}
-      <DimensionsLayer survey={content.survey} view={view} />
+      {layers.dimensions ? <DimensionsLayer survey={content.survey} view={view} /> : null}
       {preview?.kind === 'rect' ? <FloorPreview preview={preview} view={view} /> : null}
       <DimensionLayer content={liveContent} view={view} selectedId={selectedId} onFocusDimension={onFocusObject} />
       {ghost ? (
         <g className="ghost" aria-hidden="true">
-          <ClearanceLayer objects={[ghost]} view={view} />
+          {layers.clearance ? <ClearanceLayer objects={[ghost]} view={view} /> : null}
           <path className="ghost__body" d={polygonPath(placementPolygon(ghost), view)} />
         </g>
       ) : null}
