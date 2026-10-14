@@ -731,3 +731,42 @@
 .equip-state__btn--maintenance[aria-pressed='true'] .equip-state__glyph {
   color: #ffc46b;
 }
+
+/* Dragging devices between U positions and racks. */
+.dev.is-draggable {
+  cursor: grab;
+  touch-action: none;
+}
+
+body.is-dragging-device,
+body.is-dragging-device * {
+  cursor: grabbing !important;
+  user-select: none;
+}
+
+.dev.is-drag-source {
+  opacity: 0.35;
+}
+
+.drop-ghost rect {
+  fill: color-mix(in oklch, var(--ok) 18%, transparent);
+  stroke: var(--ok);
+  stroke-width: 2;
+  stroke-dasharray: 5 3;
+}
+
+.drop-ghost text {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  fill: var(--ok);
+}
+
+.drop-ghost.is-bad rect {
+  fill: color-mix(in oklch, var(--block) 14%, transparent);
+  stroke: var(--block);
+}
+
+.drop-ghost.is-bad text {
+  fill: var(--block);
+}

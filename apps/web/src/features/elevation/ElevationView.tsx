@@ -29,7 +29,8 @@ import { flaggedObjectIds } from '../plan/flagged';
 import { CatalogPalette } from './CatalogPalette';
 import { EquipmentInspector } from './EquipmentInspector';
 import { PowerBar } from './PowerBar';
-import { RackElevation } from './RackElevation';
+import { rackHitAt, RackElevation } from './RackElevation';
+import { useDeviceDrag } from './deviceDrag';
 import './elevation.css';
 
 const MESSAGE_MS = 4000;
@@ -49,6 +50,15 @@ function entityNames(content: PlanContent): { id: string; name: string }[] {
 
 const PULSE_MS = 1700;
 
+/** Centres an SVG block in the rack scroll area. Firefox ignores scrollIntoView on SVG children, so scroll the area itself. */
+function revealInRacks(el: Element): void {
+  const area = el.closest('.elev__racks');
+  if (!area) return;
+  const a = area.getBoundingClientRect();
+  const r = el.getBoundingClientRect();
+  area.scrollBy?.({ top: r.top + r.height / 2 - (a.top + a.height / 2), left: r.left + r.width / 2 - (a.left + a.width / 2), behavior: 'smooth' });
+}
+
 export function ElevationView({ location, readOnly = false, viewingPast = false }: { location: RoomLocation; readOnly?: boolean; viewingPast?: boolean }) {
   const [inspectorOpen, setInspectorOpen] = usePersistentState('glasshouse:inspector-open', true);
   const [catalogOpen, setCatalogOpen] = usePersistentState('glasshouse:elevation-catalog-open', true);
@@ -64,7 +74,8 @@ export function ElevationView({ location, readOnly = false, viewingPast = false 
   useEffect(() => {
     if (!pulse) return;
     // Bring the hit into view inside the scrolling rack area, then let the flash fade.
-    document.querySelector(`[data-elev-id="${CSS.escape(pulse)}"]`)?.scrollIntoView?.({ block: 'center', inline: 'center', behavior: 'smooth' });
+    const el = document.querySelector(`[data-elev-id="${CSS.escape(pulse)}"]`);
+    if (el) revealInRacks(el);
     const t = setTimeout(() => setPulse(null), PULSE_MS);
     return () => clearTimeout(t);
   }, [pulse]);
@@ -97,6 +108,19 @@ export function ElevationView({ location, readOnly = false, viewingPast = false 
     setMessage(problem);
     if (problem === null) select(id);
   };
+
+  const drag = useDeviceDrag({
+    content,
+    disabled: readOnly,
+    hitTest: rackHitAt,
+    scrollArea: () => document.querySelector<HTMLElement>('.elev__racks'),
+    onDrop: (p) => {
+      // The domain re-checks; a refused drop explains itself in the toast.
+      const problem = commit({ type: 'device/move', id: p.deviceId, rackId: p.rackId, bottomU: p.bottomU });
+      setMessage(problem);
+      if (problem === null) select(p.deviceId);
+    },
+  });
 
   if (racks.length === 0) {
     return (
@@ -157,6 +181,8 @@ export function ElevationView({ location, readOnly = false, viewingPast = false 
             onActivate={() => select(rack.id)}
             pulseId={pulse}
             stateOf={stateOf}
+            dragPreview={drag.preview}
+            onDeviceDragStart={readOnly ? undefined : drag.start}
             onDropTemplate={(templateId, u) => {
               const template = catalog.find((t) => t.id === templateId);
               if (template) place(template, rack, u);

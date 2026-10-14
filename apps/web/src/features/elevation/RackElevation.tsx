@@ -1,7 +1,8 @@
 import { EQUIPMENT_STATE_LABEL, formatDemand, formatURange, type EquipmentState, rackPower, topU, usedU, type Chassis, type Rack, type RackDevice, type ReservedRange } from '@glasshouse/domain';
-import type { DragEvent, KeyboardEvent } from 'react';
+import type { DragEvent, KeyboardEvent, PointerEvent } from 'react';
 import { TEMPLATE_MIME } from './dnd';
 import { STATE_SYMBOL } from './EquipmentStateControl';
+import type { DropPreview, RackHit } from './deviceDrag';
 import './elevation.css';
 import '../search/search.css';
 
@@ -38,6 +39,9 @@ interface RackElevationProps {
   pulseId?: string | null;
   /** On-site state per device or node; absent means planned. */
   stateOf?: (id: string) => EquipmentState;
+  /** Where a dragged device would land, if over this rack. */
+  dragPreview?: DropPreview | null;
+  onDeviceDragStart?: (e: PointerEvent, deviceId: string, bottomU: number) => void;
 }
 
 const categoryOf = (d: RackDevice): string => (d.kind === 'chassis' ? 'chassis' : d.category);
@@ -91,13 +95,18 @@ function control(isStatic: boolean, label: string, selected: boolean, onClick: (
   return isStatic ? {} : { role: 'button', tabIndex: 0, 'aria-label': label, 'aria-pressed': selected, onClick, onKeyDown: onKey };
 }
 
-function DeviceBlock(props: { device: RackDevice; y: number; selected: boolean; flagged: boolean; onSelect: (id: string) => void; onKey: (e: KeyboardEvent) => void; isStatic: boolean; pulse: boolean; state: EquipmentState; stateOf: (id: string) => EquipmentState }) {
-  const { device, y, selected, flagged, onSelect, onKey, isStatic, pulse, state, stateOf } = props;
+function DeviceBlock(props: { device: RackDevice; y: number; selected: boolean; flagged: boolean; onSelect: (id: string) => void; onKey: (e: KeyboardEvent) => void; isStatic: boolean; pulse: boolean; state: EquipmentState; stateOf: (id: string) => EquipmentState; dragSource: boolean; onDragStart?: (e: PointerEvent) => void }) {
+  const { device, y, selected, flagged, onSelect, onKey, isStatic, pulse, state, stateOf, dragSource, onDragStart } = props;
   const h = device.heightU * U_PX;
   const textY = y + Math.min(h, 32) / 2 + 4;
   const classes = ['dev', `dev--${categoryOf(device)}`, selected ? 'is-selected' : '', flagged ? 'is-flagged' : ''].filter(Boolean).join(' ');
   return (
-    <g className={`${classes} dev--state-${state}${pulse ? ' is-search-pulse' : ''}`} data-elev-id={device.id} {...control(isStatic, `${device.name}, ${formatURange(device)}`, selected, () => onSelect(device.id), onKey)}>
+    <g
+      className={`${classes} dev--state-${state}${pulse ? ' is-search-pulse' : ''}${dragSource ? ' is-drag-source' : ''}${onDragStart ? ' is-draggable' : ''}`}
+      data-elev-id={device.id}
+      onPointerDown={onDragStart}
+      {...control(isStatic, `${device.name}, ${formatURange(device)}`, selected, () => onSelect(device.id), onKey)}
+    >
       <title>{`${device.name}, ${formatURange(device)} · ${EQUIPMENT_STATE_LABEL[state]}`}</title>
       <rect x={4} y={y + 1} width={RACK_W - 8} height={h - 2} rx={3} className="dev__body" />
       <text x={STATE_X} y={textY} className="dev__state" textAnchor="middle">
@@ -144,7 +153,32 @@ function ReservedBlock(props: { range: ReservedRange; y: number; patternId: stri
   );
 }
 
-export function RackElevation({ rack, active, selectedId, flagged, onSelect, onActivate, onDropTemplate, isStatic = false, pulseId = null, stateOf = PLANNED }: RackElevationProps) {
+function DropGhost({ preview, y }: { preview: DropPreview; y: number }) {
+  const h = preview.heightU * U_PX;
+  const range = preview.heightU === 1 ? `U${preview.bottomU}` : `U${preview.bottomU}–U${preview.bottomU + preview.heightU - 1}`;
+  return (
+    <g className={`drop-ghost${preview.ok ? '' : ' is-bad'}`} aria-hidden="true">
+      <rect x={2} y={y} width={RACK_W - 4} height={h} rx={4} />
+      <text x={RACK_W / 2} y={y + Math.min(h, 32) / 2 + 4} textAnchor="middle">
+        {fitText(preview.ok ? `Move to ${range}` : (preview.reason ?? 'Not here'), RACK_W - 16, SUB_CHAR_PX)}
+      </text>
+    </g>
+  );
+}
+
+/** The rack and U under a client point, for pointer drags; null between racks. */
+export function rackHitAt(x: number, y: number): RackHit | null {
+  const svg = document
+    .elementsFromPoint(x, y)
+    .map((el) => el.closest('svg[data-rack-id]'))
+    .find((el): el is SVGSVGElement => el instanceof SVGSVGElement);
+  if (!svg) return null;
+  const capacityU = Number(svg.dataset.capacityU);
+  const top = svg.getBoundingClientRect().top;
+  return { rackId: svg.dataset.rackId!, pointerU: capacityU - Math.floor((y - top - PAD) / U_PX) };
+}
+
+export function RackElevation({ rack, active, selectedId, flagged, onSelect, onActivate, onDropTemplate, isStatic = false, pulseId = null, stateOf = PLANNED, dragPreview = null, onDeviceDragStart }: RackElevationProps) {
   const height = rack.capacityU * U_PX;
   const yTop = (top: number): number => PAD + (rack.capacityU - top) * U_PX;
   const power = rackPower(rack);
@@ -193,7 +227,7 @@ export function RackElevation({ rack, active, selectedId, flagged, onSelect, onA
         width={LABEL_W * 2 + RACK_W}
         height={height + PAD * 2}
         viewBox={`0 0 ${LABEL_W * 2 + RACK_W} ${height + PAD * 2}`}
-        role="group" aria-label={`${rack.name} front elevation, ${rack.capacityU}U`} onDragOver={onDragOver} onDrop={onDrop}>
+        role="group" aria-label={`${rack.name} front elevation, ${rack.capacityU}U`} data-rack-id={rack.id} data-capacity-u={rack.capacityU} onDragOver={onDragOver} onDrop={onDrop}>
         <defs>
           <pattern id={patternId} width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(-45)">
             <path d="M0 0V8" className="rsv-hatch" />
@@ -217,8 +251,9 @@ export function RackElevation({ rack, active, selectedId, flagged, onSelect, onA
             <ReservedBlock key={r.id} range={r} y={yTop(topU(r))} patternId={patternId} selected={r.id === selectedId} onSelect={onSelect} onKey={keySelect(r.id)} isStatic={isStatic} pulse={r.id === pulseId} />
           ))}
           {rack.devices.map((d) => (
-            <DeviceBlock key={d.id} device={d} y={yTop(topU(d))} selected={d.id === selectedId} flagged={flagged.has(d.id)} onSelect={onSelect} onKey={keySelect(d.id)} isStatic={isStatic} pulse={d.id === pulseId || (d.kind === 'chassis' && d.nodes.some((n) => n.id === pulseId))} state={stateOf(d.id)} stateOf={stateOf} />
+            <DeviceBlock key={d.id} device={d} y={yTop(topU(d))} selected={d.id === selectedId} flagged={flagged.has(d.id)} onSelect={onSelect} onKey={keySelect(d.id)} isStatic={isStatic} pulse={d.id === pulseId || (d.kind === 'chassis' && d.nodes.some((n) => n.id === pulseId))} state={stateOf(d.id)} stateOf={stateOf} dragSource={dragPreview?.deviceId === d.id} onDragStart={!isStatic && onDeviceDragStart ? (e) => onDeviceDragStart(e, d.id, d.bottomU) : undefined} />
           ))}
+          {dragPreview && dragPreview.rackId === rack.id ? <DropGhost preview={dragPreview} y={yTop(dragPreview.bottomU + dragPreview.heightU - 1)} /> : null}
         </g>
       </svg>
     </figure>
