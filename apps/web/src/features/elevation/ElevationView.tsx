@@ -1,3 +1,5 @@
+import { PanelCollapseTab, PanelRail } from '../../ui/PanelRail';
+import { usePersistentState } from '../../ui/usePersistentState';
 import {
   revisionIssues,
   currentRevision,
@@ -42,6 +44,7 @@ function entityNames(content: PlanContent): { id: string; name: string }[] {
 }
 
 export function ElevationView({ location, readOnly = false }: { location: RoomLocation; readOnly?: boolean }) {
+  const [inspectorOpen, setInspectorOpen] = usePersistentState('glasshouse:inspector-open', true);
   const revision = currentRevision(location.room.plan);
   const content = revision.content;
   const roomId = location.room.id;
@@ -91,7 +94,7 @@ export function ElevationView({ location, readOnly = false }: { location: RoomLo
   }
 
   return (
-    <div className="elev">
+    <div className={`elev${inspectorOpen ? '' : ' is-inspector-closed'}`}>
       <aside className="elev__side" aria-label="Catalog and checks">
         <div className="glass elev__palette">
           <CatalogPalette catalog={catalog} activeRack={activeRack} onAdd={(t) => activeRack && place(t, activeRack)} disabled={readOnly} />
@@ -118,7 +121,14 @@ export function ElevationView({ location, readOnly = false }: { location: RoomLo
           />
         ))}
       </section>
-      <EquipmentInspector content={content} roomId={roomId} selectedId={selectedId} activeRack={activeRack} catalog={catalog} commit={commit} onSelect={select} readOnly={readOnly} />
+      {inspectorOpen ? (
+        <>
+          <PanelCollapseTab label="Inspector" side="right" className="elev__tab" onCollapse={() => setInspectorOpen(false)} />
+          <EquipmentInspector content={content} roomId={roomId} selectedId={selectedId} activeRack={activeRack} catalog={catalog} commit={commit} onSelect={select} readOnly={readOnly} />
+        </>
+      ) : (
+        <PanelRail label="Inspector" side="right" className="elev__rail" onExpand={() => setInspectorOpen(true)} />
+      )}
       {message ? (
         <p role="status" className="elev__message">
           {message}

@@ -3,7 +3,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState, type RefObje
 import { fit, pan, toWorld, wheelZoomFactor, zoomAt, type Insets, type View } from './math';
 
 /** Leaves room for the floating glass panels: tools (left), inspector (right), checks (bottom). */
-const FIT_INSETS: Insets = { top: 72, right: 392, bottom: 210, left: 132 };
+export const FIT_INSETS: Insets = { top: 72, right: 392, bottom: 210, left: 132 };
 
 export interface ViewportApi {
   svgRef: RefObject<SVGSVGElement | null>;
@@ -15,7 +15,7 @@ export interface ViewportApi {
   panBy: (dx: number, dy: number) => void;
 }
 
-export function useViewport(content: { w: number; d: number }): ViewportApi {
+export function useViewport(content: { w: number; d: number }, insetRight: number = FIT_INSETS.right): ViewportApi {
   const svgRef = useRef<SVGSVGElement | null>(null);
   const [size, setSize] = useState({ width: 0, height: 0 });
   const [view, setView] = useState<View>({ scale: 100, tx: 0, ty: 0 });
@@ -35,8 +35,16 @@ export function useViewport(content: { w: number; d: number }): ViewportApi {
   useEffect(() => {
     if (fitted.current || size.width === 0 || size.height === 0) return;
     fitted.current = true;
-    setView(fit({ w, d }, size, FIT_INSETS));
-  }, [size, w, d]);
+    setView(fit({ w, d }, size, { ...FIT_INSETS, right: insetRight }));
+  }, [size, w, d, insetRight]);
+
+  // Opening or closing a side panel changes the free area: refit so the room stays in view.
+  const lastInset = useRef(insetRight);
+  useEffect(() => {
+    if (lastInset.current === insetRight || !fitted.current) return;
+    lastInset.current = insetRight;
+    setView(fit({ w, d }, size, { ...FIT_INSETS, right: insetRight }));
+  }, [insetRight, size, w, d]);
 
   useEffect(() => {
     const el = svgRef.current;
@@ -67,7 +75,7 @@ export function useViewport(content: { w: number; d: number }): ViewportApi {
     view,
     clientToWorld,
     zoomBy: (factor) => setView((v) => zoomAt(v, factor, size.width / 2, size.height / 2)),
-    fitToContent: () => setView(fit({ w, d }, size, FIT_INSETS)),
+    fitToContent: () => setView(fit({ w, d }, size, { ...FIT_INSETS, right: insetRight })),
     panBy: (dx, dy) => setView((v) => pan(v, dx, dy)),
   };
 }

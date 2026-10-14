@@ -24,6 +24,7 @@ export type SvgHandlers = Pick<
 
 /** Width the glass inspector covers on the right of the canvas. */
 const INSPECTOR_CLEARANCE_PX = 380;
+const RAIL_CLEARANCE_PX = 70;
 
 interface PlanCanvasProps {
   content: PlanContent;
@@ -35,12 +36,14 @@ interface PlanCanvasProps {
   cursor: string;
   svgHandlers?: SvgHandlers;
   onFocusObject: (id: string) => void;
+  inspectorOpen?: boolean;
 }
 
 const withPreview = (objects: RoomObject[], preview: Preview | null): RoomObject[] =>
   preview?.kind === 'object' ? objects.map((o) => (o.id === preview.id ? { ...o, ...preview.patch } : o)) : objects;
 
-export function PlanCanvas({ content, issues, selectedId, viewport, preview, measure, cursor, svgHandlers, onFocusObject }: PlanCanvasProps) {
+export function PlanCanvas({ content, issues, selectedId, viewport, preview, measure, cursor, svgHandlers, onFocusObject, inspectorOpen = true }: PlanCanvasProps) {
+  const calloutClearance = inspectorOpen ? INSPECTOR_CLEARANCE_PX : RAIL_CLEARANCE_PX;
   const { view } = viewport;
   const flagged = useMemo(() => flaggedObjectIds(issues), [issues]);
   const objects = withPreview(content.objects, preview);
@@ -63,7 +66,7 @@ export function PlanCanvas({ content, issues, selectedId, viewport, preview, mea
       {selected ? <SelectionLayer object={selected} view={view} /> : null}
       <DimensionsLayer survey={content.survey} view={view} />
       {preview?.kind === 'rect' ? <FloorPreview preview={preview} view={view} /> : null}
-      <CalloutLayer issues={issues} objects={objects} view={view} maxX={viewport.size.width - INSPECTOR_CLEARANCE_PX} />
+      <CalloutLayer issues={issues} objects={objects} view={view} maxX={viewport.size.width - calloutClearance} />
       {measure ? <MeasureLayer measure={measure} content={content} view={view} /> : null}
     </svg>
   );

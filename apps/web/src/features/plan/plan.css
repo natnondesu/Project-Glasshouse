@@ -12,6 +12,7 @@
   --d-block: #b3261e;
   --d-block-bg: #fbedeb;
   --d-sel: #1c64c8;
+  --inspector-space: 376px;
 
   position: relative;
   flex: 1;
@@ -375,7 +376,7 @@
 
 .plan-legend {
   position: absolute;
-  right: 376px;
+  right: var(--inspector-space);
   top: 64px;
   z-index: 2;
   display: flex;
@@ -469,7 +470,7 @@
 
 .zoom {
   position: absolute;
-  right: 376px;
+  right: var(--inspector-space);
   top: 12px;
   z-index: 2;
   display: flex;
@@ -531,4 +532,20 @@
     opacity: 0;
     transform: translate(-50%, 8px);
   }
+}
+
+.plan-view.is-inspector-closed {
+  --inspector-space: 68px;
+}
+
+.plan-view__rail {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  bottom: 12px;
+  z-index: 2;
+}
+
+.plan-view__tab {
+  right: 356px;
 }

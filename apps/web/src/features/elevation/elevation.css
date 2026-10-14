@@ -572,3 +572,16 @@
   stroke: var(--ink);
   stroke-width: 3;
 }
+
+.elev.is-inspector-closed {
+  grid-template-columns: 236px minmax(0, 1fr) 44px;
+}
+
+.elev__rail {
+  grid-column: 3;
+  grid-row: 1 / span 2;
+}
+
+.elev__tab {
+  right: 324px;
+}

@@ -1,6 +1,8 @@
 import { useEffect } from 'react';
 import { Outlet, useMatch } from 'react-router';
 import { ProjectTree } from '../features/tree/ProjectTree';
+import { PanelRail } from '../ui/PanelRail';
+import { usePersistentState } from '../ui/usePersistentState';
 import { useWorkspaceStore } from '../store/workspaceStore';
 import { TitleBlock } from './TitleBlock';
 import './shell.css';
@@ -14,6 +16,7 @@ export function Shell() {
   const undo = useWorkspaceStore((s) => s.undo);
   const redo = useWorkspaceStore((s) => s.redo);
   const readOnly = useWorkspaceStore((s) => s.readOnly);
+  const [treeOpen, setTreeOpen] = usePersistentState('glasshouse:tree-open', true);
 
   // Window-level so undo still works when focus falls back to <body>, e.g. right after a delete.
   useEffect(() => {
@@ -37,7 +40,7 @@ export function Shell() {
         </p>
       ) : null}
       <div className="shell__body">
-        <ProjectTree activeRoomId={roomId} />
+        {treeOpen ? <ProjectTree activeRoomId={roomId} onCollapse={() => setTreeOpen(false)} /> : <PanelRail label="Projects" side="left" onExpand={() => setTreeOpen(true)} />}
         <main className="shell__main">
           <Outlet />
         </main>

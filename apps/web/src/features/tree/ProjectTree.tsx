@@ -3,14 +3,14 @@ import { useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { useWorkspaceStore } from '../../store/workspaceStore';
 import { readJsonFile } from '../../ui/files';
-import { IconPlus, IconUpload } from '../../ui/icons';
+import { IconChevronLeft, IconPlus, IconUpload } from '../../ui/icons';
 import { ImportDialog } from '../handoff/ImportDialog';
 import { pad2, STATE_LABEL } from '../../ui/StatusStamp';
 import { BackupPanel } from './BackupPanel';
 import { TreeRow } from './TreeRow';
 import './tree.css';
 
-export function ProjectTree({ activeRoomId }: { activeRoomId: string | null }) {
+export function ProjectTree({ activeRoomId, onCollapse }: { activeRoomId: string | null; onCollapse?: () => void }) {
   const projects = useWorkspaceStore((s) => s.workspace.projects);
   const templateCount = useWorkspaceStore((s) => s.workspace.catalog.length);
   const dispatch = useWorkspaceStore((s) => s.dispatch);
@@ -63,6 +63,11 @@ export function ProjectTree({ activeRoomId }: { activeRoomId: string | null }) {
           <button type="button" className="icon-btn" aria-label="New project" title="New project" onClick={addProject}>
             <IconPlus />
           </button>
+          {onCollapse ? (
+            <button type="button" className="icon-btn" aria-label="Hide projects" aria-expanded title="Hide projects" onClick={onCollapse}>
+              <IconChevronLeft />
+            </button>
+          ) : null}
         </span>
         <input
           ref={fileInput}
