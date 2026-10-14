@@ -16,7 +16,7 @@ async function roomWithServer(page: Page): Promise<void> {
   if (!box) throw new Error('Footprint not rendered');
   await page.mouse.click(box.x + box.width * 0.3, box.y + box.height * 0.35);
   await page.getByRole('link', { name: 'Elevation' }).click();
-  await page.getByRole('button', { name: 'Add Server 2U to RK-01' }).click();
+  await page.getByRole('button', { name: 'Add Compute Server 4U to RK-01' }).click();
 }
 
 test('AC13/AC16: submit, freeze, self-approve, start a new draft', async ({ page }) => {
