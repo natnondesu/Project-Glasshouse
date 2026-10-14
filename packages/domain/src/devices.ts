@@ -1,7 +1,7 @@
 import { isRack } from './model/types';
 import type { Category, Chassis, Id, Node, PlanContent, Rack, RackDevice, ReservedRange, Template, Units } from './model/types';
 
-const PREFIX: Record<Category, string> = { compute: 'SRV', storage: 'STO', network: 'SW', power: 'PWR', chassis: 'CH' };
+const PREFIX: Record<Category, string> = { compute: 'SRV', storage: 'STO', network: 'SW', power: 'PWR', chassis: 'CH', misc: 'MISC' };
 
 export const racksOf = (content: PlanContent): Rack[] => content.objects.filter(isRack);
 

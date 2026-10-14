@@ -1,9 +1,11 @@
+import { CATEGORY_LABEL } from '../catalog';
 import { describe, expect, it } from 'vitest';
 import { SEED_TEMPLATE_IDS } from '../catalog';
 import { formatDemand, known, sumDemand, unknownDemand } from '../demand';
 import { createWorkspace } from '../factories';
 import type { Template, Workspace } from '../model/types';
 import { apply, type WorkspaceCommand } from './workspace';
+import { applyCatalogCommand } from './catalog';
 
 const custom = (over: Partial<Template> = {}): Omit<Template, 'version'> => ({
   id: 't-gpu',
@@ -88,5 +90,16 @@ describe('catalog commands', () => {
     ws = run(ws, { type: 'catalog/seed' });
     expect(ws.catalog.some((t) => t.id === 'tpl-node')).toBe(true);
     expect(ws.catalog.find((t) => t.id === 'tpl-server-1u')).toMatchObject({ label: 'Our 1U', version: 2 });
+  });
+});
+
+describe('misc category', () => {
+  it('holds passive gear such as patch panels and cable management, at 0 W', () => {
+    const r = applyCatalogCommand([], {
+      type: 'template/create',
+      template: { id: 'tpl-patch', label: 'Patch panel 24p', model: 'Cat6A 24-port 1U', category: 'misc', mounting: 'rack', heightU: 1, depthMm: 120, demand: { kind: 'known', watts: 0 }, color: '', defaultConfig: '', slotCount: null, slotsPerRow: null, illustrative: false },
+    });
+    expect(r.ok && r.value[0]).toMatchObject({ category: 'misc', demand: { kind: 'known', watts: 0 } });
+    expect(CATEGORY_LABEL.misc).toBe('Misc');
   });
 });

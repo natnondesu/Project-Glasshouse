@@ -5,7 +5,7 @@ import { DemandField } from '../../ui/DemandField';
 import { NumberField } from '../../ui/NumberField';
 import { TextField } from '../../ui/TextField';
 
-export const CATEGORY_ORDER: Category[] = ['compute', 'chassis', 'network', 'storage', 'power'];
+export const CATEGORY_ORDER: Category[] = ['compute', 'chassis', 'network', 'storage', 'power', 'misc'];
 
 export const blankTemplate = (): Template => ({
   id: newId(),

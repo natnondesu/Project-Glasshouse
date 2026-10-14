@@ -7,7 +7,8 @@ export type Watts = number;
 /** Demand is either known or explicitly unknown — never an implied zero. */
 export type Demand = { kind: 'known'; watts: Watts } | { kind: 'unknown' };
 
-export type Category = 'compute' | 'storage' | 'network' | 'power' | 'chassis';
+/** `misc` is for passive rack gear: patch panels, cable management, blanking panels, shelves. */
+export type Category = 'compute' | 'storage' | 'network' | 'power' | 'chassis' | 'misc';
 export type Mounting = 'rack' | 'slot';
 
 export interface Template {
