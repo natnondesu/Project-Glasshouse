@@ -67,7 +67,12 @@ export function DimensionLayer({ content, view, selectedId = null, onFocusDimens
           ? {}
           : { role: 'button', tabIndex: 0, 'aria-label': dimensionLabel(content, dim, length), 'aria-pressed': selected, onFocus: () => onFocusDimension?.(dim.id) };
         return (
-          <g key={dim.id} className={`pdim${selected ? ' is-selected' : ''}`} data-dimension-id={dim.id} {...interactive}>
+          <g
+            key={dim.id}
+            className={`pdim${selected ? ' is-selected' : ''}${dim.id === 'draft' ? ' is-draft' : ''}`}
+            {...(dim.id === 'draft' ? {} : { 'data-dimension-id': dim.id })}
+            {...(dim.id === 'draft' ? {} : interactive)}
+          >
             {dim.offset !== 0 ? <path className="pdim__ext" d={`M${sa[0]} ${sa[1]} L${pa[0]} ${pa[1]} M${sb[0]} ${sb[1]} L${pb[0]} ${pb[1]}`} /> : null}
             <path className="pdim__line" d={`M${pa[0]} ${pa[1]} L${pb[0]} ${pb[1]} ${tick(pa)} ${tick(pb)}`} />
             {isStatic ? null : <path className="pdim__hit" d={`M${pa[0]} ${pa[1]} L${pb[0]} ${pb[1]}`} strokeWidth={HIT_STROKE_PX} />}

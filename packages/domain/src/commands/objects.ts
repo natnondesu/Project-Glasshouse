@@ -1,7 +1,7 @@
 import { usesObject } from '../dimensions';
 import { centerOf, placementWithin, rotatedBoundsSize, topLeftForCenter } from '../geometry/polygon';
 import { LIMITS } from '../model/defaults';
-import type { Id, Metres, Millimetres, PlanContent, Rack, RackOwner, RoomObject, Survey, Units } from '../model/types';
+import type { Id, Metres, Millimetres, PlanContent, Rack, RackOwner, RoomObject, Survey, Units, DoorHinge } from '../model/types';
 import { err, ok, withTarget, type Failure, type Result } from '../result';
 import { formatMetres, normalizeAngle, rackAutoHeightM, snapTyped } from '../units';
 import { rackSpans, topU } from '../occupancy';
@@ -20,6 +20,7 @@ export interface ObjectPatch {
   usableDepthMm?: Millimetres;
   owner?: RackOwner;
   clearance?: Partial<Rack['clearance']>;
+  hinge?: DoorHinge;
 }
 
 export type ObjectCommand =
@@ -120,6 +121,7 @@ export function updateObject(content: PlanContent, id: Id, patch: ObjectPatch): 
   if (current.type !== 'rack' && RACK_ONLY.some((key) => patch[key] !== undefined)) {
     return err('invalid_value', `${current.name} is not a rack.`, [id]);
   }
+  if (patch.hinge !== undefined && current.type !== 'door') return err('invalid_value', `${current.name} is not a door.`, [id]);
   const { clearance, capacityU, usableDepthMm, owner, ...common } = patch;
   let merged: RoomObject =
     current.type === 'rack'

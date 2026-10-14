@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { applyPlanCommand } from './commands/plan';
-import { anchorAt, dimensionLength, dimensionPoints } from './dimensions';
+import { anchorAt, dimensionLength, dimensionPoints, offsetFromPoint } from './dimensions';
 import { emptyContent } from './factories';
 import { migrate } from './migrations';
 import { parseWorkspace } from './schema';
@@ -76,5 +76,14 @@ describe('persistent dimensions', () => {
     if (!parsed.ok) throw new Error(parsed.error.message);
     expect(parsed.value.schemaVersion).toBe(2);
     expect(parsed.value.projects[0]!.sites[0]!.rooms[0]!.plan.revisions[0]!.content.dimensions).toEqual([]);
+  });
+});
+
+describe('offsetFromPoint', () => {
+  it('gives the signed distance of a point from the measured line along (−Δy, Δx), snapped to 5 cm', () => {
+    // a→b runs along +x, so the positive side is +y: further down the plan.
+    expect(offsetFromPoint([0, 0], [2, 0], [1, 0.42])).toBeCloseTo(0.4, 9);
+    expect(offsetFromPoint([0, 0], [2, 0], [1, -0.33])).toBeCloseTo(-0.35, 9);
+    expect(offsetFromPoint([0, 0], [0, 0], [1, 1])).toBe(0);
   });
 });

@@ -615,3 +615,77 @@
 .pdim:focus-visible .pdim__label {
   fill: var(--d-sel);
 }
+
+.obj--door .obj__body {
+  fill: var(--paper);
+  stroke: none;
+}
+
+.obj--door:hover .obj__body {
+  fill: var(--paper);
+}
+
+.door__jamb,
+.door__leaf {
+  fill: none;
+  stroke: var(--d-ink);
+  stroke-width: 1.5;
+}
+
+.door__swing {
+  fill: none;
+  stroke: var(--d-ink-2);
+  stroke-width: 0.9;
+  stroke-dasharray: 3 3;
+}
+
+.obj.is-selected .door__leaf,
+.obj.is-selected .door__jamb {
+  stroke: var(--d-sel);
+}
+
+.mcb__bolt {
+  fill: none;
+  stroke: var(--d-ink);
+  stroke-width: 1.4;
+  stroke-linejoin: round;
+}
+
+.obj__hover-tag {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--duration-fast) ease-out;
+}
+
+.obj__hover-tag rect {
+  fill: var(--d-ink);
+}
+
+.obj__hover {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 600;
+  fill: var(--paper);
+}
+
+.obj:hover .obj__hover-tag,
+.obj:focus-visible .obj__hover-tag {
+  opacity: 1;
+}
+
+.pdim.is-draft {
+  pointer-events: none;
+}
+
+.pdim.is-draft .pdim__line {
+  stroke: var(--d-sel);
+  stroke-dasharray: 5 3;
+}
+
+.pdim.is-draft .pdim__label {
+  fill: var(--d-sel);
+}
+
+.pdim:not(.is-draft) .pdim__hit {
+  cursor: move;
+}

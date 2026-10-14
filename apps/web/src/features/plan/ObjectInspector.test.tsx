@@ -30,3 +30,13 @@ it('shows the survey when nothing is selected', () => {
   expect(screen.getByRole('heading', { name: 'Survey' })).toBeInTheDocument();
   expect(screen.getByLabelText('Width')).toHaveValue('5.00');
 });
+
+it('sets which end a door is hinged on', async () => {
+  const user = userEvent.setup();
+  const door = { ...createObject('door', { x: 1, y: 0 }, []), name: 'D-01' };
+  const commit = vi.fn<(command: unknown, coalesceKey?: string) => string | null>(() => null);
+  render(<Inspector content={{ ...emptyContent(), objects: [door] }} selected={door} commit={commit} onDeleted={() => {}} />);
+  expect(screen.getByRole('button', { name: 'Left' })).toHaveAttribute('aria-pressed', 'true');
+  await user.click(screen.getByRole('button', { name: 'Right' }));
+  expect(commit).toHaveBeenLastCalledWith({ type: 'object/update', id: door.id, patch: { hinge: 'right' } }, undefined);
+});

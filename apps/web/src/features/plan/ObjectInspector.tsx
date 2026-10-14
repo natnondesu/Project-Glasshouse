@@ -49,6 +49,19 @@ export function ObjectInspector({ object, commit, onDeleted }: ObjectInspectorPr
             </div>
           </div>
         ) : null}
+        {object.type === 'door' ? (
+          <div className="field">
+            <span className="field__label">Hinge</span>
+            <div className="seg" role="group" aria-label="Door hinge">
+              {(['left', 'right'] as const).map((hinge) => (
+                <button key={hinge} type="button" aria-pressed={(object.hinge ?? 'left') === hinge} onClick={() => act(() => update({ hinge }))}>
+                  {hinge === 'left' ? 'Left' : 'Right'}
+                </button>
+              ))}
+            </div>
+            <span className="inspector__note">Rotate the door to change which side it swings to.</span>
+          </div>
+        ) : null}
       </fieldset>
 
       <fieldset className="inspector__group">

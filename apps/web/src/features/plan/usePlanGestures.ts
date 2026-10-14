@@ -1,5 +1,5 @@
 import type { CommitFn } from '../../store/hooks';
-import { anchorAt, createObject, newId, snapDrag, snapFloor, type Id, type PlanCommand, type PlanContent, type Point, type RoomObject, type RoomObjectType } from '@glasshouse/domain';
+import { anchorAt, createObject, dimensionPoints, newId, offsetFromPoint, type Dimension, snapDrag, snapFloor, type Id, type PlanCommand, type PlanContent, type Point, type RoomObject, type RoomObjectType } from '@glasshouse/domain';
 import { useEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react';
 import type { ViewportApi } from '../../viewport/useViewport';
 import { clampIntoRoom } from './clamp';
@@ -17,7 +17,14 @@ type Gesture =
   | { kind: 'pan'; lastX: number; lastY: number }
   | { kind: 'move'; id: Id; origin: Point; start: { x: number; y: number }; startClient: Point; dragging: boolean }
   | { kind: 'resize'; id: Id; handle: Handle }
-  | { kind: 'rect'; mode: 'area' | 'cut'; origin: Point };
+  | { kind: 'rect'; mode: 'area' | 'cut'; origin: Point }
+  | { kind: 'dimOffset'; id: Id; startClient: Point; dragging: boolean };
+
+/** The Dimension tool is three clicks: first point, second point, then where the dimension line goes. */
+interface DimensionDraft {
+  a: SnapTarget;
+  b: SnapTarget | null;
+}
 
 const DRAG_THRESHOLD_PX = 4;
 const MESSAGE_MS = 4000;
@@ -61,13 +68,23 @@ export function usePlanGestures({ content, tool, setTool, selectedId, select, vi
   const [message, setMessage] = useState<string | null>(null);
   const [measure, setMeasure] = useState<MeasureState>(NO_MEASURE);
   const [ghost, setGhost] = useState<RoomObject | null>(null);
-  const dimensionStart = useRef<SnapTarget | null>(null);
+  // A ref, not render state: quick clicks must each see the previous one.
+  const dimensionDraft = useRef<DimensionDraft | null>(null);
+  const [draftDimension, setDraftDimension] = useState<Dimension | null>(null);
 
   useEffect(() => {
-    dimensionStart.current = null;
+    dimensionDraft.current = null;
+    setDraftDimension(null);
     setMeasure(NO_MEASURE);
     setGhost(null);
   }, [tool]);
+
+  const draftFor = (a: SnapTarget, b: SnapTarget, offset: number): Dimension => ({
+    id: 'draft',
+    a: anchorAt(content, a.point, a.objectId),
+    b: anchorAt(content, b.point, b.objectId),
+    offset,
+  });
 
   /** Where a placement tool drops its object for a cursor position; the ghost and the click share it. */
   const placementAt = (type: RoomObjectType, world: Point): RoomObject => {
@@ -113,19 +130,29 @@ export function usePlanGestures({ content, tool, setTool, selectedId, select, vi
     }
     if (tool === 'dimension' && !readOnly) {
       const snap = snapMeasurePoint(world, content, MEASURE_SNAP_PX / viewport.view.scale);
-      // A ref, not render state: two quick clicks must not both read "no first point yet".
-      const start = dimensionStart.current;
-      if (start === null) {
-        dimensionStart.current = snap;
+      const draft = dimensionDraft.current;
+      if (draft === null) {
+        dimensionDraft.current = { a: snap, b: null };
         setMeasure((m) => ({ ...m, a: snap, b: null }));
         return;
       }
-      dimensionStart.current = null;
+      if (draft.b === null) {
+        if (Math.hypot(snap.point[0] - draft.a.point[0], snap.point[1] - draft.a.point[1]) < 0.01) {
+          setMessage('Pick two different points.');
+          return;
+        }
+        dimensionDraft.current = { a: draft.a, b: snap };
+        setMeasure(NO_MEASURE);
+        setDraftDimension(draftFor(draft.a, snap, 0));
+        return;
+      }
+      // Third click: the dimension line goes where the pointer is.
+      dimensionDraft.current = null;
+      setDraftDimension(null);
       const id = newId();
-      const added = run({ type: 'dimension/add', dimension: { id, a: anchorAt(content, start.point, start.objectId), b: anchorAt(content, snap.point, snap.objectId), offset: 0 } });
+      const offset = offsetFromPoint(draft.a.point, draft.b.point, world);
       // Stay in the tool so a row of dimensions can be drawn one after another.
-      setMeasure((m) => ({ ...m, a: null, b: null }));
-      if (added) select(id);
+      if (run({ type: 'dimension/add', dimension: { ...draftFor(draft.a, draft.b, offset), id } })) select(id);
       return;
     }
     if (readOnly) {
@@ -149,6 +176,7 @@ export function usePlanGestures({ content, tool, setTool, selectedId, select, vi
     const dimensionId = (e.target as Element).closest('[data-dimension-id]')?.getAttribute('data-dimension-id');
     if (dimensionId && tool === 'select') {
       select(dimensionId);
+      gesture.current = { kind: 'dimOffset', id: dimensionId, startClient: [e.clientX, e.clientY], dragging: false };
       return;
     }
     const handle = (e.target as Element).closest('[data-handle]')?.getAttribute('data-handle') as Handle | null;
@@ -167,6 +195,12 @@ export function usePlanGestures({ content, tool, setTool, selectedId, select, vi
 
   const onPointerMove = (e: PointerEvent<SVGSVGElement>): void => {
     const g = gesture.current;
+    const draft = dimensionDraft.current;
+    if (!g && tool === 'dimension' && draft?.b) {
+      const world = viewport.clientToWorld(e.clientX, e.clientY);
+      setDraftDimension(draftFor(draft.a, draft.b, offsetFromPoint(draft.a.point, draft.b.point, world)));
+      return;
+    }
     if (!g && (tool === 'measure' || tool === 'dimension')) {
       const world = viewport.clientToWorld(e.clientX, e.clientY);
       const cursorSnap = snapMeasurePoint(world, content, MEASURE_SNAP_PX / viewport.view.scale);
@@ -184,6 +218,14 @@ export function usePlanGestures({ content, tool, setTool, selectedId, select, vi
       return;
     }
     const world = viewport.clientToWorld(e.clientX, e.clientY);
+    if (g.kind === 'dimOffset') {
+      if (!g.dragging && Math.hypot(e.clientX - g.startClient[0], e.clientY - g.startClient[1]) < DRAG_THRESHOLD_PX) return;
+      gesture.current = { ...g, dragging: true };
+      const dim = content.dimensions.find((d) => d.id === g.id);
+      const pts = dim ? dimensionPoints(content, dim) : null;
+      if (pts) setPreview({ kind: 'dimension', id: g.id, offset: offsetFromPoint(pts[0], pts[1], world) });
+      return;
+    }
     if (g.kind === 'rect') {
       setPreview(rectPreview(g.mode, g.origin, snapPoint(world)));
       return;
@@ -208,6 +250,10 @@ export function usePlanGestures({ content, tool, setTool, selectedId, select, vi
     const p = previewRef.current;
     cancel();
     if (!g || g.kind === 'pan' || !p) return;
+    if (g.kind === 'dimOffset' && p.kind === 'dimension') {
+      run({ type: 'dimension/update', id: p.id, patch: { offset: p.offset } });
+      return;
+    }
     if (g.kind === 'rect' && p.kind === 'rect') {
       if (p.w > 0 && p.d > 0) {
         run({ type: g.mode === 'area' ? 'floor/add' : 'floor/cut', rect: { id: newId(), x: p.x, y: p.y, w: p.w, d: p.d } });
@@ -226,8 +272,9 @@ export function usePlanGestures({ content, tool, setTool, selectedId, select, vi
     }
     if (e.key === 'Escape') {
       if (gesture.current) cancel();
-      else if ((tool === 'measure' || tool === 'dimension') && measure.a !== null) {
-        dimensionStart.current = null;
+      else if ((tool === 'measure' || tool === 'dimension') && (measure.a !== null || dimensionDraft.current !== null)) {
+        dimensionDraft.current = null;
+        setDraftDimension(null);
         setMeasure(NO_MEASURE);
       }
       else if (tool !== 'select') setTool('select');
@@ -290,5 +337,5 @@ export function usePlanGestures({ content, tool, setTool, selectedId, select, vi
     onContextMenu: (e) => e.preventDefault(),
   };
 
-  return { preview, ghost, cursor, message, measure, svgHandlers, onKeyDown, onKeyUp };
+  return { preview, ghost, draftDimension, cursor, message, measure, svgHandlers, onKeyDown, onKeyUp };
 }
