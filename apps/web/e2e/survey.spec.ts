@@ -103,7 +103,7 @@ test('Measure: hover shows wall gaps, two clicks measure, Escape clears', async 
   await createRoom(page);
   await placeRack(page, 0.3, 0.4);
   const x = await page.getByLabel('X', { exact: true }).inputValue();
-  await page.getByRole('button', { name: 'Measure' }).click();
+  await page.getByRole('button', { name: 'Measure', exact: true }).click();
   const rack = await page.getByRole('button', { name: 'RK-01, Rack' }).boundingBox();
   const fp = await page.getByTestId('footprint').boundingBox();
   if (!rack || !fp) throw new Error('Plan not rendered');

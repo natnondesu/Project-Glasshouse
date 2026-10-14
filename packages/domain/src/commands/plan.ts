@@ -7,6 +7,7 @@ import { addObject, removeObject, rotateObject, updateObject, type ObjectCommand
 import { updateSurvey, type SurveyPatch } from './survey';
 import { applyDimensionCommand, type DimensionCommand } from '../dimensions';
 import { applyFeedCommand, type FeedCommand } from '../feeds';
+import { applyPanelCommand, type PanelCommand } from '../sources';
 
 export type PlanCommand =
   | { type: 'survey/update'; patch: SurveyPatch }
@@ -18,7 +19,8 @@ export type PlanCommand =
   | EquipmentCommand
   | NodeCommand
   | DimensionCommand
-  | FeedCommand;
+  | FeedCommand
+  | PanelCommand;
 
 export function applyPlanCommand(content: PlanContent, cmd: PlanCommand): Result<PlanContent> {
   switch (cmd.type) {
@@ -60,5 +62,8 @@ export function applyPlanCommand(content: PlanContent, cmd: PlanCommand): Result
     case 'feed/update':
     case 'feed/remove':
       return applyFeedCommand(content, cmd);
+    case 'panel/configure':
+    case 'panel/way':
+      return applyPanelCommand(content, cmd);
   }
 }

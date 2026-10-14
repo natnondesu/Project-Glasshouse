@@ -6,6 +6,11 @@ export const TYPE_LABEL: Record<RoomObjectType, string> = {
   door: 'Door',
   mcb: 'MCB panel',
   furniture: 'Furniture',
+  wall_plug: 'Wall plug',
+  industrial_socket: 'Industrial socket',
+  floor_box: 'Floor box',
+  ups: 'UPS',
+  pdu: '3rd-party PDU',
 };
 
 const count = (n: number, one: string, many: string): string => `${n} ${n === 1 ? one : many}`;

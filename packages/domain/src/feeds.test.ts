@@ -33,11 +33,11 @@ describe('power feeds', () => {
     expect(c.feeds.map((f) => f.label)).toEqual(['Feed A', 'Feed B']);
   });
 
-  it('only connects a rack to an MCB panel', () => {
+  it('only connects a rack to a power source', () => {
     const c = room();
     expect(applyPlanCommand(c, { type: 'feed/add', feed: { id: 'f', rackId: 'mcb', sourceId: 'rk', label: 'Feed A' } })).toMatchObject({
       ok: false,
-      error: { message: 'Power feeds run from an MCB panel to a rack.' },
+      error: { message: 'Power feeds run from a power source to a rack.' },
     });
   });
 

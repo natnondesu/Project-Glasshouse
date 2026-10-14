@@ -13,7 +13,9 @@ export type IssueCode =
   | 'device_too_deep'
   | 'demand_unknown'
   | 'reserved_demand_unknown'
-  | 'over_design_limit';
+  | 'over_design_limit'
+  | 'feed_no_way'
+  | 'feed_overload';
 
 export interface Issue {
   key: string;

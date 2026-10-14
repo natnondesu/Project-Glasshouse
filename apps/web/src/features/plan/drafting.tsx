@@ -8,6 +8,7 @@ const CALLOUT_MAX_LINES = 3;
 const LINE_PX = 14;
 const CHAR_PX = 6.7;
 const LEADER_PX = 34;
+const CALLOUT_GAP_PX = 12;
 const SCALE_STEPS_M = [0.25, 0.5, 1, 2, 5, 10];
 const SCALE_TARGET_PX = 72;
 
@@ -46,12 +47,18 @@ export function CalloutLayer({ issues, objects, view, maxX = Infinity }: { issue
     const flip = right + LEADER_PX + width > maxX;
     return [{ id: o.id, anchor: [flip ? left : right, mid] as const, lines, width, flip }];
   });
+  // Nearby blocked objects would stack their notes on top of each other: push later ones down.
+  const placed: { x0: number; x1: number; y0: number; y1: number }[] = [];
   return (
     <g aria-hidden="true" className="callouts">
       {callouts.map(({ id, anchor: [ax, ay], lines, width, flip }) => {
         const knee = flip ? ax - LEADER_PX : ax + LEADER_PX;
-        const ly = ay - 26;
         const textX = flip ? knee - width + 4 : knee + 4;
+        const height = 20 + lines.length * LINE_PX;
+        let ly = ay - 26;
+        const box = () => ({ x0: textX - 4, x1: textX + width, y0: ly - 20, y1: ly - 20 + height });
+        while (placed.some((p) => { const b = box(); return b.x0 < p.x1 && b.x1 > p.x0 && b.y0 < p.y1 && b.y1 > p.y0; })) ly += CALLOUT_GAP_PX;
+        placed.push(box());
         return (
           <g key={id}>
             <circle className="callout__dot" cx={ax} cy={ay} r={2.5} />

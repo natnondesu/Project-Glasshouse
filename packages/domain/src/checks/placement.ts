@@ -3,6 +3,7 @@ import { footprintOf, isDisconnected } from '../footprint';
 import { area, containedIn, EPS_AREA, overlaps, placementPolygon, type Poly } from '../geometry/polygon';
 import type { PlanContent, RoomObject } from '../model/types';
 import type { Issue } from './types';
+import { isFlush } from '../sources';
 
 interface Shape {
   object: RoomObject;
@@ -51,8 +52,9 @@ export function placementIssues(content: PlanContent): Issue[] {
   }
 
   shapes.forEach((a, i) => {
+    if (isFlush(a.object)) return;
     for (const b of shapes.slice(i + 1)) {
-      if (!overlaps(a.poly, b.poly)) continue;
+      if (isFlush(b.object) || !overlaps(a.poly, b.poly)) continue;
       issues.push({
         key: `object_overlap:${a.object.id}:${b.object.id}`,
         code: 'object_overlap',
@@ -81,7 +83,7 @@ export function placementIssues(content: PlanContent): Issue[] {
         });
       }
       for (const other of shapes) {
-        if (other.object.id === rack.id || !overlaps(zone, other.poly)) continue;
+        if (other.object.id === rack.id || isFlush(other.object) || !overlaps(zone, other.poly)) continue;
         const isDoor = other.object.type === 'door';
         issues.push({
           key: `clearance:${rack.id}:${side}:${other.object.id}`,

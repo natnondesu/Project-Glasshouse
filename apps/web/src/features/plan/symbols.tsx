@@ -58,3 +58,36 @@ export function HoverTag({ name, x, y }: { name: string; x: number; y: number })
     </g>
   );
 }
+
+/** Small electrical sources drawn as drafting symbols: plug, IEC socket, floor box; UPS and PDU get a front strip. */
+export function SourceSymbol({ o, view }: { o: RoomObject; view: View }) {
+  const s = (u: number, v: number) => pt(o, view, u * o.w, v * o.d);
+  const [cx, cy] = s(0, 0);
+  const r = Math.max(2, Math.min(o.w, o.d) * view.scale * 0.3);
+  if (o.type === 'wall_plug') {
+    return <path aria-hidden="true" className="src__mark" d={`${path([s(-0.18, -0.25), s(-0.18, 0.25)])} ${path([s(0.18, -0.25), s(0.18, 0.25)])}`} />;
+  }
+  if (o.type === 'industrial_socket') {
+    const pins = [s(0, -0.22), s(-0.2, 0.15), s(0.2, 0.15)];
+    return (
+      <g aria-hidden="true">
+        <circle className="src__mark" cx={cx} cy={cy} r={r} />
+        {pins.map(([x, y], i) => (
+          <circle key={i} className="src__pin" cx={x} cy={y} r={Math.max(1, r * 0.18)} />
+        ))}
+      </g>
+    );
+  }
+  if (o.type === 'floor_box') {
+    return (
+      <g aria-hidden="true">
+        <path className="src__mark" d={path([s(-0.5, 0.5), s(0.5, -0.5)])} />
+        <circle className="src__mark" cx={cx} cy={cy} r={r} />
+      </g>
+    );
+  }
+  if (o.type === 'ups' || o.type === 'pdu') {
+    return <path aria-hidden="true" className="src__front" d={path([s(-0.5, 0.42), s(0.5, 0.42)])} />;
+  }
+  return null;
+}

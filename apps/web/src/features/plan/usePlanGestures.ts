@@ -1,9 +1,10 @@
 import type { CommitFn } from '../../store/hooks';
-import { anchorAt, createObject, dimensionPoints, newId, offsetFromPoint, type Dimension, snapDrag, snapFloor, type Id, type PlanCommand, type PlanContent, type Point, type RoomObject, type RoomObjectType } from '@glasshouse/domain';
+import { anchorAt, dimensionPoints, newId, offsetFromPoint, type Dimension, snapDrag, snapFloor, type Id, type PlanCommand, type PlanContent, type Point, type RoomObject, type RoomObjectType } from '@glasshouse/domain';
 import { useEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react';
 import type { ViewportApi } from '../../viewport/useViewport';
 import { clampIntoRoom } from './clamp';
 import { hitTest } from './hitTest';
+import { placementAt as placeObject } from './placement';
 import { describeRackContents } from './labels';
 import { snapMeasurePoint, type SnapTarget } from './measure';
 import type { Preview } from './layers';
@@ -86,14 +87,7 @@ export function usePlanGestures({ content, tool, setTool, selectedId, select, vi
     offset,
   });
 
-  /** Where a placement tool drops its object for a cursor position; the ghost and the click share it. */
-  const placementAt = (type: RoomObjectType, world: Point): RoomObject => {
-    const draft = createObject(type, { x: 0, y: 0 }, content.objects);
-    const [px, py] = snapPoint(world);
-    const x = Math.min(Math.max(0, px), Math.max(0, content.survey.width - draft.w));
-    const y = Math.min(Math.max(0, py), Math.max(0, content.survey.length - draft.d));
-    return { ...draft, x: snapFloor(x), y: snapFloor(y) };
-  };
+  const placementAt = (type: RoomObjectType, world: Point): RoomObject => placeObject(type, world, content);
 
   useEffect(() => {
     if (!message) return;

@@ -190,3 +190,11 @@
   font-family: var(--font-mono);
   font-size: 12px;
 }
+
+.feed-list__item {
+  grid-template-columns: 10px auto minmax(0, 1fr) auto auto;
+}
+
+.feed-list__way {
+  max-width: 96px;
+}

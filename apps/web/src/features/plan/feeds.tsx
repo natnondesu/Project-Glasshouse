@@ -1,4 +1,4 @@
-import { feedRoute, newId, nextFeedLabel, type PlanContent, type PowerFeed, type RoomObject } from '@glasshouse/domain';
+import { feedRoute, isPowerSource, newId, nextFeedLabel, panelOf, type PlanContent, type PowerFeed, type RoomObject } from '@glasshouse/domain';
 import { useState } from 'react';
 import { IconPlus, IconTrash } from '../../ui/icons';
 import { toScreen, type View } from '../../viewport/math';
@@ -53,7 +53,7 @@ export function FeedLayer({ content, view }: { content: PlanContent; view: View 
 /** A rack's feeds in its inspector: which panel each comes from, add and remove. */
 export function RackFeeds({ rack, content, commit }: { rack: RoomObject; content: PlanContent; commit: CommitFn }) {
   const [error, setError] = useState<string | null>(null);
-  const panels = content.objects.filter((o) => o.type === 'mcb');
+  const panels = content.objects.filter(isPowerSource);
   const feeds = content.feeds.filter((f) => f.rackId === rack.id);
   const act = (problem: string | null): void => setError(problem);
   return (
@@ -80,6 +80,11 @@ export function RackFeeds({ rack, content, commit }: { rack: RoomObject; content
                 </option>
               ))}
             </select>
+            {content.objects.find((o) => o.id === f.sourceId)?.type === 'mcb' ? (
+              <WayPicker feed={f} content={content} onPick={(way) => act(commit({ type: 'feed/update', id: f.id, patch: { way } }))} />
+            ) : (
+              <span />
+            )}
             <button type="button" className="icon-btn icon-btn--sm" aria-label={`Remove ${f.label}`} title={`Remove ${f.label}`} onClick={() => act(commit({ type: 'feed/remove', id: f.id }))}>
               <IconTrash />
             </button>
@@ -95,7 +100,7 @@ export function RackFeeds({ rack, content, commit }: { rack: RoomObject; content
         <IconPlus />
         Add power feed
       </button>
-      {panels.length === 0 ? <p className="inspector__note">Place an MCB panel on the plan to connect this rack.</p> : null}
+      {panels.length === 0 ? <p className="inspector__note">Place a power source (MCB panel, plug, socket, UPS…) on the plan to connect this rack.</p> : null}
       {error ? (
         <p role="alert" className="field__error">
           {error}
@@ -105,12 +110,32 @@ export function RackFeeds({ rack, content, commit }: { rack: RoomObject; content
   );
 }
 
-/** What an MCB panel feeds, read-only: connections are made from the rack. */
-export function PanelFeeds({ panel, content }: { panel: RoomObject; content: PlanContent }) {
+/** The MCB way a feed is wired to; ways taken by other feeds are shown but disabled. */
+function WayPicker({ feed, content, onPick }: { feed: PowerFeed; content: PlanContent; onPick: (way: number | null) => void }) {
+  const source = content.objects.find((o) => o.id === feed.sourceId)!;
+  const ways = panelOf(source).ways.length;
+  const taken = new Map(content.feeds.filter((f) => f.sourceId === source.id && f.id !== feed.id && f.way !== undefined).map((f) => [f.way!, f]));
+  return (
+    <select className="feed-list__select feed-list__way" aria-label={`${feed.label} way`} value={feed.way ?? ''} onChange={(e) => onPick(e.target.value ? Number(e.target.value) : null)}>
+      <option value="">Way —</option>
+      {Array.from({ length: ways }, (_, i) => i + 1).map((n) => (
+        <option key={n} value={n} disabled={taken.has(n)}>{`Way ${n}${taken.has(n) ? ' (used)' : ''}`}</option>
+      ))}
+    </select>
+  );
+}
+
+/** What a power source feeds, read-only: connections are made from the rack. MCB panels also open their ways. */
+export function PanelFeeds({ panel, content, onManage }: { panel: RoomObject; content: PlanContent; onManage?: (id: string) => void }) {
   const feeds = content.feeds.filter((f) => f.sourceId === panel.id);
   return (
     <fieldset className="inspector__group">
       <legend className="lbl">Feeds</legend>
+      {panel.type === 'mcb' && onManage ? (
+        <button type="button" className="btn btn--sm" onClick={() => onManage(panel.id)}>
+          Manage ways
+        </button>
+      ) : null}
       {feeds.length === 0 ? (
         <p className="inspector__note">No racks connected. Connect a rack from its own inspector.</p>
       ) : (
@@ -118,7 +143,7 @@ export function PanelFeeds({ panel, content }: { panel: RoomObject; content: Pla
           {feeds.map((f) => (
             <li key={f.id} className="feed-list__item">
               <span className="feed-list__swatch" style={{ background: feedColor(f, content) }} aria-hidden="true" />
-              <span>{`${content.objects.find((o) => o.id === f.rackId)?.name ?? 'Removed rack'} · ${f.label}`}</span>
+              <span>{`${content.objects.find((o) => o.id === f.rackId)?.name ?? 'Removed rack'} · ${f.label}${f.way ? ` · way ${f.way}` : ''}`}</span>
             </li>
           ))}
         </ul>
