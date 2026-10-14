@@ -1,6 +1,7 @@
 import type { ThreeEvent } from '@react-three/fiber';
 import { useEffect, useMemo, useState } from 'react';
 import type { Palette3D } from './palette';
+import { NO_PICK } from './picking';
 import { Edges } from './RoomModels';
 import { RACK_BASE_M, type Rack3D } from './scene';
 import { deviceFrontTexture, labelTexture, railTexture, reservedTexture } from './textures';
@@ -71,7 +72,7 @@ function Label({ rack, accent, h, existing, stagger }: { rack: Rack3D; accent: s
   const { map, aspect } = useMemo(() => labelTexture(rack.name, sub, accent), [rack.name, sub, accent]);
   useEffect(() => () => map.dispose(), [map]);
   return (
-    <sprite position={[0, h / 2 + LABEL_LIFT_M + (stagger ? LABEL_STAGGER_M : 0), 0]} scale={[LABEL_H_SCREEN * aspect, LABEL_H_SCREEN, 1]} renderOrder={10}>
+    <sprite raycast={NO_PICK} position={[0, h / 2 + LABEL_LIFT_M + (stagger ? LABEL_STAGGER_M : 0), 0]} scale={[LABEL_H_SCREEN * aspect, LABEL_H_SCREEN, 1]} renderOrder={10}>
       <spriteMaterial map={map} depthTest={false} transparent sizeAttenuation={false} />
     </sprite>
   );
@@ -154,7 +155,7 @@ export function RackModel({ rack, palette, selected, onSelect, existing = false,
       )}
       <Edges size={rack.size} color={selected || hover ? palette.front : palette.wall} opacity={selected ? 1 : hover ? 0.8 : 0.45} />
       {selected ? (
-        <mesh position={[0, -h / 2 + 0.003, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <mesh position={[0, -h / 2 + 0.003, 0]} rotation={[-Math.PI / 2, 0, 0]} raycast={NO_PICK}>
           <planeGeometry args={[w + 0.16, d + 0.16]} />
           <meshBasicMaterial color={palette.front} transparent opacity={0.22} depthWrite={false} />
         </mesh>
