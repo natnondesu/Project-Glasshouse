@@ -1,12 +1,17 @@
 import { currentRevision, racksOf, rackPower, type RoomLocation } from '@glasshouse/domain';
 import { useMemo, useState } from 'react';
-import { useNavigate } from 'react-router';
+import { Link, useNavigate } from 'react-router';
+import { SearchBox } from '../search/SearchBox';
+import type { SearchHit } from '../search/search';
 import { defaultCamera, type OrbitCamera } from './camera';
 import { readPalette } from './palette';
 import { usePersistentState } from '../../ui/usePersistentState';
-import { hasWebGL, Room3DCanvas } from './Room3DCanvas';
+import { hasWebGL, Room3DCanvas, type Focus3D } from './Room3DCanvas';
 import { buildScene } from './scene';
 import './room3d.css';
+
+const FOCUS_HEIGHT_M = 0.8;
+const FOCUS_DISTANCE_M = 6;
 
 export default function Room3DView({ location }: { location: RoomLocation }) {
   const navigate = useNavigate();
@@ -18,6 +23,16 @@ export default function Room3DView({ location }: { location: RoomLocation }) {
   const [webgl] = useState(hasWebGL);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [labels, setLabels] = usePersistentState<'always' | 'hover'>('glasshouse:3d-labels', 'always');
+  const [focus, setFocus] = useState<Focus3D | null>(null);
+  const pickHit = (hit: SearchHit): void => {
+    const target = scene.racks.find((r) => r.id === hit.objectId) ?? scene.others.find((o) => o.id === hit.objectId);
+    if (!target) return;
+    if (scene.racks.some((r) => r.id === hit.objectId)) setSelectedId(hit.objectId);
+    const [x, , z] = target.position;
+    // Swing to the hit without zooming out; come closer if the camera is far away.
+    setCamera((prev) => ({ ...prev, target: [x, FOCUS_HEIGHT_M, z], distance: Math.min(prev.distance, FOCUS_DISTANCE_M) }));
+    setFocus({ position: [x, 0, z], radius: Math.hypot(target.size[0], target.size[2]) / 2 + 0.15, n: Date.now() });
+  };
   const racks = [...scene.racks].sort((a, b) => a.name.localeCompare(b.name));
   const selected = racksOf(content).find((r) => r.id === selectedId) ?? null;
   const power = selected ? rackPower(selected) : null;
@@ -26,12 +41,25 @@ export default function Room3DView({ location }: { location: RoomLocation }) {
   return (
     <section className="room3d" aria-label="Room 3D view">
       {webgl ? (
-        <Room3DCanvas scene={scene} palette={palette} camera={camera} onCamera={setCamera} selectedRackId={selectedId} onSelectRack={setSelectedId} labels={labels} />
+        <Room3DCanvas scene={scene} palette={palette} camera={camera} onCamera={setCamera} selectedRackId={selectedId} onSelectRack={setSelectedId} labels={labels} focus={focus} />
       ) : (
         <p className="room3d__fallback" role="status">
           This browser can't show 3D (WebGL is turned off or unavailable). The plan and elevation views show the same Room.
         </p>
       )}
+      <SearchBox
+        className="room3d__search"
+        content={content}
+        roomName={location.room.name}
+        onPick={pickHit}
+        action={(hit) =>
+          hit.elementId ? (
+            <Link to={`/rooms/${location.room.id}/elevation?sel=${hit.elementId}`} aria-label={`Open ${hit.name} in elevation`} onMouseDown={(e) => e.stopPropagation()}>
+              Elevation
+            </Link>
+          ) : null
+        }
+      />
       <aside className="room3d__panel glass" aria-label="Racks in this room">
         <h2>Racks</h2>
         {racks.length === 0 ? <p className="room3d__note">No Racks yet. Place them on the Plan.</p> : null}

@@ -139,3 +139,8 @@
   text-align: right;
   font-weight: 600;
 }
+
+.room3d__search {
+  left: 12px;
+  top: 12px;
+}

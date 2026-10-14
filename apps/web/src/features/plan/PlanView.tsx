@@ -1,4 +1,7 @@
-import { currentRevision, revisionIssues, type RoomLocation } from '@glasshouse/domain';
+import { centerOf, currentRevision, revisionIssues, type RoomLocation } from '@glasshouse/domain';
+import { Link } from 'react-router';
+import { SearchBox } from '../search/SearchBox';
+import type { SearchHit } from '../search/search';
 import { useEffect, useMemo, useState } from 'react';
 import { usePlanCommit, useSearchParamState } from '../../store/hooks';
 import { FIT_INSETS, useViewport } from '../../viewport/useViewport';
@@ -20,12 +23,19 @@ import './plan.css';
 /** Room the fit leaves on the right for the inspector, or for its collapsed rail. */
 const INSET_WITH_INSPECTOR = FIT_INSETS.right;
 const INSET_WITHOUT_INSPECTOR = 76;
+const PULSE_MS = 1700;
 
 export function PlanView({ location, readOnly = false }: { location: RoomLocation; readOnly?: boolean }) {
   const revision = currentRevision(location.room.plan);
   const content = revision.content;
   const commit = usePlanCommit(location.room.id);
   const [selectedParam, select] = useSearchParamState('sel');
+  const [pulse, setPulse] = useState<{ id: string; n: number } | null>(null);
+  useEffect(() => {
+    if (!pulse) return;
+    const t = setTimeout(() => setPulse(null), PULSE_MS);
+    return () => clearTimeout(t);
+  }, [pulse]);
   const [tool, setTool] = useState<Tool>('select');
   const [legend, setLegend] = usePersistentState('glasshouse:plan-legend', true);
   const [layers, setLayers] = usePersistentState<PlanLayers>('glasshouse:plan-layers', ALL_LAYERS);
@@ -66,11 +76,31 @@ export function PlanView({ location, readOnly = false }: { location: RoomLocatio
           draftDimension={gestures.draftDimension}
           showGaps={tool !== 'measure' && tool !== 'dimension'}
           layers={{ ...ALL_LAYERS, ...layers }}
+          pulse={pulse}
           measure={gestures.measure}
           cursor={gestures.cursor}
           svgHandlers={gestures.svgHandlers}
           onFocusObject={select}
           inspectorOpen={inspectorOpen}
+        />
+        <SearchBox
+          className="plan-view__search"
+          content={content}
+          roomName={location.room.name}
+          onPick={(hit: SearchHit) => {
+            // Anything inside a rack highlights the rack on the plan; the elevation link goes to the device.
+            const target = content.objects.find((o) => o.id === hit.objectId);
+            select(hit.objectId);
+            if (target) viewport.centerOn(centerOf(target));
+            setPulse({ id: hit.objectId, n: Date.now() });
+          }}
+          action={(hit) =>
+            hit.elementId ? (
+              <Link to={`/rooms/${location.room.id}/elevation?sel=${hit.elementId}`} aria-label={`Open ${hit.name} in elevation`} onMouseDown={(e) => e.stopPropagation()}>
+                Elevation
+              </Link>
+            ) : null
+          }
         />
         <ZoomControls viewport={viewport} legend={legend} onLegend={setLegend} layers={layers} onLayers={setLayers} />
         {legend ? <PlanLegend view={viewport.view} clearance={layers.clearance !== false} /> : null}

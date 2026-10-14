@@ -1,6 +1,6 @@
-import { Canvas, useThree } from '@react-three/fiber';
-import { useEffect } from 'react';
-import { Plane, Raycaster, Vector2, Vector3 } from 'three';
+import { Canvas, useFrame, useThree } from '@react-three/fiber';
+import { useEffect, useRef } from 'react';
+import { MeshBasicMaterial, Plane, Raycaster, Vector2, Vector3 } from 'three';
 import { wheelZoomFactor } from '../../viewport/math';
 import { cameraPosition, dollyToward, orbit, panGround, type OrbitCamera } from './camera';
 import type { Palette3D } from './palette';
@@ -109,9 +109,38 @@ interface Room3DCanvasProps {
   selectedRackId: string | null;
   onSelectRack: (id: string | null) => void;
   labels: 'always' | 'hover';
+  /** A search hit to mark with a ring on the floor. */
+  focus?: Focus3D | null;
 }
 
-export function Room3DCanvas({ scene, palette, camera, onCamera, selectedRackId, onSelectRack, labels }: Room3DCanvasProps) {
+export interface Focus3D {
+  position: [number, number, number];
+  radius: number;
+  n: number;
+}
+
+const FOCUS_RING_MS = 1800;
+
+/** A fading ring on the floor around a search hit. */
+function FocusRing({ focus, color }: { focus: Focus3D; color: string }) {
+  const mat = useRef<MeshBasicMaterial>(null);
+  const started = useRef(performance.now());
+  useEffect(() => {
+    started.current = performance.now();
+  }, [focus.n]);
+  useFrame(() => {
+    const t = (performance.now() - started.current) / FOCUS_RING_MS;
+    if (mat.current) mat.current.opacity = Math.max(0, 1 - t);
+  });
+  return (
+    <mesh position={[focus.position[0], 0.006, focus.position[2]]} rotation={[-Math.PI / 2, 0, 0]}>
+      <ringGeometry args={[focus.radius, focus.radius + 0.06, 48]} />
+      <meshBasicMaterial ref={mat} color={color} transparent depthWrite={false} />
+    </mesh>
+  );
+}
+
+export function Room3DCanvas({ scene, palette, camera, onCamera, selectedRackId, onSelectRack, labels, focus = null }: Room3DCanvasProps) {
   const existing = scene.others.filter((o) => o.type === 'existing_rack');
   const others = scene.others.filter((o) => o.type !== 'existing_rack');
   return (
@@ -140,6 +169,7 @@ export function Room3DCanvas({ scene, palette, camera, onCamera, selectedRackId,
         shadow-camera-bottom={-Math.max(scene.width, scene.length)}
       />
       <CameraController camera={camera} onChange={onCamera} />
+      {focus ? <FocusRing key={focus.n} focus={focus} color={palette.front} /> : null}
       <Floor scene={scene} palette={palette} />
       <Walls scene={scene} palette={palette} />
       {scene.racks.map((r, i) => (

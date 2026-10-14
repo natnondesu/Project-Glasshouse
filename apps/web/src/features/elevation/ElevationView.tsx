@@ -1,3 +1,5 @@
+import { SearchBox } from '../search/SearchBox';
+import type { SearchHit } from '../search/search';
 import { PanelCollapseTab, PanelRail } from '../../ui/PanelRail';
 import { usePersistentState } from '../../ui/usePersistentState';
 import {
@@ -17,7 +19,7 @@ import {
   type Template,
 } from '@glasshouse/domain';
 import { useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router';
+import { Link, useNavigate } from 'react-router';
 import { usePlanCommit, useSearchParamState } from '../../store/hooks';
 import { useWorkspaceStore } from '../../store/workspaceStore';
 import { ChecksStrip } from '../plan/ChecksStrip';
@@ -43,6 +45,8 @@ function entityNames(content: PlanContent): { id: string; name: string }[] {
   ]);
 }
 
+const PULSE_MS = 1700;
+
 export function ElevationView({ location, readOnly = false }: { location: RoomLocation; readOnly?: boolean }) {
   const [inspectorOpen, setInspectorOpen] = usePersistentState('glasshouse:inspector-open', true);
   const revision = currentRevision(location.room.plan);
@@ -51,6 +55,15 @@ export function ElevationView({ location, readOnly = false }: { location: RoomLo
   const commit = usePlanCommit(roomId);
   const catalog = useWorkspaceStore((s) => s.workspace.catalog);
   const [selectedId, select] = useSearchParamState('sel');
+  const navigate = useNavigate();
+  const [pulse, setPulse] = useState<string | null>(null);
+  useEffect(() => {
+    if (!pulse) return;
+    // Bring the hit into view inside the scrolling rack area, then let the flash fade.
+    document.querySelector(`[data-elev-id="${CSS.escape(pulse)}"]`)?.scrollIntoView?.({ block: 'center', inline: 'center', behavior: 'smooth' });
+    const t = setTimeout(() => setPulse(null), PULSE_MS);
+    return () => clearTimeout(t);
+  }, [pulse]);
   const [message, setMessage] = useState<string | null>(null);
   const racks = racksOf(content);
   const issues = useMemo(() => revisionIssues(revision), [revision]);
@@ -96,6 +109,28 @@ export function ElevationView({ location, readOnly = false }: { location: RoomLo
   return (
     <div className={`elev${inspectorOpen ? '' : ' is-inspector-closed'}`}>
       <aside className="elev__side" aria-label="Catalog and checks">
+        <SearchBox
+          className="search--inline"
+          content={content}
+          roomName={location.room.name}
+          onPick={(hit: SearchHit) => {
+            const target = content.objects.find((o) => o.id === hit.objectId);
+            if (!hit.elementId && target?.type !== 'rack') {
+              void navigate(`/rooms/${roomId}/plan?sel=${hit.objectId}`);
+              return;
+            }
+            select(hit.elementId ?? hit.objectId);
+            setPulse(hit.elementId ?? null);
+          }}
+          action={(hit) => {
+            const target = content.objects.find((o) => o.id === hit.objectId);
+            return !hit.elementId && target?.type !== 'rack' ? (
+              <Link to={`/rooms/${roomId}/plan?sel=${hit.objectId}`} aria-label={`Show ${hit.name} on plan`} onMouseDown={(e) => e.stopPropagation()}>
+                Plan
+              </Link>
+            ) : null;
+          }}
+        />
         <div className="glass elev__palette">
           <CatalogPalette catalog={catalog} activeRack={activeRack} onAdd={(t) => activeRack && place(t, activeRack)} disabled={readOnly} />
         </div>
@@ -114,6 +149,7 @@ export function ElevationView({ location, readOnly = false }: { location: RoomLo
             flagged={flagged}
             onSelect={select}
             onActivate={() => select(rack.id)}
+            pulseId={pulse}
             onDropTemplate={(templateId, u) => {
               const template = catalog.find((t) => t.id === templateId);
               if (template) place(template, rack, u);

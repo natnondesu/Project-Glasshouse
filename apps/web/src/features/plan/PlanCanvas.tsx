@@ -1,7 +1,9 @@
-import { placementPolygon, type Dimension, type Issue, type PlanContent, type RoomObject } from '@glasshouse/domain';
+import { centerOf, placementPolygon, type Dimension, type Issue, type PlanContent, type RoomObject } from '@glasshouse/domain';
 import { useMemo, type DOMAttributes } from 'react';
 import type { ViewportApi } from '../../viewport/useViewport';
+import { toScreen } from '../../viewport/math';
 import { flaggedObjectIds } from './flagged';
+import '../search/search.css';
 import { CalloutLayer, GapLayer } from './drafting';
 import { DimensionLayer } from './DimensionLayer';
 import { ALL_LAYERS, type PlanLayers } from './ViewMenu';
@@ -29,6 +31,7 @@ export type SvgHandlers = Pick<
 /** Width the glass inspector covers on the right of the canvas. */
 const INSPECTOR_CLEARANCE_PX = 380;
 const RAIL_CLEARANCE_PX = 70;
+const PULSE_PAD_PX = 12;
 
 interface PlanCanvasProps {
   content: PlanContent;
@@ -49,12 +52,15 @@ interface PlanCanvasProps {
   draftDimension?: Dimension | null;
   /** Drawing layers the viewer has switched off. */
   layers?: PlanLayers;
+  /** Ring that marks a search result for a moment. */
+  pulse?: { id: string; n: number } | null;
 }
 
 const withPreview = (objects: RoomObject[], preview: Preview | null): RoomObject[] =>
   preview?.kind === 'object' ? objects.map((o) => (o.id === preview.id ? { ...o, ...preview.patch } : o)) : objects;
 
-export function PlanCanvas({ content, issues, selectedId, viewport, preview, measure, cursor, svgHandlers, onFocusObject, inspectorOpen = true, ghost = null, showGaps = true, draftDimension = null, layers = ALL_LAYERS }: PlanCanvasProps) {
+export function PlanCanvas({ content, issues, selectedId, viewport, preview, measure, cursor, svgHandlers, onFocusObject, inspectorOpen = true, ghost = null, showGaps = true, draftDimension = null, layers = ALL_LAYERS, pulse = null }: PlanCanvasProps) {
+  const pulsed = pulse ? content.objects.find((o) => o.id === pulse.id) : undefined;
   const calloutClearance = inspectorOpen ? INSPECTOR_CLEARANCE_PX : RAIL_CLEARANCE_PX;
   const { view } = viewport;
   const flagged = useMemo(() => flaggedObjectIds(issues), [issues]);
@@ -95,6 +101,15 @@ export function PlanCanvas({ content, issues, selectedId, viewport, preview, mea
         </g>
       ) : null}
       {active && showGaps ? <GapLayer object={active} content={liveContent} view={view} /> : null}
+      {pulsed && pulse ? (
+        <circle
+          key={pulse.n}
+          className="search-pulse"
+          cx={toScreen(view, centerOf(pulsed))[0]}
+          cy={toScreen(view, centerOf(pulsed))[1]}
+          r={(Math.hypot(pulsed.w, pulsed.d) / 2) * view.scale + PULSE_PAD_PX}
+        />
+      ) : null}
       <CalloutLayer issues={issues} objects={objects} view={view} maxX={viewport.size.width - calloutClearance} />
       {measure ? <MeasureLayer measure={measure} content={content} view={view} /> : null}
     </svg>
