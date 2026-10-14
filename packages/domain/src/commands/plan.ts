@@ -5,6 +5,7 @@ import { applyNodeCommand, type NodeCommand } from './nodes';
 import { addFloorRect, removeFloorRect, updateFloorRect } from './floor';
 import { addObject, removeObject, rotateObject, updateObject, type ObjectCommand } from './objects';
 import { updateSurvey, type SurveyPatch } from './survey';
+import { applyDimensionCommand, type DimensionCommand } from '../dimensions';
 
 export type PlanCommand =
   | { type: 'survey/update'; patch: SurveyPatch }
@@ -14,7 +15,8 @@ export type PlanCommand =
   | { type: 'floor/remove'; id: Id }
   | ObjectCommand
   | EquipmentCommand
-  | NodeCommand;
+  | NodeCommand
+  | DimensionCommand;
 
 export function applyPlanCommand(content: PlanContent, cmd: PlanCommand): Result<PlanContent> {
   switch (cmd.type) {
@@ -48,5 +50,9 @@ export function applyPlanCommand(content: PlanContent, cmd: PlanCommand): Result
     case 'node/update':
     case 'node/remove':
       return applyNodeCommand(content, cmd);
+    case 'dimension/add':
+    case 'dimension/update':
+    case 'dimension/remove':
+      return applyDimensionCommand(content, cmd);
   }
 }

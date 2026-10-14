@@ -15,6 +15,8 @@ export interface SnapTarget {
   kind: 'corner' | 'edge' | 'free';
   /** What the point snapped to, shown next to the cursor ("Wall", "RK-01"); null when free. */
   label: string | null;
+  /** The object the point lies on, so a saved dimension can follow it; null for walls and free points. */
+  objectId: string | null;
 }
 
 export interface Measurement {
@@ -36,6 +38,7 @@ interface Feature {
   ring: Ring;
   label: string;
   cornerLabel: string;
+  objectId: string | null;
 }
 
 const EPS = 1e-9;
@@ -58,8 +61,8 @@ function closestOnSegment(p: Point, a: Point, b: Point): Point {
 const dist = (a: Point, b: Point): number => Math.hypot(a[0] - b[0], a[1] - b[1]);
 
 function features(content: PlanContent): Feature[] {
-  const walls = footprintOf(content.survey).flatMap((poly) => poly.map((ring) => ({ ring, label: 'Wall', cornerLabel: 'Wall corner' })));
-  const objects = content.objects.flatMap((o) => placementPolygon(o).map((ring) => ({ ring, label: o.name, cornerLabel: o.name })));
+  const walls = footprintOf(content.survey).flatMap((poly) => poly.map((ring) => ({ ring, label: 'Wall', cornerLabel: 'Wall corner', objectId: null })));
+  const objects = content.objects.flatMap((o) => placementPolygon(o).map((ring) => ({ ring, label: o.name, cornerLabel: o.name, objectId: o.id })));
   return [...walls, ...objects];
 }
 
@@ -73,7 +76,7 @@ export function snapMeasurePoint(p: Point, content: PlanContent, tolerance: numb
       const d = dist(p, corner);
       if (d <= bestDist) {
         bestDist = d;
-        best = { point: corner, kind: 'corner', label: f.cornerLabel };
+        best = { point: corner, kind: 'corner', label: f.cornerLabel, objectId: f.objectId };
       }
     }
   }
@@ -85,11 +88,11 @@ export function snapMeasurePoint(p: Point, content: PlanContent, tolerance: numb
       const d = dist(p, onEdge);
       if (d <= bestDist) {
         bestDist = d;
-        best = { point: onEdge, kind: 'edge', label: f.label };
+        best = { point: onEdge, kind: 'edge', label: f.label, objectId: f.objectId };
       }
     }
   }
-  return best ?? { point: [snapTyped(p[0]), snapTyped(p[1])], kind: 'free', label: null };
+  return best ?? { point: [snapTyped(p[0]), snapTyped(p[1])], kind: 'free', label: null, objectId: null };
 }
 
 /** Distance along an axis-aligned ray from `origin` to the first footprint boundary (walls and cut-outs). */

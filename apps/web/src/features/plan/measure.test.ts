@@ -34,7 +34,7 @@ describe('snapMeasurePoint', () => {
   });
 
   it('stays free away from anything, rounded to 1 cm', () => {
-    expect(snapMeasurePoint([2.5037, 2.5021], room(), 0.1)).toEqual({ point: [2.5, 2.5], kind: 'free', label: null });
+    expect(snapMeasurePoint([2.5037, 2.5021], room(), 0.1)).toEqual({ point: [2.5, 2.5], kind: 'free', label: null, objectId: null });
   });
 });
 

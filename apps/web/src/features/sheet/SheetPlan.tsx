@@ -1,6 +1,7 @@
 import { footprintOf, placementPolygon, pointInPolygon, racksOf, type PlanContent, type Poly, type RoomObject } from '@glasshouse/domain';
 import { ClearanceLayer, DimensionsLayer, FootprintLayer, HatchDefs, ObjectsLayer } from '../plan/layers';
 import { wallGaps, type WallGap } from '../plan/measure';
+import { DimensionLayer } from '../plan/DimensionLayer';
 import { fit, toScreen, type View } from '../../viewport/math';
 import '../plan/plan.css';
 
@@ -54,6 +55,7 @@ export function SheetPlan({ content, roomName }: { content: PlanContent; roomNam
       <ClearanceLayer objects={content.objects} view={view} />
       <ObjectsLayer objects={content.objects} view={view} flagged={NO_FLAGS} selectedId={null} onFocusObject={noop} isStatic />
       <DimensionsLayer survey={content.survey} view={view} />
+      <DimensionLayer content={content} view={view} isStatic />
       {gaps.map((g, i) => (
         <GapDimension key={i} gap={g} view={view} />
       ))}

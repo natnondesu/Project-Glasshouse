@@ -124,3 +124,19 @@ export const IconDownload = (p: IconProps) => (
     <path d="M7 2V9.5M4 6.5L7 9.5L10 6.5M2 12H12" />
   </svg>
 );
+export const IconChevronLeft = (p: IconProps) => (
+  <svg {...frame(14)} {...p}>
+    <path d="M8.5 3L4.5 7L8.5 11" />
+  </svg>
+);
+export const IconChevronRight = (p: IconProps) => (
+  <svg {...frame(14)} {...p}>
+    <path d="M5.5 3L9.5 7L5.5 11" />
+  </svg>
+);
+export const IconDimension = (p: IconProps) => (
+  <svg {...frame(18)} {...p}>
+    <path d="M2.5 5V13M15.5 5V13M2.5 9H15.5" />
+    <path d="M1 10.5L4 7.5M14 10.5L17 7.5" strokeWidth={1.2} />
+  </svg>
+);

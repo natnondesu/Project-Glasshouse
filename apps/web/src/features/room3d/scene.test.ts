@@ -44,6 +44,15 @@ describe('room 3D scene', () => {
     expect(srv.z).toBeGreaterThan(rack.size[2] / 2);
   });
 
+  it('gives devices their real depth from the front of the rack, and reserved ranges a block', () => {
+    const rack = buildScene(contentWith(0)).racks[0]!;
+    const srv = rack.faces.find((f) => f.id === 'srv')!;
+    expect(srv.depth).toBeCloseTo(0.78, 6);
+    expect(srv.heightU).toBe(2);
+    expect(rack.capacityU).toBe(42);
+    expect(rack.usedU).toBe(8);
+  });
+
   it('draws chassis slots and marks the filled ones', () => {
     const rack = buildScene(contentWith(0)).racks[0]!;
     const chassis = contentWith(0).objects.flatMap((o) => (o.type === 'rack' ? o.devices : [])).find((d): d is Chassis => d.kind === 'chassis')!;

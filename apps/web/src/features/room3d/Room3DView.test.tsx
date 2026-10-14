@@ -33,6 +33,11 @@ it('shows the room in 3D with a keyboard path to each rack’s elevation', async
   expect(await screen.findByTestId('room3d-canvas')).toBeInTheDocument();
   expect(screen.getByRole('link', { name: '3D' })).toHaveAttribute('aria-current', 'page');
   await user.click(screen.getByRole('button', { name: /RK-01/ }));
+  // Selecting highlights first; navigating is a separate, explicit step.
+  expect(router.state.location.pathname).toBe('/rooms/r/3d');
+  expect(screen.getByRole('button', { name: /^RK-01/ })).toHaveAttribute('aria-pressed', 'true');
+  expect(screen.getByRole('region', { name: 'RK-01 details' })).toHaveTextContent('0/42U');
+  await user.click(screen.getByRole('button', { name: 'Open RK-01 elevation' }));
   expect(router.state.location.pathname).toBe('/rooms/r/elevation');
   expect(router.state.location.search).toBe('?sel=rk');
 });

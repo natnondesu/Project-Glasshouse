@@ -133,3 +133,21 @@
   color: var(--ink-2);
   cursor: not-allowed;
 }
+
+.dim-facts {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 4px 14px;
+  margin: 0;
+  font-size: 13px;
+}
+
+.dim-facts dt {
+  color: var(--ink-2);
+}
+
+.dim-facts dd {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-weight: 600;
+}

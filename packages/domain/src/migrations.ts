@@ -4,7 +4,38 @@ import { err, ok, type Result } from './result';
 type RawWorkspace = Record<string, unknown>;
 
 /** MIGRATIONS[n] upgrades schema n to n + 1. Add an entry whenever CURRENT_SCHEMA_VERSION increases. */
-const MIGRATIONS: Record<number, (raw: RawWorkspace) => RawWorkspace> = {};
+const MIGRATIONS: Record<number, (raw: RawWorkspace) => RawWorkspace> = {
+  // 2026-10: persistent dimensions. Every revision gets an empty list.
+  1: (raw) => ({ ...raw, schemaVersion: 2, projects: mapRevisions(raw.projects, (rev) => ({ ...rev, content: { ...asRecord(rev.content), dimensions: [] } })) }),
+};
+
+const asRecord = (v: unknown): RawWorkspace => (typeof v === 'object' && v !== null ? (v as RawWorkspace) : {});
+const asArray = (v: unknown): unknown[] => (Array.isArray(v) ? v : []);
+
+/** Leaves malformed shapes for the schema to reject with a precise message. */
+function mapRevisions(projects: unknown, fn: (rev: RawWorkspace) => RawWorkspace): unknown {
+  if (!Array.isArray(projects)) return projects;
+  return projects.map((p) => {
+    const project = asRecord(p);
+    if (!Array.isArray(project.sites)) return p;
+    return {
+      ...project,
+      sites: project.sites.map((s) => {
+        const site = asRecord(s);
+        if (!Array.isArray(site.rooms)) return s;
+        return {
+          ...site,
+          rooms: site.rooms.map((r) => {
+            const room = asRecord(r);
+            const plan = asRecord(room.plan);
+            if (!Array.isArray(plan.revisions)) return r;
+            return { ...room, plan: { ...plan, revisions: asArray(plan.revisions).map((rev) => fn(asRecord(rev))) } };
+          }),
+        };
+      }),
+    };
+  });
+}
 
 export function migrate(raw: unknown): Result<unknown> {
   if (typeof raw !== 'object' || raw === null) return err('invalid_value', 'Saved data is not a Glasshouse workspace.');

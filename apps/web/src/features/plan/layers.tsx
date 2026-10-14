@@ -72,7 +72,14 @@ export function FootprintLayer({ survey, view }: { survey: Survey; view: View })
       <path data-testid="footprint" className="footprint" d={multiPolygonPath(fp, view)} fillRule="evenodd" />
       {survey.cutOuts.map((r) => {
         const [x, y] = toScreen(view, [r.x, r.y]);
-        return <rect key={r.id} className="cut-out" x={x} y={y} width={r.w * view.scale} height={r.d * view.scale} />;
+        const w = r.w * view.scale;
+        const h = r.d * view.scale;
+        return (
+          <g key={r.id}>
+            <rect className="cut-out" x={x} y={y} width={w} height={h} />
+            <path className="cut-out__cross" d={`M${x} ${y} L${x + w} ${y + h} M${x + w} ${y} L${x} ${y + h}`} />
+          </g>
+        );
       })}
     </g>
   );

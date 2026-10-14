@@ -38,7 +38,8 @@ test('AC20: room 3D renders, pinch zooms at the pointer, and a Rack opens its el
   await page.getByRole('link', { name: '3D' }).click();
   const canvas = page.locator('.room3d canvas');
   const fallback = page.getByText(/can't show 3D/);
-  await expect(canvas.or(fallback)).toBeVisible();
+  // First visit compiles the lazy three.js chunk on the dev server, which can outlast the default 5 s under load.
+  await expect(canvas.or(fallback)).toBeVisible({ timeout: 20_000 });
   if (browserName === 'chromium') await expect(canvas).toBeVisible();
   if (await canvas.isVisible()) {
     const box = await canvas.boundingBox();
@@ -53,7 +54,8 @@ test('AC20: room 3D renders, pinch zooms at the pointer, and a Rack opens its el
     await page.getByRole('button', { name: 'Reset view' }).click();
     await expect(zoom).toHaveText(before ?? '');
   }
-  await page.getByRole('button', { name: /RK-C1/ }).click();
+  await page.getByRole('button', { name: /^RK-C1/ }).click();
+  await page.getByRole('button', { name: 'Open RK-C1 elevation' }).click();
   await expect(page).toHaveURL(/\/elevation\?sel=/);
   await expect(page.getByRole('group', { name: 'RK-C1 front elevation, 42U' })).toBeVisible();
 });

@@ -1,5 +1,5 @@
 import type { CommitFn } from '../../store/hooks';
-import { createObject, newId, snapDrag, snapFloor, type Id, type PlanCommand, type PlanContent, type Point } from '@glasshouse/domain';
+import { anchorAt, createObject, newId, snapDrag, snapFloor, type Id, type PlanCommand, type PlanContent, type Point, type RoomObject, type RoomObjectType } from '@glasshouse/domain';
 import { useEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react';
 import type { ViewportApi } from '../../viewport/useViewport';
 import { clampIntoRoom } from './clamp';
@@ -60,8 +60,23 @@ export function usePlanGestures({ content, tool, setTool, selectedId, select, vi
   const [spaceHeld, setSpaceHeld] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [measure, setMeasure] = useState<MeasureState>(NO_MEASURE);
+  const [ghost, setGhost] = useState<RoomObject | null>(null);
+  const dimensionStart = useRef<SnapTarget | null>(null);
 
-  useEffect(() => setMeasure(NO_MEASURE), [tool]);
+  useEffect(() => {
+    dimensionStart.current = null;
+    setMeasure(NO_MEASURE);
+    setGhost(null);
+  }, [tool]);
+
+  /** Where a placement tool drops its object for a cursor position; the ghost and the click share it. */
+  const placementAt = (type: RoomObjectType, world: Point): RoomObject => {
+    const draft = createObject(type, { x: 0, y: 0 }, content.objects);
+    const [px, py] = snapPoint(world);
+    const x = Math.min(Math.max(0, px), Math.max(0, content.survey.width - draft.w));
+    const y = Math.min(Math.max(0, py), Math.max(0, content.survey.length - draft.d));
+    return { ...draft, x: snapFloor(x), y: snapFloor(y) };
+  };
 
   useEffect(() => {
     if (!message) return;
@@ -96,6 +111,23 @@ export function usePlanGestures({ content, tool, setTool, selectedId, select, vi
       setMeasure((m) => (m.a === null || m.b !== null ? { ...m, a: snap, b: null } : { ...m, b: snap }));
       return;
     }
+    if (tool === 'dimension' && !readOnly) {
+      const snap = snapMeasurePoint(world, content, MEASURE_SNAP_PX / viewport.view.scale);
+      // A ref, not render state: two quick clicks must not both read "no first point yet".
+      const start = dimensionStart.current;
+      if (start === null) {
+        dimensionStart.current = snap;
+        setMeasure((m) => ({ ...m, a: snap, b: null }));
+        return;
+      }
+      dimensionStart.current = null;
+      const id = newId();
+      const added = run({ type: 'dimension/add', dimension: { id, a: anchorAt(content, start.point, start.objectId), b: anchorAt(content, snap.point, snap.objectId), offset: 0 } });
+      // Stay in the tool so a row of dimensions can be drawn one after another.
+      setMeasure((m) => ({ ...m, a: null, b: null }));
+      if (added) select(id);
+      return;
+    }
     if (readOnly) {
       select(hitTest(content.objects, world)?.id ?? null);
       return;
@@ -107,15 +139,16 @@ export function usePlanGestures({ content, tool, setTool, selectedId, select, vi
       return;
     }
     if (isPlacementTool(tool)) {
-      const draft = createObject(tool, { x: 0, y: 0 }, content.objects);
-      const [px, py] = snapPoint(world);
-      const x = Math.min(Math.max(0, px), Math.max(0, content.survey.width - draft.w));
-      const y = Math.min(Math.max(0, py), Math.max(0, content.survey.length - draft.d));
-      const object = { ...draft, x: snapFloor(x), y: snapFloor(y) };
+      const object = placementAt(tool, world);
       if (run({ type: 'object/add', object })) {
         select(object.id);
         setTool('select');
       }
+      return;
+    }
+    const dimensionId = (e.target as Element).closest('[data-dimension-id]')?.getAttribute('data-dimension-id');
+    if (dimensionId && tool === 'select') {
+      select(dimensionId);
       return;
     }
     const handle = (e.target as Element).closest('[data-handle]')?.getAttribute('data-handle') as Handle | null;
@@ -134,10 +167,14 @@ export function usePlanGestures({ content, tool, setTool, selectedId, select, vi
 
   const onPointerMove = (e: PointerEvent<SVGSVGElement>): void => {
     const g = gesture.current;
-    if (!g && tool === 'measure') {
+    if (!g && (tool === 'measure' || tool === 'dimension')) {
       const world = viewport.clientToWorld(e.clientX, e.clientY);
       const cursorSnap = snapMeasurePoint(world, content, MEASURE_SNAP_PX / viewport.view.scale);
       setMeasure((m) => ({ ...m, cursor: cursorSnap, hoverId: hitTest(content.objects, world)?.id ?? null }));
+      return;
+    }
+    if (!g && isPlacementTool(tool) && !readOnly) {
+      setGhost(placementAt(tool, viewport.clientToWorld(e.clientX, e.clientY)));
       return;
     }
     if (!g) return;
@@ -189,7 +226,10 @@ export function usePlanGestures({ content, tool, setTool, selectedId, select, vi
     }
     if (e.key === 'Escape') {
       if (gesture.current) cancel();
-      else if (tool === 'measure' && measure.a !== null) setMeasure(NO_MEASURE);
+      else if ((tool === 'measure' || tool === 'dimension') && measure.a !== null) {
+        dimensionStart.current = null;
+        setMeasure(NO_MEASURE);
+      }
       else if (tool !== 'select') setTool('select');
       else select(null);
       return;
@@ -201,6 +241,11 @@ export function usePlanGestures({ content, tool, setTool, selectedId, select, vi
       return;
     }
     if (readOnly) return;
+    if ((e.key === 'Delete' || e.key === 'Backspace') && content.dimensions.some((d) => d.id === selectedId)) {
+      e.preventDefault();
+      if (selectedId && run({ type: 'dimension/remove', id: selectedId })) select(null);
+      return;
+    }
     const selected = content.objects.find((o) => o.id === selectedId);
     if (!selected) return;
     if (e.key === 'Delete' || e.key === 'Backspace') {
@@ -232,7 +277,10 @@ export function usePlanGestures({ content, tool, setTool, selectedId, select, vi
 
   const panning = tool === 'pan' || spaceHeld || gesture.current?.kind === 'pan';
   const cursor = panning ? 'grab' : tool === 'select' ? 'default' : 'crosshair';
-  const onPointerLeave = (): void => setMeasure((m) => ({ ...m, cursor: null, hoverId: null }));
+  const onPointerLeave = (): void => {
+    setMeasure((m) => ({ ...m, cursor: null, hoverId: null }));
+    setGhost(null);
+  };
   const svgHandlers: SvgHandlers = {
     onPointerDown,
     onPointerMove,
@@ -242,5 +290,5 @@ export function usePlanGestures({ content, tool, setTool, selectedId, select, vi
     onContextMenu: (e) => e.preventDefault(),
   };
 
-  return { preview, cursor, message, measure, svgHandlers, onKeyDown, onKeyUp };
+  return { preview, ghost, cursor, message, measure, svgHandlers, onKeyDown, onKeyUp };
 }

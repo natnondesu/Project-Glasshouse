@@ -1,13 +1,14 @@
-import { Canvas, useThree, type ThreeEvent } from '@react-three/fiber';
-import { useEffect, useMemo } from 'react';
-import { BoxGeometry, DoubleSide, EdgesGeometry, Plane, Raycaster, Shape, ShapeGeometry, Vector2, Vector3 } from 'three';
+import { Canvas, useThree } from '@react-three/fiber';
+import { useEffect } from 'react';
+import { Plane, Raycaster, Vector2, Vector3 } from 'three';
 import { wheelZoomFactor } from '../../viewport/math';
 import { cameraPosition, dollyToward, orbit, panGround, type OrbitCamera } from './camera';
 import type { Palette3D } from './palette';
-import type { Object3D, Rack3D, Scene3D } from './scene';
+import { RackModel } from './RackModel';
+import { Column, Floor, ObjectModel, Walls } from './RoomModels';
+import type { Rack3D, Scene3D } from './scene';
 
 export const FOV_DEG = 45;
-const CLICK_SLOP_PX = 4;
 
 export function hasWebGL(): boolean {
   try {
@@ -98,131 +99,54 @@ function CameraController({ camera, onChange }: ControllerProps) {
   return null;
 }
 
-function Floor({ scene, palette }: { scene: Scene3D; palette: Palette3D }) {
-  const geometry = useMemo(() => {
-    const shapes = scene.floor.map(([outer, ...holes]) => {
-      const shape = new Shape(outer!.map(([x, y]) => new Vector2(x, y)));
-      shape.holes = holes.map((h) => new Shape(h.map(([x, y]) => new Vector2(x, y))));
-      return shape;
-    });
-    return new ShapeGeometry(shapes);
-  }, [scene.floor]);
-  // R3F disposes what it creates, not geometries passed in as props.
-  useEffect(() => () => geometry.dispose(), [geometry]);
-  const edges = useMemo(() => new Float32Array(scene.floor.flatMap((poly) => poly.flatMap((ring) => ring.slice(0, -1).flatMap(([x, y], i) => {
-    const [nx, ny] = ring[i + 1]!;
-    return [x, 0.004, y, nx, 0.004, ny];
-  })))), [scene.floor]);
-  return (
-    <group>
-      {/* Plan y maps to world z: rotating the XY shape +90° about X lays it on the floor the right way round. */}
-      <mesh geometry={geometry} rotation={[Math.PI / 2, 0, 0]} receiveShadow>
-        <meshStandardMaterial color={palette.floor} side={DoubleSide} />
-      </mesh>
-      <lineSegments>
-        <bufferGeometry>
-          <bufferAttribute attach="attributes-position" args={[edges, 3]} />
-        </bufferGeometry>
-        <lineBasicMaterial color={palette.wall} />
-      </lineSegments>
-    </group>
-  );
-}
-
-/** Crisp ink edges keep boxes readable in flat light, in keeping with the 2D drawing. */
-function Edges({ size, color }: { size: [number, number, number]; color: string }) {
-  const geometry = useMemo(() => {
-    const box = new BoxGeometry(...size);
-    const edges = new EdgesGeometry(box);
-    box.dispose();
-    return edges;
-  }, [size]);
-  useEffect(() => () => geometry.dispose(), [geometry]);
-  return (
-    <lineSegments geometry={geometry}>
-      <lineBasicMaterial color={color} transparent opacity={0.55} />
-    </lineSegments>
-  );
-}
-
-function RackModel({ rack, palette, onOpen }: { rack: Rack3D; palette: Palette3D; onOpen: (id: string) => void }) {
-  const [w, h, d] = rack.size;
-  const click = (e: ThreeEvent<MouseEvent>): void => {
-    e.stopPropagation();
-    if (e.delta <= CLICK_SLOP_PX) onOpen(rack.id);
-  };
-  return (
-    <group position={rack.position} rotation={[0, rack.yaw, 0]} onClick={click} name={rack.name}>
-      <mesh castShadow>
-        <boxGeometry args={[w, h, d]} />
-        <meshStandardMaterial color={rack.owner === 'customer' ? palette.rackCustomer : palette.rack} roughness={0.7} />
-      </mesh>
-      <Edges size={rack.size} color={palette.wall} />
-      {/* Front marker: a bright strip along the top front edge. */}
-      <mesh position={[0, h / 2 + 0.006, d / 2 - 0.04]}>
-        <boxGeometry args={[w, 0.012, 0.08]} />
-        <meshStandardMaterial color={palette.front} />
-      </mesh>
-      {rack.faces.map((f) => (
-        <mesh key={f.id} position={[0, f.y - h / 2, f.z]}>
-          <planeGeometry args={[f.width, f.height]} />
-          <meshStandardMaterial color={f.unknown ? palette.unknown : palette.category[f.category]} />
-        </mesh>
-      ))}
-      {rack.slots.map((s) => (
-        <mesh key={`${s.chassisId}-${s.slot}`} position={[s.x, s.y - h / 2, s.z]}>
-          <planeGeometry args={[s.width, s.height]} />
-          <meshStandardMaterial color={s.filled ? palette.category.compute : palette.slotEmpty} />
-        </mesh>
-      ))}
-    </group>
-  );
-}
-
-function ObjectModel({ object, palette }: { object: Object3D; palette: Palette3D }) {
-  return (
-    <group position={object.position} rotation={[0, object.yaw, 0]}>
-      <mesh castShadow>
-        <boxGeometry args={object.size} />
-        <meshStandardMaterial color={palette.object[object.type]} transparent={object.type === 'door'} opacity={object.type === 'door' ? 0.55 : 1} />
-      </mesh>
-      <Edges size={object.size} color={palette.wall} />
-    </group>
-  );
-}
-
-function Column({ column, palette }: { column: Scene3D['columns'][number]; palette: Palette3D }) {
-  return (
-    <group position={column.position}>
-      <mesh castShadow>
-        <boxGeometry args={column.size} />
-        <meshStandardMaterial color={palette.column} />
-      </mesh>
-      <Edges size={column.size} color={palette.wall} />
-    </group>
-  );
-}
-
 interface Room3DCanvasProps {
   scene: Scene3D;
   palette: Palette3D;
   camera: OrbitCamera;
   onCamera: CameraUpdate;
-  onOpenRack: (id: string) => void;
+  selectedRackId: string | null;
+  onSelectRack: (id: string | null) => void;
 }
 
-export function Room3DCanvas({ scene, palette, camera, onCamera, onOpenRack }: Room3DCanvasProps) {
+export function Room3DCanvas({ scene, palette, camera, onCamera, selectedRackId, onSelectRack }: Room3DCanvasProps) {
+  const existing = scene.others.filter((o) => o.type === 'existing_rack');
+  const others = scene.others.filter((o) => o.type !== 'existing_rack');
   return (
-    <Canvas className="room3d__canvas" shadows="percentage" dpr={[1, 2]} camera={{ fov: FOV_DEG, near: 0.05, far: 300, position: cameraPosition(camera) }} aria-label="Room in 3D">
-      <ambientLight intensity={0.9} />
-      <directionalLight position={[scene.width * 0.3, 8, scene.length * 1.2]} intensity={1.4} castShadow />
-      <hemisphereLight args={['#ffffff', '#b8c4cf', 0.5]} />
+    <Canvas
+      className="room3d__canvas"
+      shadows="percentage"
+      dpr={[1, 2]}
+      camera={{ fov: FOV_DEG, near: 0.05, far: 300, position: cameraPosition(camera) }}
+      aria-label="Room in 3D"
+      onPointerMissed={(e) => {
+        // A click on empty floor clears the highlight; a drag to orbit doesn't.
+        if (e.type === 'click') onSelectRack(null);
+      }}
+    >
+      <color attach="background" args={[palette.sky]} />
+      <ambientLight intensity={0.75} />
+      <hemisphereLight args={['#ffffff', '#b8c4cf', 0.55]} />
+      <directionalLight
+        position={[scene.width * 0.2 - 2, 9, scene.length * 1.3 + 2]}
+        intensity={1.6}
+        castShadow
+        shadow-mapSize={[2048, 2048]}
+        shadow-camera-left={-Math.max(scene.width, scene.length)}
+        shadow-camera-right={Math.max(scene.width, scene.length)}
+        shadow-camera-top={Math.max(scene.width, scene.length)}
+        shadow-camera-bottom={-Math.max(scene.width, scene.length)}
+      />
       <CameraController camera={camera} onChange={onCamera} />
       <Floor scene={scene} palette={palette} />
-      {scene.racks.map((r) => (
-        <RackModel key={r.id} rack={r} palette={palette} onOpen={onOpenRack} />
+      <Walls scene={scene} palette={palette} />
+      {scene.racks.map((r, i) => (
+        <RackModel key={r.id} rack={r} palette={palette} selected={r.id === selectedRackId} onSelect={onSelectRack} stagger={i % 2 === 1} />
       ))}
-      {scene.others.map((o) => (
+      {existing.map((o) => {
+        const asRack: Rack3D = { ...o, owner: 'oxygenai', faces: [], slots: [], reserved: [], capacityU: 42, usedU: 0 };
+        return <RackModel key={o.id} rack={asRack} palette={palette} selected={false} onSelect={() => undefined} existing />;
+      })}
+      {others.map((o) => (
         <ObjectModel key={o.id} object={o} palette={palette} />
       ))}
       {scene.columns.map((c) => (
@@ -231,4 +155,3 @@ export function Room3DCanvas({ scene, palette, camera, onCamera, onOpenRack }: R
     </Canvas>
   );
 }
-
