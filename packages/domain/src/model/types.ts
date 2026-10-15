@@ -188,11 +188,17 @@ export interface PanelConfig {
 }
 
 export type DoorHinge = 'left' | 'right';
+export type DoorOpening = 'swing' | 'slide';
 
 export interface SimpleObject extends ObjectBase {
   type: SimpleObjectType;
-  /** Doors only: the end the leaf hangs from, seen from the swing side. Absent means left. */
+  /**
+   * Doors only. Swing doors: the end the leaf hangs from, seen from the swing side.
+   * Sliding doors: the side the leaf slides to. Absent means left.
+   */
   hinge?: DoorHinge;
+  /** Doors only: how the leaf opens. Absent means swing. */
+  opening?: DoorOpening;
   /** MCB panels only. */
   panel?: PanelConfig;
 }

@@ -1,5 +1,5 @@
 import type { CommitFn } from '../../store/hooks';
-import { anchorAt, dimensionPoints, newId, offsetFromPoint, type Dimension, snapDrag, snapFloor, type Id, type PlanCommand, type PlanContent, type Point, type RoomObject, type RoomObjectType } from '@glasshouse/domain';
+import { anchorAt, dimensionPoints, newId, offsetFromPoint, type Dimension, snapDrag, snapFloor, type Id, type PlanCommand, type PlanContent, type Point, type RoomObject } from '@glasshouse/domain';
 import { useEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react';
 import type { ViewportApi } from '../../viewport/useViewport';
 import { clampIntoRoom } from './clamp';
@@ -11,7 +11,7 @@ import { snapMeasurePoint, type SnapTarget } from './measure';
 import type { Preview } from './layers';
 import type { SvgHandlers } from './PlanCanvas';
 import { resizePlacement, type Handle } from './resize';
-import { isPlacementTool, toolForKey, type Tool } from './tools';
+import { isPlacementTool, toolForKey, type PlacementTool, type Tool } from './tools';
 
 export type { CommitFn } from '../../store/hooks';
 
@@ -89,7 +89,7 @@ export function usePlanGestures({ content, tool, setTool, selectedId, select, vi
     offset,
   });
 
-  const placementAt = (type: RoomObjectType, world: Point): RoomObject => placeObject(type, world, content);
+  const placementAt = (tool: PlacementTool, world: Point): RoomObject => placeObject(tool, world, content);
 
   useEffect(() => {
     if (!message) return;

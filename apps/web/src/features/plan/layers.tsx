@@ -17,7 +17,7 @@ import { useMemo, type ReactElement } from 'react';
 import { toScreen, type View } from '../../viewport/math';
 import { useT } from '../../i18n';
 import { polygonPath, multiPolygonPath } from './svgPath';
-import { DoorSymbol, fitLabel, HoverTag, McbSymbol, SourceSymbol } from './symbols';
+import { DoorSymbol, fitLabel, HoverTag, McbSymbol, SlidingDoorSymbol, SourceSymbol } from './symbols';
 
 /** Too thin or too small for a name: these rely on their symbol and the hover tag. */
 const UNLABELLED = new Set<string>(['door', 'mcb', 'wall_plug', 'industrial_socket', 'floor_box']);
@@ -218,7 +218,7 @@ export function ObjectsLayer({ objects, view, flagged, selectedId, onFocusObject
           >
             <path className="obj__body" d={polygonPath(placementPolygon(o), view)} />
             {o.type === 'existing_rack' ? <path className="obj__cross" d={crossPath(o, view)} /> : null}
-            {o.type === 'door' ? <DoorSymbol o={o} view={view} /> : null}
+            {o.type === 'door' ? o.opening === 'slide' ? <SlidingDoorSymbol o={o} view={view} /> : <DoorSymbol o={o} view={view} /> : null}
             {o.type === 'mcb' ? <McbSymbol o={o} view={view} /> : null}
             <SourceSymbol o={o} view={view} />
             {o.type === 'rack' ? <RackFront rack={o} view={view} /> : null}

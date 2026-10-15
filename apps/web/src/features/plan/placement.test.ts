@@ -15,3 +15,8 @@ it('snaps to the floor grid away from the walls, and puts wall-mounted sources o
   expect(placementAt('ups', [2.04, 1.96], room)).toMatchObject({ x: 2, y: 2 });
   expect(placementAt('wall_plug', [3, 0.2], room)).toMatchObject({ y: 0, angle: 0 });
 });
+
+it('places a sliding door as a door that slides', () => {
+  expect(placementAt('sliding_door', [3, 2], room)).toMatchObject({ type: 'door', opening: 'slide' });
+  expect(placementAt('door', [3, 2], room)).not.toHaveProperty('opening');
+});

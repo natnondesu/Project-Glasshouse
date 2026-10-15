@@ -10,6 +10,7 @@ export type IssueCode =
   | 'clearance_outside_footprint'
   | 'clearance_obstructed'
   | 'clearance_door'
+  | 'clearance_sliding_door'
   | 'device_too_deep'
   | 'demand_unknown'
   | 'reserved_demand_unknown'

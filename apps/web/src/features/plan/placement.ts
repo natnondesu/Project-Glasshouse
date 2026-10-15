@@ -1,3 +1,4 @@
+import type { PlacementTool } from './tools';
 import { createObject, snapFloor, snapToWall, snapTyped, WALL_MOUNTED_SOURCES, type PlanContent, type Point, type RoomObject, type RoomObjectType } from '@glasshouse/domain';
 
 /**
@@ -5,8 +6,10 @@ import { createObject, snapFloor, snapToWall, snapTyped, WALL_MOUNTED_SOURCES, t
  * Grid-snap first, then clamp: clamping after snapping could push an object whose size is off the
  * 10 cm grid (a 1.07 m rack, a 0.85 m UPS) back over the wall.
  */
-export function placementAt(type: RoomObjectType, world: Point, content: PlanContent): RoomObject {
-  const draft = createObject(type, { x: 0, y: 0 }, content.objects);
+export function placementAt(tool: PlacementTool, world: Point, content: PlanContent): RoomObject {
+  const type: RoomObjectType = tool === 'sliding_door' ? 'door' : tool;
+  const made = createObject(type, { x: 0, y: 0 }, content.objects);
+  const draft: RoomObject = tool === 'sliding_door' && made.type !== 'rack' ? { ...made, opening: 'slide' } : made;
   // Panels, plugs and sockets hang on walls: flat against the nearest one, facing the room.
   const wall = WALL_MOUNTED_SOURCES.has(type as never) ? snapToWall(content.survey, world, draft.w, draft.d) : null;
   if (wall) return { ...draft, x: snapTyped(wall.x), y: snapTyped(wall.y), angle: wall.angle };

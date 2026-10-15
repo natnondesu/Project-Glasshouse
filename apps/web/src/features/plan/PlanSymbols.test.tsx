@@ -44,3 +44,25 @@ it('draws an MCB panel symbol and a real door with leaf and swing that follows t
   expect(leafX('dl')).toBeCloseTo(Math.min(...xs(bodyX('dl'))), 0);
   expect(leafX('dr')).toBeCloseTo(Math.max(...xs(bodyX('dr'))), 0);
 });
+
+it('draws a sliding door with its track, the leaf parked on the side it slides to, and no swing', () => {
+  const left = at(createObject('door', { x: 3, y: 0 }, []), 'sl', { opening: 'slide' });
+  const right = at(createObject('door', { x: 6, y: 0 }, []), 'sr', { opening: 'slide', hinge: 'right' });
+  const { container } = render(<Harness objects={[left, right]} />);
+  const xs = (sel: string) => [...container.querySelector(sel)!.getAttribute('d')!.matchAll(/[ML]([\d.-]+) /g)].map((m) => Number(m[1]));
+  for (const id of ['sl', 'sr']) {
+    expect(container.querySelector(`[data-object-id="${id}"] .door__swing`)).toBeNull();
+    expect(container.querySelector(`[data-object-id="${id}"] .door__track`)).not.toBeNull();
+    expect(container.querySelector(`[data-object-id="${id}"] .door__arrow`)).not.toBeNull();
+  }
+  const mid = (id: string) => {
+    const body = xs(`[data-object-id="${id}"] .obj__body`);
+    return (Math.min(...body) + Math.max(...body)) / 2;
+  };
+  const leafMid = (id: string) => {
+    const leaf = xs(`[data-object-id="${id}"] .door__leaf--slide`);
+    return (leaf[0]! + leaf[1]!) / 2;
+  };
+  expect(leafMid('sl')).toBeLessThan(mid('sl'));
+  expect(leafMid('sr')).toBeGreaterThan(mid('sr'));
+});

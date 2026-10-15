@@ -46,6 +46,13 @@ export const IconDoor = (p: IconProps) => (
     <path d="M3 16V3M3 3A13 13 0 0 1 16 16M2 16H16" />
   </svg>
 );
+export const IconSlidingDoor = (p: IconProps) => (
+  <svg {...frame(18)} {...p}>
+    <path d="M2 16H16M3 16V9M10 16V9M3 6.5H16M9.5 6.5H16" />
+    <path d="M9.5 4.5H16" strokeWidth={2.5} />
+    <path d="M5 12H8.5M7 10.5L8.5 12L7 13.5" />
+  </svg>
+);
 export const IconMcb = (p: IconProps) => (
   <svg {...frame(18)} {...p}>
     <rect x="3" y="2" width="12" height="14" />

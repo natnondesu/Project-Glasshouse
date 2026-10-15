@@ -15,11 +15,14 @@ import {
   IconPdu,
   IconRack,
   IconSelect,
+  IconSlidingDoor,
   IconUps,
   IconWallPlug,
 } from '../../ui/icons';
 
-export type Tool = 'select' | 'pan' | 'measure' | 'dimension' | 'area' | 'cut' | RoomObjectType;
+/** What a placement tool drops: an object type, or a door that slides instead of swinging. */
+export type PlacementTool = RoomObjectType | 'sliding_door';
+export type Tool = 'select' | 'pan' | 'measure' | 'dimension' | 'area' | 'cut' | PlacementTool;
 export type ToolGroupId = 'floor' | 'objects' | 'measure' | 'power';
 
 /** Wording (label, flyout name, hint) lives in the message catalogues under `tools.spec`. */
@@ -41,6 +44,7 @@ export const TOOL_SPECS: Record<Tool, ToolSpec> = {
   cut: { id: 'cut', shortcut: 'C', Icon: IconCut },
   rack: { id: 'rack', shortcut: null, Icon: IconRack },
   door: { id: 'door', shortcut: null, Icon: IconDoor },
+  sliding_door: { id: 'sliding_door', shortcut: null, Icon: IconSlidingDoor },
   existing_rack: { id: 'existing_rack', shortcut: null, Icon: IconExistingRack },
   furniture: { id: 'furniture', shortcut: null, Icon: IconFurniture },
   measure: { id: 'measure', shortcut: 'M', Icon: IconMeasure },
@@ -57,7 +61,7 @@ export const SOLO_TOOLS: Tool[] = ['select', 'pan'];
 
 export const TOOL_GROUPS: ToolGroup[] = [
   { id: 'floor', tools: ['area', 'cut'] },
-  { id: 'objects', tools: ['rack', 'door', 'existing_rack', 'furniture'] },
+  { id: 'objects', tools: ['rack', 'door', 'sliding_door', 'existing_rack', 'furniture'] },
   { id: 'measure', tools: ['measure', 'dimension'] },
   { id: 'power', tools: ['mcb', 'wall_plug', 'industrial_socket', 'floor_box', 'ups', 'pdu'] },
 ];
@@ -69,4 +73,4 @@ export const toolForKey = (key: string): Tool | null =>
   TOOLS.find((t) => t.shortcut !== null && t.shortcut.toLowerCase() === key.toLowerCase())?.id ?? null;
 
 const NON_PLACEMENT = new Set<Tool>(['select', 'pan', 'measure', 'dimension', 'area', 'cut']);
-export const isPlacementTool = (tool: Tool): tool is RoomObjectType => !NON_PLACEMENT.has(tool);
+export const isPlacementTool = (tool: Tool): tool is PlacementTool => !NON_PLACEMENT.has(tool);

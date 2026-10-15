@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { emptyContent } from '../factories';
-import type { PlanContent, Rack, RoomObject } from '../model/types';
+import type { PlanContent, Rack, RoomObject, SimpleObject } from '../model/types';
 import { createObject } from '../objects';
 import { checkPlan } from './index';
 
@@ -59,6 +59,11 @@ describe('clearance checks', () => {
     expect(blocked[0]).toMatchObject({ code: 'clearance_obstructed', severity: 'block', message: 'EX-01 sits inside the front clearance zone of RK-C1.', targets: [expect.any(String), rack.id] });
     const door = checkPlan(content([rack, obj('door', 'D-01', 3.3, 2.0, 0.9, 0.1)]));
     expect(door.map((i) => `${i.severity}:${i.code}`)).toEqual(['warn:clearance_door']);
+    // A sliding door has no swing to hit the rack: still a doorway in the zone, with its own wording.
+    const sliding = checkPlan(content([rack, { ...(obj('door', 'D-01', 3.3, 2.0, 0.9, 0.1) as SimpleObject), opening: 'slide' as const }]));
+    expect(sliding).toEqual([
+      expect.objectContaining({ severity: 'warn', code: 'clearance_sliding_door', hint: 'Usually fine: a sliding door needs no swing space. Keep the opening itself clear.' }),
+    ]);
   });
 
   it('allows racks sharing an aisle (overlapping zones)', () => {

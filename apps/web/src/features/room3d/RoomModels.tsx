@@ -105,13 +105,14 @@ function Desk({ size, color, edge }: { size: [number, number, number]; color: st
   );
 }
 
-function Door({ size, color, wall }: { size: [number, number, number]; color: string; wall: string }) {
-  const [w, h, d] = size;
-  const leafT = 0.04;
-  // Shown open at 70° towards the room, with its swing on the floor, as on a drawing.
-  const swing = (70 * Math.PI) / 180;
+const DOOR_LEAF_M = 0.04;
+/** Sliding doors: the leaf runs this far off the wall face and laps the opening by this much when parked. */
+const SLIDE_STANDOFF_M = 0.05;
+const SLIDE_OVERLAP_M = 0.05;
+
+function DoorFrame({ w, h, d, wall }: { w: number; h: number; d: number; wall: string }) {
   return (
-    <group>
+    <>
       {[-1, 1].map((s) => (
         <mesh key={s} position={[(s * w) / 2, 0, 0]}>
           <boxGeometry args={[0.05, h, d + 0.04]} />
@@ -122,6 +123,40 @@ function Door({ size, color, wall }: { size: [number, number, number]; color: st
         <boxGeometry args={[w + 0.05, 0.05, d + 0.04]} />
         <meshStandardMaterial color={wall} roughness={0.7} />
       </mesh>
+    </>
+  );
+}
+
+/** A sliding door, open: the leaf parked flat along the wall on its side, hanging from a top track. */
+function SlidingDoor({ size, color, wall, side }: { size: [number, number, number]; color: string; wall: string; side: 1 | -1 }) {
+  const [w, h, d] = size;
+  const z = d / 2 + SLIDE_STANDOFF_M;
+  return (
+    <group>
+      <DoorFrame w={w} h={h} d={d} wall={wall} />
+      <mesh position={[side * (w / 2), h / 2 - 0.02, z]}>
+        <boxGeometry args={[2 * w + 0.05, 0.03, 0.04]} />
+        <meshStandardMaterial color={wall} roughness={0.5} metalness={0.4} />
+      </mesh>
+      <mesh position={[side * (w - SLIDE_OVERLAP_M), -0.03, z]} castShadow>
+        <boxGeometry args={[w, h - 0.06, DOOR_LEAF_M]} />
+        <meshStandardMaterial color={color} roughness={0.6} />
+      </mesh>
+    </group>
+  );
+}
+
+function Door({ size, color, wall, hinge = 'left', opening = 'swing' }: { size: [number, number, number]; color: string; wall: string; hinge?: 'left' | 'right'; opening?: 'swing' | 'slide' }) {
+  const side = hinge === 'right' ? 1 : -1;
+  if (opening === 'slide') return <SlidingDoor size={size} color={color} wall={wall} side={side} />;
+  const [w, h, d] = size;
+  const leafT = DOOR_LEAF_M;
+  // Shown open at 70° towards the room, with its swing on the floor, as on a drawing.
+  const swing = (70 * Math.PI) / 180;
+  // Drawn hinged on the left; a right-hinged door is the mirror image (three.js flips the winding for negative scale).
+  return (
+    <group scale={[side === 1 ? -1 : 1, 1, 1]}>
+      <DoorFrame w={w} h={h} d={d} wall={wall} />
       <group position={[-w / 2, 0, d / 2]} rotation={[0, -swing, 0]}>
         <mesh position={[w / 2, 0, leafT / 2]} castShadow>
           <boxGeometry args={[w - 0.02, h - 0.06, leafT]} />
@@ -220,7 +255,7 @@ export function ObjectModel({ object, palette }: { object: Object3D; palette: Pa
   const color = palette.object[object.type];
   let body;
   if (object.type === 'furniture') body = <Desk size={object.size} color={color} edge={palette.slotEmpty} />;
-  else if (object.type === 'door') body = <Door size={object.size} color={color} wall={palette.wall} />;
+  else if (object.type === 'door') body = <Door size={object.size} color={color} wall={palette.wall} hinge={object.door?.hinge} opening={object.door?.opening} />;
   else if (object.type === 'wall_plug' || object.type === 'industrial_socket') body = <Faceplate size={object.size} color={color} wall={palette.wall} round={object.type === 'industrial_socket'} />;
   else if (object.type === 'floor_box') body = <FloorBoxLid size={object.size} color={color} wall={palette.wall} />;
   else if (object.type === 'ups' || object.type === 'pdu') body = <Cabinet size={object.size} color={color} wall={palette.wall} accent={object.type === 'ups' ? '#4cd17a' : '#7fa2e8'} />;
