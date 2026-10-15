@@ -51,11 +51,8 @@ export default function Room3DView({ location, readOnly = false }: { location: R
     <PowerPathToggle content={content} objectId={id} name={name} active={pathFor === id} onToggle={(on) => setPathFor(on ? id : null)} />
   );
   const managed = content.objects.find((o) => o.id === managedId && o.type === 'mcb') ?? null;
-  // Clicking an MCB in the room opens its ways, as double-clicking it does on the plan.
-  const select = (id: string | null): void => {
-    setSelectedId(id);
-    if (id && content.objects.some((o) => o.id === id && o.type === 'mcb')) setManagedId(id);
-  };
+  // Clicking selects only; an MCB's ways open from its card's Manage ways button.
+  const select = (id: string | null): void => setSelectedId(id);
   const [showFeeds, setShowFeeds] = usePersistentState('glasshouse:3d-feeds', true);
   const [focus, setFocus] = useState<Focus3D | null>(null);
   const pickHit = (hit: SearchHit): void => {
