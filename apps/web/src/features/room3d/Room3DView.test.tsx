@@ -64,13 +64,14 @@ it('chooses which kinds are always labelled, and remembers it', async () => {
   const user = userEvent.setup();
   render(<RouterProvider router={createMemoryRouter(routes, { initialEntries: ['/rooms/r/3d'] })} />);
   await screen.findByTestId('room3d-canvas');
-  await user.click(screen.getByRole('button', { name: 'Labels (3)' }));
+  // Only racks are labelled until the viewer chooses more.
+  await user.click(screen.getByRole('button', { name: 'Labels (1)' }));
   const menu = screen.getByRole('group', { name: 'Always label' });
-  expect(screen.getByRole('checkbox', { name: 'Power sources' })).toBeChecked();
-  expect(screen.getByRole('checkbox', { name: 'Doors' })).not.toBeChecked();
+  expect(screen.getByRole('checkbox', { name: 'Racks' })).toBeChecked();
+  for (const kind of ['Existing racks', 'Power sources', 'Doors', 'Furniture']) expect(screen.getByRole('checkbox', { name: kind })).not.toBeChecked();
   await user.click(screen.getByRole('checkbox', { name: 'Doors' }));
   await user.click(screen.getByRole('checkbox', { name: 'Racks' }));
-  expect(JSON.parse(localStorage.getItem('glasshouse:3d-label-kinds')!)).toEqual(['existing', 'power', 'door']);
+  expect(JSON.parse(localStorage.getItem('glasshouse:3d-label-kinds')!)).toEqual(['door']);
   await user.keyboard('{Escape}');
   expect(menu).not.toBeInTheDocument();
 });
