@@ -202,3 +202,10 @@ export const IconSearch = (p: IconProps) => (
     <path d="M9.2 9.2L12.5 12.5" />
   </svg>
 );
+export const IconWallRack = (p: IconProps) => (
+  <svg {...frame(18)} {...p}>
+    <path d="M2.5 2V16" strokeWidth={2} />
+    <rect x="5" y="4" width="9" height="7.5" strokeDasharray="2 1.5" />
+    <path d="M7 6.5H12M7 9H12" />
+  </svg>
+);

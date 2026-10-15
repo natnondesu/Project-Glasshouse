@@ -20,3 +20,8 @@ it('places a sliding door as a door that slides', () => {
   expect(placementAt('sliding_door', [3, 2], room)).toMatchObject({ type: 'door', opening: 'slide' });
   expect(placementAt('door', [3, 2], room)).not.toHaveProperty('opening');
 });
+
+it('hangs a wall rack on the nearest wall: 12U, bottom at 1.20 m, no rear clearance, front to the room', () => {
+  const r = placementAt('wall_rack', [3, 0.3], room);
+  expect(r).toMatchObject({ type: 'rack', capacityU: 12, wallBottomM: 1.2, y: 0, angle: 0, clearance: { rear: 0 } });
+});

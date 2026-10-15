@@ -4,6 +4,7 @@ import { area, containedIn, EPS_AREA, overlaps, placementPolygon, type Poly } fr
 import type { PlanContent, RoomObject } from '../model/types';
 import type { Issue } from './types';
 import { isFlush } from '../sources';
+import { heightsOverlap } from '../objects';
 
 interface Shape {
   object: RoomObject;
@@ -57,7 +58,7 @@ export function placementIssues(content: PlanContent): Issue[] {
   shapes.forEach((a, i) => {
     if (isFlush(a.object)) return;
     for (const b of shapes.slice(i + 1)) {
-      if (isFlush(b.object) || !overlaps(a.poly, b.poly)) continue;
+      if (isFlush(b.object) || !overlaps(a.poly, b.poly) || !heightsOverlap(a.object, b.object)) continue;
       issues.push({
         key: `object_overlap:${a.object.id}:${b.object.id}`,
         code: 'object_overlap',

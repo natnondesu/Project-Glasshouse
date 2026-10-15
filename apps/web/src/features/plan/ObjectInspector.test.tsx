@@ -51,3 +51,17 @@ it('turns a door into a sliding door and asks which side it slides to', async ()
   await user.click(screen.getByRole('button', { name: 'Swing' }));
   expect(commit).toHaveBeenLastCalledWith({ type: 'object/update', id: door.id, patch: { opening: 'swing' } }, undefined);
 });
+
+it('hangs a rack on the wall with no rear clearance, sets its height, and stands it back on the floor', async () => {
+  const user = userEvent.setup();
+  const rack = { ...(createObject('rack', { x: 1, y: 1 }, []) as Rack), name: 'RK-01' };
+  const commit = vi.fn<(command: unknown, coalesceKey?: string) => string | null>(() => null);
+  const { rerender } = render(<Inspector content={{ ...emptyContent(), objects: [rack] }} selected={rack} commit={commit} onDeleted={() => {}} />);
+  await user.click(screen.getByRole('button', { name: 'Wall' }));
+  expect(commit).toHaveBeenLastCalledWith({ type: 'object/update', id: rack.id, patch: { wallBottomM: 1.2, clearance: { rear: 0 } } }, undefined);
+  const hung = { ...rack, wallBottomM: 1.2 };
+  rerender(<Inspector content={{ ...emptyContent(), objects: [hung] }} selected={hung} commit={commit} onDeleted={() => {}} />);
+  expect(screen.getByLabelText('Bottom at')).toHaveValue('1.20');
+  await user.click(screen.getByRole('button', { name: 'Floor' }));
+  expect(commit).toHaveBeenLastCalledWith({ type: 'object/update', id: rack.id, patch: { wallBottomM: null } }, undefined);
+});
