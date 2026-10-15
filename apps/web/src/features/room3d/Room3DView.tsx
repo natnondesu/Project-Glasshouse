@@ -8,13 +8,27 @@ import { readPalette } from './palette';
 import { usePersistentState } from '../../ui/usePersistentState';
 import { hasWebGL, Room3DCanvas, type Focus3D } from './Room3DCanvas';
 import { buildScene } from './scene';
+import { initialLabelKinds, type LabelKind } from './labels';
+import { LabelMenu } from './LabelMenu';
+import { ObjectCard } from './ObjectCard';
+import { PanelManager } from '../plan/PanelManager';
+import { usePlanCommit } from '../../store/hooks';
 import './room3d.css';
 import { useT } from '../../i18n';
 
 const FOCUS_HEIGHT_M = 0.8;
 const FOCUS_DISTANCE_M = 6;
 
-export default function Room3DView({ location }: { location: RoomLocation }) {
+/** The pre-kinds label switch, read once so an "on hover" choice carries over. */
+function legacyLabelChoice(): string | null {
+  try {
+    return localStorage.getItem('glasshouse:3d-labels');
+  } catch {
+    return null;
+  }
+}
+
+export default function Room3DView({ location, readOnly = false }: { location: RoomLocation; readOnly?: boolean }) {
   const navigate = useNavigate();
   const content = currentRevision(location.room.plan).content;
   const plan = location.room.plan;
@@ -25,13 +39,21 @@ export default function Room3DView({ location }: { location: RoomLocation }) {
   const [webgl] = useState(hasWebGL);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const m = useT();
-  const [labels, setLabels] = usePersistentState<'always' | 'hover'>('glasshouse:3d-labels', 'always');
+  const [labelKinds, setLabelKinds] = usePersistentState<LabelKind[]>('glasshouse:3d-label-kinds', initialLabelKinds(legacyLabelChoice()));
+  const commit = usePlanCommit(location.room.id);
+  const [managedId, setManagedId] = useState<string | null>(null);
+  const managed = content.objects.find((o) => o.id === managedId && o.type === 'mcb') ?? null;
+  // Clicking an MCB in the room opens its ways, as double-clicking it does on the plan.
+  const select = (id: string | null): void => {
+    setSelectedId(id);
+    if (id && content.objects.some((o) => o.id === id && o.type === 'mcb')) setManagedId(id);
+  };
   const [showFeeds, setShowFeeds] = usePersistentState('glasshouse:3d-feeds', true);
   const [focus, setFocus] = useState<Focus3D | null>(null);
   const pickHit = (hit: SearchHit): void => {
     const target = scene.racks.find((r) => r.id === hit.objectId) ?? scene.others.find((o) => o.id === hit.objectId);
     if (!target) return;
-    if (scene.racks.some((r) => r.id === hit.objectId)) setSelectedId(hit.objectId);
+    setSelectedId(hit.objectId);
     const [x, , z] = target.position;
     // Swing to the hit without zooming out; come closer if the camera is far away.
     setCamera((prev) => ({ ...prev, target: [x, FOCUS_HEIGHT_M, z], distance: Math.min(prev.distance, FOCUS_DISTANCE_M) }));
@@ -39,13 +61,14 @@ export default function Room3DView({ location }: { location: RoomLocation }) {
   };
   const racks = [...scene.racks].sort((a, b) => a.name.localeCompare(b.name));
   const selected = racksOf(content).find((r) => r.id === selectedId) ?? null;
+  const selectedObject = selected ? null : (content.objects.find((o) => o.id === selectedId) ?? null);
   const power = selected ? rackPower(selected) : null;
   const openElevation = (id: string): void => void navigate(`/rooms/${location.room.id}/elevation?sel=${id}`);
 
   return (
     <section className="room3d" aria-label={m.room3d.region}>
       {webgl ? (
-        <Room3DCanvas scene={scene} palette={palette} camera={camera} onCamera={setCamera} selectedRackId={selectedId} onSelectRack={setSelectedId} labels={labels} focus={focus} showFeeds={showFeeds} />
+        <Room3DCanvas scene={scene} palette={palette} camera={camera} onCamera={setCamera} selectedId={selectedId} onSelect={select} labelKinds={labelKinds} focus={focus} showFeeds={showFeeds} />
       ) : (
         <p className="room3d__fallback" role="status">
           {m.room3d.noWebgl}
@@ -94,23 +117,19 @@ export default function Room3DView({ location }: { location: RoomLocation }) {
               {m.room3d.openElevation}
             </button>
           </section>
+        ) : selectedObject ? (
+          <ObjectCard object={selectedObject} onManageWays={() => setManagedId(selectedObject.id)} />
         ) : (
           <p className="room3d__note">{m.room3d.pickRack}</p>
         )}
       </aside>
+      {managed ? <PanelManager panel={managed} content={content} commit={commit} onClose={() => setManagedId(null)} readOnly={readOnly} /> : null}
       <div className="room3d__controls glass">
         <span className="mono room3d__zoom" aria-live="polite">{`${camera.distance.toFixed(1)} m`}</span>
         <button type="button" className="btn btn--sm" onClick={() => setCamera(home)}>
           {m.room3d.reset}
         </button>
-        <div className="seg seg--compact" role="group" aria-label={m.room3d.labels}>
-          <button type="button" aria-pressed={labels === 'always'} onClick={() => setLabels('always')}>
-            {m.room3d.labelsAlways}
-          </button>
-          <button type="button" aria-pressed={labels === 'hover'} onClick={() => setLabels('hover')}>
-            {m.room3d.labelsHover}
-          </button>
-        </div>
+        <LabelMenu shown={labelKinds} onChange={setLabelKinds} />
         <button type="button" className="btn btn--sm room3d__feeds" aria-pressed={showFeeds} onClick={() => setShowFeeds(!showFeeds)}>
           {showFeeds ? m.room3d.hideFeeds : m.room3d.showFeeds}
         </button>

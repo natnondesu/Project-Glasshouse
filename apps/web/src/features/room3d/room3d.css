@@ -148,3 +148,50 @@
 .room3d__controls .seg button {
   white-space: nowrap;
 }
+
+.label-menu {
+  position: relative;
+}
+
+/* Opens upwards: the menu lives in the bottom control bar. */
+.label-menu__list {
+  position: absolute;
+  bottom: calc(100% + 10px);
+  left: 0;
+  z-index: 6;
+  min-width: 220px;
+  margin: 0;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border-radius: var(--radius-panel);
+  box-shadow: var(--shadow-float);
+}
+
+.label-menu__list legend {
+  float: left;
+  margin-bottom: 2px;
+  padding: 0;
+}
+
+.label-menu__item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--text-sm);
+  cursor: pointer;
+}
+
+.label-menu__item input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: var(--acc);
+}
+
+.label-menu__note {
+  margin: 2px 0 0;
+  font-size: var(--text-xs);
+  color: var(--ink-2);
+}

@@ -36,7 +36,7 @@ export function RoomScreen() {
   else if (view === '3d')
     body = (
       <Suspense fallback={<p className="room3d__fallback" role="status">{m.shell.loading3d}</p>}>
-        <Room3DView key={roomId} location={location} />
+        <Room3DView key={`${roomId}:${revision.number}`} location={location} readOnly={readOnly} />
       </Suspense>
     );
   else if (view === 'network') body = <NetworkView key={`${roomId}:${revision.number}`} location={location} readOnly={readOnly} />;

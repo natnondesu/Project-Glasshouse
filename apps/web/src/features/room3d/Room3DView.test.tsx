@@ -9,10 +9,15 @@ import { resetWorkspaceStore, useWorkspaceStore } from '../../store/workspaceSto
 // jsdom has no WebGL: stand in for the canvas and keep the rest of the view real.
 vi.mock('./Room3DCanvas', () => ({
   hasWebGL: () => true,
-  Room3DCanvas: ({ onCamera }: { onCamera: (u: (c: { distance: number }) => object) => void }) => (
-    <button type="button" data-testid="room3d-canvas" onClick={() => onCamera((c) => ({ ...c, distance: c.distance * 2 }))}>
-      move camera
-    </button>
+  Room3DCanvas: ({ onCamera, onSelect }: { onCamera: (u: (c: { distance: number }) => object) => void; onSelect: (id: string | null) => void }) => (
+    <>
+      <button type="button" data-testid="room3d-canvas" onClick={() => onCamera((c) => ({ ...c, distance: c.distance * 2 }))}>
+        move camera
+      </button>
+      <button type="button" data-testid="click-mcb" onClick={() => onSelect('mcb')}>
+        click the MCB in the room
+      </button>
+    </>
   ),
 }));
 
@@ -24,6 +29,7 @@ beforeEach(() => {
   s.dispatch({ type: 'site/create', projectId: 'p', id: 's', name: 'S' });
   s.dispatch({ type: 'room/create', siteId: 's', id: 'r', name: 'MDF-1' });
   s.dispatch({ type: 'plan', roomId: 'r', command: { type: 'object/add', object: { ...(createObject('rack', { x: 1, y: 0.6 }, []) as Rack), id: 'rk', name: 'RK-01' } } });
+  s.dispatch({ type: 'plan', roomId: 'r', command: { type: 'object/add', object: { ...createObject('mcb', { x: 3, y: 0 }, []), id: 'mcb', name: 'MCB-01' } } });
 });
 
 it('shows the room in 3D with a keyboard path to each rack’s elevation', async () => {
@@ -53,13 +59,31 @@ it('resets the camera', async () => {
   expect(screen.getByText(/^\d+\.\d m$/).textContent).toBe(before);
 });
 
-it('switches rack labels between always and on hover, and remembers it', async () => {
+it('chooses which kinds are always labelled, and remembers it', async () => {
   const user = userEvent.setup();
   render(<RouterProvider router={createMemoryRouter(routes, { initialEntries: ['/rooms/r/3d'] })} />);
   await screen.findByTestId('room3d-canvas');
-  expect(screen.getByRole('button', { name: 'Labels always' })).toHaveAttribute('aria-pressed', 'true');
-  await user.click(screen.getByRole('button', { name: 'On hover' }));
-  expect(localStorage.getItem('glasshouse:3d-labels')).toBe('"hover"');
+  await user.click(screen.getByRole('button', { name: 'Labels (3)' }));
+  const menu = screen.getByRole('group', { name: 'Always label' });
+  expect(screen.getByRole('checkbox', { name: 'Power sources' })).toBeChecked();
+  expect(screen.getByRole('checkbox', { name: 'Doors' })).not.toBeChecked();
+  await user.click(screen.getByRole('checkbox', { name: 'Doors' }));
+  await user.click(screen.getByRole('checkbox', { name: 'Racks' }));
+  expect(JSON.parse(localStorage.getItem('glasshouse:3d-label-kinds')!)).toEqual(['existing', 'power', 'door']);
+  await user.keyboard('{Escape}');
+  expect(menu).not.toBeInTheDocument();
+});
+
+it('opens an MCB’s ways when it is clicked in the room, and from its card', async () => {
+  const user = userEvent.setup();
+  render(<RouterProvider router={createMemoryRouter(routes, { initialEntries: ['/rooms/r/3d'] })} />);
+  await user.click(await screen.findByTestId('click-mcb'));
+  const manager = screen.getByRole('dialog', { name: 'MCB-01 ways' });
+  expect(screen.getByRole('region', { name: 'MCB-01 details' })).toHaveTextContent('MCB panel');
+  await user.click(screen.getByRole('button', { name: 'Close MCB-01 ways' }));
+  expect(manager).not.toBeInTheDocument();
+  await user.click(screen.getByRole('button', { name: 'Manage ways' }));
+  expect(screen.getByRole('dialog', { name: 'MCB-01 ways' })).toBeInTheDocument();
 });
 
 it('hides and shows power lines, and remembers it', async () => {

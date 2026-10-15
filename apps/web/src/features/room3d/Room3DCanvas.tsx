@@ -8,7 +8,9 @@ import { feedColor } from '../plan/feeds';
 import { FeedModel } from './FeedModel';
 import { LINE_PICK_THRESHOLD_M, NO_PICK } from './picking';
 import { RackModel } from './RackModel';
-import { Column, Floor, ObjectModel, Walls } from './RoomModels';
+import { labelKindOf, type LabelKind } from './labels';
+import { PickableObject } from './PickableObject';
+import { Column, Floor, Walls } from './RoomModels';
 import type { Rack3D, Scene3D } from './scene';
 import { useT } from '../../i18n';
 
@@ -111,9 +113,11 @@ interface Room3DCanvasProps {
   palette: Palette3D;
   camera: OrbitCamera;
   onCamera: CameraUpdate;
-  selectedRackId: string | null;
-  onSelectRack: (id: string | null) => void;
-  labels: 'always' | 'hover';
+  /** A rack or any other room object. */
+  selectedId: string | null;
+  onSelect: (id: string | null) => void;
+  /** Kinds that are always labelled; the rest are labelled on hover and selection. */
+  labelKinds: LabelKind[];
   /** A search hit to mark with a ring on the floor. */
   focus?: Focus3D | null;
   showFeeds?: boolean;
@@ -147,12 +151,12 @@ function FocusRing({ focus, color }: { focus: Focus3D; color: string }) {
   );
 }
 
-export function Room3DCanvas({ scene, palette, camera, onCamera, selectedRackId, onSelectRack, labels, focus = null, showFeeds = true }: Room3DCanvasProps) {
+export function Room3DCanvas({ scene, palette, camera, onCamera, selectedId, onSelect, labelKinds, focus = null, showFeeds = true }: Room3DCanvasProps) {
   const m = useT();
   const existing = scene.others.filter((o) => o.type === 'existing_rack');
   const blockClick = (e: ThreeEvent<MouseEvent>): void => {
     e.stopPropagation();
-    if (e.delta <= CLICK_SLOP_PX) onSelectRack(null);
+    if (e.delta <= CLICK_SLOP_PX) onSelect(null);
   };
   const blockHover = (e: ThreeEvent<PointerEvent>): void => {
     e.stopPropagation();
@@ -168,7 +172,7 @@ export function Room3DCanvas({ scene, palette, camera, onCamera, selectedRackId,
       aria-label={m.room3d.canvas}
       onPointerMissed={(e) => {
         // A click on empty floor clears the highlight; a drag to orbit doesn't.
-        if (e.type === 'click') onSelectRack(null);
+        if (e.type === 'click') onSelect(null);
       }}
     >
       <color attach="background" args={[palette.sky]} />
@@ -190,9 +194,6 @@ export function Room3DCanvas({ scene, palette, camera, onCamera, selectedRackId,
       <group onClick={blockClick} onPointerOver={blockHover}>
         <Floor scene={scene} palette={palette} />
         <Walls scene={scene} palette={palette} />
-        {others.map((o) => (
-          <ObjectModel key={o.id} object={o} palette={palette} />
-        ))}
         {scene.columns.map((c) => (
           <Column key={c.id} column={c} palette={palette} />
         ))}
@@ -200,12 +201,15 @@ export function Room3DCanvas({ scene, palette, camera, onCamera, selectedRackId,
           <FeedModel key={f.feed.id} feed={f} color={feedColor(f.feed, { feeds: scene.feeds.map((x) => x.feed) })} />
         ))}
       </group>
+      {others.map((o) => (
+        <PickableObject key={o.id} object={o} palette={palette} selected={o.id === selectedId} labelled={labelKinds.includes(labelKindOf(o.type))} onSelect={onSelect} />
+      ))}
       {scene.racks.map((r, i) => (
-        <RackModel key={r.id} rack={r} palette={palette} selected={r.id === selectedRackId} onSelect={onSelectRack} stagger={i % 2 === 1} labels={labels} />
+        <RackModel key={r.id} rack={r} palette={palette} selected={r.id === selectedId} onSelect={onSelect} stagger={i % 2 === 1} labels={labelKinds.includes('rack') ? 'always' : 'hover'} />
       ))}
       {existing.map((o) => {
         const asRack: Rack3D = { ...o, owner: 'oxygenai', faces: [], slots: [], reserved: [], capacityU: 42, usedU: 0 };
-        return <RackModel key={o.id} rack={asRack} palette={palette} selected={false} onSelect={() => undefined} existing labels={labels} />;
+        return <RackModel key={o.id} rack={asRack} palette={palette} selected={o.id === selectedId} onSelect={onSelect} existing labels={labelKinds.includes('existing') ? 'always' : 'hover'} />;
       })}
     </Canvas>
   );
