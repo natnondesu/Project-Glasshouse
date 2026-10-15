@@ -8,8 +8,8 @@ import { resetWorkspaceStore, useWorkspaceStore } from '../../store/workspaceSto
 
 vi.mock('../room3d/Room3DCanvas', () => ({
   hasWebGL: () => true,
-  Room3DCanvas: ({ selectedRackId, focus }: { selectedRackId: string | null; focus: unknown }) => (
-    <output data-testid="canvas">{`${selectedRackId ?? 'none'}|${focus ? 'focused' : ''}`}</output>
+  Room3DCanvas: ({ selectedId, focus }: { selectedId: string | null; focus: unknown }) => (
+    <output data-testid="canvas">{`${selectedId ?? 'none'}|${focus ? 'focused' : ''}`}</output>
   ),
 }));
 
