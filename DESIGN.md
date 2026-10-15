@@ -50,6 +50,7 @@ Colour never works alone. Blocking issues use a solid circle icon, warnings a da
 - Walls are heavy rounded ink; objects are ink outlines on paper with mono labels; a Rack's Front is a heavier band with an ink tick.
 - Clearance zones are hatched; blocking objects are filled red with a BLOCKING callout.
 - Dimensions are drafting style (extension lines, 45° ticks). Power feeds are dashed coloured runs tagged A/B.
+- Doors: a swing door draws its leaf open at 90° and the quarter-circle swing; a sliding door draws its track, the leaf parked beside the opening and an arrow for the direction, with no swing.
 - The legend is on demand from the zoom bar, never left over the drawing.
 - Below 1360px the inspector starts collapsed so the drawing gets the room; once someone opens or closes it, that choice is remembered.
 - Names and figures are never cut: a rack name too wide for the rack sits under it, and a fill count that doesn't fit is left out.
@@ -58,6 +59,11 @@ Colour never works alone. Blocking issues use a solid circle icon, warnings a da
 
 - Generated from the cables, never hand-drawn. Switch-like gear (Network category, 4+ ports) forms the rows; single-cable devices hang under their switch in wrapped rows of up to six (fewer on the printed page).
 - Parallel cables draw as one line with a count; copper solid, fibre dashed accent. Highlighting a VLAN fades what doesn't carry it.
+
+## 3D
+
+- Labels are sprites at a fixed screen size; the Labels menu picks which kinds are always labelled, the rest label on hover.
+- A highlighted power path glows and carries arrowheads moving from source to load (still under reduced motion); everything else on the power layer fades.
 
 ## Prohibitions
 
