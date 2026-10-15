@@ -603,6 +603,7 @@ export const en = {
     unlabelled: 'unlabelled',
   },
   topology: {
+    morePorts: (n: number) => `+${n} more`,
     region: 'Network',
     diagram: 'Network diagram',
     empty: 'No cables yet. Link ports in the port manager on the Elevation tab and the diagram draws itself.',

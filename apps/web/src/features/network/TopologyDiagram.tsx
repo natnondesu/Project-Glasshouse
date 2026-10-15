@@ -3,6 +3,7 @@ import type { KeyboardEvent } from 'react';
 import { useT } from '../../i18n';
 import { StateGlyph } from '../../ui/StateIcon';
 import { NODE_H, NODE_W, nodeCarries, type TopoEdge, type TopoNode, type Topology } from './topology';
+import { portTags, type PortTag } from './portTags';
 
 export type TopoSelection = { kind: 'node'; id: Id } | { kind: 'edge'; key: string } | null;
 
@@ -70,8 +71,13 @@ export function TopologyDiagram({ content, topology, vid = null, scale = 1, sele
   const m = useT();
   const byId = new Map(topology.nodes.map((n) => [n.id, n]));
   const act = (s: TopoSelection) => (isStatic || !onSelect ? {} : { role: 'button', tabIndex: 0, onClick: () => onSelect(s), onKeyDown: (e: KeyboardEvent) => (e.key === 'Enter' || e.key === ' ') && (e.preventDefault(), onSelect(s)) });
-  const dimEdge = (e: TopoEdge): boolean => vid !== null && !e.vids.includes(vid);
-  const dimNode = (n: TopoNode): boolean => vid !== null && !nodeCarries(content, n.id, vid);
+  // A selected device pulls its own cables and neighbours forward; everything else steps back.
+  const focusId = selection?.kind === 'node' && !isStatic ? selection.id : null;
+  const touches = (e: TopoEdge): boolean => focusId !== null && (e.a === focusId || e.b === focusId);
+  const neighbours = new Set(focusId ? topology.edges.filter(touches).flatMap((e) => [e.a, e.b]) : []);
+  const dimEdge = (e: TopoEdge): boolean => (vid !== null && !e.vids.includes(vid)) || (focusId !== null && !touches(e));
+  const dimNode = (n: TopoNode): boolean => (vid !== null && !nodeCarries(content, n.id, vid)) || (focusId !== null && n.id !== focusId && !neighbours.has(n.id));
+  const tags = focusId ? portTags(focusId, topology.edges, byId, m.topology.morePorts) : [];
   return (
     <svg
       className={`topo${isStatic ? ' topo--static' : ''}`}
@@ -89,7 +95,7 @@ export function TopologyDiagram({ content, topology, vid = null, scale = 1, sele
         return (
           <g
             key={e.key}
-            className={`topo-edge${e.fibre ? ' is-fibre' : ''}${dimEdge(e) ? ' is-dim' : ''}${selected ? ' is-selected' : ''}`}
+            className={`topo-edge${e.fibre ? ' is-fibre' : ''}${dimEdge(e) ? ' is-dim' : ''}${selected ? ' is-selected' : ''}${touches(e) ? ' is-focus' : ''}`}
             aria-label={isStatic ? undefined : m.topology.edgeLabel(a.name, b.name, e.links.length)}
             aria-pressed={isStatic ? undefined : selected}
             {...act({ kind: 'edge', key: e.key })}
@@ -112,7 +118,7 @@ export function TopologyDiagram({ content, topology, vid = null, scale = 1, sele
         return (
           <g
             key={n.id}
-            className={`topo-node topo-node--${n.category}${n.leaf ? ' is-leaf' : ''}${dimNode(n) ? ' is-dim' : ''}${selected ? ' is-selected' : ''}`}
+            className={`topo-node topo-node--${n.category}${n.leaf ? ' is-leaf' : ''}${dimNode(n) ? ' is-dim' : ''}${selected ? ' is-selected' : ''}${focusId && n.id !== focusId && neighbours.has(n.id) ? ' is-neighbour' : ''}`}
             data-topo-id={n.id}
             aria-label={isStatic ? undefined : m.topology.deviceLabel(n.name, n.where)}
             aria-pressed={isStatic ? undefined : selected}
@@ -130,6 +136,32 @@ export function TopologyDiagram({ content, topology, vid = null, scale = 1, sele
           </g>
         );
       })}
+      {tags.map((t) => (
+        <PortTagLabel key={t.key} tag={t} />
+      ))}
     </svg>
+  );
+}
+
+const TAG_LINE_H = 14;
+const TAG_CHAR_PX = 6.7;
+const TAG_PAD = 5;
+
+/** Port pairs on a paper chip, so they read over lines and boxes. */
+function PortTagLabel({ tag }: { tag: PortTag }) {
+  const w = Math.max(...tag.lines.map((l) => l.length)) * TAG_CHAR_PX + TAG_PAD * 2;
+  const h = tag.lines.length * TAG_LINE_H + TAG_PAD;
+  const left = tag.anchor === 'start' ? tag.x : tag.anchor === 'end' ? tag.x - w : tag.x - w / 2;
+  const top = tag.up ? tag.y - h : tag.y - TAG_LINE_H + 2;
+  const textX = tag.anchor === 'middle' ? tag.x : tag.anchor === 'start' ? left + TAG_PAD : left + w - TAG_PAD;
+  return (
+    <g className="topo-tag" aria-hidden="true">
+      <rect x={left} y={top} width={w} height={h} rx={4} />
+      {tag.lines.map((line, i) => (
+        <text key={i} x={textX} y={top + TAG_PAD / 2 + TAG_LINE_H * (i + 1) - 3} textAnchor={tag.anchor}>
+          {line}
+        </text>
+      ))}
+    </g>
   );
 }
