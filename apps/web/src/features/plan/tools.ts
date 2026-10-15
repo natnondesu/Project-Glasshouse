@@ -17,11 +17,12 @@ import {
   IconSelect,
   IconSlidingDoor,
   IconUps,
+  IconWallRack,
   IconWallPlug,
 } from '../../ui/icons';
 
 /** What a placement tool drops: an object type, or a door that slides instead of swinging. */
-export type PlacementTool = RoomObjectType | 'sliding_door';
+export type PlacementTool = RoomObjectType | 'sliding_door' | 'wall_rack';
 export type Tool = 'select' | 'pan' | 'measure' | 'dimension' | 'area' | 'cut' | PlacementTool;
 export type ToolGroupId = 'floor' | 'objects' | 'measure' | 'power';
 
@@ -45,6 +46,7 @@ export const TOOL_SPECS: Record<Tool, ToolSpec> = {
   rack: { id: 'rack', shortcut: null, Icon: IconRack },
   door: { id: 'door', shortcut: null, Icon: IconDoor },
   sliding_door: { id: 'sliding_door', shortcut: null, Icon: IconSlidingDoor },
+  wall_rack: { id: 'wall_rack', shortcut: null, Icon: IconWallRack },
   existing_rack: { id: 'existing_rack', shortcut: null, Icon: IconExistingRack },
   furniture: { id: 'furniture', shortcut: null, Icon: IconFurniture },
   measure: { id: 'measure', shortcut: 'M', Icon: IconMeasure },
@@ -61,7 +63,7 @@ export const SOLO_TOOLS: Tool[] = ['select', 'pan'];
 
 export const TOOL_GROUPS: ToolGroup[] = [
   { id: 'floor', tools: ['area', 'cut'] },
-  { id: 'objects', tools: ['rack', 'door', 'sliding_door', 'existing_rack', 'furniture'] },
+  { id: 'objects', tools: ['rack', 'wall_rack', 'door', 'sliding_door', 'existing_rack', 'furniture'] },
   { id: 'measure', tools: ['measure', 'dimension'] },
   { id: 'power', tools: ['mcb', 'wall_plug', 'industrial_socket', 'floor_box', 'ups', 'pdu'] },
 ];

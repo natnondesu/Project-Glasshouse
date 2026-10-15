@@ -1,4 +1,4 @@
-import { formatMetres, isPowerSource, rackAutoHeightM, type ObjectPatch, type PlanContent, type RoomObject } from '@glasshouse/domain';
+import { formatMetres, isPowerSource, rackAutoHeightM, type ObjectPatch, type PlanContent, type RoomObject, DEFAULT_WALL_RACK } from '@glasshouse/domain';
 import { PanelFeeds, RackFeeds } from './feeds';
 import { useState } from 'react';
 import { IconRotateCcw, IconRotateCw } from '../../ui/icons';
@@ -42,6 +42,23 @@ export function ObjectInspector({ object, content, commit, onDeleted, onManagePa
       <fieldset className="inspector__group">
         <legend className="visually-hidden">{m.inspector.identity}</legend>
         <TextField id={`${object.id}-name`} label={m.inspector.name} value={object.name} onCommit={(v) => update({ name: v }, 'name')} />
+        {rack ? (
+          <div className="field">
+            <span className="field__label">{m.inspector.mounting}</span>
+            <div className="seg" role="group" aria-label={m.inspector.rackMounting}>
+              <button type="button" aria-pressed={rack.wallBottomM === undefined} onClick={() => act(() => update({ wallBottomM: null }))}>
+                {m.inspector.mount.floor}
+              </button>
+              {/* Hung on a wall there is nothing behind it to reach: the rear clearance goes to 0. */}
+              <button type="button" aria-pressed={rack.wallBottomM !== undefined} onClick={() => act(() => (rack.wallBottomM === undefined ? update({ wallBottomM: DEFAULT_WALL_RACK.bottomM, clearance: { rear: 0 } }) : null))}>
+                {m.inspector.mount.wall}
+              </button>
+            </div>
+            {rack.wallBottomM !== undefined ? (
+              <NumberField id={`${object.id}-wall-bottom`} label={m.inspector.wallBottom} unit="m" value={rack.wallBottomM} onCommit={(v) => (v === null ? null : update({ wallBottomM: v }, 'wallBottom'))} />
+            ) : null}
+          </div>
+        ) : null}
         {rack ? (
           <div className="field">
             <span className="field__label">{m.inspector.owner}</span>

@@ -1022,3 +1022,8 @@
   stroke-width: 3px;
   stroke-linejoin: round;
 }
+
+/* Wall-mounted racks hang above the floor: drawn dashed, as overhead items are on a plan. */
+.obj--wall .obj__body {
+  stroke-dasharray: 6 3;
+}

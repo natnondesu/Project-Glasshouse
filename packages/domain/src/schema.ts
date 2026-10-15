@@ -71,6 +71,7 @@ const rack = z.object({
   clearance: z.object({ front: num, rear: num }),
   devices: z.array(z.discriminatedUnion('kind', [placedDevice, chassis])),
   reserved: z.array(reserved),
+  wallBottomM: num.optional(),
 });
 const simpleObject = z.object({ ...objectBase, type: z.enum(['existing_rack', 'door', 'mcb', 'furniture', 'wall_plug', 'industrial_socket', 'floor_box', 'ups', 'pdu']),
   hinge: z.enum(['left', 'right']).optional(),

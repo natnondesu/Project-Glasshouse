@@ -127,7 +127,8 @@ function placement(o: RoomObject): { position: Vec3; yaw: number; size: Vec3 } {
   const [ax, az] = localToWorld(o, [1, 0]);
   const yaw = -Math.atan2(az - cz, ax - cx);
   const h = effectiveHeight(o);
-  return { position: [cx, h / 2, cz], yaw, size: [o.w, h, o.d] };
+  const bottom = o.type === 'rack' ? (o.wallBottomM ?? 0) : 0;
+  return { position: [cx, bottom + h / 2, cz], yaw, size: [o.w, h, o.d] };
 }
 
 const REAR_CLEARANCE_M = 0.08;
@@ -185,7 +186,7 @@ export function buildScene(content: PlanContent, stateOf: StateOf = ALL_PLANNED)
     const panel = content.objects.find((o) => o.id === feed.sourceId);
     const target = content.objects.find((o) => o.id === feed.targetId);
     if (!route || !panel || !target) return [];
-    return [{ feed, route, dropFrom: dropHeight(panel), riseTo: target.type === 'rack' ? RACK_RISER_M : dropHeight(target) }];
+    return [{ feed, route, dropFrom: dropHeight(panel), riseTo: target.type === 'rack' ? (target.wallBottomM ?? 0) + RACK_RISER_M : dropHeight(target) }];
   });
   return { width: content.survey.width, length: content.survey.length, floor: footprintOf(content.survey), racks, others, columns, feeds };
 }

@@ -170,6 +170,8 @@ export interface Rack extends ObjectBase {
   clearance: { front: Metres; rear: Metres };
   devices: RackDevice[];
   reserved: ReservedRange[];
+  /** Wall-mounted racks only: the height of the rack's bottom above the floor. Absent means floor-standing. */
+  wallBottomM?: Metres;
 }
 
 export type SimpleObjectType = 'existing_rack' | 'door' | 'mcb' | 'furniture' | 'wall_plug' | 'industrial_socket' | 'floor_box' | 'ups' | 'pdu';

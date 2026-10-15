@@ -1,4 +1,4 @@
-import { formatDemand, formatURange, type EquipmentState, rackPower, topU, usedU, type Chassis, type Rack, type RackDevice, type ReservedRange } from '@glasshouse/domain';
+import { formatDemand, formatURange, type EquipmentState, rackPower, topU, usedU, type Chassis, type Rack, type RackDevice, type ReservedRange, formatMetres } from '@glasshouse/domain';
 import { createContext, useContext, type DragEvent, type KeyboardEvent, type PointerEvent } from 'react';
 import { TEMPLATE_MIME } from './dnd';
 import { StateGlyph } from '../../ui/StateIcon';
@@ -231,7 +231,10 @@ export function RackElevation({ rack, active, selectedId, flagged, onSelect, onA
           {m.inspector.ownerName[rack.owner]} · <span className="mono">{`${usedU(rack)}/${rack.capacityU}U`}</span> ·{' '}
           <span className="mono">{`${knownW.toLocaleString('en-US')} W${m.elevation.unknownSuffix(unknown)}`}</span>
         </span>
-        <span className="rack-elev__depth mono">{m.elevation.usableDepth(rack.usableDepthMm)}</span>
+        <span className="rack-elev__depth mono">
+          {m.elevation.usableDepth(rack.usableDepthMm)}
+          {rack.wallBottomM !== undefined ? ` · ${m.elevation.wallMounted(formatMetres(rack.wallBottomM))}` : ''}
+        </span>
       </figcaption>
       <svg
         className="rack-elev__svg"

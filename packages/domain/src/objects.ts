@@ -37,3 +37,16 @@ export function effectiveHeight(o: RoomObject): Metres {
   if (o.height !== null) return o.height;
   return o.type === 'rack' ? rackAutoHeightM(o.capacityU) : DEFAULT_HEIGHTS_M[o.type];
 }
+
+/** The heights an object fills: a wall rack from its bottom up, everything else from the floor. */
+export function verticalSpan(o: RoomObject): [Metres, Metres] {
+  const bottom = o.type === 'rack' ? (o.wallBottomM ?? 0) : 0;
+  return [bottom, bottom + effectiveHeight(o)];
+}
+
+/** Two objects only collide where their heights overlap too; touching is fine. */
+export const heightsOverlap = (a: RoomObject, b: RoomObject): boolean => {
+  const [a0, a1] = verticalSpan(a);
+  const [b0, b1] = verticalSpan(b);
+  return a0 < b1 - 1e-6 && b0 < a1 - 1e-6;
+};

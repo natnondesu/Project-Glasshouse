@@ -13,6 +13,7 @@ export const LIMITS = {
   usableDepthMaxMm: 1500,
   clearanceMaxM: 3,
   heightMaxM: 10,
+  wallBottomMaxM: 4,
   powerMinW: 100,
   powerMaxW: 100_000,
   designLimitMinPct: 50,
@@ -29,6 +30,9 @@ export const DEFAULT_ROOM = { width: 5, length: 4 } as const;
 export const DEFAULT_POWER_BUDGET_W = 5000;
 export const DEFAULT_DESIGN_LIMIT_PCT = 80;
 export const DEFAULT_CLEARANCE = { front: 1, rear: 0.6 } as const;
+/** A typical wall cabinet: 12U, 600 × 500 mm, hung with its bottom at 1.20 m. */
+export const DEFAULT_WALL_RACK = { capacityU: 12, w: 0.6, d: 0.5, usableDepthMm: 400, bottomM: 1.2 } as const;
+
 export const DEFAULT_RACK = { w: 0.6, d: 1.07, capacityU: 42, usableDepthMm: 1000 } as const;
 
 export const DEFAULT_SIZES: Record<SimpleObjectType, { w: number; d: number }> = {

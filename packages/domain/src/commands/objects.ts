@@ -21,6 +21,8 @@ export interface ObjectPatch {
   usableDepthMm?: Millimetres;
   owner?: RackOwner;
   clearance?: Partial<Rack['clearance']>;
+  /** Racks only: a height hangs the rack on the wall; null stands it on the floor. */
+  wallBottomM?: Metres | null;
   hinge?: DoorHinge;
   opening?: DoorOpening;
 }
@@ -31,7 +33,7 @@ export type ObjectCommand =
   | { type: 'object/rotate'; id: Id; by: 45 | -45 }
   | { type: 'object/remove'; id: Id };
 
-const RACK_ONLY: (keyof ObjectPatch)[] = ['capacityU', 'usableDepthMm', 'owner', 'clearance'];
+const RACK_ONLY: (keyof ObjectPatch)[] = ['capacityU', 'usableDepthMm', 'owner', 'clearance', 'wallBottomM'];
 /** Rounding to 0.01 m after a rotation can push a flush object a hair past the wall; absorb that. */
 const OVERFLOW_TOLERANCE_M = 0.01;
 
@@ -60,6 +62,9 @@ function validateRackFields(r: Rack, name: string): Failure | null {
   if (!inRange(r.clearance.front, 0, LIMITS.clearanceMaxM) || !inRange(r.clearance.rear, 0, LIMITS.clearanceMaxM)) {
     return err('invalid_value', 'Clearance must be between 0 and 3.00 m.', [r.id]);
   }
+  if (r.wallBottomM !== undefined && !inRange(r.wallBottomM, 0, LIMITS.wallBottomMaxM)) {
+    return err('invalid_value', `The bottom of a wall rack is at most ${formatMetres(LIMITS.wallBottomMaxM)} m off the floor.`, [r.id]);
+  }
   const minHeight = rackAutoHeightM(r.capacityU);
   if (r.height !== null && r.height < minHeight) {
     return err('invalid_value', `${name} needs at least ${formatMetres(minHeight)} m of height for ${r.capacityU}U.`, [r.id]);
@@ -69,6 +74,16 @@ function validateRackFields(r: Rack, name: string): Failure | null {
     return err('invalid_value', `${name} is occupied up to U${highest}, so its capacity can't go below ${highest}U.`, [r.id]);
   }
   return null;
+}
+
+/** undefined leaves the mounting alone; null takes the rack off the wall. */
+function withWallBottom(rack: Rack, bottom: Metres | null | undefined): Rack {
+  if (bottom === undefined) return rack;
+  if (bottom === null) {
+    const { wallBottomM: _off, ...floor } = rack;
+    return floor;
+  }
+  return { ...rack, wallBottomM: bottom };
 }
 
 function validateObject(o: RoomObject, survey: Survey): Result<RoomObject> {
@@ -124,15 +139,18 @@ export function updateObject(content: PlanContent, id: Id, patch: ObjectPatch): 
     return err('invalid_value', `${current.name} is not a rack.`, [id]);
   }
   if ((patch.hinge !== undefined || patch.opening !== undefined) && current.type !== 'door') return err('invalid_value', `${current.name} is not a door.`, [id]);
-  const { clearance, capacityU, usableDepthMm, owner, ...common } = patch;
+  const { clearance, capacityU, usableDepthMm, owner, wallBottomM, ...common } = patch;
   let merged: RoomObject =
     current.type === 'rack'
-      ? {
-          ...current,
-          ...definedOnly(common),
-          ...definedOnly({ capacityU, usableDepthMm, owner }),
-          clearance: { ...current.clearance, ...definedOnly(clearance ?? {}) },
-        }
+      ? withWallBottom(
+          {
+            ...current,
+            ...definedOnly(common),
+            ...definedOnly({ capacityU, usableDepthMm, owner }),
+            clearance: { ...current.clearance, ...definedOnly(clearance ?? {}) },
+          },
+          wallBottomM,
+        )
       : { ...current, ...definedOnly(common) };
 
   if (patch.angle !== undefined && patch.x === undefined && patch.y === undefined) {

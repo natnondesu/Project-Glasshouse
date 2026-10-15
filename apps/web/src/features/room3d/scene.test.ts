@@ -83,3 +83,13 @@ describe('power feeds in 3D', () => {
     expect(feed!.route[feed!.route.length - 1]).toEqual(localToWorld(rack, [0, -rack.d / 2]));
   });
 });
+
+describe('wall racks in 3D', () => {
+  it('sit at their wall height instead of on the floor', () => {
+    const rack = { ...(createObject('rack', { x: 1, y: 0 }, []) as Rack), capacityU: 12, wallBottomM: 1.2 };
+    const scene = buildScene({ ...emptyContent(), objects: [rack] });
+    const [, y] = scene.racks[0]!.position;
+    const h = scene.racks[0]!.size[1];
+    expect(y - h / 2).toBeCloseTo(1.2, 5);
+  });
+});
