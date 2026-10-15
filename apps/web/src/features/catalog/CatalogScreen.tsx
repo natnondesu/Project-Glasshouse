@@ -5,6 +5,8 @@ import { CatalogFileActions } from './CatalogFileActions';
 import { useSearchParamState } from '../../store/hooks';
 import { useWorkspaceStore } from '../../store/workspaceStore';
 import { blankTemplate, TemplateEditor } from './TemplateEditor';
+import { filterTemplates } from './templateFilter';
+import { TemplateFilterField } from './TemplateFilterField';
 import '../plan/inspector.css';
 import './catalog.css';
 import { useT } from '../../i18n';
@@ -21,6 +23,8 @@ export function CatalogScreen() {
   const [pending, setPending] = useState<(() => void) | null>(null);
   // Only leaving the Catalog is blocked here; switching Templates inside it goes through guard().
   const m = useT();
+  const [query, setQuery] = useState('');
+  const shown = filterTemplates(catalog, query, (t) => m.categories[t.category]);
   const blocker = useBlocker(({ currentLocation, nextLocation }) => dirty && currentLocation.pathname !== nextLocation.pathname);
   const editingLabel = draft ? draft.label || 'the new template' : (selected?.label ?? 'this template');
   // Explicit Save means switching away must never drop edits silently.
@@ -67,8 +71,9 @@ export function CatalogScreen() {
             {m.catalog.addDefaults(missing)}
           </button>
         ) : null}
+        <TemplateFilterField id="catalog-filter" value={query} onChange={setQuery} shown={shown.length} total={catalog.length} />
         {CATEGORY_ORDER.map((category) => {
-          const items = catalog.filter((t) => t.category === category);
+          const items = shown.filter((t) => t.category === category);
           if (items.length === 0) return null;
           return (
             <div key={category} className="catalog__group">

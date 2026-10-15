@@ -196,3 +196,9 @@ export const IconClose = (p: IconProps) => (
     <path d="M3 3L9 9M9 3L3 9" />
   </svg>
 );
+export const IconSearch = (p: IconProps) => (
+  <svg {...frame(14)} {...p}>
+    <circle cx="6" cy="6" r="4.2" />
+    <path d="M9.2 9.2L12.5 12.5" />
+  </svg>
+);

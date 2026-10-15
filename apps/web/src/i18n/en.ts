@@ -399,6 +399,12 @@ export const en = {
     moreAbove: 'More of the rack above',
     slotTitle: (slot: number, name: string | null) => (name ? `Slot ${slot}: ${name}` : `Slot ${slot}: empty`),
   },
+  catalogFilter: {
+    label: 'Filter catalog',
+    placeholder: 'Filter by name, model, type or 2U',
+    count: (shown: number, total: number) => `${shown} of ${total} templates`,
+    none: (q: string) => `No template matches “${q}”.`,
+  },
   palette: {
     title: 'Catalog',
     expand: 'Expand catalog',
