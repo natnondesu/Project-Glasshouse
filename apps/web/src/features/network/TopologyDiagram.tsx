@@ -1,7 +1,7 @@
 import type { EquipmentState, Id, PlanContent } from '@glasshouse/domain';
 import type { KeyboardEvent } from 'react';
 import { useT } from '../../i18n';
-import { STATE_SYMBOL } from '../elevation/EquipmentStateControl';
+import { StateGlyph } from '../../ui/StateIcon';
 import { NODE_H, NODE_W, nodeCarries, type TopoEdge, type TopoNode, type Topology } from './topology';
 
 export type TopoSelection = { kind: 'node'; id: Id } | { kind: 'edge'; key: string } | null;
@@ -120,9 +120,7 @@ export function TopologyDiagram({ content, topology, vid = null, scale = 1, sele
           >
             <rect className="topo-node__body" x={n.x} y={n.y} width={NODE_W} height={NODE_H} rx={8} />
             <rect className="topo-node__stripe" x={n.x} y={n.y} width={5} height={NODE_H} rx={2} />
-            <text className="topo-node__state" x={n.x + 16} y={n.y + 21} textAnchor="middle">
-              {STATE_SYMBOL[state]}
-            </text>
+            <StateGlyph state={state} cx={n.x + 16} cy={n.y + 17} className="topo-node__state" />
             <text className="topo-node__name" x={n.x + 26} y={n.y + 21}>
               {n.name}
             </text>

@@ -12,11 +12,12 @@ function Harness({ objects }: { objects: RoomObject[] }) {
 
 const at = (o: RoomObject, id: string, extra: Partial<RoomObject> = {}): RoomObject => ({ ...o, id, ...extra }) as RoomObject;
 
-it('fits a long rack name inside the rack and shows the full name on hover', () => {
+it('shows a rack name whole, under the rack when it cannot fit inside, and on hover', () => {
   const rack = at(createObject('rack', { x: 4, y: 2 }, []), 'rk', { name: 'Deepvision Rack 01', w: 3, d: 2 } as Partial<Rack>);
   const { container } = render(<Harness objects={[rack]} />);
   const label = container.querySelector('[data-object-id="rk"] .obj__label')!;
-  expect(label.textContent).toMatch(/…$/);
+  expect(label).toHaveClass('obj__label--outside');
+  expect(label.textContent).toBe('Deepvision Rack 01');
   expect(container.querySelector('[data-object-id="rk"] .obj__hover')!.textContent).toBe('Deepvision Rack 01');
 });
 

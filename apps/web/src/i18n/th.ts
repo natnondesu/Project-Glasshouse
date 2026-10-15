@@ -383,6 +383,8 @@ export const th: Messages = {
     reservedStamp: (range) => `จองไว้ · ${range}`,
     moveTo: (range) => `ย้ายไป ${range}`,
     notHere: 'วางตรงนี้ไม่ได้',
+    moreBelow: 'ส่วนล่างของแร็คยังมีต่อ',
+    moreAbove: 'ส่วนบนของแร็คยังมีต่อ',
     slotTitle: (slot, name) => (name ? `สล็อต ${slot}: ${name}` : `สล็อต ${slot}: ว่าง`),
   },
   palette: {

@@ -26,6 +26,8 @@
   --warn-bg: #fff3df;
   /* Darkened from #11795a so OK text passes 4.5:1 on its own 12% tint (stamps, chips). */
   --ok: #0b6449;
+  /* Equipment in maintenance: amber, distinct from the Draft/warning brown. */
+  --maint: #c77700;
 
   --rack: #333d49;
   --rack-front: #56626f;
@@ -56,6 +58,28 @@
   /* Geist has no Thai glyphs; the browser falls through to IBM Plex Sans Thai for Thai text only. */
   --font-ui: 'Geist Sans', 'IBM Plex Sans Thai', system-ui, sans-serif;
   --font-mono: 'Geist Mono', 'IBM Plex Sans Thai', ui-monospace, monospace;
+
+  /* Drafting palette: the plan, Install sheet and network canvases are paper and ink; the shell stays glass. */
+  --paper: #fbfcfa;
+  --d-ink: #111720;
+  --d-ink-2: #3b4552;
+  --d-rule: #c9d0d4;
+  --d-grid-minor: #e3ecf2;
+  --d-grid-major: #c3d6e4;
+  --d-clr: #2a6a9e;
+  --d-clr-fill: rgb(42 106 158 / 0.08);
+  --d-block: #b3261e;
+  --d-block-bg: #fbedeb;
+  --d-sel: #1c64c8;
+
+  /* State tints: one source for chips, stamps, banners and field errors. */
+  --ok-bg: rgb(11 100 73 / 0.12);
+  --ok-border: rgb(11 100 73 / 0.35);
+  --warn-border: rgb(154 90 0 / 0.32);
+  --block-border: rgb(184 50 42 / 0.32);
+  --block-ring: rgb(184 50 42 / 0.12);
+  --acc-border: rgb(28 100 200 / 0.3);
+  --acc-tint: rgb(28 100 200 / 0.06);
 
   /* Type scale. 11px is the floor for anything meaningful (bright rooms, arm's length); print uses 12px. */
   --text-2xs: 11px;

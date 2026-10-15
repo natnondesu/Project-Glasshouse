@@ -1,7 +1,7 @@
 import { formatDemand, formatURange, type EquipmentState, rackPower, topU, usedU, type Chassis, type Rack, type RackDevice, type ReservedRange } from '@glasshouse/domain';
 import { createContext, useContext, type DragEvent, type KeyboardEvent, type PointerEvent } from 'react';
 import { TEMPLATE_MIME } from './dnd';
-import { STATE_SYMBOL } from './EquipmentStateControl';
+import { StateGlyph } from '../../ui/StateIcon';
 import { useT } from '../../i18n';
 import type { DropPreview, RackHit } from './deviceDrag';
 import './elevation.css';
@@ -118,9 +118,7 @@ function DeviceBlock(props: { device: RackDevice; y: number; selected: boolean; 
     >
       <title>{`${device.name}, ${formatURange(device)} · ${m.equipment.state[state]}`}</title>
       <rect x={4} y={y + 1} width={RACK_W - 8} height={h - 2} rx={3} className="dev__body" />
-      <text x={STATE_X} y={textY} className="dev__state" textAnchor="middle">
-        {STATE_SYMBOL[state]}
-      </text>
+      <StateGlyph state={state} cx={STATE_X} cy={textY - 4} className="dev__state" />
       <text x={NAME_X} y={textY} className="dev__name">
         {fitText(device.name, (device.kind === 'chassis' ? CHASSIS_NAME_PX : DEVICE_NAME_PX) - (NAME_X - 12))}
       </text>

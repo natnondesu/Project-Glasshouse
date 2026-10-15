@@ -18,7 +18,8 @@ export interface ViewportApi {
   centerOn: (point: Point) => void;
 }
 
-export function useViewport(content: { w: number; d: number }, insetRight: number = FIT_INSETS.right): ViewportApi {
+/** `insetBottom`: the measured height of whatever floats along the bottom (the checks strip), for fitting only. */
+export function useViewport(content: { w: number; d: number }, insetRight: number = FIT_INSETS.right, insetBottom: number = FIT_INSETS.bottom): ViewportApi {
   const svgRef = useRef<SVGSVGElement | null>(null);
   const [size, setSize] = useState({ width: 0, height: 0 });
   const [view, setView] = useState<View>({ scale: 100, tx: 0, ty: 0 });
@@ -38,15 +39,15 @@ export function useViewport(content: { w: number; d: number }, insetRight: numbe
   useEffect(() => {
     if (fitted.current || size.width === 0 || size.height === 0) return;
     fitted.current = true;
-    setView(fit({ w, d }, size, { ...FIT_INSETS, right: insetRight }));
-  }, [size, w, d, insetRight]);
+    setView(fit({ w, d }, size, { ...FIT_INSETS, right: insetRight, bottom: insetBottom }));
+  }, [size, w, d, insetRight, insetBottom]);
 
   // Opening or closing a side panel changes the free area: refit so the room stays in view.
   const lastInset = useRef(insetRight);
   useEffect(() => {
     if (lastInset.current === insetRight || !fitted.current) return;
     lastInset.current = insetRight;
-    setView(fit({ w, d }, size, { ...FIT_INSETS, right: insetRight }));
+    setView(fit({ w, d }, size, { ...FIT_INSETS, right: insetRight, bottom: insetBottom }));
   }, [insetRight, size, w, d]);
 
   useEffect(() => {
@@ -78,12 +79,12 @@ export function useViewport(content: { w: number; d: number }, insetRight: numbe
     view,
     clientToWorld,
     zoomBy: (factor) => setView((v) => zoomAt(v, factor, size.width / 2, size.height / 2)),
-    fitToContent: () => setView(fit({ w, d }, size, { ...FIT_INSETS, right: insetRight })),
+    fitToContent: () => setView(fit({ w, d }, size, { ...FIT_INSETS, right: insetRight, bottom: insetBottom })),
     panBy: (dx, dy) => setView((v) => pan(v, dx, dy)),
     centerOn: ([x, y]) =>
       setView((v) => {
         const cx = (FIT_INSETS.left + size.width - insetRight) / 2;
-        const cy = (FIT_INSETS.top + size.height - FIT_INSETS.bottom) / 2;
+        const cy = (FIT_INSETS.top + size.height - insetBottom) / 2;
         return { ...v, tx: cx - x * v.scale, ty: cy - y * v.scale };
       }),
   };

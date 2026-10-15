@@ -139,7 +139,7 @@ a {
 
 .btn--danger {
   color: var(--block);
-  border-color: rgb(184 50 42 / 0.35);
+  border-color: var(--block-border);
 }
 
 .btn--danger:hover:not(:disabled) {

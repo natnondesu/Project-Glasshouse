@@ -43,8 +43,9 @@
 
 .title-block__cells {
   flex: 1 1 520px;
+  min-width: 0;
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
   gap: 4px;
   margin: 0;
@@ -54,8 +55,22 @@
   display: flex;
   flex-direction: column;
   gap: 1px;
+  min-width: 0;
+  flex: 0 1 auto;
   padding: 3px 12px;
   border-radius: var(--radius-field);
+}
+
+/* Project, site and room names truncate before the status cell wraps to a second line. */
+.title-block__cell dd {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.title-block__cell:last-child,
+.title-block__cell:nth-last-child(2) {
+  flex: none;
 }
 
 .title-block__cell + .title-block__cell {
@@ -108,7 +123,7 @@
 }
 
 .status-stamp--approved {
-  background: rgb(17 121 90 / 0.12);
+  background: var(--ok-bg);
   color: var(--ok);
 }
 
@@ -116,7 +131,7 @@
   padding: 10px 16px;
   border-radius: var(--radius-control);
   background: var(--warn-bg);
-  border: 1px solid rgb(154 90 0 / 0.3);
+  border: 1px solid var(--warn-border);
   color: var(--ink);
   font-size: var(--text-sm);
   font-weight: 600;
@@ -207,12 +222,6 @@
   display: flex;
   flex-direction: column;
   gap: 16px;
-  background: var(--glass-bg);
-  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.5);
-  backdrop-filter: blur(var(--glass-blur)) saturate(1.5);
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius-panel);
-  box-shadow: var(--glass-shadow);
 }
 
 .recovery h1 {
@@ -224,7 +233,7 @@
 .recovery__reason {
   padding: 12px 14px;
   border-radius: var(--radius-control);
-  border: 1px solid rgb(184 50 42 / 0.35);
+  border: 1px solid var(--block-border);
   background: var(--block-bg);
   color: var(--block);
   font-size: var(--text-xs);
@@ -247,7 +256,7 @@
   align-items: center;
   gap: 10px 14px;
   padding: 10px 14px;
-  border-color: rgb(154 90 0 / 0.35);
+  border-color: var(--warn-border);
   background: rgb(255 243 223 / 0.85);
   font-size: var(--text-sm);
 }
@@ -272,12 +281,12 @@
 }
 
 .frozen-banner--approved {
-  border-color: rgb(11 100 73 / 0.35);
+  border-color: var(--ok-border);
   background: rgb(232 245 239 / 0.92);
 }
 
 .frozen-banner--history {
-  border-color: rgb(28 100 200 / 0.3);
+  border-color: var(--acc-border);
   background: rgb(232 240 252 / 0.9);
 }
 

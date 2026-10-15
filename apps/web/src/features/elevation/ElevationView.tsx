@@ -1,3 +1,4 @@
+import { IconChevronRight } from '../../ui/icons';
 import { PortManager } from '../ports/PortManager';
 import { StateLegend } from './EquipmentStateControl';
 import { SearchBox } from '../search/SearchBox';
@@ -92,11 +93,22 @@ export function ElevationView({ location, readOnly = false, viewingPast = false 
   useEffect(() => {
     const el = racksArea.current;
     if (!el || typeof ResizeObserver === 'undefined') return;
-    const ro = new ResizeObserver(() => setAreaH(el.clientHeight));
+    const update = (): void => {
+      setAreaH(el.clientHeight);
+      setMore({ above: el.scrollTop > 4, below: el.scrollTop + el.clientHeight < el.scrollHeight - 4 });
+    };
+    const ro = new ResizeObserver(update);
     ro.observe(el);
-    setAreaH(el.clientHeight);
-    return () => ro.disconnect();
+    el.addEventListener('scroll', update, { passive: true });
+    update();
+    return () => {
+      ro.disconnect();
+      el.removeEventListener('scroll', update);
+    };
   }, []);
+  // When a rack can't fit at a readable size, say so and offer the hidden part.
+  const [more, setMore] = useState({ above: false, below: false });
+  const reveal = (dir: 1 | -1): void => racksArea.current?.scrollBy({ top: dir * racksArea.current.clientHeight * 0.8, behavior: 'smooth' });
   const racks = racksOf(content);
   const tallest = Math.max(1, ...racks.map((r) => r.capacityU));
   const uPx = areaH ? Math.max(MIN_U_PX, Math.min(U_PX, Math.floor((areaH - RACK_CHROME_PX) / tallest))) : U_PX;
@@ -188,6 +200,18 @@ export function ElevationView({ location, readOnly = false, viewingPast = false 
         <PowerBar content={content} />
         <StateLegend />
       </div>
+      {more.above ? (
+        <button type="button" className="elev__more elev__more--above" onClick={() => reveal(-1)}>
+          <IconChevronRight className="elev__more-icon" />
+          {m.elevation.moreAbove}
+        </button>
+      ) : null}
+      {more.below ? (
+        <button type="button" className="elev__more elev__more--below" onClick={() => reveal(1)}>
+          <IconChevronRight className="elev__more-icon" />
+          {m.elevation.moreBelow}
+        </button>
+      ) : null}
       <section ref={racksArea} className="elev__racks" aria-label={m.elevation.racks}>
         {racks.map((rack) => (
           <RackElevation

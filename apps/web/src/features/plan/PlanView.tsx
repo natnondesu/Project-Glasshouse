@@ -2,7 +2,7 @@ import { centerOf, currentRevision, revisionIssues, type RoomLocation } from '@g
 import { Link } from 'react-router';
 import { SearchBox } from '../search/SearchBox';
 import type { SearchHit } from '../search/search';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useState } from 'react';
 import { usePlanCommit, useSearchParamState } from '../../store/hooks';
 import { FIT_INSETS, useViewport } from '../../viewport/useViewport';
 import { PanelCollapseTab, PanelRail } from '../../ui/PanelRail';
@@ -24,6 +24,8 @@ import { useT } from '../../i18n';
 /** Room the fit leaves on the right for the inspector, or for its collapsed rail. */
 const INSET_WITH_INSPECTOR = FIT_INSETS.right;
 const INSET_WITHOUT_INSPECTOR = 76;
+/** Space kept between the room and the checks strip below it. */
+const CHECKS_GAP_PX = 48;
 const PULSE_MS = 1700;
 
 export function PlanView({ location, readOnly = false }: { location: RoomLocation; readOnly?: boolean }) {
@@ -51,7 +53,13 @@ export function PlanView({ location, readOnly = false }: { location: RoomLocatio
   const issues = useMemo(() => revisionIssues(revision), [revision]);
   const m = useT();
   const [inspectorOpen, setInspectorOpen] = usePersistentState('glasshouse:inspector-open', true);
-  const viewport = useViewport({ w: content.survey.width, d: content.survey.length }, inspectorOpen ? INSET_WITH_INSPECTOR : INSET_WITHOUT_INSPECTOR);
+  // Fit around the checks strip as it really is (one line when all is well), not a worst-case band.
+  const [checksH, setChecksH] = useState<number | undefined>(undefined);
+  useLayoutEffect(() => {
+    const el = document.querySelector<HTMLElement>('.plan-view .checks');
+    if (el) setChecksH(Math.min(FIT_INSETS.bottom, el.getBoundingClientRect().height + CHECKS_GAP_PX));
+  }, []);
+  const viewport = useViewport({ w: content.survey.width, d: content.survey.length }, inspectorOpen ? INSET_WITH_INSPECTOR : INSET_WITHOUT_INSPECTOR, checksH);
   const gestures = usePlanGestures({ content, tool, setTool, selectedId: selected?.id ?? selectedDimension?.id ?? null, select, viewport, commit, readOnly });
 
   return (

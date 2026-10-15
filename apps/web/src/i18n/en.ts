@@ -388,6 +388,8 @@ export const en = {
     reservedStamp: (range: string) => `RESERVED · ${range}`,
     moveTo: (range: string) => `Move to ${range}`,
     notHere: 'Not here',
+    moreBelow: 'More of the rack below',
+    moreAbove: 'More of the rack above',
     slotTitle: (slot: number, name: string | null) => (name ? `Slot ${slot}: ${name}` : `Slot ${slot}: empty`),
   },
   palette: {

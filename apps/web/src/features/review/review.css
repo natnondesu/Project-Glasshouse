@@ -73,7 +73,7 @@
 .review-ready {
   padding: 8px 12px;
   border-radius: var(--radius-control);
-  background: rgb(17 121 90 / 0.12);
+  background: var(--ok-bg);
   color: var(--ok);
   font-weight: 600;
   font-size: var(--text-sm);
@@ -82,12 +82,12 @@
 .blockers {
   padding: 10px 12px;
   border-radius: var(--radius-control);
-  border: 1px solid rgb(184 50 42 / 0.3);
+  border: 1px solid var(--block-border);
   background: var(--block-bg);
 }
 
 .blockers h3 {
-  font-size: var(--text-sm);
+  font-size: var(--text-md);
   font-weight: 700;
   color: var(--block);
 }
@@ -116,9 +116,9 @@
 }
 
 .unknowns__item {
-  padding: 12px;
-  border-radius: var(--radius-control);
-  background: rgb(255 255 255 / 0.45);
+  /* A ruled list inside the card, not a card inside a card. */
+  padding: 12px 0;
+  border-top: 1px solid var(--line);
   display: flex;
   flex-direction: column;
   gap: 8px;

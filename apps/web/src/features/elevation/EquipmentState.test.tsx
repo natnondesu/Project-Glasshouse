@@ -33,7 +33,7 @@ it('marks equipment deployed or in maintenance on an approved plan, shown on the
   expect(state('srv')).toBe('deployed');
   expect(container.querySelector('[data-elev-id="srv"]')).toHaveClass('dev--state-deployed');
   await user.click(within(group).getByRole('button', { name: /In maintenance/ }));
-  expect(container.querySelector('[data-elev-id="srv"] .dev__state')?.textContent).toBe('!');
+  expect(container.querySelector('[data-elev-id="srv"] .dev__state')).toHaveAttribute('data-state', 'maintenance');
   expect(screen.getByRole('list', { name: 'Equipment states' })).toHaveTextContent('Planned');
 });
 

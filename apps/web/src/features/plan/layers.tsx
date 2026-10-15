@@ -24,6 +24,9 @@ const UNLABELLED = new Set<string>(['door', 'mcb', 'wall_plug', 'industrial_sock
 
 const GRID_STEP_M = 0.5;
 const MIN_LABEL_PX = 34;
+/** Under-rack names: 11px Geist Mono advance, and the line step when two would touch. */
+const OUTSIDE_CHAR_PX = 6.7;
+const OUTSIDE_ROW_PX = 14;
 const VOID_LABEL_MIN_PX = 28;
 const DIM_OFFSET_PX = 28;
 
@@ -158,8 +161,30 @@ interface ObjectsLayerProps {
   isStatic?: boolean;
 }
 
+/** Under-rack names, placed left to right; one that would touch its neighbour steps down a line. */
+function outsideLabelRows(objects: RoomObject[], view: View): Map<string, number> {
+  const rows = new Map<string, number>();
+  const placed: { x0: number; x1: number; y: number; row: number }[] = [];
+  const items = objects
+    .filter((o) => o.type === 'rack' || o.type === 'existing_rack')
+    .map((o) => {
+      const [cx, cy] = toScreen(view, centerOf(o));
+      const half = (o.name.length * OUTSIDE_CHAR_PX) / 2 + 3;
+      return { id: o.id, x0: cx - half, x1: cx + half, y: cy + (rotatedBoundsSize(o.w, o.d, o.angle).d * view.scale) / 2 };
+    })
+    .sort((a, b) => a.x0 - b.x0);
+  for (const it of items) {
+    let row = 0;
+    while (placed.some((p) => p.row === row && Math.abs(p.y - it.y) < OUTSIDE_ROW_PX && p.x1 > it.x0 && p.x0 < it.x1)) row += 1;
+    placed.push({ ...it, row });
+    rows.set(it.id, row);
+  }
+  return rows;
+}
+
 export function ObjectsLayer({ objects, view, flagged, selectedId, onFocusObject, isStatic = false }: ObjectsLayerProps) {
   const m = useT();
+  const outsideRows = outsideLabelRows(objects, view);
   return (
     <g>
       {objects.map((o) => {
@@ -168,9 +193,15 @@ export function ObjectsLayer({ objects, view, flagged, selectedId, onFocusObject
         const tall = bounds.d * view.scale;
         // Labels must fit inside the object; doors and MCB panels are too thin and rely on the hover tag.
         const labelled = !UNLABELLED.has(o.type) && tall >= MIN_LABEL_PX * (o.type === 'rack' ? 1 : 0.6);
-        const label = labelled ? fitLabel(o.name, bounds.w * view.scale) : null;
-        const sub = label && o.type === 'rack' && tall >= MIN_LABEL_PX * 1.4 ? fitLabel(o.owner === 'customer' ? m.plan.customerShort : `${usedU(o)}/${o.capacityU}U`, bounds.w * view.scale, 6.7) : null;
+        const isRackLike = o.type === 'rack' || o.type === 'existing_rack';
+        const fitted = labelled ? fitLabel(o.name, bounds.w * view.scale) : null;
+        // A rack name is shown whole: inside when it fits, otherwise under the rack, never cut to "RK-…".
+        const label = isRackLike && fitted !== o.name ? null : fitted;
+        const sub = o.type === 'rack' && tall >= MIN_LABEL_PX * 1.4 ? fitLabel(o.owner === 'customer' ? m.plan.customerShort : `${usedU(o)}/${o.capacityU}U`, bounds.w * view.scale, 6.7) : null;
         const topY = toScreen(view, [0, o.y])[1];
+        // A rack too small at this zoom still shows its name, just under it, so racks are never anonymous.
+        const outside = !label && isRackLike;
+        const bottomY = cy + tall / 2;
         const classes = ['obj', `obj--${o.type}`, o.type === 'rack' && o.owner === 'customer' ? 'obj--customer' : '', flagged.has(o.id) ? 'is-flagged' : '', o.id === selectedId ? 'is-selected' : '']
           .filter(Boolean)
           .join(' ');
@@ -190,12 +221,17 @@ export function ObjectsLayer({ objects, view, flagged, selectedId, onFocusObject
             <SourceSymbol o={o} view={view} />
             {o.type === 'rack' ? <RackFront rack={o} view={view} /> : null}
             {label ? (
-              <text className="obj__label" x={cx} y={sub ? cy - 7 : cy} textAnchor="middle" dominantBaseline="middle">
+              <text className="obj__label" x={cx} y={sub && label ? cy - 7 : cy} textAnchor="middle" dominantBaseline="middle">
                 {label}
               </text>
             ) : null}
+            {outside ? (
+              <text className="obj__label obj__label--outside" x={cx} y={bottomY + 12 + (outsideRows.get(o.id) ?? 0) * OUTSIDE_ROW_PX} textAnchor="middle" dominantBaseline="middle">
+                {o.name}
+              </text>
+            ) : null}
             {sub ? (
-              <text className="obj__sub" x={cx} y={cy + 9} textAnchor="middle" dominantBaseline="middle">
+              <text className="obj__sub" x={cx} y={label ? cy + 9 : cy} textAnchor="middle" dominantBaseline="middle">
                 {sub}
               </text>
             ) : null}

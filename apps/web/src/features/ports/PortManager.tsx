@@ -53,7 +53,7 @@ export function PortManager({ content, roomId, deviceId, commit, readOnly, onClo
   const ports = portsOf(content, deviceId);
   const [selected, setSelected] = useState<string | null>(ports[0]?.name ?? null);
   const [error, setError] = useState<string | null>(null);
-  const { pos, headProps } = useFloatingPanel('glasshouse:port-manager-pos', { x: 140, y: 120 });
+  const { pos, headProps } = useFloatingPanel('glasshouse:port-manager-at', { x: 560, y: 150 });
   const linked = ports.filter((p) => linkAt(content, { deviceId, port: p.name })).length;
   const current = ports.find((p) => p.name === selected) ?? null;
 

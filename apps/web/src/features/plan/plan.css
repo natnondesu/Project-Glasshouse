@@ -1,17 +1,5 @@
 /* The plan is full-bleed; tools, zoom, inspector and checks float over it as glass. */
 .plan-view {
-  /* Drafting tokens, scoped to the Plan: the rest of the app stays glass. */
-  --paper: #fbfcfa;
-  --d-ink: #111720;
-  --d-ink-2: #3b4552;
-  --d-rule: #c9d0d4;
-  --d-grid-minor: #e3ecf2;
-  --d-grid-major: #c3d6e4;
-  --d-clr: #2a6a9e;
-  --d-clr-fill: rgb(42 106 158 / 0.08);
-  --d-block: #b3261e;
-  --d-block-bg: #fbedeb;
-  --d-sel: #1c64c8;
   --inspector-space: 376px;
 
   position: relative;
@@ -315,7 +303,7 @@
 }
 
 .preview--area {
-  fill: rgb(28 100 200 / 0.06);
+  fill: var(--acc-tint);
   stroke: var(--d-sel);
   stroke-width: 1.5;
   stroke-dasharray: 6 3;
@@ -568,7 +556,7 @@
 }
 
 .ghost__body {
-  fill: rgb(28 100 200 / 0.06);
+  fill: var(--acc-tint);
   stroke: var(--d-sel);
   stroke-width: 1.5;
   stroke-dasharray: 5 3;
@@ -1006,4 +994,13 @@
   font-weight: 700;
   letter-spacing: 0.08em;
   fill: var(--d-ink-2);
+}
+
+/* Under-the-rack name: paper halo so it reads over hatching and lines. */
+.obj__label--outside {
+  font-size: var(--text-2xs);
+  paint-order: stroke;
+  stroke: var(--paper);
+  stroke-width: 3px;
+  stroke-linejoin: round;
 }

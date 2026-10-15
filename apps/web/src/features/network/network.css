@@ -73,9 +73,9 @@
   padding: 8px;
   /* Drafting paper, like the plan. */
   background:
-    linear-gradient(var(--grid) 1px, transparent 1px) 0 0 / 24px 24px,
-    linear-gradient(90deg, var(--grid) 1px, transparent 1px) 0 0 / 24px 24px,
-    var(--floor);
+    linear-gradient(var(--d-grid-minor) 1px, transparent 1px) 0 0 / 24px 24px,
+    linear-gradient(90deg, var(--d-grid-minor) 1px, transparent 1px) 0 0 / 24px 24px,
+    var(--paper);
 }
 
 .network__empty {
@@ -233,11 +233,14 @@
   fill: var(--ink);
 }
 
-.topo-node__where,
-.topo-node__state {
+.topo-node__where {
   font-family: var(--font-mono);
   font-size: var(--text-2xs);
   fill: var(--ink-2);
+}
+
+.topo-node__state {
+  color: var(--ink-2);
 }
 
 .topo-node[role='button'] {

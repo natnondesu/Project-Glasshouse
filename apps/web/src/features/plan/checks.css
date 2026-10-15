@@ -31,7 +31,7 @@
 .checks__ok {
   padding: 2px 9px;
   border-radius: 999px;
-  background: rgb(17 121 90 / 0.12);
+  background: var(--ok-bg);
   color: var(--ok);
   font-weight: 600;
 }

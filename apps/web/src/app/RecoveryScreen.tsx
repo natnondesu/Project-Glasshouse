@@ -39,7 +39,7 @@ export function RecoveryScreen({ reason, raw, repository }: RecoveryScreenProps)
   };
 
   return (
-    <main className="recovery">
+    <main className="recovery glass">
       <h1>{m.crash.loadTitle}</h1>
       <p className="recovery__reason mono">{reason}</p>
       <p>{m.crash.loadBody}</p>

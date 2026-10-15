@@ -39,7 +39,7 @@ export class ErrorBoundary extends Component<Props, State> {
     // A class component can't use hooks; read the language directly.
     const m = messagesFor(useLangStore.getState().lang);
     return (
-      <section className="recovery" role="alert">
+      <section className="recovery glass" role="alert">
         <h1>{m.crash.title(this.props.label)}</h1>
         <p className="recovery__reason mono">{error.message}</p>
         <p>{m.crash.stillSaved}</p>

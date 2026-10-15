@@ -627,9 +627,6 @@
 
 /* Equipment state: planned is a dashed ghost, deployed solid, maintenance amber; each also has a glyph. */
 .dev__state {
-  font-family: var(--font-mono);
-  font-size: var(--text-2xs);
-  font-weight: 700;
   pointer-events: none;
 }
 
@@ -639,20 +636,20 @@
 }
 
 .dev--state-planned .dev__state {
-  fill: var(--ink-2);
+  color: var(--ink-2);
 }
 
 .dev--state-deployed .dev__state {
-  fill: var(--ok);
+  color: var(--ok);
 }
 
 .dev--state-maintenance .dev__body {
-  stroke: #c77700;
+  stroke: var(--maint);
   stroke-width: 2;
 }
 
 .dev--state-maintenance .dev__state {
-  fill: #c77700;
+  color: var(--maint);
 }
 
 .slot-cell--state-planned {
@@ -661,7 +658,7 @@
 }
 
 .slot-cell--state-maintenance {
-  stroke: #c77700;
+  stroke: var(--maint);
   stroke-width: 2;
 }
 
@@ -683,25 +680,16 @@
 }
 
 .state-legend__glyph {
-  width: 16px;
-  height: 16px;
-  display: inline-grid;
-  place-items: center;
-  border-radius: 4px;
-  font-family: var(--font-mono);
-  font-size: var(--text-2xs);
-  font-weight: 700;
-  border: 1px dashed var(--ink-2);
+  flex: none;
+  color: var(--ink-2);
 }
 
 .state-legend__item--deployed .state-legend__glyph {
-  border: 1px solid var(--ok);
   color: var(--ok);
 }
 
 .state-legend__item--maintenance .state-legend__glyph {
-  border: 1.5px solid #c77700;
-  color: #c77700;
+  color: var(--maint);
 }
 
 .equip-state {
@@ -748,8 +736,7 @@
 }
 
 .equip-state__glyph {
-  font-family: var(--font-mono);
-  font-weight: 700;
+  vertical-align: -1px;
 }
 
 .equip-state__btn--deployed[aria-pressed='true'] .equip-state__glyph {
@@ -801,4 +788,45 @@ body.is-dragging-device * {
 
 .equip-state__glyph {
   margin-right: 4px;
+}
+
+/* Racks taller than the screen: a floating cue at the edge where more rack is hidden. */
+.elev__more {
+  grid-column: 2;
+  grid-row: 2;
+  justify-self: center;
+  z-index: 3;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 10px;
+  padding: 6px 14px 6px 10px;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  background: #fff;
+  box-shadow: var(--shadow-float);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.elev__more:hover {
+  border-color: var(--acc);
+}
+
+.elev__more--below {
+  align-self: end;
+}
+
+.elev__more--above {
+  align-self: start;
+}
+
+.elev__more-icon {
+  transform: rotate(90deg);
+}
+
+.elev__more--above .elev__more-icon {
+  transform: rotate(-90deg);
 }

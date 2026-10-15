@@ -15,14 +15,17 @@ import './styles/base.css';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { App } from './app/App';
-import { syncDocumentLang } from './i18n';
+import { loadStoredLang } from './i18n';
 
-syncDocumentLang();
-
-const root = document.getElementById('root');
-if (!root) throw new Error('Glasshouse could not find its #root element.');
-createRoot(root).render(
-  <StrictMode>
-    <App />
-  </StrictMode>,
-);
+// Load the remembered language first, then draw; a failed load still renders, in English.
+void loadStoredLang()
+  .catch((e: unknown) => console.error('Glasshouse could not load the saved language', e))
+  .finally(() => {
+    const root = document.getElementById('root');
+    if (!root) throw new Error('Glasshouse could not find its #root element.');
+    createRoot(root).render(
+      <StrictMode>
+        <App />
+      </StrictMode>,
+    );
+  });

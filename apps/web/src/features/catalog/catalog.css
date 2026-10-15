@@ -102,7 +102,7 @@
   gap: 8px;
   padding: 12px;
   border-radius: var(--radius-control);
-  border: 1px solid rgb(154 90 0 / 0.35);
+  border: 1px solid var(--warn-border);
   background: var(--warn-bg);
   font-size: var(--text-sm);
 }

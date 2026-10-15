@@ -42,7 +42,7 @@
 .field__box--error,
 .field__box--error:focus-within {
   border-color: var(--block);
-  box-shadow: 0 0 0 3px rgb(184 50 42 / 0.12);
+  box-shadow: 0 0 0 3px var(--block-ring);
 }
 
 .field__input {

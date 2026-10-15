@@ -94,3 +94,7 @@
   background: var(--panel-light);
   box-shadow: 1px 0 0 var(--line);
 }
+
+.bom__filter button {
+  white-space: nowrap;
+}
