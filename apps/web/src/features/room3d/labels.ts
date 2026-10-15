@@ -4,7 +4,8 @@ import type { RoomObjectType } from '@glasshouse/domain';
 export type LabelKind = 'rack' | 'existing' | 'power' | 'door' | 'furniture';
 
 export const LABEL_KINDS: LabelKind[] = ['rack', 'existing', 'power', 'door', 'furniture'];
-export const DEFAULT_LABEL_KINDS: LabelKind[] = ['rack', 'existing', 'power'];
+/** Only the planned racks by default; every other kind is the viewer's choice. */
+export const DEFAULT_LABEL_KINDS: LabelKind[] = ['rack'];
 
 export function labelKindOf(type: RoomObjectType): LabelKind {
   if (type === 'rack') return 'rack';
