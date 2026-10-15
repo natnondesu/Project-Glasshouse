@@ -698,6 +698,7 @@ export const th: Messages = {
     submitted: (p) => (p.by ? `ส่งตรวจโดย ${p.by} (ยังไม่ยืนยันตัวตน)` : 'ส่งตรวจ'),
     approved: (p) => `อนุมัติโดย ${p.by} (ยังไม่ยืนยันตัวตน)`,
     new_draft: (p) => `เริ่มฉบับร่าง ${p.to} จากฉบับ ${p.from}`,
+    draft_discarded: (p) => `ทิ้งฉบับร่าง ${p.draft} กลับไปใช้ฉบับ ${p.back}`,
     acknowledged: (p) => `${p.by} (ยังไม่ยืนยันตัวตน) รับทราบค่าไฟที่ไม่ทราบของ ${p.range}`,
     unacknowledged: () => 'ถอนการรับทราบ',
     note_added: () => 'เพิ่มบันทึกการตรวจทาน',
@@ -745,6 +746,10 @@ export const th: Messages = {
     submitConfirm: (rev, blocks) =>
       `ส่ง R${rev} ให้ตรวจ? ฉบับนี้จะถูกล็อกทันที หากต้องแก้ต้องเริ่มฉบับร่างใหม่ ${blocks ? `ยังมี ${blocks} รายการที่ต้องแก้ก่อนอนุมัติ` : 'ไม่มีรายการที่ขัดขวางการอนุมัติ'}`,
     confirmSubmit: 'ยืนยันการส่งตรวจ',
+    discardDraft: (rev: string) => `ทิ้งฉบับร่าง R${rev}`,
+    discardNote: (back: string) => `ทิ้งการแก้ไขในฉบับร่างนี้ และกลับไปใช้ R${back} ตามเดิม`,
+    discardConfirm: (rev: string, back: string, state: string) => `ทิ้งฉบับร่าง R${rev}? การแก้ไขทั้งหมดจะหายไป และห้องจะกลับไปใช้ R${back} (${state}) ย้อนกลับไม่ได้`,
+    confirmDiscard: 'ทิ้งฉบับร่าง',
     approveConfirm: (rev, name) => `อนุมัติ R${rev} ในนาม ${name}? ฉบับที่อนุมัติแล้วจะไม่เปลี่ยน และใบติดตั้งจะพิมพ์จากฉบับนี้`,
     unnamedReviewer: 'ผู้ตรวจที่ไม่ระบุชื่อ',
     selfApproveWarn: 'ผู้ตรวจเป็นคนเดียวกับผู้ออกแบบ ทำได้ แต่จะถูกบันทึกว่าอนุมัติงานตัวเอง',

@@ -259,3 +259,18 @@
   grid-column: 2;
   justify-self: start;
 }
+
+/* Discarding a draft sits apart from the submit flow: a quieter, separate decision. */
+.discard-draft {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+
+.review-confirm--danger {
+  align-self: stretch;
+  border-color: var(--block-border);
+}

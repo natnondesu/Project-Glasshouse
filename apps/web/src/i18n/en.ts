@@ -680,6 +680,10 @@ export const en = {
     submitConfirm: (rev: string, blocks: number) =>
       `Submit R${rev} for review? It freezes now; any change after this needs a new draft. ${blocks ? `${blocks} ${blocks === 1 ? 'item still blocks' : 'items still block'} approval.` : 'Nothing blocks approval.'}`,
     confirmSubmit: 'Confirm submit',
+    discardDraft: (rev: string) => `Discard draft R${rev}`,
+    discardNote: (back: string) => `Throws away this draft's changes and goes back to R${back} as it was.`,
+    discardConfirm: (rev: string, back: string, state: string) => `Discard draft R${rev}? Its changes are thrown away and the room goes back to R${back} (${state}). This can't be undone.`,
+    confirmDiscard: 'Discard draft',
     approveConfirm: (rev: string, name: string) => `Approve R${rev} as ${name}? Approved revisions never change, and the Install sheet prints from this one.`,
     unnamedReviewer: 'an unnamed reviewer',
     selfApproveWarn: 'The reviewer is also the designer. That is allowed, and it will be marked self-approved.',

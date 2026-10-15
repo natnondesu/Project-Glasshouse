@@ -267,7 +267,7 @@ export interface ReviewNote {
   createdAt: string;
 }
 
-export type HistoryCode = 'submitted' | 'approved' | 'new_draft' | 'acknowledged' | 'unacknowledged' | 'note_added' | 'note_resolved' | 'note_reopened';
+export type HistoryCode = 'submitted' | 'approved' | 'new_draft' | 'draft_discarded' | 'acknowledged' | 'unacknowledged' | 'note_added' | 'note_resolved' | 'note_reopened';
 
 export interface HistoryEvent {
   revision: number;

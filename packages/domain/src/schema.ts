@@ -101,7 +101,7 @@ const plan = z.object({
       revision: int,
       action: z.string(),
       at: z.string(),
-      code: z.enum(['submitted', 'approved', 'new_draft', 'acknowledged', 'unacknowledged', 'note_added', 'note_resolved', 'note_reopened']).optional(),
+      code: z.enum(['submitted', 'approved', 'new_draft', 'draft_discarded', 'acknowledged', 'unacknowledged', 'note_added', 'note_resolved', 'note_reopened']).optional(),
       params: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
     }),
   ),
