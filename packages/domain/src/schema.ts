@@ -11,7 +11,7 @@ const demand = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('known'), watts: z.number().nonnegative() }),
   z.object({ kind: z.literal('unknown') }),
 ]);
-const category = z.enum(['compute', 'storage', 'network', 'power', 'chassis', 'misc']);
+const category = z.enum(['server', 'network', 'power', 'chassis', 'misc']);
 export const templateSchema = z.object({
   id,
   version: int.positive(),

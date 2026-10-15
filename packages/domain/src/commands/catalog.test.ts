@@ -11,7 +11,7 @@ const custom = (over: Partial<Template> = {}): Omit<Template, 'version'> => ({
   id: 't-gpu',
   label: 'GPU node 4U',
   model: 'Acme G4',
-  category: 'compute',
+  category: 'server',
   mounting: 'rack',
   heightU: 4,
   depthMm: 900,
@@ -69,7 +69,7 @@ describe('catalog commands', () => {
 
   it('validates templates with plain messages', () => {
     const ws = createWorkspace();
-    expect(message(ws, { type: 'template/create', template: custom({ mounting: 'slot', category: 'network' }) })).toBe('Nodes use the Compute category.');
+    expect(message(ws, { type: 'template/create', template: custom({ mounting: 'slot', category: 'network' }) })).toBe('Nodes use the Server category.');
     expect(message(ws, { type: 'template/create', template: custom({ category: 'chassis' }) })).toBe('A Chassis needs between 1 and 64 slots.');
     expect(message(ws, { type: 'template/create', template: custom({ category: 'chassis', slotCount: 4, slotsPerRow: 5 }) })).toBe('Slots per row must be between 1 and 4.');
     expect(message(ws, { type: 'template/create', template: custom({ heightU: 0 }) })).toBe('Rack devices are 1 to 60 U high.');

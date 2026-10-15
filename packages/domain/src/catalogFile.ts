@@ -4,6 +4,7 @@ import type { Template } from './model/types';
 import { CURRENT_SCHEMA_VERSION } from './model/defaults';
 import { err, ok, type Result } from './result';
 import { templateSchema } from './schema';
+import { withServerCategory } from './migrations';
 
 export const CATALOG_FILE_FORMAT = 'glasshouse.catalog';
 
@@ -25,7 +26,10 @@ const fileSchema = z.object({ format: z.literal(CATALOG_FILE_FORMAT), templates:
 
 /** Reads an exported catalog (or the shipped default). Every template must pass the same rules as the editor. */
 export function parseCatalogFile(raw: unknown): Result<Template[]> {
-  const parsed = fileSchema.safeParse(raw);
+  // Files exported before schema 8 still say Compute or Storage.
+  const r = raw as { templates?: unknown };
+  const upgraded = typeof raw === 'object' && raw !== null && Array.isArray(r.templates) ? { ...raw, templates: r.templates.map(withServerCategory) } : raw;
+  const parsed = fileSchema.safeParse(upgraded);
   if (!parsed.success) {
     const isCatalog = typeof raw === 'object' && raw !== null && (raw as { format?: unknown }).format === CATALOG_FILE_FORMAT;
     return err('invalid_value', isCatalog ? 'The catalog file is damaged: a template is missing fields.' : "This isn't a Glasshouse catalog file.");

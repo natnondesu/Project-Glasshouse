@@ -16,7 +16,7 @@ const SWITCH: Template = {
     { count: 2, prefix: 'Te1/1/', start: 1, media: 'sfp_plus', speed: '10G' },
   ],
 };
-const SERVER: Template = { ...SWITCH, id: 'tpl-srv', label: 'Server', category: 'compute', heightU: 2, ports: [{ count: 2, prefix: 'eth', start: 0, media: 'rj45', speed: '1G' }] };
+const SERVER: Template = { ...SWITCH, id: 'tpl-srv', label: 'Server', category: 'server', heightU: 2, ports: [{ count: 2, prefix: 'eth', start: 0, media: 'rj45', speed: '1G' }] };
 
 function run(c: PlanContent, ...cmds: PlanCommand[]): PlanContent {
   return cmds.reduce((acc, cmd) => {

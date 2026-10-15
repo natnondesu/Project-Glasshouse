@@ -14,7 +14,7 @@ describe('workspace backup', () => {
   it('round-trips the whole workspace and records when it was taken', () => {
     const ws = withProject();
     const file = JSON.parse(JSON.stringify(exportBackup(ws, '2026-10-14T00:00:00.000Z')));
-    expect(file).toMatchObject({ format: 'glasshouse.workspace', schemaVersion: 7, exportedAt: '2026-10-14T00:00:00.000Z' });
+    expect(file).toMatchObject({ format: 'glasshouse.workspace', schemaVersion: 8, exportedAt: '2026-10-14T00:00:00.000Z' });
     const restored = parseBackup(file);
     expect(restored.ok && restored.value.projects[0]?.name).toBe('Northgate');
     expect(restored.ok && restored.value.lastBackupAt).toBe('2026-10-14T00:00:00.000Z');

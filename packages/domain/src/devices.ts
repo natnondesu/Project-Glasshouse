@@ -2,7 +2,7 @@ import { expandPorts } from './ports';
 import { isRack } from './model/types';
 import type { Category, Chassis, Id, Node, PlanContent, Rack, RackDevice, ReservedRange, Template, Units, Port } from './model/types';
 
-const PREFIX: Record<Category, string> = { compute: 'SRV', storage: 'STO', network: 'SW', power: 'PWR', chassis: 'CH', misc: 'MISC' };
+const PREFIX: Record<Category, string> = { server: 'SRV', network: 'SW', power: 'PWR', chassis: 'CH', misc: 'MISC' };
 
 export const racksOf = (content: PlanContent): Rack[] => content.objects.filter(isRack);
 

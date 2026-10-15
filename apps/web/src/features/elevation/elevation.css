@@ -83,7 +83,7 @@
   filter: brightness(1.04) drop-shadow(0 2px 4px rgb(14 24 36 / 0.18));
 }
 
-.dev--compute .dev__body {
+.dev--server .dev__body {
   fill: rgb(127 162 232 / 0.34);
   stroke: #4e78c9;
 }
@@ -91,11 +91,6 @@
 .dev--network .dev__body {
   fill: rgb(183 154 240 / 0.34);
   stroke: #7c5bc4;
-}
-
-.dev--storage .dev__body {
-  fill: rgb(76 194 172 / 0.3);
-  stroke: #1f8f7b;
 }
 
 .dev--power .dev__body {
@@ -347,6 +342,40 @@
   display: flex;
   flex-direction: column;
   gap: 4px;
+}
+
+.palette__group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.palette__group + .palette__group {
+  margin-top: 6px;
+}
+
+/* Category headings stay in view while a long catalog scrolls under them. */
+.palette__group-h {
+  position: sticky;
+  top: -14px;
+  z-index: 1;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin: 0 -4px;
+  padding: 6px 4px 4px;
+  background: rgb(247 249 251 / 0.94);
+  font-size: var(--text-2xs);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+}
+
+.palette__count {
+  font-weight: 500;
+  letter-spacing: 0;
+  color: var(--ink-3);
 }
 
 .palette__item {
@@ -751,6 +780,14 @@
 .dev.is-draggable {
   cursor: grab;
   touch-action: none;
+}
+
+/* Rack drawings are pointer surfaces, never text to select: a selection under the pointer lets
+   Safari start its own native drag, and the page then sees no pointer events until release. */
+.rack-elev__svg {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-user-drag: none;
 }
 
 body.is-dragging-device,

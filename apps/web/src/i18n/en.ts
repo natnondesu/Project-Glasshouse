@@ -361,7 +361,7 @@ export const en = {
     feedDetail: (source: string, way: number | null) => `Power feed · from ${source}${way ? `, way ${way}` : ''}`,
     cableDetail: (a: string, b: string) => `Cable · ${a} ↔ ${b}`,
   },
-  categories: { compute: 'Compute', storage: 'Storage', network: 'Network', power: 'Power', chassis: 'Chassis', misc: 'Misc' },
+  categories: { server: 'Server', network: 'Network', power: 'Power', chassis: 'Chassis', misc: 'Misc' },
   fields: {
     known: 'Known',
     unknown: 'Unknown',

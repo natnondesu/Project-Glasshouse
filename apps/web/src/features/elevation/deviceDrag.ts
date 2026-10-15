@@ -131,6 +131,8 @@ export function useDeviceDrag(opts: {
     if (latest.current.disabled || e.button !== 0) return;
     const hit = latest.current.hitTest(e.clientX, e.clientY);
     if (!hit) return;
+    // A leftover text selection would let the browser turn this press into its own drag.
+    window.getSelection()?.removeAllRanges();
     grab.current = { deviceId, grabOffsetU: hit.pointerU - bottomU, x: e.clientX, y: e.clientY, dragging: false };
   }, []);
 

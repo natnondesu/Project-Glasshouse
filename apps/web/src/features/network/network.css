@@ -221,9 +221,9 @@
   fill: var(--network);
 }
 
-.topo-node--compute .topo-node__stripe,
+.topo-node--server .topo-node__stripe,
 .topo-node--node .topo-node__stripe {
-  fill: var(--compute);
+  fill: var(--server);
 }
 
 .topo-node__name {

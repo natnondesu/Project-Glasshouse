@@ -1,10 +1,10 @@
-import { formatDemand, SEED_TEMPLATE_IDS, type Template } from '@glasshouse/domain';
+import { CATEGORY_ORDER, formatDemand, SEED_TEMPLATE_IDS, type Template } from '@glasshouse/domain';
 import { useCallback, useState } from 'react';
 import { useBlocker } from 'react-router';
 import { CatalogFileActions } from './CatalogFileActions';
 import { useSearchParamState } from '../../store/hooks';
 import { useWorkspaceStore } from '../../store/workspaceStore';
-import { blankTemplate, CATEGORY_ORDER, TemplateEditor } from './TemplateEditor';
+import { blankTemplate, TemplateEditor } from './TemplateEditor';
 import '../plan/inspector.css';
 import './catalog.css';
 import { useT } from '../../i18n';

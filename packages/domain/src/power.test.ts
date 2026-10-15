@@ -40,7 +40,7 @@ const server = (watts: number | null): PlacedDevice => ({
   config: '',
   notes: '',
   kind: 'device',
-  category: 'compute',
+  category: 'server',
   bottomU: 20,
   heightU: 2,
   depthMm: 780,

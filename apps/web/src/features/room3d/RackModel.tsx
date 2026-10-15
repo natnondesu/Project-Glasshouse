@@ -134,7 +134,7 @@ export function RackModel({ rack, palette, selected, onSelect, existing = false,
               <group key={`${s.chassisId}-${s.slot}`} position={[s.x * k, s.y - h / 2, frontZ + 0.003]}>
                 <mesh>
                   <planeGeometry args={[s.width * k, s.height]} />
-                  <meshStandardMaterial color={s.filled ? palette.category.compute : '#11161b'} roughness={0.5} />
+                  <meshStandardMaterial color={s.filled ? palette.category.server : '#11161b'} roughness={0.5} />
                 </mesh>
                 {s.filled ? (
                   <mesh position={[0, s.height / 2 - 0.02, 0.001]}>

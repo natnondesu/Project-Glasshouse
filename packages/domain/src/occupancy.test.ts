@@ -15,7 +15,7 @@ const dev = (id: string, bottomU: number, heightU: number): PlacedDevice => ({
   config: '',
   notes: '',
   kind: 'device',
-  category: 'compute',
+  category: 'server',
   bottomU,
   heightU,
   depthMm: 700,

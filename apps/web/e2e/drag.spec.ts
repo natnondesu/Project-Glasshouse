@@ -1,8 +1,5 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
 
-// Under heavy parallel load (3D tests rendering in software), WebKit delivers synthesized pointer events
-// seconds late; logged on 2026-10-15. Waits that depend on them get room to catch up.
-const SLOW_EVENTS_MS = 15_000;
 
 const PAD = 2;
 
@@ -55,10 +52,9 @@ test('drags a device to another U and across racks; a blocked spot explains itse
   await expect(chassis).toHaveAccessibleName('CH-01, U20–U25');
 
   await dragTo(page, chassis, racks.nth(1), 10);
-  // A starved engine delivers pointer events late: wait for the preview to catch up before releasing.
-  await expect(page.locator('.drop-ghost')).toContainText('Move to U10–U15', { timeout: SLOW_EVENTS_MS });
+  await expect(page.locator('.drop-ghost')).toContainText('Move to U10–U15');
   await page.mouse.up();
-  await expect(racks.nth(1).getByRole('button', { name: /^CH-01,/ })).toHaveAccessibleName('CH-01, U10–U15', { timeout: SLOW_EVENTS_MS });
+  await expect(racks.nth(1).getByRole('button', { name: /^CH-01,/ })).toHaveAccessibleName('CH-01, U10–U15');
   await expect(page.getByRole('heading', { name: 'CH-01' })).toBeVisible();
 
   // Escape cancels mid-drag.

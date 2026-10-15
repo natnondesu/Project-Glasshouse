@@ -98,7 +98,7 @@ export function bomRowsFor(loc: RoomLocation, revision: Revision): BomRow[] {
               state: EQUIPMENT_STATE_LABEL[equipmentStateOf(loc.room.plan, n.id)],
               name: n.name,
               model: templateText(content, n.templateId, n.templateVersion),
-              category: CATEGORY_LABEL.compute,
+              category: CATEGORY_LABEL.server,
               position,
               heightU: '0',
               depthMm: '',
