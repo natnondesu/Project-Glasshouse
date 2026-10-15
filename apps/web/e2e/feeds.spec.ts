@@ -16,7 +16,7 @@ test('connect a rack to an MCB panel and see the run on the plan and the Install
 test('open an approved revision from the review history, read-only', async ({ page }) => {
   await page.goto('/');
   await page.getByRole('link', { name: /Server room A/ }).click();
-  await page.getByRole('link', { name: 'Review', exact: true }).click();
+  await page.getByRole('link', { name: /^Review/ }).click();
   await page.getByRole('button', { name: 'Start new draft' }).click();
   await page.getByRole('link', { name: 'View R01' }).click();
   await expect(page.getByText('Viewing R01 (Approved), an older revision. Read-only.')).toBeVisible();

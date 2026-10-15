@@ -23,7 +23,7 @@
 }
 
 .inspector__head h2 {
-  font-size: 20px;
+  font-size: var(--text-xl);
   font-weight: 700;
   letter-spacing: -0.02em;
 }
@@ -31,7 +31,7 @@
 .inspector__hint,
 .inspector__note,
 .inspector__empty {
-  font-size: 12px;
+  font-size: var(--text-xs);
   color: var(--ink-2);
 }
 
@@ -103,7 +103,7 @@
 }
 
 .rect-list__name {
-  font-size: 12px;
+  font-size: var(--text-xs);
   font-weight: 600;
 }
 
@@ -114,7 +114,7 @@
   gap: 8px;
   padding-top: 14px;
   border-top: 1px solid var(--line);
-  font-size: 12px;
+  font-size: var(--text-xs);
 }
 
 .inspector__lock {
@@ -139,7 +139,7 @@
   grid-template-columns: auto minmax(0, 1fr);
   gap: 4px 14px;
   margin: 0;
-  font-size: 13px;
+  font-size: var(--text-sm);
 }
 
 .dim-facts dt {
@@ -166,7 +166,7 @@
   grid-template-columns: 10px auto minmax(0, 1fr) auto;
   align-items: center;
   gap: 8px;
-  font-size: 13px;
+  font-size: var(--text-sm);
 }
 
 .feed-list__swatch {
@@ -188,7 +188,7 @@
   background: var(--control-bg);
   font: inherit;
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: var(--text-xs);
 }
 
 .feed-list__item {

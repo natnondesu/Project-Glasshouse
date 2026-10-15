@@ -28,12 +28,12 @@
 
 .port-mgr__head h2 {
   flex: 1;
-  font-size: 14px;
+  font-size: var(--text-md);
   font-weight: 700;
 }
 
 .port-mgr__count {
-  font-size: 12px;
+  font-size: var(--text-xs);
   color: var(--ink-2);
 }
 
@@ -50,7 +50,7 @@
   gap: 12px;
   margin: 0 0 0 auto;
   padding: 0;
-  font-size: 11px;
+  font-size: var(--text-2xs);
   color: var(--ink-2);
 }
 
@@ -81,7 +81,7 @@
 }
 
 .port-mgr__empty {
-  font-size: 13px;
+  font-size: var(--text-sm);
   color: var(--ink-2);
 }
 
@@ -101,7 +101,7 @@
 .port-mgr__bank-label {
   display: block;
   margin: 0 0 4px 2px;
-  font-size: 10px;
+  font-size: var(--text-2xs);
   letter-spacing: 0.04em;
   color: #7d8a97;
 }
@@ -186,7 +186,7 @@
 .port__name {
   max-width: 100%;
   overflow: hidden;
-  font-size: 10px;
+  font-size: var(--text-2xs);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -225,11 +225,11 @@
   display: flex;
   align-items: baseline;
   gap: 8px;
-  font-size: 13px;
+  font-size: var(--text-sm);
 }
 
 .port-mgr__media {
-  font-size: 12px;
+  font-size: var(--text-xs);
   color: var(--ink-2);
 }
 
@@ -244,7 +244,7 @@
 
 .port__vlan {
   margin-top: -2px;
-  font-size: 9px;
+  font-size: var(--text-2xs);
   line-height: 1;
   color: #8fc2ff;
 }
@@ -262,7 +262,7 @@
 }
 
 .port-vlan__note {
-  font-size: 12px;
+  font-size: var(--text-xs);
   color: var(--ink-2);
 }
 
@@ -273,7 +273,7 @@
   margin: 0;
   padding: 0;
   border: 0;
-  font-size: 13px;
+  font-size: var(--text-sm);
 }
 
 .port-vlan__allowed legend {

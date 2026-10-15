@@ -4,6 +4,9 @@ export const NODE_W = 152;
 export const NODE_H = 50;
 const H_GAP = 22;
 const ROW_H = 120;
+/** Vertical step between wrapped rows of leaves under one parent. */
+const LEAF_ROW_H = NODE_H + 34;
+const DEFAULT_LEAF_COLS = 6;
 const MARGIN = 24;
 const SWITCH_MIN_PORTS = 4;
 
@@ -17,6 +20,9 @@ export interface TopoNode {
   y: number;
   /** Leaves hang off one other device (a server on its switch); the rest is network gear. */
   leaf: boolean;
+  /** Wrapped row of a leaf under its parent (0 = first), and the left edge of that leaf block. */
+  leafRow: number;
+  blockLeft: number;
 }
 
 export interface TopoEdge {
@@ -70,7 +76,7 @@ const byPlace = (o: Map<Id, Owner>) => (a: Id, b: Id): number => {
 };
 
 /** A diagram of the room's cabling, laid out as a tidy tree per connected group. */
-export function buildTopology(content: PlanContent): Topology {
+export function buildTopology(content: PlanContent, { leafCols = DEFAULT_LEAF_COLS }: { leafCols?: number } = {}): Topology {
   const own = owners(content);
   const order = byPlace(own);
   const neighbours = new Map<Id, Set<Id>>();
@@ -142,17 +148,32 @@ export function buildTopology(content: PlanContent): Topology {
   for (const list of children.values()) list.sort((a, b) => Number(gearSet.has(a)) - Number(gearSet.has(b)) || order(a, b));
 
   const x = new Map<Id, number>();
+  const leafRow = new Map<Id, number>();
+  const blockLeft = new Map<Id, number>();
   const place = (id: Id, left: number): number => {
     const kids = children.get(id) ?? [];
     if (kids.length === 0) {
       x.set(id, left);
       return NODE_W;
     }
+    // Leaves wrap into rows of `leafCols`, so a 40-server switch stays readable instead of 7 000 px wide.
+    const leaves = kids.filter((k) => !gearSet.has(k));
+    const gearKids = kids.filter((k) => gearSet.has(k));
     let cursor = left;
-    for (const k of kids) cursor += place(k, cursor) + H_GAP;
+    if (leaves.length) {
+      const cols = Math.max(1, Math.min(leafCols, leaves.length));
+      leaves.forEach((k, i) => {
+        x.set(k, left + (i % cols) * (NODE_W + H_GAP));
+        leafRow.set(k, Math.floor(i / cols));
+        blockLeft.set(k, left);
+      });
+      cursor = left + cols * (NODE_W + H_GAP);
+    }
+    for (const k of gearKids) cursor += place(k, cursor) + H_GAP;
     const width = Math.max(NODE_W, cursor - H_GAP - left);
-    const first = x.get(kids[0]!)!;
-    const last = x.get(kids[kids.length - 1]!)!;
+    const firstRow = kids.filter((k) => (leafRow.get(k) ?? 0) === 0);
+    const first = x.get(firstRow[0]!)!;
+    const last = x.get(firstRow[firstRow.length - 1]!)!;
     x.set(id, Math.max(left, (first + last) / 2));
     return width;
   };
@@ -161,7 +182,8 @@ export function buildTopology(content: PlanContent): Topology {
 
   const nodes: TopoNode[] = linked.map((id) => {
     const o = own.get(id)!;
-    return { id, name: o.name, where: o.where, category: o.category, x: x.get(id)!, y: MARGIN + depth.get(id)! * ROW_H, leaf: !gearSet.has(id) };
+    const row = leafRow.get(id) ?? 0;
+    return { id, name: o.name, where: o.where, category: o.category, x: x.get(id)!, y: MARGIN + depth.get(id)! * ROW_H + row * LEAF_ROW_H, leaf: !gearSet.has(id), leafRow: row, blockLeft: blockLeft.get(id) ?? x.get(id)! };
   });
   const edges: TopoEdge[] = [...pairs].map(([key, links]) => {
     const [a, b] = key.split('|') as [Id, Id];
@@ -186,4 +208,13 @@ export function buildTopology(content: PlanContent): Topology {
 export function nodeCarries(content: PlanContent, id: Id, vid: number): boolean {
   const ports = findRackDevice(content, id)?.device.ports ?? findNode(content, id)?.node.ports ?? [];
   return ports.some((p) => carriedVids(content, p.vlan).includes(vid));
+}
+
+/** The widest leaf wrapping that still fits `maxWidth`, for print; falls back to one column. */
+export function fitTopology(content: PlanContent, maxWidth: number): Topology {
+  for (const leafCols of [6, 4, 3, 2]) {
+    const t = buildTopology(content, { leafCols });
+    if (t.width <= maxWidth) return t;
+  }
+  return buildTopology(content, { leafCols: 1 });
 }

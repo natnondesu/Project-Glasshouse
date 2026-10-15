@@ -20,10 +20,25 @@ interface TopologyDiagramProps {
 }
 
 const mid = (n: TopoNode): [number, number] => [n.x + NODE_W / 2, n.y + NODE_H / 2];
+/** Vertical space between a parent and its first row (ROW_H minus a node). */
+const ROW_H_GAP = 120 - NODE_H;
+
+/** Gap between a wrapped leaf block and its spine, so the spine never touches a box. */
+const SPINE_GAP = 11;
 
 function edgePath(a: TopoNode, b: TopoNode, tree: boolean): string {
   if (tree) {
     const [top, bottom] = a.y <= b.y ? [a, b] : [b, a];
+    if (bottom.leaf && bottom.leafRow > 0) {
+      // Org-chart spine: down from the parent, along the block's left edge, then into the wrapped row.
+      const x1 = top.x + NODE_W / 2;
+      const y1 = top.y + NODE_H;
+      const firstBus = y1 + (ROW_H_GAP / 2);
+      const spine = bottom.blockLeft - SPINE_GAP;
+      const rowBus = bottom.y - 17;
+      const x2 = bottom.x + NODE_W / 2;
+      return `M${x1} ${y1} V${firstBus} H${spine} V${rowBus} H${x2} V${bottom.y}`;
+    }
     const x1 = top.x + NODE_W / 2;
     const y1 = top.y + NODE_H;
     const x2 = bottom.x + NODE_W / 2;

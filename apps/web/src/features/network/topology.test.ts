@@ -50,4 +50,16 @@ describe('buildTopology', () => {
     expect(t.edges[0]!.links).toHaveLength(2);
     expect(t.unlinked.map((u) => u.name)).toEqual(['SRV-01']);
   });
+
+  it('wraps many leaves under one switch into rows, and narrows further to fit a printed page', async () => {
+    const { fitTopology } = await import('./topology');
+    const servers = Array.from({ length: 8 }, (_, i) => `s${i}`);
+    const content = build([rack, dev('sw', 40, tpl('network', 24)), ...servers.map((id, i) => dev(id, 1 + i * 2, tpl('compute', 2))), ...servers.map((id, i) => link(id, 'p1', 'sw', `p${i + 1}`))]);
+    const t = buildTopology(content);
+    const rows = new Set(t.nodes.filter((x) => x.leaf).map((x) => x.leafRow));
+    expect([...rows].sort()).toEqual([0, 1]);
+    expect(t.nodes.filter((x) => x.leafRow === 1)).toHaveLength(2);
+    expect(fitTopology(content, 700).width).toBeLessThanOrEqual(700);
+  });
 });
+

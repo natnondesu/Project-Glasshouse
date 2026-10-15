@@ -63,17 +63,19 @@ test('AC20: room 3D renders, pinch zooms at the pointer, and a Rack opens its el
 test('AC17 print layout: 60U racks still fit one A4 page each with the title block', async ({ page, browserName }) => {
   test.skip(browserName !== 'chromium', 'PDF and print-media layout checked in Chromium');
   await openSampleRoom(page, /Server room A/);
-  await page.getByRole('link', { name: 'Review', exact: true }).click();
+  await page.getByRole('link', { name: /^Review/ }).click();
   await page.getByRole('button', { name: 'Start new draft' }).click();
   await page.getByRole('link', { name: 'Plan' }).click();
   for (const rack of ['RK-01', 'RK-02']) {
     await page.getByRole('button', { name: `${rack}, Rack` }).focus();
     await page.getByLabel('Capacity').fill('60');
   }
-  await page.getByRole('link', { name: 'Review', exact: true }).click();
+  await page.getByRole('link', { name: /^Review/ }).click();
   await page.getByRole('button', { name: 'Submit for review' }).click();
+  await page.getByRole('button', { name: 'Confirm submit' }).click();
   await page.getByLabel('Reviewer name (unverified)').fill('Nok');
   await page.getByRole('button', { name: 'Approve revision' }).click();
+  await page.getByRole('button', { name: 'Confirm approval' }).click();
   await expect(page.getByRole('heading', { name: 'Revision 02' })).toBeVisible();
   await page.getByRole('link', { name: 'Open Install sheet' }).click();
   await expect(page.locator('.sheet-page').first()).toContainText('R02 APPROVED');

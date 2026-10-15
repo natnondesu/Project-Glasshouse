@@ -5,8 +5,8 @@ import { bomCell, bomHeader } from '../bom/bomText';
 import { vlanUsage } from '../network/vlanUsage';
 
 // The sheet prints the approved design on A4: on-site state is live (it's on the elevations) and the
-// title block already names the project, site and room.
-const SHEET_COLUMNS = BOM_COLUMNS.filter((c) => !['project', 'site', 'room', 'kind', 'state'].includes(c.key));
+// title block already names the project, site and room. Height is in Position (U1–U4), so it isn't repeated.
+const SHEET_COLUMNS = BOM_COLUMNS.filter((c) => !['project', 'site', 'room', 'kind', 'state', 'heightU'].includes(c.key));
 const SHORT = new Set<string>(['rack', 'chassis', 'slot', 'name', 'position', 'heightU', 'depthMm', 'demandW']);
 
 /**

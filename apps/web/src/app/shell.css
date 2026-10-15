@@ -63,7 +63,7 @@
 }
 
 .title-block__cell dt {
-  font-size: 10px;
+  font-size: var(--text-2xs);
 }
 
 .title-block__cell dd {
@@ -72,7 +72,7 @@
   align-items: center;
   gap: 8px;
   font-weight: 600;
-  font-size: 13px;
+  font-size: var(--text-sm);
 }
 
 .title-block__actions {
@@ -82,7 +82,7 @@
 }
 
 .save-status {
-  font-size: 12px;
+  font-size: var(--text-xs);
   color: var(--ink-2);
 }
 
@@ -93,7 +93,7 @@
 
 .status-stamp {
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: var(--text-2xs);
   font-weight: 600;
   letter-spacing: 0.04em;
   padding: 2px 9px;
@@ -118,7 +118,7 @@
   background: var(--warn-bg);
   border: 1px solid rgb(154 90 0 / 0.3);
   color: var(--ink);
-  font-size: 13px;
+  font-size: var(--text-sm);
   font-weight: 600;
 }
 
@@ -154,7 +154,7 @@
   border-radius: var(--radius-field);
   color: var(--ink-2);
   font-weight: 600;
-  font-size: 13px;
+  font-size: var(--text-sm);
   text-decoration: none;
 }
 
@@ -171,7 +171,7 @@
 
 .view-tabs__meta {
   margin-left: auto;
-  font-size: 12px;
+  font-size: var(--text-xs);
   color: var(--ink-2);
 }
 
@@ -227,7 +227,7 @@
   border: 1px solid rgb(184 50 42 / 0.35);
   background: var(--block-bg);
   color: var(--block);
-  font-size: 12px;
+  font-size: var(--text-xs);
 }
 
 .recovery__actions {
@@ -249,7 +249,7 @@
   padding: 10px 14px;
   border-color: rgb(154 90 0 / 0.35);
   background: rgb(255 243 223 / 0.85);
-  font-size: 13px;
+  font-size: var(--text-sm);
 }
 
 .frozen-banner > span:first-child {
@@ -262,13 +262,18 @@
   border-radius: 999px;
   background: var(--block-fill);
   color: #fff;
-  font-size: 11px;
+  font-size: var(--text-2xs);
   line-height: 18px;
 }
 
 .view-tabs__hint {
-  font-size: 12px;
+  font-size: var(--text-xs);
   color: var(--ink-2);
+}
+
+.frozen-banner--approved {
+  border-color: rgb(11 100 73 / 0.35);
+  background: rgb(232 245 239 / 0.92);
 }
 
 .frozen-banner--history {

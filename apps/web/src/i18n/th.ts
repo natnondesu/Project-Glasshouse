@@ -49,6 +49,8 @@ export const th: Messages = {
     installSheet: (rev) => `ใบติดตั้ง · R${rev}`,
     installAfter: 'ใบติดตั้ง (หลังอนุมัติ)',
     installAfterHint: 'ใบติดตั้งพิมพ์จากฉบับที่อนุมัติแล้ว',
+    blockersSr: (n) => `, ${n} รายการต้องแก้ก่อนอนุมัติ`,
+    pageTitle: (room, view) => `${room}: ${view}`,
     drawing: { plan: 'แปลน', elevation: 'ภาพด้านหน้าแร็ค', '3d': 'มุมมอง 3D', network: 'มุมมองเครือข่าย', bom: 'BOM', review: 'การตรวจทาน', other: 'มุมมองนี้' },
   },
   revision: {
@@ -736,6 +738,17 @@ export const th: Messages = {
     selfApprovedTail: ' · อนุมัติงานตัวเอง',
     view: 'ดู',
     viewRev: (rev) => `ดู R${rev}`,
+    submitConfirm: (rev, blocks) =>
+      `ส่ง R${rev} ให้ตรวจ? ฉบับนี้จะถูกล็อกทันที หากต้องแก้ต้องเริ่มฉบับร่างใหม่ ${blocks ? `ยังมี ${blocks} รายการที่ต้องแก้ก่อนอนุมัติ` : 'ไม่มีรายการที่ขัดขวางการอนุมัติ'}`,
+    confirmSubmit: 'ยืนยันการส่งตรวจ',
+    approveConfirm: (rev, name) => `อนุมัติ R${rev} ในนาม ${name}? ฉบับที่อนุมัติแล้วจะไม่เปลี่ยน และใบติดตั้งจะพิมพ์จากฉบับนี้`,
+    unnamedReviewer: 'ผู้ตรวจที่ไม่ระบุชื่อ',
+    selfApproveWarn: 'ผู้ตรวจเป็นคนเดียวกับผู้ออกแบบ ทำได้ แต่จะถูกบันทึกว่าอนุมัติงานตัวเอง',
+    confirmApprove: 'ยืนยันการอนุมัติ',
+    approveBlocked: (n) => `การอนุมัติรอ ${n} รายการด้านล่าง`,
+    stamp: 'อนุมัติแล้ว',
+    stampBy: (by) => `โดย ${by} (ยังไม่ยืนยันตัวตน)`,
+    stampRev: (rev) => `ฉบับ R${rev}`,
   },
   room3d: {
     region: 'มุมมอง 3D ของห้อง',
