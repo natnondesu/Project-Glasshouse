@@ -211,6 +211,7 @@ export const th: Messages = {
   survey: {
     title: 'ข้อมูลสำรวจ',
     savesAsYouType: 'บันทึกอัตโนมัติขณะพิมพ์',
+    readOnly: 'อ่านอย่างเดียว',
     bounds: 'ขนาดห้อง',
     width: 'กว้าง',
     length: 'ยาว',
@@ -535,6 +536,7 @@ export const th: Messages = {
     unknown: 'ไม่ทราบ',
   },
   sheet: {
+    pageTitle: (room: string, rev: string) => `ใบติดตั้ง: ${room}, R${rev}`,
     noApprovedTitle: 'ยังไม่มีฉบับที่อนุมัติ',
     noApproved: (room, rev) => `ใบติดตั้งพิมพ์จากฉบับที่อนุมัติแล้ว ${room} อยู่ที่ R${rev} และยังไม่ได้รับอนุมัติ`,
     nav: 'ใบติดตั้ง',

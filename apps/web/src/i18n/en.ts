@@ -216,6 +216,7 @@ export const en = {
   survey: {
     title: 'Survey',
     savesAsYouType: 'Changes save as you type',
+    readOnly: 'Read-only',
     bounds: 'Room bounds',
     width: 'Width',
     length: 'Length',
@@ -540,6 +541,7 @@ export const en = {
     unknown: 'unknown',
   },
   sheet: {
+    pageTitle: (room: string, rev: string) => `Install sheet: ${room}, R${rev}`,
     noApprovedTitle: 'No Approved revision yet',
     noApproved: (room: string, rev: string) => `The Install sheet is printed from an Approved revision. ${room} is at R${rev} and hasn't been approved.`,
     nav: 'Install sheet',

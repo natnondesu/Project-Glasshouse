@@ -26,8 +26,8 @@
   --warn-bg: #fff3df;
   /* Darkened from #11795a so OK text passes 4.5:1 on its own 12% tint (stamps, chips). */
   --ok: #0b6449;
-  /* Equipment in maintenance: amber, distinct from the Draft/warning brown. */
-  --maint: #c77700;
+  /* Equipment in maintenance: burnt orange, redder than the Draft/warning brown; 4.9:1 on glass. */
+  --maint: #a64b00;
 
   --rack: #333d49;
   --rack-front: #56626f;

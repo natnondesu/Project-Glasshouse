@@ -4,8 +4,9 @@ import { TextField } from '../../ui/TextField';
 import { FloorRectList } from './FloorRectList';
 import type { CommitFn } from './usePlanGestures';
 import { useT } from '../../i18n';
+import { IconLock } from '../../ui/icons';
 
-export function SurveyPanel({ survey, commit }: { survey: Survey; commit: CommitFn }) {
+export function SurveyPanel({ survey, commit, readOnly = false }: { survey: Survey; commit: CommitFn; readOnly?: boolean }) {
   const m = useT();
   const set = (patch: SurveyPatch, key: string): string | null => commit({ type: 'survey/update', patch }, `survey:${key}`);
   const num = (key: 'width' | 'length' | 'powerBudget' | 'designLimitPct') => (v: number | null) => (v === null ? null : set({ [key]: v }, key));
@@ -13,7 +14,14 @@ export function SurveyPanel({ survey, commit }: { survey: Survey; commit: Commit
     <div className="inspector__body">
       <header className="inspector__head">
         <h2>{m.survey.title}</h2>
-        <span className="inspector__hint">{m.survey.savesAsYouType}</span>
+        {readOnly ? (
+          <span className="inspector__locked">
+            <IconLock />
+            {m.survey.readOnly}
+          </span>
+        ) : (
+          <span className="inspector__hint">{m.survey.savesAsYouType}</span>
+        )}
       </header>
       <fieldset className="inspector__group">
         <legend className="lbl">{m.survey.bounds}</legend>

@@ -3,7 +3,14 @@ import 'fake-indexeddb/auto';
 import { cleanup } from '@testing-library/react';
 import { afterEach, vi } from 'vitest';
 
-afterEach(() => cleanup());
+// jsdom defaults to 1024px; tests run as on the 1440px laptop the app is designed for.
+const LAPTOP_WIDTH_PX = 1440;
+Object.defineProperty(window, 'innerWidth', { configurable: true, writable: true, value: LAPTOP_WIDTH_PX });
+
+afterEach(() => {
+  cleanup();
+  window.innerWidth = LAPTOP_WIDTH_PX;
+});
 
 class FixedResizeObserver {
   constructor(private readonly callback: ResizeObserverCallback) {}

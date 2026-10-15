@@ -178,3 +178,9 @@ export const IconChevronCorner = (p: IconProps) => (
     <path d="M7 0V7H0Z" fill="currentColor" />
   </svg>
 );
+export const IconLock = (p: IconProps) => (
+  <svg {...frame(14)} {...p}>
+    <rect x="2.5" y="6.25" width="9" height="6.25" rx="1" />
+    <path d="M4.5 6.25V4.5a2.5 2.5 0 0 1 5 0v1.75" />
+  </svg>
+);

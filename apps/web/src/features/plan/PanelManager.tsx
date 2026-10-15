@@ -14,10 +14,11 @@ interface PanelManagerProps {
   content: PlanContent;
   commit: CommitFn;
   onClose: () => void;
+  readOnly?: boolean;
 }
 
 /** Floating MCB panel schedule: which feed is on which way, at what rating and phase. */
-export function PanelManager({ panel, content, commit, onClose }: PanelManagerProps) {
+export function PanelManager({ panel, content, commit, onClose, readOnly = false }: PanelManagerProps) {
   const config = panelOf(panel);
   const m = useT();
   const [error, setError] = useState<string | null>(null);
@@ -37,6 +38,8 @@ export function PanelManager({ panel, content, commit, onClose }: PanelManagerPr
           ×
         </button>
       </header>
+      {/* Only the contents lock when frozen; closing the manager must still work. */}
+      <fieldset className="inspector__lock" disabled={readOnly}>
       <div className="panel-mgr__config">
         <div className="seg seg--compact" role="group" aria-label={m.panelMgr.phase}>
           <button type="button" aria-pressed={config.phase === 'single'} onClick={() => act(commit({ type: 'panel/configure', id: panel.id, patch: { phase: 'single' } }))}>
@@ -128,6 +131,7 @@ export function PanelManager({ panel, content, commit, onClose }: PanelManagerPr
         {unassigned > 0 ? m.panelMgr.unassigned(unassigned) : m.panelMgr.allAssigned}
         <span className="panel-mgr__note">{m.panelMgr.loadNote}</span>
       </footer>
+      </fieldset>
     </section>
   );
 }
