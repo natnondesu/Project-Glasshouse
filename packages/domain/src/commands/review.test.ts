@@ -79,6 +79,30 @@ describe('lifecycle', () => {
   });
 });
 
+describe('discarding a draft', () => {
+  it('throws away the draft, returns to the revision it came from, and logs it', () => {
+    let ws = run(ready(), review({ type: 'review/submit', designedBy: 'Ploy', at: AT }), review({ type: 'review/approve', reviewer: 'Nok', at: AT }));
+    const approved = currentRevision(plan(ws));
+    ws = run(ws, review({ type: 'review/new-draft', at: AT }), { type: 'plan', roomId: 'r', command: { type: 'survey/update', patch: { width: 8 } } });
+    ws = run(ws, review({ type: 'review/discard-draft', at: AT }));
+    expect(plan(ws).revisions).toHaveLength(1);
+    expect(currentRevision(plan(ws))).toBe(approved);
+    expect(plan(ws).history.at(-1)).toMatchObject({ revision: 2, code: 'draft_discarded', params: { draft: 2, back: 1 }, action: 'Discarded Draft revision 2; back to revision 1' });
+  });
+
+  it('goes back to an In review revision when the draft was started from one', () => {
+    let ws = run(ready(), review({ type: 'review/submit', designedBy: 'Ploy', at: AT }), review({ type: 'review/new-draft', at: AT }));
+    ws = run(ws, review({ type: 'review/discard-draft', at: AT }));
+    expect(currentRevision(plan(ws))).toMatchObject({ number: 1, state: 'in_review' });
+  });
+
+  it("refuses when there is no draft, or when the draft is the room's first revision", () => {
+    expect(fail(ready(), review({ type: 'review/discard-draft', at: AT }))).toBe("Revision 1 is the room's first revision, so there is nothing to go back to.");
+    const submitted = run(ready(), review({ type: 'review/submit', designedBy: 'Ploy', at: AT }));
+    expect(fail(submitted, review({ type: 'review/discard-draft', at: AT }))).toBe('Revision 1 is not a Draft.');
+  });
+});
+
 describe('approval blockers', () => {
   it('needs a device, no blocking issues and no open notes', () => {
     expect(approvalBlockers(plan(ready(false)))).toEqual(['Add at least one Device before approval.']);

@@ -94,3 +94,26 @@ it('adds and resolves review notes', async () => {
   expect(screen.queryByText('1 review note is unresolved.')).toBeNull();
   expect(screen.getByRole('link', { name: 'Review' })).toBeInTheDocument();
 });
+
+it('discards a draft after confirming, back to the approved revision, and logs it', async () => {
+  const user = userEvent.setup();
+  const s = useWorkspaceStore.getState();
+  s.dispatch({ type: 'review', roomId: 'r', command: { type: 'review/submit', designedBy: 'Ploy', at: '2026-10-15T09:00:00.000Z' } });
+  s.dispatch({ type: 'review', roomId: 'r', command: { type: 'review/approve', reviewer: 'Nok', at: '2026-10-15T09:00:00.000Z' } });
+  s.dispatch({ type: 'review', roomId: 'r', command: { type: 'review/new-draft', at: '2026-10-15T09:00:00.000Z' } });
+  open();
+  await user.click(screen.getByRole('button', { name: 'Discard draft R02' }));
+  expect(screen.getByRole('group', { name: 'Discard draft' })).toHaveTextContent('goes back to R01 (Approved)');
+  await user.click(screen.getByRole('button', { name: 'Cancel' }));
+  expect(revision()).toMatchObject({ number: 2, state: 'draft' });
+  await user.click(screen.getByRole('button', { name: 'Discard draft R02' }));
+  await user.click(screen.getByRole('button', { name: 'Discard draft' }));
+  expect(revision()).toMatchObject({ number: 1, state: 'approved' });
+  expect(screen.getByRole('status')).toHaveTextContent('APPROVED');
+  expect(screen.getByText('Discarded Draft revision 2; back to revision 1')).toBeInTheDocument();
+});
+
+it("offers no discard on a room's first draft", () => {
+  open();
+  expect(screen.queryByRole('button', { name: /^Discard draft/ })).toBeNull();
+});

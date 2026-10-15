@@ -12,6 +12,7 @@ export type ReviewCommand =
   | { type: 'review/submit'; designedBy: string; at: string }
   | { type: 'review/approve'; reviewer: string; at: string }
   | { type: 'review/new-draft'; at: string }
+  | { type: 'review/discard-draft'; at: string }
   | { type: 'review/acknowledge'; reservedRangeId: Id; reason: string; by: string; at: string }
   | { type: 'review/unacknowledge'; reservedRangeId: Id; at: string }
   | { type: 'note/add'; id: Id; text: string; at: string }
@@ -77,6 +78,17 @@ export function applyReviewCommand(plan: Plan, cmd: ReviewCommand): Result<Plan>
         produce(plan, (d) => {
           d.revisions.push(castDraft(createDraftRevision(rev.number + 1, rev.content)));
           d.history.push({ revision: rev.number + 1, action: `Started Draft revision ${rev.number + 1} from revision ${rev.number}`, at: cmd.at, code: 'new_draft', params: { to: rev.number + 1, from: rev.number } });
+        }),
+      );
+    }
+    case 'review/discard-draft': {
+      if (rev.state !== 'draft') return err('invalid_value', `Revision ${rev.number} is not a Draft.`);
+      const back = plan.revisions[plan.revisions.length - 2];
+      if (!back) return err('invalid_value', `Revision ${rev.number} is the room's first revision, so there is nothing to go back to.`);
+      return ok(
+        produce(plan, (d) => {
+          d.revisions.pop();
+          d.history.push({ revision: rev.number, action: `Discarded Draft revision ${rev.number}; back to revision ${back.number}`, at: cmd.at, code: 'draft_discarded', params: { draft: rev.number, back: back.number } });
         }),
       );
     }

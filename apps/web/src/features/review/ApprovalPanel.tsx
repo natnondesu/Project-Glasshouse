@@ -180,6 +180,52 @@ export function ApprovalPanel({ roomId, plan }: { roomId: string; plan: Plan }) 
           {error}
         </p>
       ) : null}
+      {revision.state === 'draft' ? <DiscardDraft roomId={roomId} plan={plan} /> : null}
     </section>
+  );
+}
+
+/** A draft started from an earlier revision can be thrown away; the room goes back to that revision. */
+function DiscardDraft({ roomId, plan }: { roomId: string; plan: Plan }) {
+  const m = useT();
+  const review = useReviewCommit(roomId);
+  const [confirming, setConfirming] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const draft = currentRevision(plan);
+  const back = plan.revisions[plan.revisions.length - 2];
+  if (!back) return null;
+  const discard = (): void => {
+    const problem = review({ type: 'review/discard-draft', at: now() });
+    setError(problem);
+    if (problem === null) setConfirming(false);
+  };
+  return (
+    <div className="discard-draft">
+      {confirming ? (
+        <div className="review-confirm review-confirm--danger" role="group" aria-label={m.review.confirmDiscard}>
+          <p>{m.review.discardConfirm(pad2(draft.number), pad2(back.number), m.revision.state[back.state])}</p>
+          <div className="review-form__actions">
+            <button type="button" className="btn btn--danger" onClick={discard}>
+              {m.review.confirmDiscard}
+            </button>
+            <button type="button" className="btn btn--quiet" onClick={() => setConfirming(false)}>
+              {m.common.cancel}
+            </button>
+          </div>
+        </div>
+      ) : (
+        <>
+          <button type="button" className="btn btn--danger btn--sm" onClick={() => setConfirming(true)}>
+            {m.review.discardDraft(pad2(draft.number))}
+          </button>
+          <p className="review-note">{m.review.discardNote(pad2(back.number))}</p>
+        </>
+      )}
+      {error ? (
+        <p role="alert" className="field__error">
+          {error}
+        </p>
+      ) : null}
+    </div>
   );
 }
