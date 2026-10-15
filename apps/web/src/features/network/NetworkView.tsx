@@ -12,6 +12,8 @@ import './network.css';
 
 const ZOOM_STEP = 1.25;
 const MIN_SCALE = 0.25;
+/** "Fit" stops here: below it, node text drops under the 11px floor, so the canvas scrolls instead. */
+const FIT_FLOOR = 0.85;
 const MAX_SCALE = 2;
 
 export function NetworkView({ location, readOnly }: { location: RoomLocation; readOnly: boolean }) {
@@ -28,7 +30,7 @@ export function NetworkView({ location, readOnly }: { location: RoomLocation; re
   const zoom = (k: number): void => setScale((s) => Math.min(MAX_SCALE, Math.max(MIN_SCALE, s * k)));
   const fit = (): void => {
     const w = area.current?.clientWidth ?? topology.width;
-    setScale(Math.min(1, Math.max(MIN_SCALE, (w - 16) / Math.max(topology.width, 1))));
+    setScale(Math.min(1, Math.max(FIT_FLOOR, (w - 16) / Math.max(topology.width, 1))));
   };
   // Open showing the whole diagram; after that the zoom is the user's.
   const fitted = useRef(false);

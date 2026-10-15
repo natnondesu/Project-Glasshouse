@@ -20,7 +20,7 @@
 }
 
 .bom__count {
-  font-size: 12px;
+  font-size: var(--text-xs);
   color: var(--ink-2);
 }
 
@@ -42,7 +42,7 @@
 .bom__table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 13px;
+  font-size: var(--text-sm);
 }
 
 .bom__table th {
@@ -52,7 +52,7 @@
   background: rgb(247 249 251 / 0.95);
   border-bottom: 1px solid var(--line-strong);
   text-align: left;
-  font-size: 11px;
+  font-size: var(--text-2xs);
   font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -84,4 +84,17 @@
 .bom__filter {
   align-self: flex-start;
   margin: 0 0 10px;
+}
+
+/* The Device name stays in view while the wide table scrolls sideways. */
+.bom__sticky {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: var(--panel-light);
+  box-shadow: 1px 0 0 var(--line);
+}
+
+.bom__filter button {
+  white-space: nowrap;
 }

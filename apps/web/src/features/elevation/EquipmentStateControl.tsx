@@ -1,10 +1,9 @@
 import { EQUIPMENT_STATES, equipmentStateOf, type EquipmentState, type Plan } from '@glasshouse/domain';
 import { useState } from 'react';
 import { useWorkspaceStore } from '../../store/workspaceStore';
+import { StateIcon } from '../../ui/StateIcon';
 import { useT } from '../../i18n';
 
-/** One glyph per state, used on racks, in 3D labels and in legends; colour is never the only signal. */
-export const STATE_SYMBOL: Record<EquipmentState, string> = { planned: '○', deployed: '✓', maintenance: '!' };
 
 export function EquipmentStateControl({ roomId, plan, id, locked }: { roomId: string; plan: Plan; id: string; locked: boolean }) {
   const dispatch = useWorkspaceStore((s) => s.dispatch);
@@ -24,9 +23,7 @@ export function EquipmentStateControl({ roomId, plan, id, locked }: { roomId: st
             disabled={locked}
             onClick={() => setError(dispatch({ type: 'equipment/state', roomId, ids: [id], state: s })?.message ?? null)}
           >
-            <span aria-hidden="true" className="equip-state__glyph">
-              {STATE_SYMBOL[s]}
-            </span>
+            <StateIcon state={s} className="equip-state__glyph" />
             {m.equipment.state[s]}
           </button>
         ))}
@@ -47,9 +44,7 @@ export function StateLegend() {
     <ul className="state-legend" aria-label={m.equipment.legend}>
       {EQUIPMENT_STATES.map((s) => (
         <li key={s} className={`state-legend__item state-legend__item--${s}`}>
-          <span aria-hidden="true" className="state-legend__glyph">
-            {STATE_SYMBOL[s]}
-          </span>
+          <StateIcon state={s} className="state-legend__glyph" />
           {m.equipment.state[s]}
         </li>
       ))}

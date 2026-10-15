@@ -41,7 +41,7 @@
 }
 
 .sheet-toolbar__note {
-  font-size: 12px;
+  font-size: var(--text-xs);
   color: var(--warn);
 }
 
@@ -68,7 +68,7 @@
   gap: 6px;
   padding-bottom: 8px;
   border-bottom: 2px solid var(--ink);
-  font-size: 11px;
+  font-size: var(--text-2xs);
 }
 
 .sheet-title__main {
@@ -78,12 +78,12 @@
 }
 
 .sheet-title__main strong {
-  font-size: 15px;
+  font-size: var(--text-lg);
   letter-spacing: -0.01em;
 }
 
 .sheet-title__kicker {
-  font-size: 10px;
+  font-size: var(--text-2xs);
   font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -125,7 +125,7 @@
 
 .sheet-gap text {
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: var(--text-2xs);
   fill: var(--acc-deep);
   paint-order: stroke;
   stroke: #fff;
@@ -133,7 +133,7 @@
 }
 
 .sheet-legend {
-  font-size: 11px;
+  font-size: var(--text-2xs);
   color: var(--ink-2);
 }
 
@@ -158,7 +158,7 @@
 
 .sheet-table__group th {
   padding-top: 12px;
-  font-size: 11px;
+  font-size: var(--text-2xs);
   letter-spacing: 0;
   text-transform: none;
   color: var(--ink);
@@ -169,19 +169,19 @@
 .sheet-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 10.5px;
+  font-size: var(--text-print);
 }
 
 .sheet-table caption {
   text-align: left;
   font-weight: 700;
-  font-size: 12px;
+  font-size: var(--text-xs);
   padding-bottom: 6px;
 }
 
 .sheet-table th {
   text-align: left;
-  font-size: 9.5px;
+  font-size: var(--text-2xs);
   font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -259,7 +259,7 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-size: 12px;
+  font-size: var(--text-xs);
   color: var(--ink-2);
 }
 
@@ -287,4 +287,9 @@
 .sheet-vlans {
   width: auto;
   min-width: 50%;
+}
+
+/* The BOM carries 13 columns: at the 11px floor it still fits A4 portrait; other sheet tables print at 12px. */
+.sheet-table--bom {
+  font-size: var(--text-2xs);
 }

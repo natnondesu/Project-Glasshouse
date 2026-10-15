@@ -6,10 +6,10 @@ export function LanguageSwitch() {
   const setLang = useLangStore((s) => s.setLang);
   return (
     <div className="seg seg--compact lang-switch" role="group" aria-label="Language / ภาษา">
-      <button type="button" lang="en" aria-pressed={lang === 'en'} onClick={() => setLang('en')}>
+      <button type="button" lang="en" aria-pressed={lang === 'en'} onClick={() => void setLang('en')}>
         EN
       </button>
-      <button type="button" lang="th" aria-pressed={lang === 'th'} onClick={() => setLang('th')}>
+      <button type="button" lang="th" aria-pressed={lang === 'th'} onClick={() => void setLang('th')}>
         ไทย
       </button>
     </div>

@@ -26,19 +26,36 @@ const open = () => render(<RouterProvider router={createMemoryRouter(routes, { i
 
 beforeEach(() => seed());
 
-it('AC13/AC16: submits, approves (flagging self-approval) and starts a new draft', async () => {
+it('AC13/AC16: submits and approves after confirming, flags self-approval, and stamps the approval', async () => {
   const user = userEvent.setup();
   open();
   await user.type(screen.getByLabelText('Designed by (optional, unverified)'), 'Ploy');
   await user.click(screen.getByRole('button', { name: 'Submit for review' }));
+  // Freezing asks once, in place, saying what it does.
+  expect(revision()).toMatchObject({ state: 'draft' });
+  expect(screen.getByRole('group', { name: 'Confirm submit' })).toHaveTextContent('Nothing blocks approval.');
+  await user.click(screen.getByRole('button', { name: 'Confirm submit' }));
   expect(revision()).toMatchObject({ state: 'in_review', designedBy: { name: 'Ploy' } });
   expect(screen.getByText('Ready for approval: no blocking issues.')).toBeInTheDocument();
   await user.type(screen.getByLabelText('Reviewer name (unverified)'), 'ploy');
   await user.click(screen.getByRole('button', { name: 'Approve revision' }));
+  expect(screen.getByText(/The reviewer is also the designer/)).toBeInTheDocument();
+  await user.click(screen.getByRole('button', { name: 'Confirm approval' }));
   expect(revision()).toMatchObject({ state: 'approved', approvedBy: { name: 'ploy' } });
+  expect(screen.getByRole('status')).toHaveTextContent('APPROVED');
   expect(screen.getByText('Self-approved')).toBeInTheDocument();
+  expect(screen.getByRole('link', { name: 'Open Install sheet' })).toHaveClass('btn--ink');
   await user.click(screen.getByRole('button', { name: 'Start new draft' }));
   expect(revision()).toMatchObject({ number: 2, state: 'draft' });
+});
+
+it('cancels a submit without changing anything', async () => {
+  const user = userEvent.setup();
+  open();
+  await user.click(screen.getByRole('button', { name: 'Submit for review' }));
+  await user.click(screen.getByRole('button', { name: 'Cancel' }));
+  expect(revision()).toMatchObject({ state: 'draft' });
+  expect(screen.getByRole('button', { name: 'Submit for review' })).toBeInTheDocument();
 });
 
 it('shows blockers and keeps approval disabled until they clear', async () => {
@@ -46,8 +63,12 @@ it('shows blockers and keeps approval disabled until they clear', async () => {
   seed({ device: false });
   open();
   await user.click(screen.getByRole('button', { name: 'Submit for review' }));
+  expect(screen.getByRole('group', { name: 'Confirm submit' })).toHaveTextContent('1 item still blocks approval.');
+  await user.click(screen.getByRole('button', { name: 'Confirm submit' }));
   expect(screen.getByText('Add at least one Device before approval.')).toBeInTheDocument();
-  expect(screen.getByRole('button', { name: 'Approve revision' })).toBeDisabled();
+  const approve = screen.getByRole('button', { name: 'Approve revision' });
+  expect(approve).toBeDisabled();
+  expect(approve).toHaveAccessibleDescription('Approval waits for the 1 item listed below.');
 });
 
 it('AC14: acknowledges unknown reserved demand with a reason and a name', async () => {

@@ -17,6 +17,9 @@ const Room3DView = lazy(() => import('../features/room3d/Room3DView'));
 import { ViewTabs } from './ViewTabs';
 import { useT } from '../i18n';
 
+/** View route segment to its tab label key, for the page heading. */
+const TAB_LABEL: Record<string, 'plan' | 'elevation' | 'threeD' | 'network' | 'bom' | 'review'> = { plan: 'plan', elevation: 'elevation', '3d': 'threeD', network: 'network', bom: 'bom', review: 'review' };
+
 export function RoomScreen() {
   const { roomId = '', view = 'plan' } = useParams();
   const realLocation = useRoomLocation(roomId);
@@ -42,6 +45,7 @@ export function RoomScreen() {
   else return <NotFound message={m.shell.viewMissing} />;
   return (
     <div className="room-screen">
+      <h1 className="visually-hidden">{m.views.pageTitle(realLocation.room.name, TAB_LABEL[view] ? m.views[TAB_LABEL[view]!] : view)}</h1>
       <ViewTabs roomId={roomId} />
       {past ? <RevisionBanner roomId={roomId} view={view} viewed={revision} current={currentRevision(realLocation.room.plan)} /> : null}
       {!past && readOnly && (view === 'plan' || view === 'elevation' || view === 'network') ? <FrozenBanner roomId={roomId} revision={revision} /> : null}

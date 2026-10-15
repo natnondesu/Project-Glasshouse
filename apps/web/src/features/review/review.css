@@ -23,7 +23,7 @@
 }
 
 .review-card h2 {
-  font-size: 16px;
+  font-size: var(--text-lg);
   font-weight: 700;
 }
 
@@ -34,7 +34,7 @@
 }
 
 .review-card__head h2 {
-  font-size: 20px;
+  font-size: var(--text-xl);
   letter-spacing: -0.02em;
 }
 
@@ -43,7 +43,7 @@
   grid-template-columns: auto minmax(0, 1fr);
   gap: 4px 14px;
   margin: 0;
-  font-size: 13px;
+  font-size: var(--text-sm);
 }
 
 .review-facts dt {
@@ -66,28 +66,28 @@
 }
 
 .review-note {
-  font-size: 12px;
+  font-size: var(--text-xs);
   color: var(--ink-2);
 }
 
 .review-ready {
   padding: 8px 12px;
   border-radius: var(--radius-control);
-  background: rgb(17 121 90 / 0.12);
+  background: var(--ok-bg);
   color: var(--ok);
   font-weight: 600;
-  font-size: 13px;
+  font-size: var(--text-sm);
 }
 
 .blockers {
   padding: 10px 12px;
   border-radius: var(--radius-control);
-  border: 1px solid rgb(184 50 42 / 0.3);
+  border: 1px solid var(--block-border);
   background: var(--block-bg);
 }
 
 .blockers h3 {
-  font-size: 13px;
+  font-size: var(--text-md);
   font-weight: 700;
   color: var(--block);
 }
@@ -95,7 +95,7 @@
 .blockers ul {
   margin: 6px 0 0;
   padding-left: 18px;
-  font-size: 13px;
+  font-size: var(--text-sm);
 }
 
 .stamp--warn {
@@ -116,22 +116,22 @@
 }
 
 .unknowns__item {
-  padding: 12px;
-  border-radius: var(--radius-control);
-  background: rgb(255 255 255 / 0.45);
+  /* A ruled list inside the card, not a card inside a card. */
+  padding: 12px 0;
+  border-top: 1px solid var(--line);
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
 
 .unknowns__issue {
-  font-size: 13px;
+  font-size: var(--text-sm);
   font-weight: 600;
   color: var(--warn);
 }
 
 .unknowns__what {
-  font-size: 13px;
+  font-size: var(--text-sm);
 }
 
 .unknowns__ack {
@@ -139,7 +139,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  font-size: 13px;
+  font-size: var(--text-sm);
   color: var(--ok);
 }
 
@@ -156,7 +156,7 @@
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: start;
   gap: 10px;
-  font-size: 13px;
+  font-size: var(--text-sm);
 }
 
 .notes__item.is-resolved label {
@@ -166,7 +166,7 @@
 
 .notes__time,
 .events__time {
-  font-size: 11px;
+  font-size: var(--text-2xs);
   color: var(--ink-2);
   white-space: nowrap;
 }
@@ -176,7 +176,7 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 8px;
-  font-size: 13px;
+  font-size: var(--text-sm);
 }
 
 .revisions__n,
@@ -192,7 +192,7 @@
   display: grid;
   grid-template-columns: auto auto minmax(0, 1fr);
   gap: 10px;
-  font-size: 12px;
+  font-size: var(--text-xs);
 }
 
 .stamp--warn {
@@ -201,7 +201,61 @@
 
 .revisions__view {
   margin-left: auto;
-  font-size: 12px;
+  font-size: var(--text-xs);
   font-weight: 600;
   color: var(--acc-deep);
+}
+
+/* Inline confirmation for Submit and Approve: part of the form, not a modal. */
+.review-confirm {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-control);
+  background: #fff;
+  font-size: var(--text-sm);
+}
+
+.review-confirm__warn {
+  color: var(--warn);
+}
+
+/* Approval reads like a signed drawing: a ruled stamp with revision, date and approver. */
+.approval-stamp {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: baseline;
+  gap: 2px 14px;
+  padding: 14px 16px;
+  border: 2px solid var(--ok);
+  border-radius: 6px;
+  color: var(--ok);
+  background: #fff;
+}
+
+.approval-stamp__word {
+  grid-row: span 3;
+  align-self: center;
+  font-family: var(--font-mono);
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+}
+
+.approval-stamp__rev {
+  font-size: var(--text-md);
+  font-weight: 700;
+}
+
+.approval-stamp__when,
+.approval-stamp__by {
+  font-size: var(--text-xs);
+  color: var(--ink-2);
+}
+
+.approval-stamp .stamp {
+  grid-column: 2;
+  justify-self: start;
 }

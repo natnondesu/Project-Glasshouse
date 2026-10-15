@@ -7,3 +7,6 @@ playwright-report/
 *.log
 .DS_Store
 .superpowers/
+
+# Impeccable critique snapshots (local working notes)
+.impeccable/

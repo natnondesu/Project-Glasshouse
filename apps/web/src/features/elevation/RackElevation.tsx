@@ -1,13 +1,17 @@
 import { formatDemand, formatURange, type EquipmentState, rackPower, topU, usedU, type Chassis, type Rack, type RackDevice, type ReservedRange } from '@glasshouse/domain';
-import type { DragEvent, KeyboardEvent, PointerEvent } from 'react';
+import { createContext, useContext, type DragEvent, type KeyboardEvent, type PointerEvent } from 'react';
 import { TEMPLATE_MIME } from './dnd';
-import { STATE_SYMBOL } from './EquipmentStateControl';
+import { StateGlyph } from '../../ui/StateIcon';
 import { useT } from '../../i18n';
 import type { DropPreview, RackHit } from './deviceDrag';
 import './elevation.css';
 import '../search/search.css';
 
 export const U_PX = 16;
+/** Smallest rack unit that still holds a 12px device name in a 1U row. */
+export const MIN_U_PX = 13;
+/** Height of one rack unit for the blocks inside a rack: the elevation shrinks it so a whole rack fits a laptop. */
+const UnitContext = createContext(U_PX);
 const LABEL_W = 24;
 const RACK_W = 200;
 const PAD = 2;
@@ -43,6 +47,8 @@ interface RackElevationProps {
   /** Where a dragged device would land, if over this rack. */
   dragPreview?: DropPreview | null;
   onDeviceDragStart?: (e: PointerEvent, deviceId: string, bottomU: number) => void;
+  /** Pixels per rack unit; the elevation fits it to the screen, the sheet keeps the default. */
+  uPx?: number;
 }
 
 const categoryOf = (d: RackDevice): string => (d.kind === 'chassis' ? 'chassis' : d.category);
@@ -52,7 +58,7 @@ function ChassisSlots({ chassis, y, onSelect, stateOf }: { chassis: Chassis; y: 
   const left = 66;
   const right = RACK_W - 12;
   const top = y + 5;
-  const bottom = y + chassis.heightU * U_PX - 5;
+  const bottom = y + chassis.heightU * useContext(UnitContext) - 5;
   const gap = 3;
   const cols = chassis.slotsPerRow;
   const rows = Math.ceil(chassis.slotCount / cols);
@@ -100,7 +106,7 @@ function control(isStatic: boolean, label: string, selected: boolean, onClick: (
 function DeviceBlock(props: { device: RackDevice; y: number; selected: boolean; flagged: boolean; onSelect: (id: string) => void; onKey: (e: KeyboardEvent) => void; isStatic: boolean; pulse: boolean; state: EquipmentState; stateOf: (id: string) => EquipmentState; dragSource: boolean; onDragStart?: (e: PointerEvent) => void }) {
   const m = useT();
   const { device, y, selected, flagged, onSelect, onKey, isStatic, pulse, state, stateOf, dragSource, onDragStart } = props;
-  const h = device.heightU * U_PX;
+  const h = device.heightU * useContext(UnitContext);
   const textY = y + Math.min(h, 32) / 2 + 4;
   const classes = ['dev', `dev--${categoryOf(device)}`, selected ? 'is-selected' : '', flagged ? 'is-flagged' : ''].filter(Boolean).join(' ');
   return (
@@ -112,9 +118,7 @@ function DeviceBlock(props: { device: RackDevice; y: number; selected: boolean; 
     >
       <title>{`${device.name}, ${formatURange(device)} · ${m.equipment.state[state]}`}</title>
       <rect x={4} y={y + 1} width={RACK_W - 8} height={h - 2} rx={3} className="dev__body" />
-      <text x={STATE_X} y={textY} className="dev__state" textAnchor="middle">
-        {STATE_SYMBOL[state]}
-      </text>
+      <StateGlyph state={state} cx={STATE_X} cy={textY - 4} className="dev__state" />
       <text x={NAME_X} y={textY} className="dev__name">
         {fitText(device.name, (device.kind === 'chassis' ? CHASSIS_NAME_PX : DEVICE_NAME_PX) - (NAME_X - 12))}
       </text>
@@ -132,7 +136,7 @@ function DeviceBlock(props: { device: RackDevice; y: number; selected: boolean; 
 function ReservedBlock(props: { range: ReservedRange; y: number; patternId: string; selected: boolean; onSelect: (id: string) => void; onKey: (e: KeyboardEvent) => void; isStatic: boolean; pulse: boolean }) {
   const m = useT();
   const { range, y, patternId, selected, onSelect, onKey, isStatic, pulse } = props;
-  const h = range.heightU * U_PX;
+  const h = range.heightU * useContext(UnitContext);
   const midY = y + h / 2;
   return (
     <g className={`rsv${selected ? ' is-selected' : ''}${pulse ? ' is-search-pulse' : ''}`} data-elev-id={range.id} {...control(isStatic, m.elevation.reservedLabel(formatURange(range), range.label), selected, () => onSelect(range.id), onKey)}>
@@ -159,7 +163,7 @@ function ReservedBlock(props: { range: ReservedRange; y: number; patternId: stri
 
 function DropGhost({ preview, y }: { preview: DropPreview; y: number }) {
   const m = useT();
-  const h = preview.heightU * U_PX;
+  const h = preview.heightU * useContext(UnitContext);
   const range = preview.heightU === 1 ? `U${preview.bottomU}` : `U${preview.bottomU}–U${preview.bottomU + preview.heightU - 1}`;
   return (
     <g className={`drop-ghost${preview.ok ? '' : ' is-bad'}`} aria-hidden="true">
@@ -180,13 +184,14 @@ export function rackHitAt(x: number, y: number): RackHit | null {
   if (!svg) return null;
   const capacityU = Number(svg.dataset.capacityU);
   const top = svg.getBoundingClientRect().top;
-  return { rackId: svg.dataset.rackId!, pointerU: capacityU - Math.floor((y - top - PAD) / U_PX) };
+  const unit = Number(svg.dataset.uPx) || U_PX;
+  return { rackId: svg.dataset.rackId!, pointerU: capacityU - Math.floor((y - top - PAD) / unit) };
 }
 
-export function RackElevation({ rack, active, selectedId, flagged, onSelect, onActivate, onDropTemplate, isStatic = false, pulseId = null, stateOf = PLANNED, dragPreview = null, onDeviceDragStart }: RackElevationProps) {
+export function RackElevation({ rack, active, selectedId, flagged, onSelect, onActivate, onDropTemplate, isStatic = false, pulseId = null, stateOf = PLANNED, dragPreview = null, onDeviceDragStart, uPx = U_PX }: RackElevationProps) {
   const m = useT();
-  const height = rack.capacityU * U_PX;
-  const yTop = (top: number): number => PAD + (rack.capacityU - top) * U_PX;
+  const height = rack.capacityU * uPx;
+  const yTop = (top: number): number => PAD + (rack.capacityU - top) * uPx;
   const power = rackPower(rack);
   const knownW = power.devices.knownW + power.reserved.knownW;
   const unknown = power.devices.unknownCount + power.reserved.unknownCount;
@@ -208,7 +213,7 @@ export function RackElevation({ rack, active, selectedId, flagged, onSelect, onA
     if (!templateId) return;
     e.preventDefault();
     const top = e.currentTarget.getBoundingClientRect().top;
-    const u = rack.capacityU - Math.floor((e.clientY - top - PAD) / U_PX);
+    const u = rack.capacityU - Math.floor((e.clientY - top - PAD) / uPx);
     onDropTemplate(templateId, Math.min(rack.capacityU, Math.max(1, u)));
   };
 
@@ -233,7 +238,8 @@ export function RackElevation({ rack, active, selectedId, flagged, onSelect, onA
         width={LABEL_W * 2 + RACK_W}
         height={height + PAD * 2}
         viewBox={`0 0 ${LABEL_W * 2 + RACK_W} ${height + PAD * 2}`}
-        role="group" aria-label={m.elevation.rackFront(rack.name, rack.capacityU)} data-rack-id={rack.id} data-capacity-u={rack.capacityU} onDragOver={onDragOver} onDrop={onDrop}>
+        role="group" aria-label={m.elevation.rackFront(rack.name, rack.capacityU)} data-rack-id={rack.id} data-capacity-u={rack.capacityU} data-u-px={uPx} onDragOver={onDragOver} onDrop={onDrop}>
+        <UnitContext.Provider value={uPx}>
         <defs>
           <pattern id={patternId} width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(-45)">
             <path d="M0 0V8" className="rsv-hatch" />
@@ -242,11 +248,11 @@ export function RackElevation({ rack, active, selectedId, flagged, onSelect, onA
         <rect x={LABEL_W} y={PAD} width={RACK_W} height={height} className="rack-frame__fill" />
         {units.map((u) => (
           <g key={u} aria-hidden="true">
-            <line x1={LABEL_W} x2={LABEL_W + RACK_W} y1={yTop(u) + U_PX} y2={yTop(u) + U_PX} className="u-line" />
-            <text x={LABEL_W - 8} y={yTop(u) + 12} textAnchor="end" className={u === 1 || u % 5 === 0 ? 'u-label u-label--major' : 'u-label'}>
+            <line x1={LABEL_W} x2={LABEL_W + RACK_W} y1={yTop(u) + uPx} y2={yTop(u) + uPx} className="u-line" />
+            <text x={LABEL_W - 8} y={yTop(u) + uPx / 2 + 4} textAnchor="end" className={u === 1 || u % 5 === 0 ? 'u-label u-label--major' : 'u-label'}>
               {u}
             </text>
-            <text x={LABEL_W + RACK_W + 8} y={yTop(u) + 12} className={u === 1 || u % 5 === 0 ? 'u-label u-label--major' : 'u-label'}>
+            <text x={LABEL_W + RACK_W + 8} y={yTop(u) + uPx / 2 + 4} className={u === 1 || u % 5 === 0 ? 'u-label u-label--major' : 'u-label'}>
               {u}
             </text>
           </g>
@@ -261,6 +267,7 @@ export function RackElevation({ rack, active, selectedId, flagged, onSelect, onA
           ))}
           {dragPreview && dragPreview.rackId === rack.id ? <DropGhost preview={dragPreview} y={yTop(dragPreview.bottomU + dragPreview.heightU - 1)} /> : null}
         </g>
+        </UnitContext.Provider>
       </svg>
     </figure>
   );

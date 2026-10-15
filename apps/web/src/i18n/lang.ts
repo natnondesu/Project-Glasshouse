@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import type { Messages } from './en';
 
 export type Lang = 'en' | 'th';
 
@@ -13,14 +14,23 @@ function storedLang(): Lang {
   }
 }
 
+// Thai is its own chunk: English users never download it. `lang` only becomes 'th' once it has loaded.
+let thai: Messages | null = null;
+export const loadedThai = (): Messages | null => thai;
+
+async function ensure(lang: Lang): Promise<void> {
+  if (lang === 'th' && !thai) thai = (await import('./th')).th;
+}
+
 interface LangState {
   lang: Lang;
-  setLang: (lang: Lang) => void;
+  setLang: (lang: Lang) => Promise<void>;
 }
 
 export const useLangStore = create<LangState>((set) => ({
-  lang: storedLang(),
-  setLang: (lang) => {
+  lang: 'en',
+  setLang: async (lang) => {
+    await ensure(lang);
     try {
       localStorage.setItem(KEY, lang);
     } catch {
@@ -31,7 +41,10 @@ export const useLangStore = create<LangState>((set) => ({
   },
 }));
 
-/** Tests and first paint: put `<html lang>` in step with the stored choice. */
-export function syncDocumentLang(): void {
-  document.documentElement.lang = useLangStore.getState().lang;
+/** Before the first render: load the remembered language so Thai users never see English first. */
+export async function loadStoredLang(): Promise<void> {
+  const lang = storedLang();
+  await ensure(lang);
+  useLangStore.setState({ lang });
+  document.documentElement.lang = lang;
 }

@@ -36,7 +36,7 @@
 }
 
 .room3d__panel h2 {
-  font-size: 14px;
+  font-size: var(--text-md);
   font-weight: 700;
 }
 
@@ -61,7 +61,7 @@
   background: transparent;
   color: var(--ink);
   font: inherit;
-  font-size: 13px;
+  font-size: var(--text-sm);
   font-weight: 600;
   text-align: left;
   cursor: pointer;
@@ -79,7 +79,7 @@
 
 .room3d__rack-sub,
 .room3d__note {
-  font-size: 12px;
+  font-size: var(--text-xs);
   font-weight: 400;
   color: var(--ink-2);
 }
@@ -96,12 +96,12 @@
 }
 
 .room3d__zoom {
-  font-size: 12px;
+  font-size: var(--text-xs);
   min-width: 52px;
 }
 
 .room3d__hint {
-  font-size: 12px;
+  font-size: var(--text-xs);
   color: var(--ink-2);
 }
 
@@ -127,7 +127,7 @@
   grid-template-columns: auto minmax(0, 1fr);
   gap: 4px 12px;
   margin: 0;
-  font-size: 12px;
+  font-size: var(--text-xs);
 }
 
 .room3d__card dt {

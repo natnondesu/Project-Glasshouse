@@ -1,3 +1,4 @@
+import { IconChevronRight } from '../../ui/icons';
 import { PortManager } from '../ports/PortManager';
 import { StateLegend } from './EquipmentStateControl';
 import { SearchBox } from '../search/SearchBox';
@@ -21,7 +22,7 @@ import {
   type RoomLocation,
   type Template,
 } from '@glasshouse/domain';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useRef } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { usePlanCommit, useSearchParamState } from '../../store/hooks';
 import { useWorkspaceStore } from '../../store/workspaceStore';
@@ -30,7 +31,7 @@ import { flaggedObjectIds } from '../plan/flagged';
 import { CatalogPalette } from './CatalogPalette';
 import { EquipmentInspector } from './EquipmentInspector';
 import { PowerBar } from './PowerBar';
-import { rackHitAt, RackElevation } from './RackElevation';
+import { MIN_U_PX, rackHitAt, RackElevation, U_PX } from './RackElevation';
 import { useDeviceDrag } from './deviceDrag';
 import { useT } from '../../i18n';
 import './elevation.css';
@@ -51,6 +52,8 @@ function entityNames(content: PlanContent): { id: string; name: string }[] {
 }
 
 const PULSE_MS = 1700;
+/** Vertical space a rack needs besides its units: caption, padding and frame. */
+const RACK_CHROME_PX = 110;
 
 /** Centres an SVG block in the rack scroll area. Firefox ignores scrollIntoView on SVG children, so scroll the area itself. */
 function revealInRacks(el: Element): void {
@@ -84,7 +87,31 @@ export function ElevationView({ location, readOnly = false, viewingPast = false 
   }, [pulse]);
   const [message, setMessage] = useState<string | null>(null);
   const [portsFor, setPortsFor] = useState<string | null>(null);
+  // Fit the tallest rack to the area's height (13–16 px per U), so a whole 42U rack shows on a laptop.
+  const racksArea = useRef<HTMLElement>(null);
+  const [areaH, setAreaH] = useState(0);
+  useEffect(() => {
+    const el = racksArea.current;
+    if (!el || typeof ResizeObserver === 'undefined') return;
+    const update = (): void => {
+      setAreaH(el.clientHeight);
+      setMore({ above: el.scrollTop > 4, below: el.scrollTop + el.clientHeight < el.scrollHeight - 4 });
+    };
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    el.addEventListener('scroll', update, { passive: true });
+    update();
+    return () => {
+      ro.disconnect();
+      el.removeEventListener('scroll', update);
+    };
+  }, []);
+  // When a rack can't fit at a readable size, say so and offer the hidden part.
+  const [more, setMore] = useState({ above: false, below: false });
+  const reveal = (dir: 1 | -1): void => racksArea.current?.scrollBy({ top: dir * racksArea.current.clientHeight * 0.8, behavior: 'smooth' });
   const racks = racksOf(content);
+  const tallest = Math.max(1, ...racks.map((r) => r.capacityU));
+  const uPx = areaH ? Math.max(MIN_U_PX, Math.min(U_PX, Math.floor((areaH - RACK_CHROME_PX) / tallest))) : U_PX;
   const issues = useMemo(() => revisionIssues(revision), [revision]);
   const flagged = useMemo(() => flaggedObjectIds(issues), [issues]);
   const names = useMemo(() => entityNames(content), [content]);
@@ -173,7 +200,19 @@ export function ElevationView({ location, readOnly = false, viewingPast = false 
         <PowerBar content={content} />
         <StateLegend />
       </div>
-      <section className="elev__racks" aria-label={m.elevation.racks}>
+      {more.above ? (
+        <button type="button" className="elev__more elev__more--above" onClick={() => reveal(-1)}>
+          <IconChevronRight className="elev__more-icon" />
+          {m.elevation.moreAbove}
+        </button>
+      ) : null}
+      {more.below ? (
+        <button type="button" className="elev__more elev__more--below" onClick={() => reveal(1)}>
+          <IconChevronRight className="elev__more-icon" />
+          {m.elevation.moreBelow}
+        </button>
+      ) : null}
+      <section ref={racksArea} className="elev__racks" aria-label={m.elevation.racks}>
         {racks.map((rack) => (
           <RackElevation
             key={rack.id}
@@ -185,6 +224,7 @@ export function ElevationView({ location, readOnly = false, viewingPast = false 
             onActivate={() => select(rack.id)}
             pulseId={pulse}
             stateOf={stateOf}
+            uPx={uPx}
             dragPreview={drag.preview}
             onDeviceDragStart={readOnly ? undefined : drag.start}
             onDropTemplate={(templateId, u) => {

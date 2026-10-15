@@ -1,6 +1,9 @@
 import { useRef, type PointerEvent } from 'react';
 import { usePersistentState } from './usePersistentState';
 
+/** How much of a floating panel always stays on screen, so its header can be grabbed. */
+const KEEP_VISIBLE_PX = 160;
+
 /** A floating panel dragged by its header, remembered per browser under `key`. */
 export function useFloatingPanel(key: string, initial: { x: number; y: number }) {
   const [pos, setPos] = usePersistentState(key, initial);
@@ -18,5 +21,10 @@ export function useFloatingPanel(key: string, initial: { x: number; y: number })
       drag.current = null;
     },
   };
-  return { pos, headProps };
+  // A position remembered on a bigger screen must not strand the panel out of reach.
+  const onScreen = {
+    x: Math.max(0, Math.min(pos.x, (typeof window === 'undefined' ? Infinity : window.innerWidth) - KEEP_VISIBLE_PX)),
+    y: Math.max(0, Math.min(pos.y, (typeof window === 'undefined' ? Infinity : window.innerHeight) - KEEP_VISIBLE_PX)),
+  };
+  return { pos: onScreen, headProps };
 }

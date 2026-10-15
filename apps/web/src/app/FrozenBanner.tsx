@@ -10,7 +10,7 @@ export function FrozenBanner({ roomId, revision }: { roomId: string; revision: R
   const [error, setError] = useState<string | null>(null);
   const m = useT();
   return (
-    <div className="frozen-banner glass" role="status">
+    <div className={`frozen-banner glass${revision.state === 'approved' ? ' frozen-banner--approved' : ''}`} role="status">
       <span>
         <strong>{m.revision.frozen(pad2(revision.number), m.revision.state[revision.state])}</strong>
         {m.revision.frozenTail}

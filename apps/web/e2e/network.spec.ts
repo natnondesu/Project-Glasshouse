@@ -6,10 +6,10 @@ test('the Network tab draws the sample cabling, fits it, and opens a device’s 
   await page.getByRole('link', { name: 'Network' }).click();
   const diagram = page.getByRole('group', { name: 'Network diagram' });
   await expect(diagram.getByRole('button', { name: /^SW-01, / })).toBeVisible();
-  // Opens zoomed to fit: the whole diagram is inside the canvas.
-  const canvas = await page.locator('.network__canvas').boundingBox();
-  const svg = await diagram.boundingBox();
-  expect(svg!.width).toBeLessThanOrEqual(canvas!.width);
+  // Opens fitted, but never below 85%: smaller and the node text drops under the 11px floor, so it scrolls instead.
+  const zoom = Number((await page.locator('.network__zoom .mono').textContent())!.replace('%', ''));
+  expect(zoom).toBeGreaterThanOrEqual(85);
+  expect(zoom).toBeLessThanOrEqual(100);
   await diagram.getByRole('button', { name: /^SW-01, / }).click();
   await page.getByRole('button', { name: 'Manage ports' }).click();
   await expect(page.getByRole('dialog', { name: 'SW-01 ports' })).toBeVisible();

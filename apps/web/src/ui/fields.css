@@ -6,7 +6,7 @@
 }
 
 .field__label {
-  font-size: 12px;
+  font-size: var(--text-xs);
   color: var(--ink-2);
 }
 
@@ -31,7 +31,7 @@
 .field__box:focus-within {
   border-color: var(--acc);
   background: #fff;
-  box-shadow: 0 0 0 3px var(--acc-soft);
+  box-shadow: var(--focus-ring);
 }
 
 .field__box--multiline {
@@ -42,7 +42,7 @@
 .field__box--error,
 .field__box--error:focus-within {
   border-color: var(--block);
-  box-shadow: 0 0 0 3px rgb(184 50 42 / 0.12);
+  box-shadow: 0 0 0 3px var(--block-ring);
 }
 
 .field__input {
@@ -51,7 +51,7 @@
   border: 0;
   background: none;
   outline: none;
-  font-size: 13px;
+  font-size: var(--text-sm);
 }
 
 textarea.field__input {
@@ -61,12 +61,12 @@ textarea.field__input {
 
 .field__unit {
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: var(--text-xs);
   color: var(--ink-2);
 }
 
 .field__error {
-  font-size: 12px;
+  font-size: var(--text-xs);
   font-weight: 600;
   color: var(--block);
 }

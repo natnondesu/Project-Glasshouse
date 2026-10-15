@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import { formatMetres, placementPolygon, type Issue, type PlanContent, type Point, type RoomObject } from '@glasshouse/domain';
 import { nearestGaps } from './gaps';
 import { toScreen, type View } from '../../viewport/math';
@@ -87,11 +88,29 @@ export function scaleBar(view: View): { metres: number; px: number } {
   return { metres, px: metres * view.scale };
 }
 
-export function PlanLegend({ view, clearance = true }: { view: View; clearance?: boolean }) {
+export function PlanLegend({ view, clearance = true, onClose }: { view: View; clearance?: boolean; onClose?: () => void }) {
   const bar = scaleBar(view);
   const m = useT();
+  const root = useRef<HTMLDivElement>(null);
+  // On demand, like a menu: it never sits over the drawing unasked.
+  useEffect(() => {
+    if (!onClose) return;
+    const away = (e: PointerEvent): void => {
+      const t = e.target as Element;
+      if (!root.current?.contains(t) && !t.closest?.('[data-legend-toggle]')) onClose();
+    };
+    const key = (e: KeyboardEvent): void => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('pointerdown', away);
+    window.addEventListener('keydown', key);
+    return () => {
+      window.removeEventListener('pointerdown', away);
+      window.removeEventListener('keydown', key);
+    };
+  }, [onClose]);
   return (
-    <div className="plan-legend" aria-label={m.plan.legendLabel}>
+    <div ref={root} className="plan-legend" aria-label={m.plan.legendLabel}>
       <span className="plan-legend__item">
         <span className="plan-legend__scale" style={{ width: bar.px }} />
         {bar.metres < 1 ? `${bar.metres * 100} cm` : `${bar.metres} m`}

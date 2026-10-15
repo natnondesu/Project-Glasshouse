@@ -22,7 +22,7 @@
   gap: 8px 18px;
   padding: 10px 14px;
   border-bottom: 1px solid var(--line);
-  font-size: 12px;
+  font-size: var(--text-xs);
 }
 
 .network__filter {
@@ -73,15 +73,15 @@
   padding: 8px;
   /* Drafting paper, like the plan. */
   background:
-    linear-gradient(var(--grid) 1px, transparent 1px) 0 0 / 24px 24px,
-    linear-gradient(90deg, var(--grid) 1px, transparent 1px) 0 0 / 24px 24px,
-    var(--floor);
+    linear-gradient(var(--d-grid-minor) 1px, transparent 1px) 0 0 / 24px 24px,
+    linear-gradient(90deg, var(--d-grid-minor) 1px, transparent 1px) 0 0 / 24px 24px,
+    var(--paper);
 }
 
 .network__empty {
   max-width: 380px;
   margin: 48px auto;
-  font-size: 13px;
+  font-size: var(--text-sm);
   color: var(--ink-2);
   text-align: center;
 }
@@ -104,25 +104,25 @@
 }
 
 .vlans h2 {
-  font-size: 14px;
+  font-size: var(--text-md);
   font-weight: 700;
 }
 
 .vlans__note,
 .net-details__hint {
-  font-size: 12px;
+  font-size: var(--text-xs);
   color: var(--ink-2);
 }
 
 .vlans__table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 13px;
+  font-size: var(--text-sm);
 }
 
 .vlans__table th {
   text-align: left;
-  font-size: 11px;
+  font-size: var(--text-2xs);
   font-weight: 600;
   color: var(--ink-2);
   padding: 0 4px 6px;
@@ -140,7 +140,7 @@
   border: 1px solid var(--line);
   border-radius: 7px;
   background: var(--control-bg);
-  font-size: 13px;
+  font-size: var(--text-sm);
 }
 
 .vlans__vid {
@@ -148,7 +148,7 @@
 }
 
 .vlans__used {
-  font-size: 11px;
+  font-size: var(--text-2xs);
   color: var(--ink-2);
   white-space: nowrap;
 }
@@ -199,7 +199,7 @@
 
 .topo-edge__badge text {
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: var(--text-2xs);
   fill: var(--ink);
 }
 
@@ -228,16 +228,19 @@
 
 .topo-node__name {
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: var(--text-sm);
   font-weight: 700;
   fill: var(--ink);
 }
 
-.topo-node__where,
-.topo-node__state {
+.topo-node__where {
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: var(--text-2xs);
   fill: var(--ink-2);
+}
+
+.topo-node__state {
+  color: var(--ink-2);
 }
 
 .topo-node[role='button'] {
@@ -259,6 +262,16 @@
   outline: none;
 }
 
+/* Cables show keyboard focus like nodes: a heavier accent line with a soft hit band. */
+.topo-edge:focus-visible .topo-edge__line {
+  stroke: var(--acc);
+  stroke-width: 3.5;
+}
+
+.topo-edge:focus-visible .topo-edge__hit {
+  stroke: rgb(28 100 200 / 0.16);
+}
+
 .topo .is-dim {
   opacity: 0.22;
 }
@@ -271,11 +284,11 @@
 }
 
 .net-details h3 {
-  font-size: 14px;
+  font-size: var(--text-md);
 }
 
 .net-details__where {
-  font-size: 12px;
+  font-size: var(--text-xs);
   color: var(--ink-2);
 }
 
@@ -287,7 +300,7 @@
 .net-details__ports {
   width: 100%;
   border-collapse: collapse;
-  font-size: 12px;
+  font-size: var(--text-xs);
 }
 
 .net-details__ports th,
@@ -316,7 +329,7 @@
   gap: 6px;
   margin: 0;
   padding: 0;
-  font-size: 12px;
+  font-size: var(--text-xs);
 }
 
 .net-details__cables li {
@@ -333,7 +346,7 @@
 
 .net-unlinked summary {
   cursor: pointer;
-  font-size: 12px;
+  font-size: var(--text-xs);
   font-weight: 600;
   color: var(--ink-2);
 }
@@ -352,7 +365,7 @@
   border: 0;
   border-radius: 5px;
   background: none;
-  font-size: 12px;
+  font-size: var(--text-xs);
   color: var(--ink);
   cursor: pointer;
 }
@@ -361,8 +374,8 @@
   background: var(--hover);
 }
 
-/* On the Install sheet the diagram fills the page width. */
+/* On the Install sheet the diagram fills the page width, capped so it, the VLAN list and the title block share one A4 page. */
 .topo--static {
   height: auto;
-  max-height: 200mm;
+  max-height: 140mm;
 }

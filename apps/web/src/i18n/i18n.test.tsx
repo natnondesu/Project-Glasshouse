@@ -20,7 +20,9 @@ beforeEach(() => {
   useWorkspaceStore.getState().replace(seeded.value);
   useWorkspaceStore.getState().setLoad({ kind: 'ready' });
 });
-afterEach(() => act(() => useLangStore.getState().setLang('en')));
+afterEach(async () => {
+  await act(() => useLangStore.getState().setLang('en'));
+});
 
 describe('language switch', () => {
   it('switches the interface to Thai, remembers it and sets the page language', async () => {
@@ -29,7 +31,8 @@ describe('language switch', () => {
     render(<RouterProvider router={createMemoryRouter(routes, { initialEntries: [`/rooms/${room.id}/plan`] })} />);
     expect(screen.getByRole('link', { name: 'Elevation' })).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'ไทย' }));
-    expect(screen.getByRole('link', { name: 'ด้านหน้าแร็ค' })).toBeInTheDocument();
+    // Thai loads on demand, then the interface switches.
+    expect(await screen.findByRole('link', { name: 'ด้านหน้าแร็ค' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'การตรวจสอบ' })).toBeInTheDocument();
     expect(localStorage.getItem('glasshouse:lang')).toBe('th');
     expect(document.documentElement.lang).toBe('th');

@@ -48,6 +48,8 @@ export const en = {
     installSheet: (rev: string) => `Install sheet · R${rev}`,
     installAfter: 'Install sheet after approval',
     installAfterHint: 'The Install sheet prints from an Approved revision.',
+    blockersSr: (n: number) => `, ${n} ${n === 1 ? 'item blocks' : 'items block'} approval`,
+    pageTitle: (room: string, view: string) => `${room}: ${view}`,
     /** "Glasshouse hit a problem drawing …" */
     drawing: { plan: 'the plan', elevation: 'the elevation', '3d': 'the 3D view', network: 'the network view', bom: 'the BOM', review: 'the review', other: 'this view' } as Record<string, string>,
   },
@@ -386,6 +388,8 @@ export const en = {
     reservedStamp: (range: string) => `RESERVED · ${range}`,
     moveTo: (range: string) => `Move to ${range}`,
     notHere: 'Not here',
+    moreBelow: 'More of the rack below',
+    moreAbove: 'More of the rack above',
     slotTitle: (slot: number, name: string | null) => (name ? `Slot ${slot}: ${name}` : `Slot ${slot}: empty`),
   },
   palette: {
@@ -671,6 +675,17 @@ export const en = {
     selfApprovedTail: ' · self-approved',
     view: 'View',
     viewRev: (rev: string) => `View R${rev}`,
+    submitConfirm: (rev: string, blocks: number) =>
+      `Submit R${rev} for review? It freezes now; any change after this needs a new draft. ${blocks ? `${blocks} ${blocks === 1 ? 'item still blocks' : 'items still block'} approval.` : 'Nothing blocks approval.'}`,
+    confirmSubmit: 'Confirm submit',
+    approveConfirm: (rev: string, name: string) => `Approve R${rev} as ${name}? Approved revisions never change, and the Install sheet prints from this one.`,
+    unnamedReviewer: 'an unnamed reviewer',
+    selfApproveWarn: 'The reviewer is also the designer. That is allowed, and it will be marked self-approved.',
+    confirmApprove: 'Confirm approval',
+    approveBlocked: (n: number) => `Approval waits for the ${n} ${n === 1 ? 'item' : 'items'} listed below.`,
+    stamp: 'APPROVED',
+    stampBy: (by: string) => `by ${by} (unverified)`,
+    stampRev: (rev: string) => `Revision R${rev}`,
   },
   room3d: {
     region: 'Room 3D view',

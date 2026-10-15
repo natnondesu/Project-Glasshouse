@@ -9,7 +9,10 @@ import { RackElevation } from '../elevation/RackElevation';
 import { SheetPlan } from './SheetPlan';
 import { BomTable, CableScheduleTable, SlotMapsTable, VlanTable } from './SheetTables';
 import { TopologyDiagram } from '../network/TopologyDiagram';
-import { buildTopology } from '../network/topology';
+import { fitTopology } from '../network/topology';
+
+/** A4 portrait inside 12 mm margins is ~186 mm ≈ 700 px; wrap leaves so the diagram prints near full size. */
+const SHEET_DIAGRAM_W = 700;
 import '../network/network.css';
 import { SheetTitleBlock } from './SheetTitleBlock';
 import './sheet.css';
@@ -126,7 +129,7 @@ export function InstallSheet() {
           {title(m.sheet.network)}
           {revision.content.links.length > 0 ? (
             <div className="sheet-topo">
-              <TopologyDiagram content={revision.content} topology={buildTopology(revision.content)} stateOf={(id) => equipmentStateOf(location.room.plan, id)} isStatic />
+              <TopologyDiagram content={revision.content} topology={fitTopology(revision.content, SHEET_DIAGRAM_W)} stateOf={(id) => equipmentStateOf(location.room.plan, id)} isStatic />
             </div>
           ) : null}
           {revision.content.vlans.length > 0 ? <VlanTable content={revision.content} /> : null}

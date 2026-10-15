@@ -1,11 +1,10 @@
 import { en, type Messages } from './en';
-import { useLangStore, type Lang } from './lang';
-import { th } from './th';
+import { loadedThai, useLangStore, type Lang } from './lang';
 
 export type { Messages } from './en';
-export { useLangStore, syncDocumentLang, type Lang } from './lang';
+export { useLangStore, loadStoredLang, type Lang } from './lang';
 
-export const messagesFor = (lang: Lang): Messages => (lang === 'th' ? th : en);
+export const messagesFor = (lang: Lang): Messages => (lang === 'th' ? (loadedThai() ?? en) : en);
 
 /** The active language's messages. Parameterised entries are functions, so Thai can order words its own way. */
 export function useT(): Messages {

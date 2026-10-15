@@ -21,13 +21,13 @@
   border: 0;
   background: none;
   font: inherit;
-  font-size: 13px;
+  font-size: var(--text-sm);
   color: var(--ink);
   outline: none;
 }
 
 .search:focus-within {
-  box-shadow: 0 0 0 2px var(--acc-soft), var(--shadow-float);
+  box-shadow: var(--focus-ring), var(--shadow-float);
 }
 
 .search__key {
@@ -35,7 +35,7 @@
   border: 1px solid var(--line-strong);
   border-radius: 4px;
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: var(--text-2xs);
   color: var(--ink-2);
 }
 
@@ -55,7 +55,7 @@
 
 .search__empty {
   padding: 12px;
-  font-size: 13px;
+  font-size: var(--text-sm);
   color: var(--ink-2);
 }
 
@@ -77,13 +77,13 @@
 .search__name {
   grid-area: name;
   font-family: var(--font-mono);
-  font-size: 13px;
+  font-size: var(--text-sm);
   font-weight: 600;
 }
 
 .search__detail {
   grid-area: detail;
-  font-size: 11.5px;
+  font-size: var(--text-xs);
   color: var(--ink-2);
   white-space: nowrap;
   overflow: hidden;
@@ -97,7 +97,7 @@
 .search__action {
   grid-area: action;
   align-self: center;
-  font-size: 12px;
+  font-size: var(--text-xs);
 }
 
 .search__action a {

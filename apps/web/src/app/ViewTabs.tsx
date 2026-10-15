@@ -27,9 +27,12 @@ export function ViewTabs({ roomId }: { roomId: string }) {
           <NavLink key={v.id} to={`/rooms/${roomId}/${v.id}${rev !== null && v.id !== 'review' ? `?rev=${rev}` : ''}`} className={({ isActive }) => `view-tab${isActive ? ' is-active' : ''}`}>
             {m.views[v.key]}
             {v.id === 'review' && blockers > 0 ? (
-              <span className="view-tab__badge mono" aria-hidden="true">
-                {blockers}
-              </span>
+              <>
+                <span className="view-tab__badge mono" aria-hidden="true">
+                  {blockers}
+                </span>
+                <span className="visually-hidden">{m.views.blockersSr(blockers)}</span>
+              </>
             ) : null}
           </NavLink>
         ))}
