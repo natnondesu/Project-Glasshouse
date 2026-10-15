@@ -31,11 +31,13 @@ interface PickableObjectProps {
   selected: boolean;
   /** Label always, rather than only on hover and selection. */
   labelled: boolean;
+  /** On the highlighted power path. */
+  onPath?: boolean;
   onSelect: (id: string) => void;
 }
 
 /** A room object you can point at and click: outlined on hover, selected on click, labelled by choice. */
-export function PickableObject({ object, palette, selected, labelled, onSelect }: PickableObjectProps) {
+export function PickableObject({ object, palette, selected, labelled, onPath = false, onSelect }: PickableObjectProps) {
   const [hover, setHover] = useState(false);
   const click = (e: ThreeEvent<MouseEvent>): void => {
     e.stopPropagation();
@@ -56,12 +58,12 @@ export function PickableObject({ object, palette, selected, labelled, onSelect }
       }}
     >
       <ObjectModel object={object} palette={palette} />
-      {selected || hover ? (
+      {selected || hover || onPath ? (
         <group position={object.position} rotation={[0, object.yaw, 0]}>
           <Edges size={object.size} color={palette.front} opacity={selected ? 1 : 0.8} />
         </group>
       ) : null}
-      {labelled || hover || selected ? <ObjectLabel object={object} accent={selected ? palette.front : palette.wall} /> : null}
+      {labelled || hover || selected || onPath ? <ObjectLabel object={object} accent={selected ? palette.front : palette.wall} /> : null}
     </group>
   );
 }

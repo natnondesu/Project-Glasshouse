@@ -191,3 +191,8 @@ export const IconLock = (p: IconProps) => (
     <path d="M4.5 6.25V4.5a2.5 2.5 0 0 1 5 0v1.75" />
   </svg>
 );
+export const IconClose = (p: IconProps) => (
+  <svg {...frame(12)} {...p}>
+    <path d="M3 3L9 9M9 3L3 9" />
+  </svg>
+);

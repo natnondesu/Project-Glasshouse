@@ -9,8 +9,9 @@ import { resetWorkspaceStore, useWorkspaceStore } from '../../store/workspaceSto
 // jsdom has no WebGL: stand in for the canvas and keep the rest of the view real.
 vi.mock('./Room3DCanvas', () => ({
   hasWebGL: () => true,
-  Room3DCanvas: ({ onCamera, onSelect }: { onCamera: (u: (c: { distance: number }) => object) => void; onSelect: (id: string | null) => void }) => (
+  Room3DCanvas: ({ onCamera, onSelect, path }: { onCamera: (u: (c: { distance: number }) => object) => void; onSelect: (id: string | null) => void; path: { feedIds: Set<string> } | null }) => (
     <>
+      <output data-testid="path">{path ? [...path.feedIds].join(',') : 'none'}</output>
       <button type="button" data-testid="room3d-canvas" onClick={() => onCamera((c) => ({ ...c, distance: c.distance * 2 }))}>
         move camera
       </button>
@@ -93,4 +94,25 @@ it('hides and shows power lines, and remembers it', async () => {
   await user.click(screen.getByRole('button', { name: 'Hide power lines' }));
   expect(screen.getByRole('button', { name: 'Show power lines' })).toHaveAttribute('aria-pressed', 'false');
   expect(localStorage.getItem('glasshouse:3d-feeds')).toBe('false');
+});
+
+it('highlights the power path of the selected object until it is cleared', async () => {
+  const user = userEvent.setup();
+  useWorkspaceStore.getState().dispatch({ type: 'plan', roomId: 'r', command: { type: 'feed/add', feed: { id: 'f1', sourceId: 'mcb', targetId: 'rk', label: 'A' } } });
+  render(<RouterProvider router={createMemoryRouter(routes, { initialEntries: ['/rooms/r/3d'] })} />);
+  await screen.findByTestId('room3d-canvas');
+  await user.click(screen.getByRole('button', { name: /^RK-01/ }));
+  await user.click(screen.getByRole('button', { name: 'Show power path' }));
+  expect(screen.getByTestId('path')).toHaveTextContent('f1');
+  expect(screen.getByText(/1 line on the path/)).toBeInTheDocument();
+  await user.click(screen.getByRole('button', { name: 'Clear the power path of RK-01' }));
+  expect(screen.getByTestId('path')).toHaveTextContent('none');
+});
+
+it('says when nothing is wired to the selected object', async () => {
+  const user = userEvent.setup();
+  render(<RouterProvider router={createMemoryRouter(routes, { initialEntries: ['/rooms/r/3d'] })} />);
+  await user.click(await screen.findByTestId('click-mcb'));
+  expect(screen.getByText('No power lines connect to MCB-01.')).toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: 'Show power path' })).toBeNull();
 });

@@ -12,6 +12,7 @@ import { labelKindOf, type LabelKind } from './labels';
 import { PickableObject } from './PickableObject';
 import { Column, Floor, Walls } from './RoomModels';
 import type { Rack3D, Scene3D } from './scene';
+import type { PowerPath } from '@glasshouse/domain';
 import { useT } from '../../i18n';
 
 export const FOV_DEG = 45;
@@ -121,6 +122,8 @@ interface Room3DCanvasProps {
   /** A search hit to mark with a ring on the floor. */
   focus?: Focus3D | null;
   showFeeds?: boolean;
+  /** A highlighted power path: its feeds glow and show flow; other feeds fade. */
+  path?: PowerPath | null;
 }
 
 export interface Focus3D {
@@ -151,7 +154,7 @@ function FocusRing({ focus, color }: { focus: Focus3D; color: string }) {
   );
 }
 
-export function Room3DCanvas({ scene, palette, camera, onCamera, selectedId, onSelect, labelKinds, focus = null, showFeeds = true }: Room3DCanvasProps) {
+export function Room3DCanvas({ scene, palette, camera, onCamera, selectedId, onSelect, labelKinds, focus = null, showFeeds = true, path = null }: Room3DCanvasProps) {
   const m = useT();
   const existing = scene.others.filter((o) => o.type === 'existing_rack');
   const blockClick = (e: ThreeEvent<MouseEvent>): void => {
@@ -197,15 +200,18 @@ export function Room3DCanvas({ scene, palette, camera, onCamera, selectedId, onS
         {scene.columns.map((c) => (
           <Column key={c.id} column={c} palette={palette} />
         ))}
-        {(showFeeds ? scene.feeds : []).map((f) => (
-          <FeedModel key={f.feed.id} feed={f} color={feedColor(f.feed, { feeds: scene.feeds.map((x) => x.feed) })} />
-        ))}
+        {/* A highlighted path stays visible even with power lines hidden. */}
+        {scene.feeds
+          .filter((f) => showFeeds || path?.feedIds.has(f.feed.id))
+          .map((f) => (
+            <FeedModel key={f.feed.id} feed={f} color={feedColor(f.feed, { feeds: scene.feeds.map((x) => x.feed) })} look={path ? (path.feedIds.has(f.feed.id) ? 'path' : 'dim') : 'normal'} />
+          ))}
       </group>
       {others.map((o) => (
-        <PickableObject key={o.id} object={o} palette={palette} selected={o.id === selectedId} labelled={labelKinds.includes(labelKindOf(o.type))} onSelect={onSelect} />
+        <PickableObject key={o.id} object={o} palette={palette} selected={o.id === selectedId} labelled={labelKinds.includes(labelKindOf(o.type))} onPath={path?.objectIds.has(o.id) ?? false} onSelect={onSelect} />
       ))}
       {scene.racks.map((r, i) => (
-        <RackModel key={r.id} rack={r} palette={palette} selected={r.id === selectedId} onSelect={onSelect} stagger={i % 2 === 1} labels={labelKinds.includes('rack') ? 'always' : 'hover'} />
+        <RackModel key={r.id} rack={r} palette={palette} selected={r.id === selectedId} onSelect={onSelect} stagger={i % 2 === 1} labels={labelKinds.includes('rack') ? 'always' : 'hover'} onPath={path?.objectIds.has(r.id) ?? false} />
       ))}
       {existing.map((o) => {
         const asRack: Rack3D = { ...o, owner: 'oxygenai', faces: [], slots: [], reserved: [], capacityU: 42, usedU: 0 };

@@ -1,4 +1,4 @@
-import { currentRevision, equipmentStateOf, racksOf, rackPower, type RoomLocation } from '@glasshouse/domain';
+import { currentRevision, equipmentStateOf, powerPath, racksOf, rackPower, type RoomLocation } from '@glasshouse/domain';
 import { useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { SearchBox } from '../search/SearchBox';
@@ -11,6 +11,8 @@ import { buildScene } from './scene';
 import { initialLabelKinds, type LabelKind } from './labels';
 import { LabelMenu } from './LabelMenu';
 import { ObjectCard } from './ObjectCard';
+import { PowerPathToggle } from './PowerPathToggle';
+import { IconClose } from '../../ui/icons';
 import { PanelManager } from '../plan/PanelManager';
 import { usePlanCommit } from '../../store/hooks';
 import './room3d.css';
@@ -42,6 +44,12 @@ export default function Room3DView({ location, readOnly = false }: { location: R
   const [labelKinds, setLabelKinds] = usePersistentState<LabelKind[]>('glasshouse:3d-label-kinds', initialLabelKinds(legacyLabelChoice()));
   const commit = usePlanCommit(location.room.id);
   const [managedId, setManagedId] = useState<string | null>(null);
+  const [pathFor, setPathFor] = useState<string | null>(null);
+  const path = useMemo(() => (pathFor ? powerPath(content, pathFor) : null), [content, pathFor]);
+  const pathName = content.objects.find((o) => o.id === pathFor)?.name ?? null;
+  const pathToggle = (id: string, name: string) => (
+    <PowerPathToggle content={content} objectId={id} name={name} active={pathFor === id} onToggle={(on) => setPathFor(on ? id : null)} />
+  );
   const managed = content.objects.find((o) => o.id === managedId && o.type === 'mcb') ?? null;
   // Clicking an MCB in the room opens its ways, as double-clicking it does on the plan.
   const select = (id: string | null): void => {
@@ -68,7 +76,7 @@ export default function Room3DView({ location, readOnly = false }: { location: R
   return (
     <section className="room3d" aria-label={m.room3d.region}>
       {webgl ? (
-        <Room3DCanvas scene={scene} palette={palette} camera={camera} onCamera={setCamera} selectedId={selectedId} onSelect={select} labelKinds={labelKinds} focus={focus} showFeeds={showFeeds} />
+        <Room3DCanvas scene={scene} palette={palette} camera={camera} onCamera={setCamera} selectedId={selectedId} onSelect={select} labelKinds={labelKinds} focus={focus} showFeeds={showFeeds} path={path} />
       ) : (
         <p className="room3d__fallback" role="status">
           {m.room3d.noWebgl}
@@ -116,9 +124,12 @@ export default function Room3DView({ location, readOnly = false }: { location: R
             <button type="button" className="btn btn--sm btn--ink" aria-label={m.room3d.openElevationOf(selected.name)} onClick={() => openElevation(selected.id)}>
               {m.room3d.openElevation}
             </button>
+            {pathToggle(selected.id, selected.name)}
           </section>
         ) : selectedObject ? (
-          <ObjectCard object={selectedObject} onManageWays={() => setManagedId(selectedObject.id)} />
+          <ObjectCard object={selectedObject} onManageWays={() => setManagedId(selectedObject.id)}>
+            {pathToggle(selectedObject.id, selectedObject.name)}
+          </ObjectCard>
         ) : (
           <p className="room3d__note">{m.room3d.pickRack}</p>
         )}
@@ -130,6 +141,14 @@ export default function Room3DView({ location, readOnly = false }: { location: R
           {m.room3d.reset}
         </button>
         <LabelMenu shown={labelKinds} onChange={setLabelKinds} />
+        {pathName ? (
+          <button type="button" className="btn btn--sm power-path__chip" aria-label={m.room3d.clearPath(pathName)} onClick={() => setPathFor(null)}>
+            {m.room3d.pathChip(pathName)}
+            <span aria-hidden="true" className="power-path__x">
+              <IconClose />
+            </span>
+          </button>
+        ) : null}
         <button type="button" className="btn btn--sm room3d__feeds" aria-pressed={showFeeds} onClick={() => setShowFeeds(!showFeeds)}>
           {showFeeds ? m.room3d.hideFeeds : m.room3d.showFeeds}
         </button>
