@@ -49,6 +49,8 @@ export interface Port {
   speed: string;
   /** Unset: not configured. */
   vlan?: PortVlan;
+  /** A LAG (port-channel, bond) on this device; its members share one VLAN setting. */
+  lag?: string;
 }
 
 /** A room VLAN; the VLAN ID is its identity, as on the switches. */

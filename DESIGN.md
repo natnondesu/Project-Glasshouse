@@ -50,6 +50,7 @@ Colour never works alone. Blocking issues use a solid circle icon, warnings a da
 - Walls are heavy rounded ink; objects are ink outlines on paper with mono labels; a Rack's Front is a heavier band with an ink tick.
 - Clearance zones are hatched; blocking objects are filled red with a BLOCKING callout.
 - Dimensions are drafting style (extension lines, 45° ticks). Power feeds are dashed coloured runs tagged A/B.
+- Wall-mounted racks are drawn dashed, as overhead items are; their label adds 'wall'.
 - Doors: a swing door draws its leaf open at 90° and the quarter-circle swing; a sliding door draws its track, the leaf parked beside the opening and an arrow for the direction, with no swing.
 - The legend is on demand from the zoom bar, never left over the drawing.
 - Below 1360px the inspector starts collapsed so the drawing gets the room; once someone opens or closes it, that choice is remembered.
@@ -58,12 +59,16 @@ Colour never works alone. Blocking issues use a solid circle icon, warnings a da
 ## Network diagram
 
 - Generated from the cables, never hand-drawn. Switch-like gear (Network category, 4+ ports) forms the rows; single-cable devices hang under their switch in wrapped rows of up to six (fewer on the printed page).
-- Parallel cables draw as one line with a count; copper solid, fibre dashed accent. Highlighting a VLAN fades what doesn't carry it.
+- Parallel cables draw as one line with a count (named after the LAG when they form one); copper solid, fibre dashed accent. Highlighting a VLAN fades what doesn't carry it.
 
 ## 3D
 
 - Labels are sprites at a fixed screen size; the Labels menu picks which kinds are always labelled, the rest label on hover.
 - A highlighted power path glows and carries arrowheads moving from source to load (still under reduced motion); everything else on the power layer fades.
+
+## Confirmations
+
+- One popup in the middle of the screen for anything that removes or reshapes: the action button has focus (Delete then Enter), Escape cancels. Removals are red; growing the room is the ordinary primary button.
 
 ## Prohibitions
 

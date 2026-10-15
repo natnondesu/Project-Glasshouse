@@ -103,6 +103,18 @@ export type PortCommand =
 
 const gone = (): Result<never> => err('not_found', 'That device no longer exists.', []);
 
+const LAG_NAME_MAX = 16;
+/** An empty name takes the port out of its LAG. */
+function checkLagName(raw: string): { ok: true; value: string | undefined } | { ok: false; message: string } {
+  const name = raw.trim();
+  if (name.length > LAG_NAME_MAX) return { ok: false, message: `A LAG name is up to ${LAG_NAME_MAX} characters.` };
+  return { ok: true, value: name || undefined };
+}
+const withVlan = (p: Port, vlan: Port['vlan']): Port => {
+  const { vlan: _v, ...rest } = p;
+  return vlan ? { ...rest, vlan } : rest;
+};
+
 export function applyPortCommand(content: PlanContent, cmd: PortCommand): Result<PlanContent> {
   switch (cmd.type) {
     case 'port/add': {
@@ -121,9 +133,17 @@ export function applyPortCommand(content: PlanContent, cmd: PortCommand): Result
       if (!current) return err('not_found', `${owner.name} has no port ${cmd.name}.`, [owner.id]);
       const name = checkPortName(owner, cmd.patch.name ?? current.name, current.name);
       if (!name.ok) return name;
-      const next: Port = { ...current, ...cmd.patch, name: name.value };
+      const lag = cmd.patch.lag === undefined ? { ok: true as const, value: current.lag } : checkLagName(cmd.patch.lag);
+      if (!lag.ok) return err('invalid_value', lag.message, [owner.id]);
+      const { lag: _old, ...rest } = { ...current, ...cmd.patch, name: name.value };
+      let next: Port = lag.value ? { ...rest, lag: lag.value } : rest;
       if (!PORT_MEDIA.includes(next.media)) return err('invalid_value', 'Unknown port type.', [owner.id]);
-      const updated = withPorts(content, owner.id, owner.ports.map((p) => (p.name === cmd.name ? next : p)));
+      // A LAG has one VLAN setting: joining one adopts it, and changing it on a member changes every member.
+      const peers = next.lag ? owner.ports.filter((p) => p.name !== cmd.name && p.lag === next.lag) : [];
+      const vlanChanged = 'vlan' in cmd.patch;
+      if (peers.length > 0 && !vlanChanged && cmd.patch.lag !== undefined) next = withVlan(next, peers[0]!.vlan);
+      const ports = owner.ports.map((p) => (p.name === cmd.name ? next : vlanChanged && peers.includes(p) ? withVlan(p, next.vlan) : p));
+      const updated = withPorts(content, owner.id, ports);
       // A rename carries its link with it.
       const from: PortRef = { deviceId: owner.id, port: cmd.name };
       const rename = (r: PortRef): PortRef => (sameRef(r, from) ? { ...r, port: next.name } : r);
@@ -194,7 +214,8 @@ export interface CableRow {
 export function cableSchedule(content: PlanContent): CableRow[] {
   const end = (r: PortRef): CableEnd => {
     const owner = ownerOf(content, r.deviceId);
-    return { rack: owner?.rack.name ?? '', device: owner?.name ?? '', port: r.port };
+    const lag = owner?.ports.find((p) => p.name === r.port)?.lag;
+    return { rack: owner?.rack.name ?? '', device: owner?.name ?? '', port: lag ? `${r.port} (${lag})` : r.port };
   };
   const key = (row: CableRow): string => `${row.label === '' ? '1' : '0'}${row.label}|${row.from.rack}|${row.from.device}|${row.from.port}`;
   return content.links

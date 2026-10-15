@@ -109,3 +109,19 @@ it('points to the Network tab when the room has no VLANs', async () => {
   await user.click(screen.getByRole('button', { name: 'Manage ports' }));
   expect(screen.getByRole('link', { name: 'Add VLANs on the Network tab' })).toHaveAttribute('href', '/rooms/r/network');
 });
+
+it('groups two ports into a LAG and says the VLAN setting is shared', async () => {
+  const user = userEvent.setup();
+  open('sw');
+  await user.click(screen.getByRole('button', { name: 'Manage ports' }));
+  const mgr = screen.getByRole('dialog', { name: 'SW-01 ports' });
+  for (const n of ['1', '2']) {
+    await user.click(within(mgr).getAllByRole('button', { name: /^Port / })[Number(n) - 1]!);
+    const field = within(mgr).getByLabelText('LAG');
+    await user.clear(field);
+    await user.type(field, 'Po1{Enter}');
+  }
+  expect(within(mgr).getByText('Po1: 2 ports. The VLAN setting below applies to all of them.')).toBeInTheDocument();
+  const sw = content().objects.flatMap((o) => (o.type === 'rack' ? o.devices : [])).find((d) => d.id === 'sw')!;
+  expect(sw.ports!.filter((p) => p.lag === 'Po1').map((p) => p.name)).toEqual(['Gi1', 'Gi2']);
+});

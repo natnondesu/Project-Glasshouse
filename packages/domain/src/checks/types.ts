@@ -20,7 +20,9 @@ export type IssueCode =
   | 'link_media_mismatch'
   | 'vlan_access_mismatch'
   | 'vlan_native_mismatch'
-  | 'vlan_allowed_mismatch';
+  | 'vlan_allowed_mismatch'
+  | 'lag_speed_mismatch'
+  | 'lag_far_end';
 
 export interface Issue {
   key: string;
