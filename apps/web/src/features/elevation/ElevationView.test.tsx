@@ -46,3 +46,4 @@ it('sends you to the plan when the room has no racks', () => {
   expect(screen.getByRole('heading', { name: 'This room has no racks yet' })).toBeInTheDocument();
   expect(screen.getByRole('link', { name: 'Go to the plan' })).toHaveAttribute('href', '/rooms/r/plan');
 });
+

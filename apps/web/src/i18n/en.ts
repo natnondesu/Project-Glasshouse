@@ -312,7 +312,6 @@ export const en = {
     wallCorner: 'Wall corner',
     customerShort: 'CUST',
     pickTwoPoints: 'Pick two different points.',
-    holdsContents: (name: string, contents: string) => `${name} holds ${contents}. Remove it from the inspector to confirm.`,
   },
   panelMgr: {
     title: (name: string) => `${name} ways`,
@@ -399,6 +398,10 @@ export const en = {
     moreAbove: 'More of the rack above',
     slotTitle: (slot: number, name: string | null) => (name ? `Slot ${slot}: ${name}` : `Slot ${slot}: empty`),
   },
+  confirmRemove: {
+    undo: 'Undo (⌘Z or Ctrl+Z) brings it back.',
+    action: 'Remove',
+  },
   catalogFilter: {
     label: 'Filter catalog',
     placeholder: 'Filter by name, model, type or 2U',
@@ -448,6 +451,7 @@ export const en = {
     unknownHint: 'Allowed, but a reviewer must acknowledge it with a reason before approval.',
     notes: 'Notes',
     remove: 'Remove reserved range',
+    removeQuestion: (label: string) => `Remove the reserved range ${label}?`,
   },
   device: {
     node: 'Node',
@@ -474,6 +478,7 @@ export const en = {
     backTo: (name: string) => `Back to ${name}`,
     nodeDetails: 'Node details',
     removeNode: (name: string, slot: number) => `Remove ${name} from slot ${slot}`,
+    removeNodeQuestion: (name: string, slot: number) => `Remove ${name} from slot ${slot}?`,
   },
   slotMap: {
     title: 'Slot map',

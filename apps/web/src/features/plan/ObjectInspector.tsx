@@ -6,6 +6,7 @@ import { NumberField } from '../../ui/NumberField';
 import { TextField } from '../../ui/TextField';
 import { describeRackContents } from './labels';
 import { useT } from '../../i18n';
+import { confirmAction } from '../../ui/confirm/confirmStore';
 import type { CommitFn } from './usePlanGestures';
 
 interface ObjectInspectorProps {
@@ -18,7 +19,6 @@ interface ObjectInspectorProps {
 
 export function ObjectInspector({ object, content, commit, onDeleted, onManagePanel }: ObjectInspectorProps) {
   const m = useT();
-  const [confirmDelete, setConfirmDelete] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const update = (patch: ObjectPatch, key?: string): string | null =>
     commit({ type: 'object/update', id: object.id, patch }, key === undefined ? undefined : `obj:${object.id}:${key}`);
@@ -167,29 +167,20 @@ export function ObjectInspector({ object, content, commit, onDeleted, onManagePa
       </fieldset>
 
       <div className="inspector__danger">
-        {confirmDelete ? (
-          <>
-            <span>{m.inspector.removeQuestion(object.name, rackContents)}</span>
-            <button
-              type="button"
-              className="btn btn--sm btn--danger"
-              onClick={() => {
-                const problem = commit({ type: 'object/remove', id: object.id });
-                setActionError(problem);
-                if (problem === null) onDeleted();
-              }}
-            >
-              {m.inspector.remove}
-            </button>
-            <button type="button" className="btn btn--sm btn--quiet" onClick={() => setConfirmDelete(false)}>
-              {m.common.cancel}
-            </button>
-          </>
-        ) : (
-          <button type="button" className="btn btn--sm btn--danger" onClick={() => setConfirmDelete(true)}>
-            {m.inspector.removeObject(object.name)}
-          </button>
-        )}
+        <button
+          type="button"
+          className="btn btn--sm btn--danger"
+          onClick={() =>
+            void confirmAction({ title: m.inspector.removeQuestion(object.name, rackContents), body: m.confirmRemove.undo, confirmLabel: m.confirmRemove.action }).then((ok) => {
+              if (!ok) return;
+              const problem = commit({ type: 'object/remove', id: object.id });
+              setActionError(problem);
+              if (problem === null) onDeleted();
+            })
+          }
+        >
+          {m.inspector.removeObject(object.name)}
+        </button>
       </div>
     </div>
   );

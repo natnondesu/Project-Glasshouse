@@ -307,7 +307,6 @@ export const th: Messages = {
     wallCorner: 'มุมผนัง',
     customerShort: 'ลูกค้า',
     pickTwoPoints: 'เลือกสองจุดที่ต่างกัน',
-    holdsContents: (name, contents) => `${name} มี${contents} ลบจากแผงรายละเอียดเพื่อยืนยัน`,
   },
   panelMgr: {
     title: (name) => `ช่องเบรกเกอร์ ${name}`,
@@ -394,6 +393,10 @@ export const th: Messages = {
     moreAbove: 'ส่วนบนของแร็คยังมีต่อ',
     slotTitle: (slot, name) => (name ? `สล็อต ${slot}: ${name}` : `สล็อต ${slot}: ว่าง`),
   },
+  confirmRemove: {
+    undo: 'กดย้อนกลับ (⌘Z หรือ Ctrl+Z) เพื่อนำกลับมาได้',
+    action: 'ลบ',
+  },
   catalogFilter: {
     label: 'กรองคลังอุปกรณ์',
     placeholder: 'กรองตามชื่อ รุ่น ชนิด หรือ 2U',
@@ -443,6 +446,7 @@ export const th: Messages = {
     unknownHint: 'ใช้ได้ แต่ผู้ตรวจต้องรับทราบพร้อมเหตุผลก่อนอนุมัติ',
     notes: 'บันทึก',
     remove: 'ลบช่วงที่จองไว้',
+    removeQuestion: (label) => `ลบช่วงที่จองไว้ ${label}?`,
   },
   device: {
     node: 'Node',
@@ -469,6 +473,7 @@ export const th: Messages = {
     backTo: (name) => `กลับไปที่ ${name}`,
     nodeDetails: 'รายละเอียด Node',
     removeNode: (name, slot) => `ถอด ${name} ออกจากสล็อต ${slot}`,
+    removeNodeQuestion: (name, slot) => `ถอด ${name} ออกจากสล็อต ${slot}?`,
   },
   slotMap: {
     title: 'ผังสล็อต',

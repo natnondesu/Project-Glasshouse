@@ -1,3 +1,4 @@
+import { confirmAction } from "../../ui/confirm/confirmStore";
 import {
   formatURange,
   type DeviceLocation,
@@ -34,7 +35,6 @@ export function DeviceInspector({
   ports = null,
 }: DeviceInspectorProps) {
   const m = useT();
-  const [confirm, setConfirm] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const key = (k: string): string => `dev:${device.id}:${k}`;
   const update = (patch: DevicePatch, k?: string): string | null =>
@@ -201,40 +201,20 @@ export function DeviceInspector({
         </fieldset>
 
         <div className="inspector__danger">
-          {confirm ? (
-            <>
-              <span>{m.device.removeQuestion(device.name, nodeCount)}</span>
-              <button
-                type="button"
-                className="btn btn--sm btn--danger"
-                onClick={() => {
-                  const problem = commit({
-                    type: "device/remove",
-                    id: device.id,
-                  });
-                  setActionError(problem);
-                  if (problem === null) onSelect(null);
-                }}
-              >
-                {m.device.remove}
-              </button>
-              <button
-                type="button"
-                className="btn btn--sm btn--quiet"
-                onClick={() => setConfirm(false)}
-              >
-                {m.common.cancel}
-              </button>
-            </>
-          ) : (
-            <button
-              type="button"
-              className="btn btn--sm btn--danger"
-              onClick={() => setConfirm(true)}
-            >
-              {m.device.removeObject(device.name)}
-            </button>
-          )}
+          <button
+            type="button"
+            className="btn btn--sm btn--danger"
+            onClick={() =>
+              void confirmAction({ title: m.device.removeQuestion(device.name, nodeCount), body: m.confirmRemove.undo, confirmLabel: m.confirmRemove.action }).then((ok) => {
+                if (!ok) return;
+                const problem = commit({ type: "device/remove", id: device.id });
+                setActionError(problem);
+                if (problem === null) onSelect(null);
+              })
+            }
+          >
+            {m.device.removeObject(device.name)}
+          </button>
         </div>
       </fieldset>
     </div>

@@ -11,6 +11,7 @@ import { snapMeasurePoint, type SnapTarget } from './measure';
 import type { Preview } from './layers';
 import type { SvgHandlers } from './PlanCanvas';
 import { resizePlacement, type Handle } from './resize';
+import { confirmAction } from '../../ui/confirm/confirmStore';
 import { isPlacementTool, toolForKey, type PlacementTool, type Tool } from './tools';
 
 export type { CommitFn } from '../../store/hooks';
@@ -294,11 +295,9 @@ export function usePlanGestures({ content, tool, setTool, selectedId, select, vi
     if (e.key === 'Delete' || e.key === 'Backspace') {
       e.preventDefault();
       const contents = selected.type === 'rack' ? describeRackContents(m, selected) : null;
-      if (contents) {
-        setMessage(m.plan.holdsContents(selected.name, contents));
-        return;
-      }
-      if (run({ type: 'object/remove', id: selected.id })) select(null);
+      void confirmAction({ title: m.inspector.removeQuestion(selected.name, contents), body: m.confirmRemove.undo, confirmLabel: m.confirmRemove.action }).then((ok) => {
+        if (ok && run({ type: 'object/remove', id: selected.id })) select(null);
+      });
       return;
     }
     if (e.key === 'r' || e.key === 'R') {

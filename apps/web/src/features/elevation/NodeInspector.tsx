@@ -1,3 +1,4 @@
+import { confirmAction } from "../../ui/confirm/confirmStore";
 import type { ReactNode } from "react";
 import {
   formatURange,
@@ -99,10 +100,11 @@ export function NodeInspector({
           <button
             type="button"
             className="btn btn--sm btn--danger"
-            onClick={() => {
-              if (commit({ type: "node/remove", id: node.id }) === null)
-                onSelect(chassis.id);
-            }}
+            onClick={() =>
+              void confirmAction({ title: m.device.removeNodeQuestion(node.name, node.slot), body: m.confirmRemove.undo, confirmLabel: m.confirmRemove.action }).then((ok) => {
+                if (ok && commit({ type: "node/remove", id: node.id }) === null) onSelect(chassis.id);
+              })
+            }
           >
             {m.device.removeNode(node.name, node.slot)}
           </button>

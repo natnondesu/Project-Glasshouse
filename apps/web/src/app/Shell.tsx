@@ -7,6 +7,7 @@ import { useWorkspaceStore } from '../store/workspaceStore';
 import { useViewedRevisionNumber } from '../store/hooks';
 import { useT } from '../i18n';
 import { HintLayer } from './HintLayer';
+import { ConfirmDialog } from '../ui/confirm/ConfirmDialog';
 import { TitleBlock } from './TitleBlock';
 import './shell.css';
 
@@ -53,6 +54,7 @@ export function Shell() {
           <Outlet />
         </main>
       </div>
+      <ConfirmDialog />
     </div>
   );
 }
