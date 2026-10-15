@@ -1,5 +1,5 @@
 import type { CommitFn } from '../../store/hooks';
-import { anchorAt, dimensionPoints, newId, offsetFromPoint, type Dimension, snapDrag, snapFloor, type Id, type PlanCommand, type PlanContent, type Point, type RoomObject } from '@glasshouse/domain';
+import { anchorAt, dimensionPoints, newId, offsetFromPoint, type Dimension, snapDrag, snapFloor, type Id, type PlanCommand, type PlanContent, type Point, type RoomObject, roomExtensionFor, formatMetres } from '@glasshouse/domain';
 import { useEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react';
 import type { ViewportApi } from '../../viewport/useViewport';
 import { clampIntoRoom } from './clamp';
@@ -252,9 +252,24 @@ export function usePlanGestures({ content, tool, setTool, selectedId, select, vi
       return;
     }
     if (g.kind === 'rect' && p.kind === 'rect') {
-      if (p.w > 0 && p.d > 0) {
-        run({ type: g.mode === 'area' ? 'floor/add' : 'floor/cut', rect: { id: newId(), x: p.x, y: p.y, w: p.w, d: p.d } });
+      if (p.w <= 0 || p.d <= 0) return;
+      const rect = { id: newId(), x: p.x, y: p.y, w: p.w, d: p.d };
+      // Floor drawn past the room's edge is a request for more room: say what changes, then grow it.
+      const ext = g.mode === 'area' ? roomExtensionFor(content.survey, rect) : null;
+      if (!ext) {
+        run({ type: g.mode === 'area' ? 'floor/add' : 'floor/cut', rect });
+        return;
       }
+      void confirmAction({
+        title: m.plan.extendTitle(formatMetres(ext.width), formatMetres(ext.length)),
+        body: ext.dx > 0 || ext.dy > 0 ? m.plan.extendShiftBody : m.plan.extendBody,
+        confirmLabel: m.plan.extendAction,
+        tone: 'primary',
+      }).then((ok) => {
+        if (!ok || !run({ type: 'floor/extend', rect })) return;
+        // Everything moved right/down in the plan; pan the same amount so nothing jumps on screen.
+        if (ext.dx > 0 || ext.dy > 0) viewport.panBy(-ext.dx * viewport.view.scale, -ext.dy * viewport.view.scale);
+      });
       return;
     }
     if (p.kind === 'object') run({ type: 'object/update', id: p.id, patch: p.patch });
