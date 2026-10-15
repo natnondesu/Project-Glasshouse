@@ -60,4 +60,17 @@ test('place a UPS, feed a rack from it, feed the UPS from the MCB, and wire feed
   await expect(manager.getByLabel('Way 5 feed')).not.toHaveValue('');
   await manager.getByLabel('Way 6 feed').selectOption({ label: 'UPS-01 · Feed A' });
   await expect(manager.getByText('Every feed from this panel is on a way.')).toBeVisible();
+
+  // A long panel scrolls its ways inside the manager; the footer stays inside the panel.
+  await manager.getByRole('combobox', { name: /^Ways/ }).selectOption('36');
+  const table = manager.locator('.panel-mgr__scroll');
+  const { scrolls } = await table.evaluate((el) => ({ scrolls: el.scrollHeight > el.clientHeight + 1 }));
+  expect(scrolls).toBe(true);
+  const panelBox = (await manager.boundingBox())!;
+  const footBox = (await manager.locator('.panel-mgr__foot').boundingBox())!;
+  expect(footBox.y + footBox.height).toBeLessThanOrEqual(panelBox.y + panelBox.height + 1);
+  await table.hover();
+  // Firefox caps how far one wheel event scrolls, so scroll in steps like a trackpad would.
+  for (let i = 0; i < 8; i += 1) await page.mouse.wheel(0, 600);
+  await expect(manager.getByLabel('Way 36 feed')).toBeInViewport();
 });

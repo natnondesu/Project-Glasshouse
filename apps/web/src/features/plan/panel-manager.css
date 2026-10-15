@@ -65,7 +65,15 @@
   margin: 0 16px 6px;
 }
 
+/* The lock wrapper takes no part in layout (a fieldset can't pass its height on in Chromium),
+   so the ways table, not the panel, scrolls. Disabling still applies to everything inside. */
+.panel-mgr__body {
+  display: contents;
+}
+
 .panel-mgr__scroll {
+  flex: 1 1 auto;
+  min-height: 0;
   overflow: auto;
   padding: 0 8px;
 }

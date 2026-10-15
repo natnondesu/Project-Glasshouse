@@ -39,7 +39,7 @@ export function PanelManager({ panel, content, commit, onClose, readOnly = false
         </button>
       </header>
       {/* Only the contents lock when frozen; closing the manager must still work. */}
-      <fieldset className="inspector__lock" disabled={readOnly}>
+      <fieldset className="inspector__lock panel-mgr__body" disabled={readOnly}>
       <div className="panel-mgr__config">
         <div className="seg seg--compact" role="group" aria-label={m.panelMgr.phase}>
           <button type="button" aria-pressed={config.phase === 'single'} onClick={() => act(commit({ type: 'panel/configure', id: panel.id, patch: { phase: 'single' } }))}>
