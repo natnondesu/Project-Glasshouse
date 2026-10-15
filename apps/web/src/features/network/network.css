@@ -276,6 +276,32 @@
   opacity: 0.22;
 }
 
+/* A selected device's own cables and neighbours. */
+.topo-edge.is-focus .topo-edge__line {
+  stroke: var(--acc);
+  stroke-width: 3;
+}
+
+.topo-node.is-neighbour .topo-node__body {
+  stroke: var(--acc);
+  stroke-width: 1.5;
+}
+
+.topo-tag {
+  pointer-events: none;
+}
+
+.topo-tag rect {
+  fill: var(--paper);
+  stroke: var(--acc-border);
+}
+
+.topo-tag text {
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  fill: var(--d-ink);
+}
+
 /* Details */
 .net-details {
   display: flex;
