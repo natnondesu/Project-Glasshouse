@@ -22,36 +22,38 @@ const open = () => render(<RouterProvider router={createMemoryRouter(routes, { i
 it('draws every cabled device and one line per cabled pair', () => {
   const { container } = open();
   const diagram = screen.getByRole('group', { name: 'Network diagram' });
-  expect(within(diagram).getAllByRole('button', { name: /, RK-0\d/ })).toHaveLength(9);
-  expect(container.querySelectorAll('.topo-edge')).toHaveLength(8);
-  expect(container.querySelectorAll('.topo-edge.is-fibre')).toHaveLength(1);
+  // Two cores, two access switches, an edge router and five servers.
+  expect(within(diagram).getAllByRole('button', { name: /, RK-0\d/ })).toHaveLength(10);
+  expect(container.querySelectorAll('.topo-edge')).toHaveLength(12);
+  // Core-to-core and every uplink are fibre; server links are copper.
+  expect(container.querySelectorAll('.topo-edge.is-fibre')).toHaveLength(7);
 });
 
 it('shows a device’s ports and where they go, and opens its port manager', async () => {
   const user = userEvent.setup();
   open();
-  await user.click(screen.getByRole('button', { name: 'SW-01, RK-01 · U42' }));
+  await user.click(screen.getByRole('button', { name: 'CORE-01, RK-01 · U42' }));
   const ports = screen.getByRole('table', { name: 'Ports' });
-  expect(within(ports).getByRole('row', { name: /^Gi1\/0\/1 / })).toHaveTextContent('to SRV-01 eth0');
-  expect(within(ports).getByRole('row', { name: /^Te1\/1\/1 / })).toHaveTextContent('Trunk all · native 99');
+  expect(within(ports).getByRole('row', { name: /^Te1\/1\/1 / })).toHaveTextContent('to ACC-01 Te1/1/1');
+  expect(within(ports).getByRole('row', { name: /^Te1\/1\/7 / })).toHaveTextContent('Trunk all · native 99');
   await user.click(screen.getByRole('button', { name: 'Manage ports' }));
-  expect(screen.getByRole('dialog', { name: 'SW-01 ports' })).toBeInTheDocument();
+  expect(screen.getByRole('dialog', { name: 'CORE-01 ports' })).toBeInTheDocument();
 });
 
 it('fades what does not carry the highlighted VLAN, and lists a cable line’s cables', async () => {
   const user = userEvent.setup();
   const { container } = open();
   await user.selectOptions(screen.getByLabelText('Highlight VLAN'), '20');
-  // Only the trunked uplink and the two switches carry Storage.
-  expect(container.querySelectorAll('.topo-edge:not(.is-dim)')).toHaveLength(1);
-  expect(container.querySelectorAll('.topo-node:not(.is-dim)')).toHaveLength(2);
-  await user.click(screen.getByRole('button', { name: /^SW-0[12] to SW-0[12], 1 cable$/ }));
-  expect(screen.getByRole('heading', { name: /^SW-0[12] ↔ SW-0[12]$/ })).toBeInTheDocument();
-  expect(screen.getByText(/^SW-0[12] Te1\/1\/1 ↔ SW-0[12] Te1\/1\/1$/)).toBeInTheDocument();
+  // Storage: the bonded storage server, its access switch, and every trunk (they allow all VLANs).
+  expect(container.querySelectorAll('.topo-edge:not(.is-dim)')).toHaveLength(8);
+  expect(container.querySelectorAll('.topo-node:not(.is-dim)')).toHaveLength(6);
+  await user.click(screen.getByRole('button', { name: /^CORE-0[12] to CORE-0[12], 2 cables$/ }));
+  expect(screen.getByRole('heading', { name: /^CORE-0[12] ↔ CORE-0[12]$/ })).toBeInTheDocument();
+  expect(screen.getByText(/^CORE-0[12] Te1\/1\/7 ↔ CORE-0[12] Te1\/1\/7$/)).toBeInTheDocument();
 });
 
 it('prints the diagram and VLAN list on the Install sheet', () => {
   render(<RouterProvider router={createMemoryRouter(routes, { initialEntries: [`/rooms/${server}/install-sheet`] })} />);
   expect(screen.getByRole('img', { name: 'Network diagram' })).toBeInTheDocument();
-  expect(screen.getByRole('table', { name: 'VLANs' })).toHaveTextContent('99Management2 ports');
+  expect(screen.getByRole('table', { name: 'VLANs' })).toHaveTextContent('99Management16 ports');
 });

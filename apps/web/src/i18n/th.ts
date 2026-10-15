@@ -703,7 +703,7 @@ export const th: Messages = {
     },
     lag_far_end: {
       message: (p) => `${p.device} ${p.lag}: ปลายสายบน ${p.far} ไม่ได้อยู่ในกลุ่มเดียวกัน`,
-      hint: () => 'จัดพอร์ตปลายทางเป็น LAG เดียวกันด้วย ถ้าข้ามสองอุปกรณ์ ใช้ได้กับสวิตช์แบบ stack หรือ MLAG',
+      hint: () => 'จัดพอร์ตปลายทางเป็น LAG เดียวกันบนแต่ละอุปกรณ์ที่สายไปถึง',
     },
     clearance_sliding_door: {
       message: (p) => `${p.other} อยู่ในระยะเว้นว่าง${side(p.side)}ของ ${p.rack}`,
