@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { applyPlanCommand } from './commands/plan';
 import { emptyContent } from './factories';
 import { feedIssues } from './checks/feeds';
-import { feedRoute, loadA, nextFeedLabel, upstreamOf } from './feeds';
+import { feedRoute, loadA, nextFeedLabel, powerPath, upstreamOf } from './feeds';
 import { centerOf } from './geometry/polygon';
 import { migrate } from './migrations';
 import type { PlanContent, Rack, RoomObject } from './model/types';
@@ -118,6 +118,23 @@ describe('power chains', () => {
     c = must(feed(c, 'b', 'ups', 'pdu'));
     c = must(feed(c, 'c', 'pdu', 'rk'));
     expect(upstreamOf(c, 'rk').map((o) => o.name)).toEqual(['PDU-01', 'UPS-01', 'MCB-01']);
+  });
+
+  it('traces the whole power path of an object: what feeds it, back to the panel, and everything it feeds', () => {
+    let c = must(feed(chain(), 'a', 'mcb', 'ups', { way: 1 }));
+    c = must(feed(c, 'b', 'ups', 'pdu'));
+    c = must(feed(c, 'c', 'pdu', 'rk'));
+    // A second rack on the same MCB is a sibling, not part of the UPS's path.
+    const rk2: Rack = { ...(createObject('rack', { x: 4.2, y: 2 }, []) as Rack), id: 'rk2', name: 'RK-02' };
+    c = must(applyPlanCommand(c, { type: 'object/add', object: rk2 }));
+    c = must(feed(c, 'd', 'mcb', 'rk2', { way: 2 }));
+    const ups = powerPath(c, 'ups');
+    expect([...ups.feedIds].sort()).toEqual(['a', 'b', 'c']);
+    expect([...ups.objectIds].sort()).toEqual(['mcb', 'pdu', 'rk', 'ups']);
+    expect([...powerPath(c, 'rk').feedIds].sort()).toEqual(['a', 'b', 'c']);
+    expect([...powerPath(c, 'mcb').feedIds].sort()).toEqual(['a', 'b', 'c', 'd']);
+    expect([...powerPath(c, 'rk2').feedIds]).toEqual(['d']);
+    expect(powerPath(c, 'nothing').feedIds.size).toBe(0);
   });
 
   it('gives a source one input, and refuses loops and self-feeds', () => {

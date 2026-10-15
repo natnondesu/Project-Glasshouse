@@ -30,6 +30,8 @@ interface RackModelProps {
   stagger?: boolean;
   /** Always show the label, or only on hover and selection. */
   labels?: 'always' | 'hover';
+  /** On the highlighted power path. */
+  onPath?: boolean;
 }
 
 function Frame({ w, h, d, color }: { w: number; h: number; d: number; color: string }) {
@@ -81,7 +83,7 @@ function Label({ rack, accent, h, existing, stagger }: { rack: Rack3D; accent: s
   );
 }
 
-export function RackModel({ rack, palette, selected, onSelect, existing = false, stagger = false, labels = 'always' }: RackModelProps) {
+export function RackModel({ rack, palette, selected, onSelect, existing = false, stagger = false, labels = 'always', onPath = false }: RackModelProps) {
   const [w, h, d] = rack.size;
   const [hover, setHover] = useState(false);
   const frontZ = d / 2 - RAIL_SETBACK_M;
@@ -156,14 +158,14 @@ export function RackModel({ rack, palette, selected, onSelect, existing = false,
           </mesh>
         </>
       )}
-      <Edges size={rack.size} color={selected || hover ? palette.front : palette.wall} opacity={selected ? 1 : hover ? 0.8 : 0.45} />
+      <Edges size={rack.size} color={selected || hover || onPath ? palette.front : palette.wall} opacity={selected ? 1 : hover || onPath ? 0.8 : 0.45} />
       {selected ? (
         <mesh position={[0, -h / 2 + 0.003, 0]} rotation={[-Math.PI / 2, 0, 0]} raycast={NO_PICK}>
           <planeGeometry args={[w + 0.16, d + 0.16]} />
           <meshBasicMaterial color={palette.front} transparent opacity={0.22} depthWrite={false} />
         </mesh>
       ) : null}
-      {labels === 'always' || hover || selected ? <Label rack={rack} accent={accent} h={h} existing={existing} stagger={labels === 'always' && stagger} /> : null}
+      {labels === 'always' || hover || selected || onPath ? <Label rack={rack} accent={accent} h={h} existing={existing} stagger={labels === 'always' && stagger} /> : null}
     </group>
   );
 }

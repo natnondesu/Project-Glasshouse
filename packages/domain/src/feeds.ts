@@ -47,6 +47,39 @@ function upstreamIds(content: PlanContent, id: Id, skipFeedId?: Id): Id[] {
 export const upstreamOf = (content: PlanContent, id: Id): RoomObject[] =>
   upstreamIds(content, id).flatMap((sid) => content.objects.filter((o) => o.id === sid));
 
+export interface PowerPath {
+  /** Feeds on the path, each flowing from its source to its target. */
+  feedIds: Set<Id>;
+  /** The object itself and everything on the path. */
+  objectIds: Set<Id>;
+}
+
+/**
+ * The whole power path through an object: up through what feeds it to the panel, and down through
+ * everything it feeds. Siblings that only share an upstream source are not on the path.
+ */
+export function powerPath(content: PlanContent, id: Id): PowerPath {
+  const feedIds = new Set<Id>();
+  const objectIds = new Set<Id>();
+  if (!content.objects.some((o) => o.id === id)) return { feedIds, objectIds };
+  objectIds.add(id);
+  const walk = (start: Id, from: 'targetId' | 'sourceId', to: 'targetId' | 'sourceId'): void => {
+    const queue = [start];
+    while (queue.length > 0) {
+      const cur = queue.shift()!;
+      for (const f of content.feeds) {
+        if (f[from] !== cur || feedIds.has(f.id)) continue;
+        feedIds.add(f.id);
+        if (!objectIds.has(f[to])) queue.push(f[to]);
+        objectIds.add(f[to]);
+      }
+    }
+  };
+  walk(id, 'targetId', 'sourceId');
+  walk(id, 'sourceId', 'targetId');
+  return { feedIds, objectIds };
+}
+
 /**
  * Current drawn through a power source: every rack it ultimately powers, each counted once.
  * Like a rack feed, it assumes the source may have to carry those racks alone.
