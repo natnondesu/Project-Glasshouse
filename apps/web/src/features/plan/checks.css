@@ -120,3 +120,40 @@
   white-space: nowrap;
   display: inline-block;
 }
+
+/* Collapsed: just the heading and counts, so the drawing gets the space. */
+.checks__toggle {
+  display: inline-grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  /* Takes no height of its own: the strip stays the size the plan fits around. */
+  margin: -4px 0 -4px -4px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: var(--ink-2);
+  cursor: pointer;
+}
+
+.checks__toggle:hover {
+  background: var(--control-bg);
+  color: var(--ink);
+}
+
+.checks__toggle svg {
+  transform: rotate(-90deg);
+  transition: transform var(--duration-fast) ease-out;
+}
+
+.checks__toggle.is-open svg {
+  transform: rotate(90deg);
+}
+
+.checks.is-collapsed {
+  overflow: hidden;
+}
+
+.checks.is-collapsed .checks__head {
+  padding-bottom: 4px;
+}

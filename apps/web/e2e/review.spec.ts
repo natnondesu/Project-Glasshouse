@@ -1,3 +1,4 @@
+import { pickTool } from './tools';
 import { expect, test, type Page } from '@playwright/test';
 
 async function roomWithServer(page: Page): Promise<void> {
@@ -11,7 +12,7 @@ async function roomWithServer(page: Page): Promise<void> {
   await page.getByRole('button', { name: 'Add room to Site A' }).click();
   await page.getByRole('textbox', { name: 'Room name' }).fill('MDF-1');
   await page.keyboard.press('Enter');
-  await page.getByRole('button', { name: 'Place rack' }).click();
+  await pickTool(page, 'Place rack', 'Rack');
   const box = await page.getByTestId('footprint').boundingBox();
   if (!box) throw new Error('Footprint not rendered');
   await page.mouse.click(box.x + box.width * 0.3, box.y + box.height * 0.35);

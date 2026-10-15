@@ -56,3 +56,14 @@ it('offers only viewing tools on a frozen revision', () => {
   const bar = screen.getByRole('toolbar', { name: 'Plan tools' });
   expect(within(bar).getAllByRole('button').map((b) => b.getAttribute('aria-label'))).toEqual(['Select', 'Pan', 'Measure']);
 });
+
+it('opens a group’s tools when its button is clicked, without switching tool yet', async () => {
+  const user = userEvent.setup();
+  render(<Harness />);
+  await user.click(screen.getByRole('button', { name: 'Place rack' }));
+  expect(screen.getByTestId('tool')).toHaveTextContent('select');
+  const menu = screen.getByRole('menu', { name: 'Objects tools' });
+  expect(within(menu).getByRole('menuitemradio', { name: 'Rack' })).toHaveFocus();
+  await user.click(within(menu).getByRole('menuitemradio', { name: 'Sliding door' }));
+  expect(screen.getByTestId('tool')).toHaveTextContent('sliding_door');
+});

@@ -47,3 +47,13 @@ it('sends you to the plan when the room has no racks', () => {
   expect(screen.getByRole('link', { name: 'Go to the plan' })).toHaveAttribute('href', '/rooms/r/plan');
 });
 
+
+it('brings the inspector back when something new is selected', async () => {
+  const user = userEvent.setup();
+  localStorage.clear();
+  open();
+  await user.click(screen.getByRole('button', { name: 'Hide inspector' }));
+  expect(screen.queryByRole('complementary', { name: 'Equipment details' })).toBeNull();
+  await user.click(screen.getByRole('button', { name: 'RK-01' }));
+  expect(screen.getByRole('complementary', { name: 'Equipment details' })).toBeInTheDocument();
+});

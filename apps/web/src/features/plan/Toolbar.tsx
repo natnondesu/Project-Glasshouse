@@ -19,7 +19,15 @@ function Hint({ tool, id }: { tool: Tool; id: string }) {
   );
 }
 
-function ToolButton({ tool, active, onTool }: { tool: Tool; active: boolean; onTool: (tool: Tool) => void }) {
+interface ToolButtonProps {
+  tool: Tool;
+  active: boolean;
+  onTool: (tool: Tool) => void;
+  /** A group's face opens its list instead of picking straight away. */
+  menu?: { open: boolean; onToggle: () => void };
+}
+
+function ToolButton({ tool, active, onTool, menu }: ToolButtonProps) {
   const spec = TOOL_SPECS[tool];
   const label = useT().tools.spec[tool].label;
   const [hover, setHover] = useState(false);
@@ -31,14 +39,15 @@ function ToolButton({ tool, active, onTool }: { tool: Tool; active: boolean; onT
         className="tool"
         aria-pressed={active}
         aria-label={label}
-        aria-describedby={hover ? hintId : undefined}
+        aria-describedby={hover && !menu?.open ? hintId : undefined}
+        {...(menu ? { 'aria-haspopup': 'menu' as const, 'aria-expanded': menu.open } : {})}
         onFocus={() => setHover(true)}
         onBlur={() => setHover(false)}
-        onClick={() => onTool(tool)}
+        onClick={() => (menu ? menu.onToggle() : onTool(tool))}
       >
         <spec.Icon />
       </button>
-      {hover ? <Hint tool={tool} id={hintId} /> : null}
+      {hover && !menu?.open ? <Hint tool={tool} id={hintId} /> : null}
     </span>
   );
 }
@@ -55,6 +64,13 @@ function Group({ group, tool, current, onTool }: GroupProps) {
   const cell = useRef<HTMLSpanElement>(null);
   const m = useT();
   const groupLabel = m.tools.group[group.id];
+  const flyout = useRef<HTMLSpanElement>(null);
+  // Keyboard users land on the current tool when the list opens.
+  useEffect(() => {
+    if (!open) return;
+    const el = flyout.current;
+    (el?.querySelector<HTMLElement>('[aria-checked="true"]') ?? el?.querySelector<HTMLElement>('[role="menuitemradio"]'))?.focus();
+  }, [open]);
   useEffect(() => {
     if (!open) return;
     const close = (e: PointerEvent): void => {
@@ -65,14 +81,15 @@ function Group({ group, tool, current, onTool }: GroupProps) {
   }, [open]);
   return (
     <span ref={cell} className="tool-group" onKeyDown={(e) => e.key === 'Escape' && setOpen(false)}>
-      <ToolButton tool={current} active={tool === current} onTool={onTool} />
+      {/* Clicking the group always shows its tools: many people never find the corner arrow. */}
+      <ToolButton tool={current} active={tool === current} onTool={onTool} menu={group.tools.length > 1 ? { open, onToggle: () => setOpen((o) => !o) } : undefined} />
       {group.tools.length > 1 ? (
         <button type="button" className="tool-group__more" aria-label={m.tools.more(groupLabel)} aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
           <IconChevronCorner />
         </button>
       ) : null}
       {open ? (
-        <span className="tool-flyout glass" role="menu" aria-label={m.tools.groupTools(groupLabel)}>
+        <span ref={flyout} className="tool-flyout glass" role="menu" aria-label={m.tools.groupTools(groupLabel)}>
           <span className="tool-flyout__title">{groupLabel}</span>
           {group.tools.map((t) => {
             const spec = TOOL_SPECS[t];
