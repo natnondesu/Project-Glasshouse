@@ -23,6 +23,7 @@ export * from './catalog';
 export * from './commands/catalog';
 export * from './occupancy';
 export * from './devices';
+export * from './paste';
 export * from './commands/equipment';
 export * from './commands/nodes';
 export * from './power';

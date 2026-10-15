@@ -2,7 +2,7 @@ import { expandPorts } from './ports';
 import { isRack } from './model/types';
 import type { Category, Chassis, Id, Node, PlanContent, Rack, RackDevice, ReservedRange, Template, Units, Port } from './model/types';
 
-const PREFIX: Record<Category, string> = { server: 'SRV', network: 'SW', power: 'PWR', chassis: 'CH', misc: 'MISC' };
+export const PREFIX: Record<Category, string> = { server: 'SRV', network: 'SW', power: 'PWR', chassis: 'CH', misc: 'MISC' };
 
 export const racksOf = (content: PlanContent): Rack[] => content.objects.filter(isRack);
 
@@ -50,9 +50,13 @@ const allDeviceNames = (content: PlanContent): string[] =>
   racksOf(content).flatMap((r) => r.devices.flatMap((d) => (d.kind === 'chassis' ? [d.name, ...d.nodes.map((n) => n.name)] : [d.name])));
 
 export function nextDeviceName(content: PlanContent, template: Template): string {
-  const prefix = template.mounting === 'slot' ? 'NODE' : PREFIX[template.category];
+  return nextNameWithPrefix(content, template.mounting === 'slot' ? 'NODE' : PREFIX[template.category], []);
+}
+
+/** The next PREFIX-NN after every name in the room and in `alsoTaken` (names about to be used). */
+export function nextNameWithPrefix(content: PlanContent, prefix: string, alsoTaken: string[]): string {
   const pattern = new RegExp(`^${prefix}-(\\d+)$`);
-  const max = allDeviceNames(content).reduce((m, n) => {
+  const max = [...allDeviceNames(content), ...alsoTaken].reduce((m, n) => {
     const match = pattern.exec(n);
     return match?.[1] ? Math.max(m, Number(match[1])) : m;
   }, 0);
