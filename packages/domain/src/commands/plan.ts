@@ -1,3 +1,4 @@
+import { extendFloor } from './extend';
 import type { Id, PlanContent, Rect } from '../model/types';
 import type { Result } from '../result';
 import { applyEquipmentCommand, type EquipmentCommand } from './equipment';
@@ -14,6 +15,8 @@ import { applyVlanCommand, type VlanCommand } from '../vlans';
 export type PlanCommand =
   | { type: 'survey/update'; patch: SurveyPatch }
   | { type: 'floor/add'; rect: Rect }
+  /** Draws floor that may lie outside the room: the room grows to fit it. */
+  | { type: 'floor/extend'; rect: Rect }
   | { type: 'floor/cut'; rect: Rect }
   | { type: 'floor/update'; id: Id; patch: Partial<Omit<Rect, 'id'>> }
   | { type: 'floor/remove'; id: Id }
@@ -40,6 +43,8 @@ function applyOne(content: PlanContent, cmd: PlanCommand): Result<PlanContent> {
       return addFloorRect(content, 'floorAreas', cmd.rect);
     case 'floor/cut':
       return addFloorRect(content, 'cutOuts', cmd.rect);
+    case 'floor/extend':
+      return extendFloor(content, cmd.rect);
     case 'floor/update':
       return updateFloorRect(content, cmd.id, cmd.patch);
     case 'floor/remove':

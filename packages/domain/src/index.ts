@@ -43,3 +43,4 @@ export * from './ports';
 export * from './checks/links';
 export * from './vlans';
 export * from './checks/vlans';
+export { roomExtensionFor, type RoomExtension } from './commands/extend';

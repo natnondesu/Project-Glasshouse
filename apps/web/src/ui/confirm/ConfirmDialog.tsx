@@ -44,7 +44,7 @@ export function ConfirmDialog() {
           <button ref={cancelBtn} type="button" className="btn" onClick={() => answer(false)}>
             {m.common.cancel}
           </button>
-          <button ref={confirmBtn} type="button" className="btn btn--danger-solid" onClick={() => answer(true)}>
+          <button ref={confirmBtn} type="button" className={`btn ${request.tone === 'primary' ? 'btn--ink' : 'btn--danger-solid'}`} onClick={() => answer(true)}>
             {request.confirmLabel}
           </button>
         </div>

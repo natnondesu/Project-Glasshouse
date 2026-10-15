@@ -5,6 +5,8 @@ export interface ConfirmRequest {
   /** What happens, in a sentence: what goes, and whether undo brings it back. */
   body: string;
   confirmLabel: string;
+  /** Removals are red; a change that adds or grows something is the ordinary primary button. */
+  tone?: 'danger' | 'primary';
 }
 
 interface ConfirmState {

@@ -116,3 +116,41 @@ test('Measure: hover shows wall gaps, two clicks measure, Escape clears', async 
   await page.keyboard.press('Escape');
   await expect(page.getByTestId('measure-result')).toHaveCount(0);
 });
+
+test('drawing floor past the room asks to extend it; growing left keeps what is drawn in place', async ({ page }) => {
+  await createRoom(page);
+  await placeRack(page, 0.5, 0.5);
+  await page.keyboard.press('Escape');
+  const survey = page.getByRole('complementary', { name: 'Survey' });
+  await expect(survey).toBeVisible();
+  const drag = async (fx1: number, fy1: number, fx2: number, fy2: number): Promise<void> => {
+    await page.getByRole('button', { name: 'Add floor area' }).click();
+    const box = (await page.getByTestId('footprint').boundingBox())!;
+    await page.mouse.move(box.x + box.width * fx1, box.y + box.height * fy1);
+    await page.mouse.down();
+    await page.mouse.move(box.x + box.width * fx2, box.y + box.height * fy2, { steps: 6 });
+    await page.mouse.up();
+  };
+  const width = survey.getByLabel('Width', { exact: true });
+  const startWidth = Number(await width.inputValue());
+
+  // Past the right edge: the room grows; cancelling first changes nothing.
+  await drag(0.8, 0.2, 1.2, 0.4);
+  await expect(page.getByRole('alertdialog', { name: /^Extend the room to / })).toBeVisible();
+  await page.getByRole('button', { name: 'Cancel' }).click();
+  await expect(width).toHaveValue(startWidth.toFixed(2));
+  await drag(0.8, 0.2, 1.2, 0.4);
+  await page.getByRole('button', { name: 'Extend room' }).click();
+  await expect.poll(async () => Number(await width.inputValue())).toBeGreaterThan(startWidth);
+
+  // Past the left edge: everything moves over in the plan, and stays put on screen.
+  const rackBefore = (await page.getByRole('button', { name: 'RK-01, Rack' }).boundingBox())!;
+  const grown = Number(await width.inputValue());
+  await drag(0.1, 0.6, -0.15, 0.8);
+  await expect(page.getByRole('alertdialog')).toContainText('everything already drawn moves over');
+  await page.getByRole('button', { name: 'Extend room' }).click();
+  await expect.poll(async () => Number(await width.inputValue())).toBeGreaterThan(grown);
+  const rackAfter = (await page.getByRole('button', { name: 'RK-01, Rack' }).boundingBox())!;
+  expect(Math.abs(rackAfter.x - rackBefore.x)).toBeLessThan(2);
+  expect(Math.abs(rackAfter.y - rackBefore.y)).toBeLessThan(2);
+});

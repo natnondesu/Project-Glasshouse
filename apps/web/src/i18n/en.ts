@@ -293,6 +293,10 @@ export const en = {
     label: (length: string, a: string, b: string) => `Dimension ${length} m, ${a} to ${b}`,
   },
   plan: {
+    extendTitle: (w: string, l: string) => `Extend the room to ${w} × ${l} m?`,
+    extendBody: 'The area you drew goes past the room’s bounds. The room grows to fit it; undo puts it back.',
+    extendShiftBody: 'The area you drew goes past the room’s left or top edge. The room grows to fit it, and everything already drawn moves over by the same amount so it stays where it is. Undo puts it back.',
+    extendAction: 'Extend room',
     canvas: 'Room plan',
     drawing: 'Room plan drawing. Tab moves between objects, arrow keys nudge, R rotates 45 degrees.',
     zoom: 'Zoom',
