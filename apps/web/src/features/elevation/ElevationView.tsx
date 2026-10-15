@@ -31,6 +31,7 @@ import { flaggedObjectIds } from '../plan/flagged';
 import { CatalogPalette } from './CatalogPalette';
 import { EquipmentInspector } from './EquipmentInspector';
 import { PowerBar } from './PowerBar';
+import { useDeleteKey } from './useDeleteKey';
 import { MIN_U_PX, rackHitAt, RackElevation, U_PX } from './RackElevation';
 import { useDeviceDrag } from './deviceDrag';
 import { useT } from '../../i18n';
@@ -86,6 +87,7 @@ export function ElevationView({ location, readOnly = false, viewingPast = false 
     return () => clearTimeout(t);
   }, [pulse]);
   const [message, setMessage] = useState<string | null>(null);
+  useDeleteKey({ content, selectedId, readOnly, commit, onRemoved: select });
   const [portsFor, setPortsFor] = useState<string | null>(null);
   // Fit the tallest rack to the area's height (13–16 px per U), so a whole 42U rack shows on a laptop.
   const racksArea = useRef<HTMLElement>(null);

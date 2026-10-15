@@ -4,6 +4,7 @@ import { DemandField } from '../../ui/DemandField';
 import { NumberField } from '../../ui/NumberField';
 import { TextField } from '../../ui/TextField';
 import { useT } from '../../i18n';
+import { confirmAction } from '../../ui/confirm/confirmStore';
 
 interface ReservedInspectorProps {
   rack: Rack;
@@ -43,9 +44,11 @@ export function ReservedInspector({ rack, range, commit, onSelect }: ReservedIns
         <button
           type="button"
           className="btn btn--sm btn--danger"
-          onClick={() => {
-            if (commit({ type: 'reserved/remove', id: range.id }) === null) onSelect(rack.id);
-          }}
+          onClick={() =>
+            void confirmAction({ title: m.reserved.removeQuestion(range.label), body: m.confirmRemove.undo, confirmLabel: m.confirmRemove.action }).then((ok) => {
+              if (ok && commit({ type: 'reserved/remove', id: range.id }) === null) onSelect(rack.id);
+            })
+          }
         >
           {m.reserved.remove}
         </button>

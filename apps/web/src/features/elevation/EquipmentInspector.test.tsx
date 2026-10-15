@@ -5,6 +5,7 @@ import { MemoryRouter } from 'react-router';
 import { expect, it, vi } from 'vitest';
 import { CatalogPalette } from './CatalogPalette';
 import { EquipmentInspector } from './EquipmentInspector';
+import { ConfirmDialog } from '../../ui/confirm/ConfirmDialog';
 
 const catalog = seedTemplates();
 const tpl = (id: string) => catalog.find((t) => t.id === id) as Template;
@@ -26,6 +27,7 @@ const show = (selectedId: string | null, commit = vi.fn<(c: unknown, k?: string)
   render(
     <MemoryRouter>
       <EquipmentInspector content={content} roomId="room" selectedId={selectedId} activeRack={content.objects[0] as Rack} catalog={catalog} commit={commit} onSelect={onSelect} />
+      <ConfirmDialog />
     </MemoryRouter>,
   );
   return { commit, onSelect };
@@ -40,6 +42,8 @@ it('edits a device: move to another rack, unknown demand, remove after confirmat
   await user.click(screen.getByRole('button', { name: 'Unknown' }));
   expect(commit.mock.lastCall?.[0]).toEqual({ type: 'device/update', id: 'srv', patch: { demand: { kind: 'unknown' } } });
   await user.click(screen.getByRole('button', { name: 'Remove SRV-01' }));
+  // The confirmation pops up in the middle of the screen, not in the panel.
+  expect(screen.getByRole('alertdialog', { name: 'Remove SRV-01?' })).toBeInTheDocument();
   await user.click(screen.getByRole('button', { name: 'Remove' }));
   expect(commit.mock.lastCall?.[0]).toEqual({ type: 'device/remove', id: 'srv' });
   expect(onSelect).toHaveBeenCalledWith(null);
