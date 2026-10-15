@@ -75,16 +75,16 @@ it('chooses which kinds are always labelled, and remembers it', async () => {
   expect(menu).not.toBeInTheDocument();
 });
 
-it('opens an MCB’s ways when it is clicked in the room, and from its card', async () => {
+it('selects an MCB clicked in the room, and opens its ways only from Manage ways', async () => {
   const user = userEvent.setup();
   render(<RouterProvider router={createMemoryRouter(routes, { initialEntries: ['/rooms/r/3d'] })} />);
   await user.click(await screen.findByTestId('click-mcb'));
-  const manager = screen.getByRole('dialog', { name: 'MCB-01 ways' });
   expect(screen.getByRole('region', { name: 'MCB-01 details' })).toHaveTextContent('MCB panel');
+  expect(screen.queryByRole('dialog', { name: 'MCB-01 ways' })).toBeNull();
+  await user.click(screen.getByRole('button', { name: 'Manage ways' }));
+  const manager = screen.getByRole('dialog', { name: 'MCB-01 ways' });
   await user.click(screen.getByRole('button', { name: 'Close MCB-01 ways' }));
   expect(manager).not.toBeInTheDocument();
-  await user.click(screen.getByRole('button', { name: 'Manage ways' }));
-  expect(screen.getByRole('dialog', { name: 'MCB-01 ways' })).toBeInTheDocument();
 });
 
 it('hides and shows power lines, and remembers it', async () => {
