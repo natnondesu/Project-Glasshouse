@@ -1,6 +1,5 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
 
-const U_PX = 16;
 const PAD = 2;
 
 /** Press near the device's bottom U, bring the target row into view, then move over `u` of `rack` in steps. */
@@ -12,9 +11,11 @@ async function dragTo(page: Page, block: Locator, rack: Locator, u: number): Pro
   });
   const from = await block.boundingBox();
   if (!from) throw new Error('Not rendered');
-  await page.mouse.move(from.x + from.width / 2, from.y + from.height - U_PX / 2);
+  await page.mouse.move(from.x + from.width / 2, from.y + from.height - 6);
   await page.mouse.down();
   const cap = Number(await rack.getAttribute('data-capacity-u'));
+  // The elevation fits its unit height to the screen; read it from the rack.
+  const U_PX = Number(await rack.getAttribute('data-u-px'));
   const rowY = PAD + (cap - u) * U_PX + U_PX / 2;
   await rack.evaluate((svg, rowY) => {
     const area = svg.closest('.elev__racks')!;

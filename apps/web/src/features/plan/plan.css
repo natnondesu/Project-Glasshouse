@@ -962,11 +962,35 @@
   color: var(--ink-2);
 }
 
-.plan-view__search {
+.plan-view__topbar {
+  position: absolute;
   left: 76px;
+  right: var(--inspector-space);
   top: 12px;
-  width: min(320px, calc(100% - 640px));
-  min-width: 200px;
+  z-index: 5;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  pointer-events: none;
+}
+
+.plan-view__topbar > * {
+  pointer-events: auto;
+}
+
+.plan-view__topbar .search.plan-view__search {
+  position: relative;
+  flex: 0 1 320px;
+  min-width: 160px;
+  width: auto;
+}
+
+.plan-view__topbar .zoom {
+  position: relative;
+  right: auto;
+  top: auto;
+  flex: none;
 }
 
 .cut-out--void {

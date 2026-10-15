@@ -38,7 +38,7 @@ export function PlanView({ location, readOnly = false }: { location: RoomLocatio
     return () => clearTimeout(t);
   }, [pulse]);
   const [tool, setTool] = useState<Tool>('select');
-  const [legend, setLegend] = usePersistentState('glasshouse:plan-legend', true);
+  const [legend, setLegend] = usePersistentState('glasshouse:plan-legend-open', false);
   const [layers, setLayers] = usePersistentState<PlanLayers>('glasshouse:plan-layers', ALL_LAYERS);
   const [managedPanel, setManagedPanel] = useState<string | null>(null);
   const managed = content.objects.find((o) => o.id === managedPanel && o.type === 'mcb') ?? null;
@@ -85,6 +85,8 @@ export function PlanView({ location, readOnly = false }: { location: RoomLocatio
           onFocusObject={select}
           inspectorOpen={inspectorOpen}
         />
+        {/* One row: search gives way before it can collide with the zoom bar, in any language. */}
+        <div className="plan-view__topbar">
         <SearchBox
           className="plan-view__search"
           content={content}
@@ -106,7 +108,8 @@ export function PlanView({ location, readOnly = false }: { location: RoomLocatio
           }
         />
         <ZoomControls viewport={viewport} legend={legend} onLegend={setLegend} layers={layers} onLayers={setLayers} />
-        {legend ? <PlanLegend view={viewport.view} clearance={layers.clearance !== false} /> : null}
+        </div>
+        {legend ? <PlanLegend view={viewport.view} clearance={layers.clearance !== false} onClose={() => setLegend(false)} /> : null}
         {managed ? (
           <fieldset className="inspector__lock" disabled={readOnly}>
             <PanelManager panel={managed} content={content} commit={commit} onClose={() => setManagedPanel(null)} />

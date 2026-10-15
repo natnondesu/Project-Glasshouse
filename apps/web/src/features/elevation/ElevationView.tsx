@@ -21,7 +21,7 @@ import {
   type RoomLocation,
   type Template,
 } from '@glasshouse/domain';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useRef } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { usePlanCommit, useSearchParamState } from '../../store/hooks';
 import { useWorkspaceStore } from '../../store/workspaceStore';
@@ -30,7 +30,7 @@ import { flaggedObjectIds } from '../plan/flagged';
 import { CatalogPalette } from './CatalogPalette';
 import { EquipmentInspector } from './EquipmentInspector';
 import { PowerBar } from './PowerBar';
-import { rackHitAt, RackElevation } from './RackElevation';
+import { MIN_U_PX, rackHitAt, RackElevation, U_PX } from './RackElevation';
 import { useDeviceDrag } from './deviceDrag';
 import { useT } from '../../i18n';
 import './elevation.css';
@@ -51,6 +51,8 @@ function entityNames(content: PlanContent): { id: string; name: string }[] {
 }
 
 const PULSE_MS = 1700;
+/** Vertical space a rack needs besides its units: caption, padding and frame. */
+const RACK_CHROME_PX = 110;
 
 /** Centres an SVG block in the rack scroll area. Firefox ignores scrollIntoView on SVG children, so scroll the area itself. */
 function revealInRacks(el: Element): void {
@@ -84,7 +86,20 @@ export function ElevationView({ location, readOnly = false, viewingPast = false 
   }, [pulse]);
   const [message, setMessage] = useState<string | null>(null);
   const [portsFor, setPortsFor] = useState<string | null>(null);
+  // Fit the tallest rack to the area's height (13–16 px per U), so a whole 42U rack shows on a laptop.
+  const racksArea = useRef<HTMLElement>(null);
+  const [areaH, setAreaH] = useState(0);
+  useEffect(() => {
+    const el = racksArea.current;
+    if (!el || typeof ResizeObserver === 'undefined') return;
+    const ro = new ResizeObserver(() => setAreaH(el.clientHeight));
+    ro.observe(el);
+    setAreaH(el.clientHeight);
+    return () => ro.disconnect();
+  }, []);
   const racks = racksOf(content);
+  const tallest = Math.max(1, ...racks.map((r) => r.capacityU));
+  const uPx = areaH ? Math.max(MIN_U_PX, Math.min(U_PX, Math.floor((areaH - RACK_CHROME_PX) / tallest))) : U_PX;
   const issues = useMemo(() => revisionIssues(revision), [revision]);
   const flagged = useMemo(() => flaggedObjectIds(issues), [issues]);
   const names = useMemo(() => entityNames(content), [content]);
@@ -173,7 +188,7 @@ export function ElevationView({ location, readOnly = false, viewingPast = false 
         <PowerBar content={content} />
         <StateLegend />
       </div>
-      <section className="elev__racks" aria-label={m.elevation.racks}>
+      <section ref={racksArea} className="elev__racks" aria-label={m.elevation.racks}>
         {racks.map((rack) => (
           <RackElevation
             key={rack.id}
@@ -185,6 +200,7 @@ export function ElevationView({ location, readOnly = false, viewingPast = false 
             onActivate={() => select(rack.id)}
             pulseId={pulse}
             stateOf={stateOf}
+            uPx={uPx}
             dragPreview={drag.preview}
             onDeviceDragStart={readOnly ? undefined : drag.start}
             onDropTemplate={(templateId, u) => {

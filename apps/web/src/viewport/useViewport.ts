@@ -3,7 +3,8 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState, type RefObje
 import { fit, pan, toWorld, wheelZoomFactor, zoomAt, type Insets, type View } from './math';
 
 /** Leaves room for the floating glass panels: tools (left), inspector (right), checks (bottom). */
-export const FIT_INSETS: Insets = { top: 72, right: 392, bottom: 210, left: 132 };
+// Top leaves room for the overall dimension line above the room, below the search and zoom bar.
+export const FIT_INSETS: Insets = { top: 104, right: 392, bottom: 210, left: 132 };
 
 export interface ViewportApi {
   svgRef: RefObject<SVGSVGElement | null>;

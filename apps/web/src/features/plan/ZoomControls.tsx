@@ -21,7 +21,7 @@ export function ZoomControls({ viewport, legend, onLegend, layers, onLayers }: {
       <button type="button" className="zoom__fit" onClick={viewport.fitToContent}>
         {m.plan.fit}
       </button>
-      <button type="button" className="zoom__fit" aria-pressed={legend} onClick={() => onLegend(!legend)}>
+      <button type="button" className="zoom__fit" aria-pressed={legend} data-legend-toggle onClick={() => onLegend(!legend)}>
         {m.plan.legend}
       </button>
       <ViewMenu layers={layers} onChange={onLayers} />
