@@ -130,4 +130,14 @@ describe('door hinge', () => {
     expect(content.objects.find((o) => o.id === 'd1')).toMatchObject({ hinge: 'right' });
     expect(applyPlanCommand(content, { type: 'object/update', id: 'f1', patch: { hinge: 'left' } })).toMatchObject({ ok: false, error: { message: 'F-01 is not a door.' } });
   });
+
+  it('turns a door into a sliding door, and refuses it for anything else', () => {
+    const door = { ...createObject('door', { x: 1, y: 0 }, []), id: 'd1' };
+    const desk = { ...createObject('furniture', { x: 2, y: 2 }, []), id: 'f1' };
+    const content = { ...emptyContent(), objects: [door, desk] };
+    const r = applyPlanCommand(content, { type: 'object/update', id: 'd1', patch: { opening: 'slide' } });
+    if (!r.ok) throw new Error(r.error.message);
+    expect(r.value.objects.find((o) => o.id === 'd1')).toMatchObject({ opening: 'slide' });
+    expect(applyPlanCommand(content, { type: 'object/update', id: 'f1', patch: { opening: 'slide' } })).toMatchObject({ ok: false, error: { message: 'F-01 is not a door.' } });
+  });
 });

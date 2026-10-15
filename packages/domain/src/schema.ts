@@ -74,6 +74,7 @@ const rack = z.object({
 });
 const simpleObject = z.object({ ...objectBase, type: z.enum(['existing_rack', 'door', 'mcb', 'furniture', 'wall_plug', 'industrial_socket', 'floor_box', 'ups', 'pdu']),
   hinge: z.enum(['left', 'right']).optional(),
+  opening: z.enum(['swing', 'slide']).optional(),
   panel: z.object({ phase: z.enum(['single', 'three']), ways: z.array(z.object({ ratingA: num, label: z.string() })) }).optional(),
 });
 const unverifiedName = z.object({ name: z.string(), at: z.string() });

@@ -67,6 +67,8 @@ export interface Object3D {
   position: Vec3;
   size: Vec3;
   yaw: number;
+  /** Doors only: which side the leaf hangs from or slides to, and how it opens. */
+  door?: { hinge: 'left' | 'right'; opening: 'swing' | 'slide' };
 }
 
 /** Cut-outs are columns and notches the floor can't use: shown solid so they read as obstacles, not holes. */
@@ -175,7 +177,7 @@ export function buildScene(content: PlanContent, stateOf: StateOf = ALL_PLANNED)
   for (const o of content.objects) {
     const p = placement(o);
     if (o.type === 'rack') racks.push({ id: o.id, name: o.name, owner: o.owner, ...p, ...rackFaces(o, stateOf), capacityU: o.capacityU, usedU: usedU(o) });
-    else others.push({ id: o.id, name: o.name, type: o.type, ...p });
+    else others.push({ id: o.id, name: o.name, type: o.type, ...p, ...(o.type === 'door' ? { door: { hinge: o.hinge ?? 'left', opening: o.opening ?? 'swing' } } : {}) });
   }
   const columns = content.survey.cutOuts.filter((c) => cutOutKind(c) === 'solid').map((c) => ({ id: c.id, position: [c.x + c.w / 2, COLUMN_HEIGHT_M / 2, c.y + c.d / 2] as Vec3, size: [c.w, COLUMN_HEIGHT_M, c.d] as Vec3 }));
   const feeds = content.feeds.flatMap((feed) => {

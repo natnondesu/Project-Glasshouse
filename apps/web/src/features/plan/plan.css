@@ -631,6 +631,24 @@
   stroke-dasharray: 3 3;
 }
 
+.door__leaf--slide {
+  stroke-width: 3;
+  stroke-linecap: butt;
+}
+
+.door__track {
+  fill: none;
+  stroke: var(--d-ink-2);
+  stroke-width: 0.9;
+}
+
+.door__arrow {
+  fill: none;
+  stroke: var(--d-ink-2);
+  stroke-width: 1.1;
+  stroke-linejoin: round;
+}
+
 .obj.is-selected .door__leaf,
 .obj.is-selected .door__jamb {
   stroke: var(--d-sel);

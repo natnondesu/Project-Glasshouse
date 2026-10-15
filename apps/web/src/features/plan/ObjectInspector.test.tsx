@@ -40,3 +40,14 @@ it('sets which end a door is hinged on', async () => {
   await user.click(screen.getByRole('button', { name: 'Right' }));
   expect(commit).toHaveBeenLastCalledWith({ type: 'object/update', id: door.id, patch: { hinge: 'right' } }, undefined);
 });
+
+it('turns a door into a sliding door and asks which side it slides to', async () => {
+  const user = userEvent.setup();
+  const door = { ...createObject('door', { x: 1, y: 0 }, []), name: 'D-01', opening: 'slide' as const };
+  const commit = vi.fn<(command: unknown, coalesceKey?: string) => string | null>(() => null);
+  render(<Inspector content={{ ...emptyContent(), objects: [door] }} selected={door} commit={commit} onDeleted={() => {}} />);
+  expect(screen.getByRole('button', { name: 'Sliding' })).toHaveAttribute('aria-pressed', 'true');
+  expect(screen.getByRole('group', { name: 'Side the door slides to' })).toBeInTheDocument();
+  await user.click(screen.getByRole('button', { name: 'Swing' }));
+  expect(commit).toHaveBeenLastCalledWith({ type: 'object/update', id: door.id, patch: { opening: 'swing' } }, undefined);
+});

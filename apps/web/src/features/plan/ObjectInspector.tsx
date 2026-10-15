@@ -55,17 +55,29 @@ export function ObjectInspector({ object, content, commit, onDeleted, onManagePa
           </div>
         ) : null}
         {object.type === 'door' ? (
-          <div className="field">
-            <span className="field__label">{m.inspector.hinge}</span>
-            <div className="seg" role="group" aria-label={m.inspector.doorHinge}>
-              {(['left', 'right'] as const).map((hinge) => (
-                <button key={hinge} type="button" aria-pressed={(object.hinge ?? 'left') === hinge} onClick={() => act(() => update({ hinge }))}>
-                  {m.inspector.side[hinge]}
-                </button>
-              ))}
+          <>
+            <div className="field">
+              <span className="field__label">{m.inspector.doorType}</span>
+              <div className="seg" role="group" aria-label={m.inspector.doorType}>
+                {(['swing', 'slide'] as const).map((opening) => (
+                  <button key={opening} type="button" aria-pressed={(object.opening ?? 'swing') === opening} onClick={() => act(() => update({ opening }))}>
+                    {m.inspector.opening[opening]}
+                  </button>
+                ))}
+              </div>
             </div>
-            <span className="inspector__note">{m.inspector.hingeNote}</span>
-          </div>
+            <div className="field">
+              <span className="field__label">{object.opening === 'slide' ? m.inspector.slidesTo : m.inspector.hinge}</span>
+              <div className="seg" role="group" aria-label={object.opening === 'slide' ? m.inspector.doorSlide : m.inspector.doorHinge}>
+                {(['left', 'right'] as const).map((hinge) => (
+                  <button key={hinge} type="button" aria-pressed={(object.hinge ?? 'left') === hinge} onClick={() => act(() => update({ hinge }))}>
+                    {m.inspector.side[hinge]}
+                  </button>
+                ))}
+              </div>
+              <span className="inspector__note">{object.opening === 'slide' ? m.inspector.slideNote : m.inspector.hingeNote}</span>
+            </div>
+          </>
         ) : null}
       </fieldset>
 

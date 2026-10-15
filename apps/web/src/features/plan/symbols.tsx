@@ -2,6 +2,10 @@ import { localToWorld, type RoomObject } from '@glasshouse/domain';
 import { toScreen, type View } from '../../viewport/math';
 
 const ARC_STEPS = 18;
+/** Sliding door drawing, in metres: the track sits off the wall face, the parked leaf laps the opening a little. */
+const SLIDE_STANDOFF_M = 0.05;
+const SLIDE_OVERLAP_M = 0.05;
+const SLIDE_ARROW_M = 0.25;
 const CHAR_PX_12 = 7.3;
 const LABEL_PAD_PX = 10;
 const MIN_CHARS = 3;
@@ -28,6 +32,28 @@ export function DoorSymbol({ o, view }: { o: RoomObject; view: View }) {
       <path className="door__jamb" d={`${path([pt(o, view, -o.w / 2, -o.d / 2), pt(o, view, -o.w / 2, o.d / 2)])} ${path([pt(o, view, o.w / 2, -o.d / 2), pt(o, view, o.w / 2, o.d / 2)])}`} />
       <line className="door__leaf" x1={hX} y1={hY} x2={lX} y2={lY} />
       <path className="door__swing" d={path(arc)} />
+    </g>
+  );
+}
+
+/**
+ * Sliding door: the opening between two jambs, the leaf parked along the wall beside it on its track,
+ * and an arrow across the opening for the direction it slides. No swing, so nothing in front is claimed.
+ */
+export function SlidingDoorSymbol({ o, view }: { o: RoomObject; view: View }) {
+  const s = o.type !== 'rack' && o.hinge === 'right' ? 1 : -1;
+  const track = o.d / 2 + SLIDE_STANDOFF_M;
+  const lap = SLIDE_OVERLAP_M;
+  const arrowY = o.d / 2 + SLIDE_ARROW_M;
+  const tip = s * o.w * 0.3;
+  const tail = -tip;
+  const head = o.w * 0.1;
+  return (
+    <g aria-hidden="true">
+      <path className="door__jamb" d={`${path([pt(o, view, -o.w / 2, -o.d / 2), pt(o, view, -o.w / 2, o.d / 2)])} ${path([pt(o, view, o.w / 2, -o.d / 2), pt(o, view, o.w / 2, o.d / 2)])}`} />
+      <path className="door__track" d={path([pt(o, view, -s * (o.w / 2), track), pt(o, view, s * (o.w / 2 + o.w), track)])} />
+      <path className="door__leaf door__leaf--slide" d={path([pt(o, view, s * (o.w / 2 - lap), track), pt(o, view, s * (o.w / 2 - lap + o.w), track)])} />
+      <path className="door__arrow" d={`${path([pt(o, view, tail, arrowY), pt(o, view, tip, arrowY)])} ${path([pt(o, view, tip - s * head, arrowY - head * 0.6), pt(o, view, tip, arrowY), pt(o, view, tip - s * head, arrowY + head * 0.6)])}`} />
     </g>
   );
 }

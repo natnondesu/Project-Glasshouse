@@ -90,15 +90,18 @@ export function placementIssues(content: PlanContent): Issue[] {
       for (const other of shapes) {
         if (other.object.id === rack.id || isFlush(other.object) || !overlaps(zone, other.poly)) continue;
         const isDoor = other.object.type === 'door';
+        const isSliding = isDoor && other.object.type !== 'rack' && other.object.opening === 'slide';
         issues.push({
           key: `clearance:${rack.id}:${side}:${other.object.id}`,
-          code: isDoor ? 'clearance_door' : 'clearance_obstructed',
+          code: isSliding ? 'clearance_sliding_door' : isDoor ? 'clearance_door' : 'clearance_obstructed',
           severity: isDoor ? 'warn' : 'block',
           params: { other: other.object.name, side, rack: rack.name },
           message: isDoor
             ? `${other.object.name} is inside the ${side} clearance of ${rack.name}.`
             : `${other.object.name} sits inside the ${side} clearance zone of ${rack.name}.`,
-          hint: isDoor
+          hint: isSliding
+            ? 'Usually fine: a sliding door needs no swing space. Keep the opening itself clear.'
+            : isDoor
             ? 'Usually fine for a doorway. Confirm the door swing does not hit the rack.'
             : `Move ${other.object.name}, or reduce ${rack.name}'s ${side} clearance if agreed.`,
           targets: [other.object.id, rack.id],
