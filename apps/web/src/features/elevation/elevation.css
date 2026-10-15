@@ -782,6 +782,14 @@
   touch-action: none;
 }
 
+/* Rack drawings are pointer surfaces, never text to select: a selection under the pointer lets
+   Safari start its own native drag, and the page then sees no pointer events until release. */
+.rack-elev__svg {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
 body.is-dragging-device,
 body.is-dragging-device * {
   cursor: grabbing !important;
