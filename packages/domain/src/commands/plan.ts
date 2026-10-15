@@ -56,6 +56,7 @@ function applyOne(content: PlanContent, cmd: PlanCommand): Result<PlanContent> {
     case 'device/move':
     case 'device/update':
     case 'device/remove':
+    case 'device/paste':
     case 'reserved/add':
     case 'reserved/update':
     case 'reserved/remove':

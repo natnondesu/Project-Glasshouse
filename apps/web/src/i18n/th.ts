@@ -393,6 +393,12 @@ export const th: Messages = {
     moreAbove: 'ส่วนบนของแร็คยังมีต่อ',
     slotTitle: (slot, name) => (name ? `สล็อต ${slot}: ${name}` : `สล็อต ${slot}: ว่าง`),
   },
+  copyPaste: {
+    copied: (name) => `คัดลอก ${name} แล้ว เลือกแร็คแล้วกด ⌘V หรือ Ctrl+V เพื่อวาง`,
+    pasted: (name, rack, u) => `วางสำเนาของ ${name} ลงใน ${rack} ที่ U${u}`,
+    nodeCopy: 'Node จะถูกคัดลอกไปพร้อม Chassis: เลือก Chassis เพื่อคัดลอก',
+    noRack: 'เลือกแร็คที่จะวาง',
+  },
   confirmRemove: {
     undo: 'กดย้อนกลับ (⌘Z หรือ Ctrl+Z) เพื่อนำกลับมาได้',
     action: 'ลบ',

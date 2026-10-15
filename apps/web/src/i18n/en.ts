@@ -398,6 +398,12 @@ export const en = {
     moreAbove: 'More of the rack above',
     slotTitle: (slot: number, name: string | null) => (name ? `Slot ${slot}: ${name}` : `Slot ${slot}: empty`),
   },
+  copyPaste: {
+    copied: (name: string) => `Copied ${name}. Select a rack, then press ⌘V or Ctrl+V to paste.`,
+    pasted: (name: string, rack: string, u: number) => `Pasted a copy of ${name} into ${rack} at U${u}.`,
+    nodeCopy: 'Nodes are copied with their Chassis: select the Chassis to copy it.',
+    noRack: 'Select a rack to paste into.',
+  },
   confirmRemove: {
     undo: 'Undo (⌘Z or Ctrl+Z) brings it back.',
     action: 'Remove',

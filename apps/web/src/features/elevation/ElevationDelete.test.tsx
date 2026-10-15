@@ -26,7 +26,8 @@ it('removes the selected device with Delete after a popup; Escape keeps it; typi
   await user.click(screen.getByLabelText('Name'));
   await user.keyboard('{End}x{Backspace}');
   expect(screen.queryByRole('alertdialog')).toBeNull();
-  await user.click(screen.getByRole('button', { name: /^SRV-01,/ }));
+  // Selected through the URL; leave the Name field so the key reaches the page.
+  await user.click(document.body);
   await user.keyboard('{Delete}');
   expect(screen.getByRole('alertdialog', { name: 'Remove SRV-01?' })).toBeInTheDocument();
   await user.keyboard('{Escape}');

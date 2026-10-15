@@ -3,6 +3,7 @@ import { deviceFromTemplate, findNode, findRackDevice, findReserved, getRack, ne
 import { LIMITS } from '../model/defaults';
 import type { Demand, Id, Millimetres, PlanContent, RackDevice, ReservedRange, Template, Units } from '../model/types';
 import { checkSpan } from '../occupancy';
+import { pasteDevice, type PasteDeviceCommand } from '../paste';
 import { err, ok, withTarget, type Failure, type Result } from '../result';
 import { definedOnly, isWholeInRange, validateName } from '../validation';
 
@@ -23,7 +24,8 @@ export type EquipmentCommand =
   | { type: 'device/remove'; id: Id }
   | { type: 'reserved/add'; rackId: Id; range: ReservedRange }
   | { type: 'reserved/update'; id: Id; patch: Partial<Omit<ReservedRange, 'id'>> }
-  | { type: 'reserved/remove'; id: Id };
+  | { type: 'reserved/remove'; id: Id }
+  | PasteDeviceCommand;
 
 const rackGone = (id: Id): Failure => err('not_found', 'That rack no longer exists.', [id]);
 const deviceGone = (id: Id): Failure => err('not_found', 'That device no longer exists.', [id]);
@@ -158,6 +160,8 @@ export function applyEquipmentCommand(content: PlanContent, cmd: EquipmentComman
       return updateDevice(content, cmd.id, cmd.patch);
     case 'device/remove':
       return removeDevice(content, cmd.id);
+    case 'device/paste':
+      return pasteDevice(content, cmd);
     case 'reserved/add':
       return addReserved(content, cmd.rackId, cmd.range);
     case 'reserved/update':

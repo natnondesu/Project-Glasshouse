@@ -32,6 +32,7 @@ import { CatalogPalette } from './CatalogPalette';
 import { EquipmentInspector } from './EquipmentInspector';
 import { PowerBar } from './PowerBar';
 import { useDeleteKey } from './useDeleteKey';
+import { useCopyPaste } from './useCopyPaste';
 import { MIN_U_PX, rackHitAt, RackElevation, U_PX } from './RackElevation';
 import { useDeviceDrag } from './deviceDrag';
 import { useT } from '../../i18n';
@@ -118,6 +119,7 @@ export function ElevationView({ location, readOnly = false, viewingPast = false 
   const flagged = useMemo(() => flaggedObjectIds(issues), [issues]);
   const names = useMemo(() => entityNames(content), [content]);
   const activeRack = owningRack(content, selectedId) ?? racks[0] ?? null;
+  useCopyPaste({ content, selectedId, activeRack, readOnly, commit, onPasted: select, say: setMessage });
 
   useEffect(() => {
     if (!message) return;
