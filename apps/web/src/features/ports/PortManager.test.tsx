@@ -125,3 +125,20 @@ it('groups two ports into a LAG and says the VLAN setting is shared', async () =
   const sw = content().objects.flatMap((o) => (o.type === 'rack' ? o.devices : [])).find((d) => d.id === 'sw')!;
   expect(sw.ports!.filter((p) => p.lag === 'Po1').map((p) => p.name)).toEqual(['Gi1', 'Gi2']);
 });
+
+it('sets the VLAN on every member of a LAG from one port’s VLAN field', async () => {
+  const user = userEvent.setup();
+  useWorkspaceStore.getState().dispatch({ type: 'plan', roomId: 'r', command: { type: 'vlan/add', vlan: { vid: 10, name: 'Servers' } } });
+  for (const n of ['Gi1', 'Gi2']) useWorkspaceStore.getState().dispatch({ type: 'plan', roomId: 'r', command: { type: 'port/update', deviceId: 'sw', name: n, patch: { lag: 'Po1' } } });
+  open('sw');
+  await user.click(screen.getByRole('button', { name: 'Manage ports' }));
+  const mgr = screen.getByRole('dialog', { name: 'SW-01 ports' });
+  await user.click(within(mgr).getAllByRole('button', { name: /^Port / })[0]!);
+  await user.selectOptions(within(mgr).getByLabelText('Mode'), 'access');
+  const sw = content().objects.flatMap((o) => (o.type === 'rack' ? o.devices : [])).find((d) => d.id === 'sw')!;
+  expect(sw.ports!.filter((p) => p.name === 'Gi1' || p.name === 'Gi2').map((p) => p.vlan)).toEqual([
+    { mode: 'access', vid: 10 },
+    { mode: 'access', vid: 10 },
+  ]);
+  expect(sw.ports!.find((p) => p.name === 'Gi3')!.vlan).toBeUndefined();
+});

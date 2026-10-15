@@ -119,10 +119,13 @@ export function applyVlanCommand(content: PlanContent, cmd: VlanCommand): Result
       const ports = portsOf(content, cmd.deviceId);
       const port = ports.find((p) => p.name === cmd.name);
       if (!port) return err('not_found', `${owner.name} has no port ${cmd.name}.`, [owner.id]);
-      if (cmd.vlan === null) return ok(withPorts(content, cmd.deviceId, ports.map((p) => (p === port ? without(p) : p))));
+      // A LAG has one VLAN setting: changing it on one member changes every member.
+      const inScope = (p: Port): boolean => p === port || (port.lag !== undefined && p.lag === port.lag);
+      if (cmd.vlan === null) return ok(withPorts(content, cmd.deviceId, ports.map((p) => (inScope(p) ? without(p) : p))));
       const vlan = checkPortVlan(content, cmd.vlan);
       if (!vlan.ok) return vlan;
-      return ok(withPorts(content, cmd.deviceId, ports.map((p) => (p === port ? { ...p, vlan: vlan.value } : p))));
+      const set = vlan.value;
+      return ok(withPorts(content, cmd.deviceId, ports.map((p) => (inScope(p) ? { ...p, vlan: set } : p))));
     }
   }
 }

@@ -39,12 +39,16 @@ function room(): PlanContent {
 describe('LAGs (port-channels, bonds)', () => {
   it('groups ports by name; a VLAN set on one member applies to every member, and a new member adopts it', () => {
     let c = run(room(), lag('sw', 'Gi1/0/1', 'Po1'), lag('sw', 'Gi1/0/2', 'Po1'));
-    c = run(c, { type: 'port/update', deviceId: 'sw', name: 'Gi1/0/1', patch: { vlan: { mode: 'trunk', allowed: [10, 20], native: null } } });
+    // Through the VLAN field's own command, as the port manager sends it.
+    c = run(c, { type: 'port/vlan', deviceId: 'sw', name: 'Gi1/0/1', vlan: { mode: 'trunk', allowed: [10, 20], native: null } });
     expect(port(c, 'sw', 'Gi1/0/2').vlan).toEqual({ mode: 'trunk', allowed: [10, 20], native: null });
     c = run(c, lag('sw', 'Gi1/0/3', 'Po1'));
     expect(port(c, 'sw', 'Gi1/0/3')).toMatchObject({ lag: 'Po1', vlan: { mode: 'trunk', allowed: [10, 20], native: null } });
     // Ports outside the group keep their own setting.
     expect(port(c, 'sw', 'Gi1/0/4').vlan).toBeUndefined();
+    // Clearing it on one member clears the group.
+    const cleared = run(c, { type: 'port/vlan', deviceId: 'sw', name: 'Gi1/0/2', vlan: null });
+    expect(['Gi1/0/1', 'Gi1/0/2', 'Gi1/0/3'].map((n) => port(cleared, 'sw', n).vlan)).toEqual([undefined, undefined, undefined]);
     // Leaving the group: an empty name.
     c = run(c, lag('sw', 'Gi1/0/3', ' '));
     expect(port(c, 'sw', 'Gi1/0/3').lag).toBeUndefined();
