@@ -7,13 +7,15 @@ import { err, ok, withTarget, type Result } from './result';
 import { isWholeInRange, validateName } from './validation';
 
 export const CATEGORY_LABEL: Record<Category, string> = {
-  compute: 'Compute',
-  storage: 'Storage',
+  server: 'Server',
   network: 'Network',
   power: 'Power',
   chassis: 'Chassis',
   misc: 'Misc',
 };
+
+/** The order categories are listed in, wherever templates are grouped. */
+export const CATEGORY_ORDER: Category[] = ['server', 'chassis', 'network', 'power', 'misc'];
 
 /**
  * The catalog every new workspace starts with. Replace this file with an export from the Catalog screen
@@ -40,7 +42,7 @@ export function validateTemplate(t: Template): Result<Template> {
   const base = { ...t, label: label.value, model };
 
   if (t.mounting === 'slot') {
-    if (t.category !== 'compute') return err('invalid_value', 'Nodes use the Compute category.', [t.id]);
+    if (t.category !== 'server') return err('invalid_value', 'Nodes use the Server category.', [t.id]);
     return ok({ ...base, heightU: 0, depthMm: 0, slotCount: null, slotsPerRow: null });
   }
   if (!isWholeInRange(t.heightU, 1, LIMITS.rackMaxU)) return err('invalid_value', 'Rack devices are 1 to 60 U high.', [t.id]);

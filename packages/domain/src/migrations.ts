@@ -28,7 +28,30 @@ const MIGRATIONS: Record<number, (raw: RawWorkspace) => RawWorkspace> = {
   5: (raw) => ({ ...raw, schemaVersion: 6, projects: mapRevisions(raw.projects, (rev) => ({ ...rev, content: { ...asRecord(rev.content), links: [] } })) }),
   // 2026-10: room VLANs, assigned to ports as access or trunk.
   6: (raw) => ({ ...raw, schemaVersion: 7, projects: mapRevisions(raw.projects, (rev) => ({ ...rev, content: { ...asRecord(rev.content), vlans: [] } })) }),
+  // 2026-10: Compute and Storage merged into one Server category.
+  7: (raw) => ({
+    ...raw,
+    schemaVersion: 8,
+    catalog: Array.isArray(raw.catalog) ? raw.catalog.map(withServerCategory) : raw.catalog,
+    projects: mapRevisions(raw.projects, (rev) => {
+      const content = asRecord(rev.content);
+      const objects = Array.isArray(content.objects)
+        ? content.objects.map((o) => {
+            const object = asRecord(o);
+            return Array.isArray(object.devices) ? { ...object, devices: object.devices.map(withServerCategory) } : o;
+          })
+        : content.objects;
+      const templatesUsed = Array.isArray(content.templatesUsed) ? content.templatesUsed.map(withServerCategory) : content.templatesUsed;
+      return { ...rev, content: { ...content, objects, templatesUsed } };
+    }),
+  }),
 };
+
+/** Schema 8 merged Compute and Storage into Server; anything else (including a Chassis, which has no category) is left as it is. */
+export function withServerCategory(item: unknown): unknown {
+  const record = asRecord(item);
+  return record.category === 'compute' || record.category === 'storage' ? { ...record, category: 'server' } : item;
+}
 
 const asRecord = (v: unknown): RawWorkspace => (typeof v === 'object' && v !== null ? (v as RawWorkspace) : {});
 const asArray = (v: unknown): unknown[] => (Array.isArray(v) ? v : []);

@@ -18,7 +18,7 @@ const chassis: Chassis = {
   slotsPerRow: 5,
   nodes: [{ ...base, id: 'n2', name: 'NODE-01', demand: unknownDemand(), slot: 2 }],
 };
-const server: PlacedDevice = { ...base, id: 'srv', name: 'SRV-01', demand: known(450), kind: 'device', category: 'compute', bottomU: 20, heightU: 2, depthMm: 780 };
+const server: PlacedDevice = { ...base, id: 'srv', name: 'SRV-01', demand: known(450), kind: 'device', category: 'server', bottomU: 20, heightU: 2, depthMm: 780 };
 const rack: Rack = {
   ...(createObject('rack', { x: 1, y: 1 }, []) as Rack),
   id: 'rk',

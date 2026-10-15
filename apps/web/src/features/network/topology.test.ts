@@ -23,7 +23,7 @@ const link = (a: string, ap: string, b: string, bp: string, cable: 'cat6' | 'om4
 
 describe('buildTopology', () => {
   it('hangs single-cable devices under their switch, centred, one row down', () => {
-    const t = buildTopology(build([rack, dev('sw', 40, tpl('network', 8)), dev('s1', 1, tpl('compute', 2)), dev('s2', 3, tpl('compute', 2)), link('s1', 'p1', 'sw', 'p1'), link('s2', 'p1', 'sw', 'p2')]));
+    const t = buildTopology(build([rack, dev('sw', 40, tpl('network', 8)), dev('s1', 1, tpl('server', 2)), dev('s2', 3, tpl('server', 2)), link('s1', 'p1', 'sw', 'p1'), link('s2', 'p1', 'sw', 'p2')]));
     const at = (id: string) => t.nodes.find((x) => x.id === id)!;
     expect([at('s1').leaf, at('s2').leaf, at('sw').leaf]).toEqual([true, true, false]);
     expect(at('s1').y).toBe(at('s2').y);
@@ -32,7 +32,7 @@ describe('buildTopology', () => {
   });
 
   it('puts peer switches side by side and an aggregation switch above the switches it joins', () => {
-    const peers = buildTopology(build([rack, dev('a', 40, tpl('network', 8)), dev('b', 38, tpl('network', 8)), dev('s', 1, tpl('compute', 2)), link('a', 'p1', 'b', 'p1', 'om4'), link('s', 'p1', 'a', 'p2')]));
+    const peers = buildTopology(build([rack, dev('a', 40, tpl('network', 8)), dev('b', 38, tpl('network', 8)), dev('s', 1, tpl('server', 2)), link('a', 'p1', 'b', 'p1', 'om4'), link('s', 'p1', 'a', 'p2')]));
     const pa = peers.nodes.find((x) => x.id === 'a')!;
     const pb = peers.nodes.find((x) => x.id === 'b')!;
     expect(pa.y).toBe(pb.y);
@@ -45,7 +45,7 @@ describe('buildTopology', () => {
   });
 
   it('draws several cables between two devices as one line, and lists devices with no cables', () => {
-    const t = buildTopology(build([rack, dev('a', 40, tpl('network', 8)), dev('b', 38, tpl('network', 8)), dev('lonely', 1, tpl('compute', 2)), link('a', 'p1', 'b', 'p1'), link('a', 'p2', 'b', 'p2')]));
+    const t = buildTopology(build([rack, dev('a', 40, tpl('network', 8)), dev('b', 38, tpl('network', 8)), dev('lonely', 1, tpl('server', 2)), link('a', 'p1', 'b', 'p1'), link('a', 'p2', 'b', 'p2')]));
     expect(t.edges).toHaveLength(1);
     expect(t.edges[0]!.links).toHaveLength(2);
     expect(t.unlinked.map((u) => u.name)).toEqual(['SRV-01']);
@@ -54,7 +54,7 @@ describe('buildTopology', () => {
   it('wraps many leaves under one switch into rows, and narrows further to fit a printed page', async () => {
     const { fitTopology } = await import('./topology');
     const servers = Array.from({ length: 8 }, (_, i) => `s${i}`);
-    const content = build([rack, dev('sw', 40, tpl('network', 24)), ...servers.map((id, i) => dev(id, 1 + i * 2, tpl('compute', 2))), ...servers.map((id, i) => link(id, 'p1', 'sw', `p${i + 1}`))]);
+    const content = build([rack, dev('sw', 40, tpl('network', 24)), ...servers.map((id, i) => dev(id, 1 + i * 2, tpl('server', 2))), ...servers.map((id, i) => link(id, 'p1', 'sw', `p${i + 1}`))]);
     const t = buildTopology(content);
     const rows = new Set(t.nodes.filter((x) => x.leaf).map((x) => x.leafRow));
     expect([...rows].sort()).toEqual([0, 1]);

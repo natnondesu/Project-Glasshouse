@@ -356,7 +356,7 @@ export const th: Messages = {
     feedDetail: (source, way) => `สายจ่ายไฟ · จาก ${source}${way ? ` ช่อง ${way}` : ''}`,
     cableDetail: (a, b) => `สายแลน · ${a} ↔ ${b}`,
   },
-  categories: { compute: 'คอมพิวต์', storage: 'สตอเรจ', network: 'เครือข่าย', power: 'ไฟฟ้า', chassis: 'Chassis', misc: 'อื่น ๆ' },
+  categories: { server: 'เซิร์ฟเวอร์', network: 'เครือข่าย', power: 'ไฟฟ้า', chassis: 'Chassis', misc: 'อื่น ๆ' },
   fields: {
     known: 'ทราบค่า',
     unknown: 'ไม่ทราบ',

@@ -1,4 +1,4 @@
-import { formatDemand, type Rack, type Template } from '@glasshouse/domain';
+import { CATEGORY_ORDER, formatDemand, type Rack, type Template } from '@glasshouse/domain';
 import { Link } from 'react-router';
 import { IconChevronRight, IconPlus } from '../../ui/icons';
 import { TEMPLATE_MIME } from './dnd';
@@ -15,6 +15,11 @@ interface CatalogPaletteProps {
 
 export function CatalogPalette({ catalog, activeRack, onAdd, disabled = false, collapsed = false, onToggle }: CatalogPaletteProps) {
   const m = useT();
+  // Grouped as on the Catalog screen; within a group, rack devices before the Nodes that go in a Chassis.
+  const groups = CATEGORY_ORDER.map((category) => ({
+    category,
+    items: catalog.filter((t) => t.category === category).sort((a, b) => Number(a.mounting === 'slot') - Number(b.mounting === 'slot')),
+  })).filter((g) => g.items.length > 0);
   return (
     <section className="palette" aria-labelledby="palette-h">
       <div className="palette__head">
@@ -39,8 +44,14 @@ export function CatalogPalette({ catalog, activeRack, onAdd, disabled = false, c
       <p className="palette__note">
         {disabled ? m.palette.frozen : m.palette.dragHint(activeRack?.name ?? null)}
       </p>
+      {groups.map(({ category, items }) => (
+      <section key={category} className="palette__group" aria-labelledby={`palette-${category}`}>
+      <h3 id={`palette-${category}`} className="palette__group-h">
+        {m.categories[category]}
+        <span className="palette__count mono">{items.length}</span>
+      </h3>
       <ul className="palette__list">
-        {catalog.map((t) => (
+        {items.map((t) => (
           <li
             key={t.id}
             className={`palette__item palette__item--${t.mounting === 'slot' ? 'slot' : t.category}`}
@@ -65,6 +76,8 @@ export function CatalogPalette({ catalog, activeRack, onAdd, disabled = false, c
           </li>
         ))}
       </ul>
+      </section>
+      ))}
         </>
       )}
     </section>

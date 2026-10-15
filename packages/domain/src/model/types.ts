@@ -8,7 +8,8 @@ export type Watts = number;
 export type Demand = { kind: 'known'; watts: Watts } | { kind: 'unknown' };
 
 /** `misc` is for passive rack gear: patch panels, cable management, blanking panels, shelves. */
-export type Category = 'compute' | 'storage' | 'network' | 'power' | 'chassis' | 'misc';
+/** Compute and Storage were merged into Server in schema 8. */
+export type Category = 'server' | 'network' | 'power' | 'chassis' | 'misc';
 export type Mounting = 'rack' | 'slot';
 
 export interface Template {

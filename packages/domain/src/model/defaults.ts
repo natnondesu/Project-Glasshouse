@@ -1,6 +1,6 @@
 import type { RoomObjectType, SimpleObjectType } from './types';
 
-export const CURRENT_SCHEMA_VERSION = 7;
+export const CURRENT_SCHEMA_VERSION = 8;
 
 export const LIMITS = {
   roomMinM: 1,

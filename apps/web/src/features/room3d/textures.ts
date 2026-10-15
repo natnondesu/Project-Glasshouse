@@ -80,7 +80,7 @@ function vents(ctx: CanvasRenderingContext2D, x0: number, h: number): void {
 const frontCache = new Map<string, CanvasTexture>();
 
 /**
- * A device front drawn from its category: drive bays for compute and storage, ports for network,
+ * A device front drawn from its category: drive bays for servers, ports for network,
  * vents for power. Cached per look, so a rack of identical servers shares one texture.
  */
 export function deviceFrontTexture(opts: { category: Category; heightU: number; accent: string; unknown: boolean; name: string; maintenance?: boolean }): CanvasTexture {
@@ -100,8 +100,7 @@ export function deviceFrontTexture(opts: { category: Category; heightU: number; 
   const x0 = 150;
   if (opts.category === 'network') ports(ctx, x0, h);
   else if (opts.category === 'power') vents(ctx, x0, h);
-  else if (opts.category === 'storage') driveBays(ctx, x0, h, Math.max(1, opts.heightU), 6);
-  else if (opts.category === 'compute') driveBays(ctx, x0, h, Math.max(1, Math.min(3, opts.heightU)), opts.heightU > 1 ? 4 : 8);
+  else if (opts.category === 'server') driveBays(ctx, x0, h, Math.max(1, Math.min(3, opts.heightU)), opts.heightU > 1 ? 4 : 8);
   else if (opts.category === 'misc') ports(ctx, x0, h);
   // Passive gear (patch panels, cable management) has no status light.
   if (opts.category !== 'misc') led(ctx, FRONT_W - 40, Math.min(h / 2, 24), opts.unknown ? '#ff6b5e' : opts.maintenance ? '#ffb020' : '#4cd17a');

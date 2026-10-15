@@ -1,4 +1,4 @@
-import { newId, type Category, type Template } from '@glasshouse/domain';
+import { CATEGORY_ORDER, newId, type Category, type Template } from '@glasshouse/domain';
 import { useEffect, useState } from 'react';
 import { useWorkspaceStore } from '../../store/workspaceStore';
 import { DemandField } from '../../ui/DemandField';
@@ -7,14 +7,13 @@ import { TextField } from '../../ui/TextField';
 import { PortGroupsField } from './PortGroupsField';
 import { useT } from '../../i18n';
 
-export const CATEGORY_ORDER: Category[] = ['compute', 'chassis', 'network', 'storage', 'power', 'misc'];
 
 export const blankTemplate = (): Template => ({
   id: newId(),
   version: 0,
   label: '',
   model: '',
-  category: 'compute',
+  category: 'server',
   mounting: 'rack',
   heightU: 1,
   depthMm: 750,
@@ -99,7 +98,7 @@ export function TemplateEditor({ mode, initial, onDone, onDirtyChange }: Templat
             <div className="field__box">
               <select id={`${draft.id}-category`} className="field__input" value={draft.category} onChange={(e) => chooseCategory(e.target.value as Category)}>
                 {CATEGORY_ORDER.map((c) => (
-                  <option key={c} value={c} disabled={isSlot && c !== 'compute'}>
+                  <option key={c} value={c} disabled={isSlot && c !== 'server'}>
                     {m.categories[c]}
                   </option>
                 ))}
@@ -112,7 +111,7 @@ export function TemplateEditor({ mode, initial, onDone, onDirtyChange }: Templat
               <button type="button" aria-pressed={!isSlot} onClick={() => set({ mounting: 'rack' })}>
                 {m.catalog.rack}
               </button>
-              <button type="button" aria-pressed={isSlot} disabled={isChassis} onClick={() => set({ mounting: 'slot', category: 'compute' })}>
+              <button type="button" aria-pressed={isSlot} disabled={isChassis} onClick={() => set({ mounting: 'slot', category: 'server' })}>
                 {m.catalog.chassisSlot}
               </button>
             </div>

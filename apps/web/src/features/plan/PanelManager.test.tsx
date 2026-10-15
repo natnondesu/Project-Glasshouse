@@ -9,7 +9,7 @@ const rack: Rack = {
   ...(createObject('rack', { x: 2, y: 1.5 }, []) as Rack),
   id: 'rk',
   name: 'RK-01',
-  devices: [{ kind: 'device', id: 's', templateId: server.id, templateVersion: server.version, name: 'SRV-01', category: 'compute', bottomU: 1, heightU: 4, depthMm: 800, demand: { kind: 'known', watts: 780 }, config: '', notes: '' }],
+  devices: [{ kind: 'device', id: 's', templateId: server.id, templateVersion: server.version, name: 'SRV-01', category: 'server', bottomU: 1, heightU: 4, depthMm: 800, demand: { kind: 'known', watts: 780 }, config: '', notes: '' }],
 };
 const panel: RoomObject = { ...createObject('mcb', { x: 0, y: 1 }, []), id: 'm', name: 'MCB-01' };
 const content = (): PlanContent => ({
