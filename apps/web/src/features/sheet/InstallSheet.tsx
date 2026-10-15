@@ -81,6 +81,7 @@ export function InstallSheet() {
 
   return (
     <main className="sheet">
+      <h1 className="visually-hidden">{m.sheet.pageTitle(location.room.name, pad2(revision.number))}</h1>
       <nav className="sheet-toolbar" aria-label={m.sheet.nav}>
         <Link to={`/rooms/${roomId}/review`} className="btn btn--sm btn--quiet">
           {m.sheet.backToRoom}

@@ -41,6 +41,8 @@ it('AC17: prints an Approved revision with a title block on every page, plan, el
   const { container } = open(mdf);
   const pages = container.querySelectorAll('.sheet-page');
   expect(pages.length).toBeGreaterThanOrEqual(4);
+  expect(screen.getByRole('heading', { level: 1, name: 'Install sheet: MDF-1, R01' })).toBeInTheDocument();
+  expect(screen.getAllByRole('heading', { level: 2 })).toHaveLength(pages.length);
   for (const page of pages) {
     expect(page.querySelector('.sheet-title')).not.toBeNull();
     expect(page).toHaveTextContent('R01 APPROVED');

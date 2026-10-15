@@ -24,9 +24,12 @@ it('makes the plan read-only while In review, until a new draft starts', async (
   expect(screen.queryByRole('button', { name: 'Place rack' })).toBeNull();
   expect(screen.getByRole('button', { name: 'Measure' })).toBeInTheDocument();
   expect(screen.getByLabelText('Width')).toBeDisabled();
+  expect(screen.getByText('Read-only')).toBeInTheDocument();
+  expect(screen.queryByText('Changes save as you type')).toBeNull();
   await user.click(screen.getByRole('button', { name: 'Start new draft' }));
   expect(screen.queryByText(/is In review/)).toBeNull();
   expect(screen.getByLabelText('Width')).toBeEnabled();
+  expect(screen.getByText('Changes save as you type')).toBeInTheDocument();
   expect(screen.getByRole('button', { name: 'Place rack' })).toBeInTheDocument();
 });
 

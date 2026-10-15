@@ -15,10 +15,11 @@ export function SheetTitleBlock({ location, revision, printedAt, section }: Shee
   const unverified = (n: { name: string } | null): string => (n ? m.sheet.unverified(n.name) : m.sheet.notRecorded);
   return (
     <header className="sheet-title">
-      <div className="sheet-title__main">
+      <h2 className="sheet-title__main">
         <span className="sheet-title__kicker">{m.sheet.kicker(section)}</span>
+        <span className="visually-hidden">: </span>
         <strong>{`${location.project.name} / ${location.site.name} / ${location.room.name}`}</strong>
-      </div>
+      </h2>
       <dl className="sheet-title__cells">
         <div>
           <dt>{m.sheet.revision}</dt>

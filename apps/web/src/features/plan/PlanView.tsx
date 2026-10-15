@@ -24,6 +24,7 @@ import { useT } from '../../i18n';
 /** Room the fit leaves on the right for the inspector, or for its collapsed rail. */
 const INSET_WITH_INSPECTOR = FIT_INSETS.right;
 const INSET_WITHOUT_INSPECTOR = 76;
+const WIDE_ENOUGH_FOR_INSPECTOR_PX = 1360;
 /** Space kept between the room and the checks strip below it. */
 const CHECKS_GAP_PX = 48;
 const PULSE_MS = 1700;
@@ -52,7 +53,9 @@ export function PlanView({ location, readOnly = false }: { location: RoomLocatio
 
   const issues = useMemo(() => revisionIssues(revision), [revision]);
   const m = useT();
-  const [inspectorOpen, setInspectorOpen] = usePersistentState('glasshouse:inspector-open', true);
+  const [inspectorPref, setInspectorOpen] = usePersistentState<boolean | null>('glasshouse:inspector-open', null);
+  // Until someone chooses, laptops narrower than this give the drawing the room and keep the inspector one click away.
+  const inspectorOpen = inspectorPref ?? window.innerWidth >= WIDE_ENOUGH_FOR_INSPECTOR_PX;
   // Fit around the checks strip as it really is (one line when all is well), not a worst-case band.
   const [checksH, setChecksH] = useState<number | undefined>(undefined);
   useLayoutEffect(() => {
@@ -119,9 +122,7 @@ export function PlanView({ location, readOnly = false }: { location: RoomLocatio
         </div>
         {legend ? <PlanLegend view={viewport.view} clearance={layers.clearance !== false} onClose={() => setLegend(false)} /> : null}
         {managed ? (
-          <fieldset className="inspector__lock" disabled={readOnly}>
-            <PanelManager panel={managed} content={content} commit={commit} onClose={() => setManagedPanel(null)} />
-          </fieldset>
+          <PanelManager panel={managed} content={content} commit={commit} onClose={() => setManagedPanel(null)} readOnly={readOnly} />
         ) : null}
         {gestures.message ? (
           <p role="status" className="plan-view__message">

@@ -124,14 +124,36 @@
   min-width: 0;
 }
 
-.inspector__lock:disabled .field__box {
-  background: rgb(255 255 255 / 0.35);
+.inspector__lock:disabled .field__box,
+.inspector__lock:disabled .field__box:hover {
+  border-color: transparent;
+  background: none;
+  padding-inline: 0;
 }
 
 .inspector__lock:disabled .field__input,
 .inspector__lock:disabled .field__unit {
+  color: var(--ink);
+  -webkit-text-fill-color: var(--ink);
+  opacity: 1;
+  cursor: default;
+}
+
+.inspector__lock:disabled .field__input::placeholder {
+  color: transparent;
+}
+
+.inspector__lock:disabled select.field__input {
+  appearance: none;
+}
+
+.inspector__locked {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: var(--text-xs);
+  font-weight: 600;
   color: var(--ink-2);
-  cursor: not-allowed;
 }
 
 .dim-facts {
@@ -216,4 +238,22 @@
 /* A lock that only disables its controls: its children lay out as if it weren't there. */
 .inspector__lock--flow {
   display: contents;
+}
+
+/* Frozen values sit beside their unit, not across the full field width. */
+.inspector__lock:disabled input.field__input {
+  flex: 0 1 auto;
+  width: 8ch;
+}
+
+@supports (field-sizing: content) {
+  .inspector__lock:disabled input.field__input {
+    width: auto;
+    field-sizing: content;
+  }
+}
+
+/* Remove buttons do nothing in a frozen revision, so they are not shown. */
+.inspector__lock:disabled .icon-btn--sm {
+  visibility: hidden;
 }

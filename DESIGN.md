@@ -21,7 +21,7 @@ Light only, chosen for laptops in bright server rooms; there is no theme toggle.
 | Blocking | `--block` / `--block-fill` | `#B8322A` / `#C24A3F` | Issues that block approval |
 | Warning | `--warn` | `#9A5A00` on `#FFF3DF` | Warnings, Draft status |
 | OK | `--ok` | `#0B6449` | Approved, deployed, "no issues" (5.1:1 on its own tint) |
-| Maintenance | `--maint` | `#C77700` | Equipment in maintenance |
+| Maintenance | `--maint` | `#A64B00` | Equipment in maintenance; burnt orange, redder than the warning brown (4.9:1 on glass) |
 | State tints | `--ok-bg`, `--ok-border`, `--warn-border`, `--block-border`, `--block-ring`, `--acc-border`, `--acc-tint` | | Chips, stamps, banners, field errors |
 | Racks | `--rack`, `--rack-customer`, `--existing` | | OxygenAI, customer and existing racks |
 
@@ -42,6 +42,7 @@ Colour never works alone. Blocking issues use a solid circle icon, warnings a da
 
 - One focus treatment: a solid 2px accent ring (`--focus-ring`, or `--focus-ring-inset` where an outline would be clipped). SVG items show focus by thickening their own line in accent.
 - Freezing actions confirm in place: Submit and Approve show what will freeze and the check status before they act. A disabled Approve says what it waits for.
+- Frozen revisions read as a record, not a form: values sit as plain figures beside their units, remove buttons are hidden, and the panel says Read-only with a lock instead of "Changes save as you type".
 - Approval is a stamp: APPROVED, revision, date and approver in a ruled green box, with the Install sheet as the next step.
 
 ## Plan drawing
@@ -50,6 +51,8 @@ Colour never works alone. Blocking issues use a solid circle icon, warnings a da
 - Clearance zones are hatched; blocking objects are filled red with a BLOCKING callout.
 - Dimensions are drafting style (extension lines, 45° ticks). Power feeds are dashed coloured runs tagged A/B.
 - The legend is on demand from the zoom bar, never left over the drawing.
+- Below 1360px the inspector starts collapsed so the drawing gets the room; once someone opens or closes it, that choice is remembered.
+- Names and figures are never cut: a rack name too wide for the rack sits under it, and a fill count that doesn't fit is left out.
 
 ## Network diagram
 

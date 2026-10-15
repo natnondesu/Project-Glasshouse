@@ -197,7 +197,9 @@ export function ObjectsLayer({ objects, view, flagged, selectedId, onFocusObject
         const fitted = labelled ? fitLabel(o.name, bounds.w * view.scale) : null;
         // A rack name is shown whole: inside when it fits, otherwise under the rack, never cut to "RK-…".
         const label = isRackLike && fitted !== o.name ? null : fitted;
-        const sub = o.type === 'rack' && tall >= MIN_LABEL_PX * 1.4 ? fitLabel(o.owner === 'customer' ? m.plan.customerShort : `${usedU(o)}/${o.capacityU}U`, bounds.w * view.scale, 6.7) : null;
+        const subText = o.type === 'rack' && tall >= MIN_LABEL_PX * 1.4 ? (o.owner === 'customer' ? m.plan.customerShort : `${usedU(o)}/${o.capacityU}U`) : null;
+        // Figures are never cut ("7/4…" reads as a different number): shown whole or not at all.
+        const sub = subText && fitLabel(subText, bounds.w * view.scale, 6.7) === subText ? subText : null;
         const topY = toScreen(view, [0, o.y])[1];
         // A rack too small at this zoom still shows its name, just under it, so racks are never anonymous.
         const outside = !label && isRackLike;

@@ -26,7 +26,7 @@ export function Inspector({ content, selected, commit, onDeleted, readOnly = fal
         ) : selected ? (
           <ObjectInspector key={selected.id} object={selected} content={content} commit={commit} onDeleted={onDeleted} onManagePanel={onManagePanel} />
         ) : (
-          <SurveyPanel survey={content.survey} commit={commit} />
+          <SurveyPanel survey={content.survey} commit={commit} readOnly={readOnly} />
         )}
       </fieldset>
     </aside>

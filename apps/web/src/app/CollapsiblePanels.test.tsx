@@ -43,3 +43,15 @@ it.each([
   await user.click(screen.getByRole('button', { name: 'Show inspector' }));
   expect(screen.getByRole('complementary', { name: panel })).toBeInTheDocument();
 });
+
+it('starts the plan inspector collapsed on a narrow laptop until someone opens it, then remembers', async () => {
+  const user = userEvent.setup();
+  window.innerWidth = 1280;
+  const { unmount } = open('/rooms/r/plan');
+  expect(screen.queryByRole('complementary', { name: 'Survey' })).toBeNull();
+  await user.click(screen.getByRole('button', { name: 'Show inspector' }));
+  expect(screen.getByRole('complementary', { name: 'Survey' })).toBeInTheDocument();
+  unmount();
+  open('/rooms/r/plan');
+  expect(screen.getByRole('complementary', { name: 'Survey' })).toBeInTheDocument();
+});
