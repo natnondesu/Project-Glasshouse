@@ -286,3 +286,16 @@
   align-items: center;
   gap: 5px;
 }
+
+.port-mgr__lag {
+  display: grid;
+  grid-template-columns: minmax(0, 160px) minmax(0, 1fr);
+  align-items: end;
+  gap: 4px 12px;
+}
+
+.port-mgr__lag-note {
+  margin: 0 0 8px;
+  font-size: var(--text-xs);
+  color: var(--ink-2);
+}

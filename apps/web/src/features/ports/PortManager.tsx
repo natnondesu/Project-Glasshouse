@@ -118,7 +118,7 @@ export function PortManager({ content, roomId, deviceId, commit, readOnly, onClo
                       className={`port port--${p.media}${isLinked ? ' is-linked' : ''}`}
                       aria-pressed={p.name === selected}
                       aria-label={label}
-                      title={`${label} · ${PORT_MEDIA_LABEL[p.media]} ${p.speed}${p.vlan ? ` · ${vlanLabel(p.vlan)}` : ''}`}
+                      title={`${label} · ${PORT_MEDIA_LABEL[p.media]} ${p.speed}${p.lag ? ` · ${p.lag}` : ''}${p.vlan ? ` · ${vlanLabel(p.vlan)}` : ''}`}
                       onClick={() => setSelected(p.name)}
                     >
                       <span className="port__jack" aria-hidden="true" />

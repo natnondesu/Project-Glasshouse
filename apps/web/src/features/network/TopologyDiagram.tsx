@@ -1,4 +1,4 @@
-import type { EquipmentState, Id, PlanContent } from '@glasshouse/domain';
+import { describeEnd, type EquipmentState, type Id, type PlanContent } from '@glasshouse/domain';
 import type { KeyboardEvent } from 'react';
 import { useT } from '../../i18n';
 import { StateGlyph } from '../../ui/StateIcon';
@@ -77,7 +77,17 @@ export function TopologyDiagram({ content, topology, vid = null, scale = 1, sele
   const neighbours = new Set(focusId ? topology.edges.filter(touches).flatMap((e) => [e.a, e.b]) : []);
   const dimEdge = (e: TopoEdge): boolean => (vid !== null && !e.vids.includes(vid)) || (focusId !== null && !touches(e));
   const dimNode = (n: TopoNode): boolean => (vid !== null && !nodeCarries(content, n.id, vid)) || (focusId !== null && n.id !== focusId && !neighbours.has(n.id));
-  const tags = focusId ? portTags(focusId, topology.edges, byId, m.topology.morePorts) : [];
+  const lagAt = (r: { deviceId: Id; port: string }): string | undefined => describeEnd(content, r).port?.lag;
+  const tags = focusId ? portTags(focusId, topology.edges, byId, m.topology.morePorts, lagAt, m.topology.links) : [];
+  // One LAG on either end: the bundle is named after it.
+  const bundleName = (e: TopoEdge): string | null => {
+    for (const device of [e.a, e.b]) {
+      const lags = new Set(e.links.map((l) => lagAt(l.a.deviceId === device ? l.a : l.b)));
+      const [only] = lags;
+      if (lags.size === 1 && only) return only;
+    }
+    return null;
+  };
   return (
     <svg
       className={`topo${isStatic ? ' topo--static' : ''}`}
@@ -104,10 +114,7 @@ export function TopologyDiagram({ content, topology, vid = null, scale = 1, sele
             <path className="topo-edge__hit" d={edgePath(a, b, e.tree)} />
             <path className="topo-edge__line" d={edgePath(a, b, e.tree)} />
             {e.links.length > 1 ? (
-              <g className="topo-edge__badge">
-                <rect x={bx - 13} y={by - 9} width={26} height={18} rx={9} />
-                <text x={bx} y={by + 4} textAnchor="middle">{`×${e.links.length}`}</text>
-              </g>
+              <BundleBadge x={bx} y={by} text={`${bundleName(e) ? `${bundleName(e)} ` : ''}×${e.links.length}`} />
             ) : null}
           </g>
         );
@@ -140,6 +147,21 @@ export function TopologyDiagram({ content, topology, vid = null, scale = 1, sele
         <PortTagLabel key={t.key} tag={t} />
       ))}
     </svg>
+  );
+}
+
+const BADGE_CHAR_PX = 6.7;
+
+/** The cable count on a bundle, named after its LAG when it has one. */
+function BundleBadge({ x, y, text }: { x: number; y: number; text: string }) {
+  const w = Math.max(26, text.length * BADGE_CHAR_PX + 12);
+  return (
+    <g className="topo-edge__badge">
+      <rect x={x - w / 2} y={y - 9} width={w} height={18} rx={9} />
+      <text x={x} y={y + 4} textAnchor="middle">
+        {text}
+      </text>
+    </g>
   );
 }
 

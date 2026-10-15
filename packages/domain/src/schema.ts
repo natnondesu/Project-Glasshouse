@@ -45,7 +45,7 @@ const portVlan = z.discriminatedUnion('mode', [
   z.object({ mode: z.literal('access'), vid: int }),
   z.object({ mode: z.literal('trunk'), allowed: z.union([z.array(int), z.literal('all')]), native: int.nullable() }),
 ]);
-const port = z.object({ name: z.string().min(1), media: z.enum(['rj45', 'sfp', 'sfp_plus', 'qsfp']), speed: z.string(), vlan: portVlan.optional() });
+const port = z.object({ name: z.string().min(1), media: z.enum(['rj45', 'sfp', 'sfp_plus', 'qsfp']), speed: z.string(), vlan: portVlan.optional(), lag: z.string().optional() });
 const deviceBase = { id, templateId: id, templateVersion: int, name: z.string(), demand, config: z.string(), notes: z.string(), ports: z.array(port).optional() };
 const portRef = z.object({ deviceId: id, port: z.string().min(1) });
 const link = z.object({ id, a: portRef, b: portRef, label: z.string(), cable: z.enum(['cat6', 'cat6a', 'om3', 'om4', 'os2', 'dac', 'aoc']).nullable() });

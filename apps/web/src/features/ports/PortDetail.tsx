@@ -1,4 +1,4 @@
-import { CABLE_LABEL, CABLE_TYPES, describeEnd, linkAt, newId, nextPortName, otherEnd, PORT_MEDIA, PORT_MEDIA_LABEL, PORT_SPEEDS, type CableType, type Id, type PlanContent, type Port } from '@glasshouse/domain';
+import { CABLE_LABEL, CABLE_TYPES, describeEnd, linkAt, newId, nextPortName, otherEnd, PORT_MEDIA, PORT_MEDIA_LABEL, PORT_SPEEDS, type CableType, type Id, type PlanContent, type Port, portsOf } from '@glasshouse/domain';
 import { useEffect, useMemo, useState } from 'react';
 import type { CommitFn } from '../../store/hooks';
 import { TextField } from '../../ui/TextField';
@@ -24,6 +24,7 @@ interface PortDetailProps {
 /** The selected port: its own settings, then its link (or a picker to make one). */
 export function PortDetail({ content, roomId, deviceId, port, commit, readOnly, onRenamed, onRemoved }: PortDetailProps) {
   const m = useT();
+  const lagMembers = port.lag ? portsOf(content, deviceId).filter((p) => p.lag === port.lag).length : 0;
   const [error, setError] = useState<string | null>(null);
   const ref = { deviceId, port: port.name };
   const link = linkAt(content, ref);
@@ -73,6 +74,10 @@ export function PortDetail({ content, roomId, deviceId, port, commit, readOnly, 
         >
           {m.ports.remove}
         </button>
+      </div>
+      <div className="port-mgr__lag">
+        <TextField id={`${deviceId}-${port.name}-lag`} label={m.ports.lag} value={port.lag ?? ''} onCommit={(v) => commit({ type: 'port/update', deviceId, name: port.name, patch: { lag: v } }, `port:${deviceId}:${port.name}:lag`)} />
+        <p className="port-mgr__lag-note">{port.lag ? m.ports.lagShared(port.lag, lagMembers) : m.ports.lagHint}</p>
       </div>
       <PortVlanField content={content} roomId={roomId} deviceId={deviceId} port={port} commit={commit} />
       {link ? <LinkedTo content={content} linkId={link.id} far={otherEnd(link, ref)} commit={commit} onError={setError} /> : <LinkPicker content={content} from={ref} commit={commit} onError={setError} />}

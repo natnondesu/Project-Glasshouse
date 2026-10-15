@@ -1,4 +1,4 @@
-import type { Id } from '@glasshouse/domain';
+import type { Id, PortRef } from '@glasshouse/domain';
 import { NODE_H, NODE_W, type TopoEdge, type TopoNode } from './topology';
 
 /** Port pairs shown per cable bundle before the rest are summarised. */
@@ -20,17 +20,27 @@ export interface PortTag {
  * neighbour's end of the line. Next to the neighbour, because a switch's end is shared by every
  * branch and the tags would pile up there.
  */
-export function portTags(selectedId: Id, edges: TopoEdge[], byId: Map<Id, TopoNode>, more: (n: number) => string): PortTag[] {
+/** A LAG's members collapse into one line: 'Po1 ⇄ bond0 · 4 links'. */
+export function portTags(selectedId: Id, edges: TopoEdge[], byId: Map<Id, TopoNode>, more: (n: number) => string, lagAt: (r: PortRef) => string | undefined = () => undefined, links: (n: number) => string = (n) => `${n} links`): PortTag[] {
   const tags: PortTag[] = [];
   for (const e of edges) {
     if (e.a !== selectedId && e.b !== selectedId) continue;
     const other = byId.get(e.a === selectedId ? e.b : e.a);
     const self = byId.get(selectedId);
     if (!other || !self) continue;
-    const pairs = e.links.map((l) => {
+    const bundles = new Map<string, number>();
+    const pairs: string[] = [];
+    for (const l of e.links) {
       const [mine, theirs] = l.a.deviceId === selectedId ? [l.a, l.b] : [l.b, l.a];
-      return `${mine.port} ⇄ ${theirs.port}`;
-    });
+      const lag = lagAt(mine);
+      if (!lag) {
+        pairs.push(`${mine.port} ⇄ ${theirs.port}`);
+        continue;
+      }
+      const key = `${lag} ⇄ ${lagAt(theirs) ?? theirs.port}`;
+      bundles.set(key, (bundles.get(key) ?? 0) + 1);
+    }
+    pairs.unshift(...[...bundles].map(([k, n]) => (n > 1 ? `${k} · ${links(n)}` : k)));
     const lines = pairs.length > MAX_TAG_LINES ? [...pairs.slice(0, MAX_TAG_LINES - 1), more(pairs.length - (MAX_TAG_LINES - 1))] : pairs;
     tags.push({ key: e.key, lines, ...placeNear(self, other, e.tree) });
   }

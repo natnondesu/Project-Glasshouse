@@ -511,6 +511,9 @@ export const en = {
     needNodeTemplate: 'Add a Node template to the Catalog first.',
   },
   ports: {
+    lag: 'LAG',
+    lagHint: 'Name a group (Po1, bond0) to bundle ports; members share one VLAN setting.',
+    lagShared: (lag: string, n: number) => `${lag}: ${n} ${n === 1 ? 'port' : 'ports'}. The VLAN setting below applies to all of them.`,
     group: 'Network ports',
     none: 'No ports',
     summary: (n: number, linked: number) => `${n} ports · ${linked} linked`,
@@ -614,6 +617,7 @@ export const en = {
     unlabelled: 'unlabelled',
   },
   topology: {
+    links: (n: number) => `${n} links`,
     morePorts: (n: number) => `+${n} more`,
     region: 'Network',
     diagram: 'Network diagram',

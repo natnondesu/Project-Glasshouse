@@ -24,3 +24,9 @@ it('from a server, tags its uplink under the switch', () => {
   expect(tag).toMatchObject({ lines: ['eth0 ⇄ Gi1/0/1'], up: false });
   expect(tag!.y).toBeGreaterThan(40);
 });
+
+it('collapses a LAG into one line naming both groups', () => {
+  const lagAt = (r: { deviceId: string; port: string }) => (r.deviceId === 'sw' && r.port !== 'Gi1/0/2' ? 'Po2' : r.deviceId === 's2' ? 'bond0' : undefined);
+  const tags = portTags('sw', edges, byId, more, lagAt, (n) => `${n} links`);
+  expect(tags[1]!.lines).toEqual(['Po2 ⇄ bond0 · 3 links', 'Gi1/0/2 ⇄ eth0']);
+});

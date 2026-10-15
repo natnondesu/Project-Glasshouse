@@ -506,6 +506,9 @@ export const th: Messages = {
     needNodeTemplate: 'เพิ่มเทมเพลต Node ในคลังอุปกรณ์ก่อน',
   },
   ports: {
+    lag: 'LAG',
+    lagHint: 'ตั้งชื่อกลุ่ม (Po1, bond0) เพื่อรวมพอร์ต พอร์ตในกลุ่มใช้ VLAN เดียวกัน',
+    lagShared: (lag, n) => `${lag}: ${n} พอร์ต การตั้งค่า VLAN ด้านล่างใช้กับทุกพอร์ตในกลุ่ม`,
     group: 'พอร์ตเครือข่าย',
     none: 'ไม่มีพอร์ต',
     summary: (n, linked) => `${n} พอร์ต · ต่อแล้ว ${linked}`,
@@ -609,6 +612,7 @@ export const th: Messages = {
     unlabelled: 'ไม่มีป้าย',
   },
   topology: {
+    links: (n) => `${n} เส้น`,
     morePorts: (n) => `+อีก ${n}`,
     region: 'เครือข่าย',
     diagram: 'แผนผังเครือข่าย',
@@ -690,6 +694,14 @@ export const th: Messages = {
     clearance_door: {
       message: (p) => `${p.other} อยู่ในระยะเว้นว่าง${side(p.side)}ของ ${p.rack}`,
       hint: () => 'ปกติไม่เป็นปัญหาสำหรับทางเข้า ตรวจว่าบานประตูไม่กระแทกแร็ค',
+    },
+    lag_speed_mismatch: {
+      message: (p) => `${p.device} ${p.lag} รวมพอร์ตที่ความเร็วต่างกัน (${p.speeds})`,
+      hint: () => 'LAG ทำงานที่ความเร็วเดียว ใช้พอร์ตความเร็วเท่ากัน',
+    },
+    lag_far_end: {
+      message: (p) => `${p.device} ${p.lag}: ปลายสายบน ${p.far} ไม่ได้อยู่ในกลุ่มเดียวกัน`,
+      hint: () => 'จัดพอร์ตปลายทางเป็น LAG เดียวกันด้วย ถ้าข้ามสองอุปกรณ์ ใช้ได้กับสวิตช์แบบ stack หรือ MLAG',
     },
     clearance_sliding_door: {
       message: (p) => `${p.other} อยู่ในระยะเว้นว่าง${side(p.side)}ของ ${p.rack}`,
