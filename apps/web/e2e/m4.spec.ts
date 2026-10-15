@@ -24,7 +24,7 @@ test('AC17: the Install sheet prints from the Approved room and is unavailable f
   await expect(page.locator('.sheet-page').first()).toContainText('R01 APPROVED');
   await expect(page.getByRole('img', { name: 'Server room A plan' })).toBeVisible();
   await expect(page.getByRole('group', { name: 'RK-01 front elevation, 42U' })).toBeVisible();
-  await expect(page.getByRole('table', { name: 'Bill of materials' })).toContainText('SW-01');
+  await expect(page.getByRole('table', { name: 'Bill of materials' })).toContainText('CORE-01');
   await expect(page.locator('.sheet input, .sheet textarea, .sheet select')).toHaveCount(0);
 
   const mdf = await openSampleRoom(page, /MDF-1/);
@@ -84,8 +84,8 @@ test('AC17 print layout: 60U racks still fit one A4 page each with the title blo
   await page.setViewportSize({ width: 703, height: 1032 });
   await page.emulateMedia({ media: 'print' });
   const fixedPages = page.locator('.sheet-page:not(.sheet-page--flow)');
-  // Plan, two elevation pages and the Network page; each must fit one sheet.
-  await expect(fixedPages).toHaveCount(4);
+  // Plan, three elevation pages (RK-01, RK-02 and the wall rack RK-03) and the Network page; each must fit one sheet.
+  await expect(fixedPages).toHaveCount(5);
   for (const height of await fixedPages.evaluateAll((els) => els.map((el) => el.scrollHeight))) expect(height).toBeLessThanOrEqual(1032);
   expect((await page.pdf({ format: 'A4' })).byteLength).toBeGreaterThan(10_000);
 });

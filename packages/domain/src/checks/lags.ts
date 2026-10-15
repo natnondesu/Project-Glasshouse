@@ -36,16 +36,17 @@ export function lagIssues(content: PlanContent): Issue[] {
       }
       const names = new Set(members.map((p) => p.name));
       const far = content.links.flatMap((l) => (l.a.deviceId === owner.id && names.has(l.a.port) ? [l.b] : l.b.deviceId === owner.id && names.has(l.b.port) ? [l.a] : []));
-      const ends = new Set(far.map((r) => `${r.deviceId}|${lagOf(content, r) ?? ''}`));
+      // Far ends on one device must be one group there; spread over two devices, each grouped, is MLAG or a stack.
       const ungrouped = far.some((r) => !lagOf(content, r));
-      if (far.length > 1 && (ungrouped || ends.size > 1)) {
+      const split = [...new Set(far.map((r) => r.deviceId))].some((d) => new Set(far.filter((r) => r.deviceId === d).map((r) => lagOf(content, r))).size > 1);
+      if (far.length > 1 && (ungrouped || split)) {
         const devices = [...new Set(far.map((r) => describeEnd(content, r).device))];
         issues.push({
           key: `lag_far_end:${owner.id}:${lag}`,
           code: 'lag_far_end',
           severity: 'warn',
           message: `${owner.name} ${lag}: the far ends on ${devices.join(', ')} aren't one group.`,
-          hint: 'Group the far ports into one LAG too. Across two devices this is fine for stacked or MLAG switches.',
+          hint: 'Group the far ports into one LAG on each device they reach.',
           params: { device: owner.name, lag, far: devices.join(', ') },
           targets: [owner.id, ...far.map((r) => r.deviceId)],
         });

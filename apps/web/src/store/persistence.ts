@@ -81,6 +81,9 @@ export async function hydrate(repo: Repository): Promise<void> {
       return;
     }
     const seeded = withSample(createWorkspace(), new Date().toISOString());
+    // A sample that can't be built must not block the app: start empty, say why, and leave
+    // "Load sample project" in the tree, which shows the same reason on screen when clicked.
+    if (!seeded.ok) console.error(`Glasshouse: the sample project could not be built: ${seeded.error.message}`);
     const fresh = seeded.ok ? seeded.value : createWorkspace();
     store.replace(fresh);
     // Saved now, not on the first edit: otherwise a reload seeds a new sample with new IDs and room links break.

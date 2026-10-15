@@ -293,6 +293,12 @@
 }
 
 /* The BOM carries 13 columns: at the 11px floor it still fits A4 portrait; other sheet tables print at 12px. */
+/* The BOM has the most columns: a little less padding keeps it inside A4 with a full network. */
+.sheet-table--bom th,
+.sheet-table--bom td {
+  padding-inline: 5px;
+}
+
 .sheet-table--bom {
   font-size: var(--text-2xs);
 }

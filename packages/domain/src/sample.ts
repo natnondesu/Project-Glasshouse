@@ -78,37 +78,86 @@ export function createSampleProject(at: string): Result<Project> {
   run({ type: 'room/create', siteId, id: mdfId, name: 'MDF-1' });
 
   // Server room A: rectangular, two populated racks, Approved so the Install sheet works at once.
-  plan(serverId, { type: 'survey/update', patch: { width: 6, length: 4.8, networkHandoff: 'Fibre patch panel on the north wall' } });
+  plan(serverId, { type: 'survey/update', patch: { width: 6, length: 4.8, powerBudget: 8000, networkHandoff: 'Fibre patch panel on the north wall' } });
   plan(serverId, { type: 'floor/update', id: firstAreaId(serverId), patch: { x: 0, y: 0, w: 6, d: 4.8 } });
   const s1 = rack('RK-01', 1.0, 0.7);
   const s2 = rack('RK-02', 1.6, 0.7);
   plan(serverId, { type: 'object/add', object: s1 });
   plan(serverId, { type: 'object/add', object: s2 });
-  const sw1 = place(serverId, s1.id, 42, template('tpl-switch-1u'));
-  const s1Servers = [place(serverId, s1.id, 1, template('tpl-server-4u')), place(serverId, s1.id, 5, template('tpl-server-2u')), place(serverId, s1.id, 7, template('tpl-server-2u'))];
-  const sw2 = place(serverId, s2.id, 42, template('tpl-switch-1u'));
-  const s2Servers = [1, 2, 3, 4].map((u) => place(serverId, s2.id, u, template('tpl-server-1u')));
-  // Network: 24 copper ports and two 10G uplinks per switch; each server's eth0 cabled to its rack's switch.
-  for (const sw of [sw1, sw2]) ports(serverId, sw, [...portRun('Gi1/0/', 1, 24, 'rj45', '1G'), ...portRun('Te1/1/', 1, 2, 'sfp_plus', '10G')]);
+  // A small but complete network: two cores joined by a LAG, two access switches and an edge
+  // router each uplinked to both cores (MLAG: one LAG per device, grouped at each core), servers
+  // on the access switches, one of them bonded. A wall cabinet holds the edge router.
+  const s3: Rack = { ...rack('RK-03', 2.6, 0), capacityU: 12, w: 0.6, d: 0.5, usableDepthMm: 400, wallBottomM: 1.2, clearance: { front: 1, rear: 0 } };
+  plan(serverId, { type: 'object/add', object: s3 });
+  const named = (roomId: Id, rackId: Id, bottomU: number, tpl: Template, name: string): Id => {
+    const id = place(roomId, rackId, bottomU, tpl);
+    plan(roomId, { type: 'device/update', id, patch: { name } });
+    return id;
+  };
+  const core1 = named(serverId, s1.id, 42, template('tpl-switch-1u'), 'CORE-01');
+  const acc1 = named(serverId, s1.id, 41, template('tpl-switch-1u'), 'ACC-01');
+  const core2 = named(serverId, s2.id, 42, template('tpl-switch-1u'), 'CORE-02');
+  const acc2 = named(serverId, s2.id, 41, template('tpl-switch-1u'), 'ACC-02');
+  const edge = named(serverId, s3.id, 12, template('tpl-switch-1u'), 'EDGE-01');
+  // Real servers (the Server category), not the Cloudbridge appliances the catalog files under Network.
+  const compute = template('tpl-server-4u');
+  const storageTpl = seedTemplates().find((t) => t.category === 'server' && t.mounting === 'rack' && /storage/i.test(t.label)) ?? compute;
+  const s1Servers = [place(serverId, s1.id, 1, storageTpl), place(serverId, s1.id, 5, compute), place(serverId, s1.id, 9, compute)];
+  const s2Servers = [1, 5].map((u) => place(serverId, s2.id, u, compute));
+  for (const core of [core1, core2]) ports(serverId, core, portRun('Te1/1/', 1, 8, 'sfp_plus', '10G'));
+  for (const acc of [acc1, acc2]) ports(serverId, acc, [...portRun('Gi1/0/', 1, 24, 'rj45', '1G'), ...portRun('Te1/1/', 1, 4, 'sfp_plus', '10G')]);
+  ports(serverId, edge, [...portRun('Gi0/', 1, 4, 'rj45', '1G'), ...portRun('Te0/', 1, 2, 'sfp_plus', '10G')]);
   [...s1Servers, ...s2Servers].forEach((id) => ports(serverId, id, portRun('eth', 0, 1, 'rj45', '1G')));
-  s1Servers.forEach((id, i) => cable(serverId, [id, 'eth0'], [sw1, `Gi1/0/${i + 1}`], `C-${String(i + 1).padStart(3, '0')}`, 'cat6'));
-  s2Servers.forEach((id, i) => cable(serverId, [id, 'eth0'], [sw2, `Gi1/0/${i + 1}`], `C-${String(i + 11).padStart(3, '0')}`, 'cat6'));
-  cable(serverId, [sw1, 'Te1/1/1'], [sw2, 'Te1/1/1'], 'UPL-01', 'om4');
-  // VLANs: servers on access VLAN 10, the switch-to-switch uplink trunks everything with management native.
+  const lagOn = (deviceId: Id, names: string[], group: string): void => names.forEach((name) => plan(serverId, { type: 'port/update', deviceId, name, patch: { lag: group } }));
+  // Core to core: two 10G links in Po1.
+  cable(serverId, [core1, 'Te1/1/7'], [core2, 'Te1/1/7'], 'ISL-01', 'om4');
+  cable(serverId, [core1, 'Te1/1/8'], [core2, 'Te1/1/8'], 'ISL-02', 'om4');
+  lagOn(core1, ['Te1/1/7', 'Te1/1/8'], 'Po1');
+  lagOn(core2, ['Te1/1/7', 'Te1/1/8'], 'Po1');
+  // Each access switch and the edge router: one uplink to each core, bundled on both sides.
+  const uplinks: [Id, string, string, string][] = [
+    [acc1, 'Te1/1/', 'Po10', 'Te1/1/1'],
+    [acc2, 'Te1/1/', 'Po20', 'Te1/1/2'],
+    [edge, 'Te0/', 'Po30', 'Te1/1/3'],
+  ];
+  uplinks.forEach(([dev, prefix, group, corePort], i) => {
+    cable(serverId, [dev, `${prefix}1`], [core1, corePort], `UPL-${i + 1}1`, 'om4');
+    cable(serverId, [dev, `${prefix}2`], [core2, corePort], `UPL-${i + 1}2`, 'om4');
+    lagOn(dev, [`${prefix}1`, `${prefix}2`], group);
+    lagOn(core1, [corePort], group);
+    lagOn(core2, [corePort], group);
+  });
+  // Servers: SRV-01 (storage) bonded to ACC-01 on Po11; the rest on one NIC each.
+  const [stor, ...rk1Rest] = s1Servers as [Id, ...Id[]];
+  cable(serverId, [stor, 'eth0'], [acc1, 'Gi1/0/1'], 'C-001', 'cat6');
+  cable(serverId, [stor, 'eth1'], [acc1, 'Gi1/0/2'], 'C-002', 'cat6');
+  plan(serverId, { type: 'port/update', deviceId: stor, name: 'eth0', patch: { lag: 'bond0' } });
+  plan(serverId, { type: 'port/update', deviceId: stor, name: 'eth1', patch: { lag: 'bond0' } });
+  lagOn(acc1, ['Gi1/0/1', 'Gi1/0/2'], 'Po11');
+  rk1Rest.forEach((id, i) => cable(serverId, [id, 'eth0'], [acc1, `Gi1/0/${i + 3}`], `C-${String(i + 3).padStart(3, '0')}`, 'cat6'));
+  s2Servers.forEach((id, i) => cable(serverId, [id, 'eth0'], [acc2, `Gi1/0/${i + 1}`], `C-${String(i + 11).padStart(3, '0')}`, 'cat6'));
+  // VLANs: servers on 10, storage on 20, every switch-to-switch LAG trunks all with management native.
+  // A LAG member's VLAN setting applies to the whole LAG, so one member each is enough.
   const vlan = (roomId: Id, vid: number, name: string): void => plan(roomId, { type: 'vlan/add', vlan: { vid, name } });
   const access = (roomId: Id, deviceId: Id, port: string, vid: number): void => plan(roomId, { type: 'port/vlan', deviceId, name: port, vlan: { mode: 'access', vid } });
+  const trunk = (deviceId: Id, port: string): void => plan(serverId, { type: 'port/vlan', deviceId, name: port, vlan: { mode: 'trunk', allowed: 'all', native: 99 } });
   vlan(serverId, 10, 'Servers');
   vlan(serverId, 20, 'Storage');
   vlan(serverId, 99, 'Management');
-  s1Servers.forEach((id, i) => {
+  access(serverId, stor, 'eth0', 20);
+  access(serverId, acc1, 'Gi1/0/1', 20);
+  rk1Rest.forEach((id, i) => {
     access(serverId, id, 'eth0', 10);
-    access(serverId, sw1, `Gi1/0/${i + 1}`, 10);
+    access(serverId, acc1, `Gi1/0/${i + 3}`, 10);
   });
   s2Servers.forEach((id, i) => {
     access(serverId, id, 'eth0', 10);
-    access(serverId, sw2, `Gi1/0/${i + 1}`, 10);
+    access(serverId, acc2, `Gi1/0/${i + 1}`, 10);
   });
-  for (const sw of [sw1, sw2]) plan(serverId, { type: 'port/vlan', deviceId: sw, name: 'Te1/1/1', vlan: { mode: 'trunk', allowed: 'all', native: 99 } });
+  for (const core of [core1, core2]) ['Te1/1/7', 'Te1/1/1', 'Te1/1/2', 'Te1/1/3'].forEach((p) => trunk(core, p));
+  trunk(acc1, 'Te1/1/1');
+  trunk(acc2, 'Te1/1/1');
+  trunk(edge, 'Te0/1');
   // Two boards so RK-01 has independent A and B feeds.
   const board1 = mcb('MCB-01', 0, 2.2, true);
   const board2 = mcb('MCB-02', 3.6, 0, false);
@@ -127,13 +176,14 @@ export function createSampleProject(at: string): Result<Project> {
   plan(serverId, { type: 'panel/way', id: board2.id, way: 2, patch: { ratingA: 32, label: 'UPS-01 in' } });
   plan(serverId, { type: 'feed/add', feed: { id: newId(), targetId: ups.id, sourceId: board2.id, label: 'Feed A', way: 2 } });
   plan(serverId, { type: 'feed/add', feed: { id: newId(), targetId: s2.id, sourceId: ups.id, label: 'Feed B' } });
-  // The way in: a door on the south wall, hinged on the right.
-  plan(serverId, { type: 'object/add', object: thing('door', 'D-01', 4.2, 4.7, { angle: 180, hinge: 'right' }) });
+  plan(serverId, { type: 'feed/add', feed: { id: newId(), targetId: s3.id, sourceId: board2.id, label: 'Feed A', way: 3 } });
+  // The way in: a sliding door on the south wall, sliding to the right.
+  plan(serverId, { type: 'object/add', object: thing('door', 'D-01', 4.2, 4.7, { angle: 180, hinge: 'right', opening: 'slide' }) });
   plan(serverId, { type: 'dimension/add', dimension: { id: newId(), a: { kind: 'point', x: 0, y: 1.3 }, b: { kind: 'object', objectId: s1.id, u: -0.5, v: 0 }, offset: 0.25 } });
   review(serverId, { type: 'review/submit', designedBy: 'Ploy', at });
   review(serverId, { type: 'review/approve', reviewer: 'Somchai', at });
   // On-site progress after approval: RK-01 is in, one of its servers is being serviced.
-  setState(serverId, [sw1, ...s1Servers], 'deployed');
+  setState(serverId, [core1, acc1, ...s1Servers], 'deployed');
   setState(serverId, [s1Servers[2]!], 'maintenance');
 
   // MDF-1: L-shaped with a column, mixed ownership, a populated Chassis, one blocker and one open note.

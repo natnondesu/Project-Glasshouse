@@ -71,6 +71,22 @@ describe('LAGs (port-channels, bonds)', () => {
     expect(lagIssues(grouped)).toEqual([]);
   });
 
+  it('accepts a bundle spread over two devices when each groups its end (MLAG), but not a split group on one', () => {
+    const c = run(
+      room(),
+      { type: 'device/place', id: 'sw2', rackId: 'rk', bottomU: 39, template: SWITCH },
+      lag('srv', 'eth0', 'bond0'),
+      lag('srv', 'eth1', 'bond0'),
+      link('l1', ['srv', 'eth0'], ['sw', 'Gi1/0/1']),
+      link('l2', ['srv', 'eth1'], ['sw2', 'Gi1/0/1']),
+      lag('sw', 'Gi1/0/1', 'Po5'),
+      lag('sw2', 'Gi1/0/1', 'Po5'),
+    );
+    expect(lagIssues(c)).toEqual([]);
+    const split = run(c, { type: 'link/remove', id: 'l2' }, link('l3', ['srv', 'eth1'], ['sw', 'Gi1/0/2']), lag('sw', 'Gi1/0/2', 'Po6'));
+    expect(lagIssues(split).map((i) => i.code)).toEqual(['lag_far_end']);
+  });
+
   it('shows the LAG beside the port in the cable schedule', () => {
     const c = run(room(), lag('sw', 'Gi1/0/1', 'Po1'), link('l1', ['sw', 'Gi1/0/1'], ['srv', 'eth0']));
     expect(cableSchedule(c)[0]).toMatchObject({ from: { port: 'Gi1/0/1 (Po1)' }, to: { port: 'eth0' } });

@@ -74,7 +74,8 @@ it('gives each rack taller than 44U a page of its own', () => {
   if (problem) throw new Error(problem.message);
   const { container } = open(server);
   const elevationPages = [...container.querySelectorAll('.sheet-page')].filter((p) => p.querySelector('.rack-elev'));
-  expect(elevationPages.map((p) => p.querySelectorAll('.rack-elev').length)).toEqual([1, 1]);
+  // RK-01, RK-02 and the wall rack RK-03.
+  expect(elevationPages.map((p) => p.querySelectorAll('.rack-elev').length)).toEqual([1, 1, 1]);
 });
 
 it('stamps the print date when printing, not when the page was opened', () => {
@@ -125,7 +126,8 @@ it('lists which panel feeds each rack, and draws the runs on the plan', () => {
   // A UPS fed from MCB-02 carries RK-02's B feed: a chain of two runs.
   expect(feeds).toHaveTextContent('UPS-01Feed AMCB-02');
   expect(feeds).toHaveTextContent('RK-02Feed BUPS-01');
-  expect(container.querySelectorAll('.sheet-plan .feed__run').length).toBe(5);
+  expect(feeds).toHaveTextContent('RK-03Feed AMCB-02');
+  expect(container.querySelectorAll('.sheet-plan .feed__run').length).toBe(6);
 });
 
 it('prints the cable schedule of the approved server room', () => {
@@ -133,7 +135,8 @@ it('prints the cable schedule of the approved server room', () => {
   const table = screen.getByRole('table', { name: 'Cable schedule' });
   expect(table.querySelector('thead .sheet-title')).not.toBeNull();
   const row = within(table).getByText('C-001').closest('tr')!;
-  expect([...row.querySelectorAll('td')].map((td) => td.textContent)).toEqual(['C-001', 'RK-01', 'SRV-01', 'eth0', 'RK-01', 'SW-01', 'Gi1/0/1', 'Cat 6', '10']);
-  expect(within(table).getByText('UPL-01').closest('tr')).toHaveTextContent('Fibre OM4');
-  expect(within(table).getByText('UPL-01').closest('tr')).toHaveTextContent('Trunk all · native 99');
+  // The bonded storage server: both ends name their LAG.
+  expect([...row.querySelectorAll('td')].map((td) => td.textContent)).toEqual(['C-001', 'RK-01', 'SRV-01', 'eth0 (bond0)', 'RK-01', 'ACC-01', 'Gi1/0/1 (Po11)', 'Cat 6', '20']);
+  expect(within(table).getByText('UPL-11').closest('tr')).toHaveTextContent('Fibre OM4');
+  expect(within(table).getByText('UPL-11').closest('tr')).toHaveTextContent('Trunk all · native 99');
 });
