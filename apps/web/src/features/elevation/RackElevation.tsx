@@ -219,7 +219,8 @@ export function RackElevation({ rack, active, selectedId, flagged, onSelect, onA
 
   return (
     <figure className={`rack-elev${active ? ' is-active' : ''}`}>
-      <figcaption className="rack-elev__cap">
+      {/* No wider than the drawing: a long line wraps instead of pushing the next rack away. */}
+      <figcaption className="rack-elev__cap" style={{ maxWidth: LABEL_W * 2 + RACK_W }}>
         {isStatic ? (
           <span className="rack-elev__name mono">{rack.name}</span>
         ) : (
@@ -231,10 +232,8 @@ export function RackElevation({ rack, active, selectedId, flagged, onSelect, onA
           {m.inspector.ownerName[rack.owner]} · <span className="mono">{`${usedU(rack)}/${rack.capacityU}U`}</span> ·{' '}
           <span className="mono">{`${knownW.toLocaleString('en-US')} W${m.elevation.unknownSuffix(unknown)}`}</span>
         </span>
-        <span className="rack-elev__depth mono">
-          {m.elevation.usableDepth(rack.usableDepthMm)}
-          {rack.wallBottomM !== undefined ? ` · ${m.elevation.wallMounted(formatMetres(rack.wallBottomM))}` : ''}
-        </span>
+        <span className="rack-elev__depth mono">{m.elevation.usableDepth(rack.usableDepthMm)}</span>
+        {rack.wallBottomM !== undefined ? <span className="rack-elev__depth mono">{m.elevation.wallMounted(formatMetres(rack.wallBottomM))}</span> : null}
       </figcaption>
       <svg
         className="rack-elev__svg"

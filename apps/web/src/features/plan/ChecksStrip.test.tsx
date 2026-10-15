@@ -35,3 +35,16 @@ it('says so when there are no issues', () => {
   render(<ChecksStrip issues={[]} objects={[]} onSelect={() => {}} />);
   expect(screen.getByText('No issues found')).toBeInTheDocument();
 });
+
+it('folds to its heading and counts, and remembers it', async () => {
+  const user = userEvent.setup();
+  localStorage.clear();
+  const { unmount } = render(<ChecksStrip issues={[issue({})]} objects={[{ id: 'x', name: 'EX-01' }]} onSelect={vi.fn()} />);
+  await user.click(screen.getByRole('button', { name: 'Hide checks' }));
+  expect(screen.queryByText('EX-01 sits inside the front clearance zone of RK-C1.')).toBeNull();
+  expect(screen.getByText('1 blocks approval')).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Show checks' })).toHaveAttribute('aria-expanded', 'false');
+  unmount();
+  render(<ChecksStrip issues={[issue({})]} objects={[{ id: 'x', name: 'EX-01' }]} onSelect={vi.fn()} />);
+  expect(screen.getByRole('button', { name: 'Show checks' })).toBeInTheDocument();
+});

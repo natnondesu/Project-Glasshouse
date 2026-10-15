@@ -209,6 +209,8 @@ export const th: Messages = {
     blockIcon: 'ต้องแก้ก่อนอนุมัติ',
     warnIcon: 'คำเตือน',
     select: (name) => `เลือก ${name}`,
+    hide: 'ซ่อนการตรวจสอบ',
+    show: 'แสดงการตรวจสอบ',
   },
   survey: {
     title: 'ข้อมูลสำรวจ',

@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs';
+import { pickTool } from './tools';
 import { expect, test, type Page } from '@playwright/test';
 
 async function createRoom(page: Page): Promise<void> {
@@ -16,7 +17,7 @@ async function createRoom(page: Page): Promise<void> {
 }
 
 async function placeRack(page: Page, fx: number, fy: number, name: string): Promise<void> {
-  await page.getByRole('button', { name: 'Place rack' }).click();
+  await pickTool(page, 'Place rack', 'Rack');
   const box = await page.getByTestId('footprint').boundingBox();
   if (!box) throw new Error('Footprint not rendered');
   await page.mouse.click(box.x + box.width * fx, box.y + box.height * fy);

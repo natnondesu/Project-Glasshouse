@@ -214,6 +214,8 @@ export const en = {
     blockIcon: 'Blocks approval',
     warnIcon: 'Warning',
     select: (name: string) => `Select ${name}`,
+    hide: 'Hide checks',
+    show: 'Show checks',
   },
   survey: {
     title: 'Survey',

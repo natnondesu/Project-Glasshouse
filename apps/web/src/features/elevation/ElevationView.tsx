@@ -89,6 +89,12 @@ export function ElevationView({ location, readOnly = false, viewingPast = false 
   }, [pulse]);
   const [message, setMessage] = useState<string | null>(null);
   useDeleteKey({ content, selectedId, readOnly, commit, onRemoved: select });
+  // Picking something to work on brings its inspector back if it was folded away.
+  const lastSelected = useRef(selectedId);
+  useEffect(() => {
+    if (selectedId && selectedId !== lastSelected.current && !inspectorOpen) setInspectorOpen(true);
+    lastSelected.current = selectedId;
+  }, [selectedId, inspectorOpen, setInspectorOpen]);
   const [portsFor, setPortsFor] = useState<string | null>(null);
   // Fit the tallest rack to the area's height (13–16 px per U), so a whole 42U rack shows on a laptop.
   const racksArea = useRef<HTMLElement>(null);
@@ -198,7 +204,7 @@ export function ElevationView({ location, readOnly = false, viewingPast = false 
         <div className={`glass elev__palette${catalogOpen ? '' : ' is-collapsed'}`}>
           <CatalogPalette catalog={catalog} activeRack={activeRack} onAdd={(t) => activeRack && place(t, activeRack)} disabled={readOnly} collapsed={!catalogOpen} onToggle={() => setCatalogOpen(!catalogOpen)} />
         </div>
-        <ChecksStrip className="checks--static checks--narrow" issues={issues} objects={names} onSelect={select} />
+        <ChecksStrip className="checks--static checks--narrow" issues={issues} objects={names} onSelect={select} storageKey="glasshouse:elev-checks-open" />
       </aside>
       <div className="elev__power">
         <PowerBar content={content} />
