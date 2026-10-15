@@ -86,6 +86,10 @@ export function useDeviceDrag(opts: {
   }, []);
 
   useEffect(() => {
+    const previewAt = (g: Grab, x: number, y: number): DropPreview | null => {
+      const hit = latest.current.hitTest(x, y);
+      return hit ? dropPreview(latest.current.content, g.deviceId, hit.rackId, hit.pointerU, g.grabOffsetU) : null;
+    };
     const move = (e: PointerEvent): void => {
       const g = grab.current;
       if (!g) return;
@@ -95,23 +99,30 @@ export function useDeviceDrag(opts: {
         document.body.classList.add('is-dragging-device');
       }
       edgeScroll(latest.current.scrollArea?.() ?? null, e.clientY);
-      const hit = latest.current.hitTest(e.clientX, e.clientY);
-      const next = hit ? dropPreview(latest.current.content, g.deviceId, hit.rackId, hit.pointerU, g.grabOffsetU) : null;
+      const next = previewAt(g, e.clientX, e.clientY);
       const p = previewRef.current;
       if (next?.rackId !== p?.rackId || next?.bottomU !== p?.bottomU || (next === null) !== (p === null)) show(next);
     };
-    const up = (): void => end(true);
+    // Browsers merge pointer moves into frames, so a quick release can land where no move was seen:
+    // drop where the pointer is released, not where the last move left the preview.
+    const up = (e: PointerEvent): void => {
+      const g = grab.current;
+      if (g?.dragging) show(previewAt(g, e.clientX, e.clientY));
+      end(true);
+    };
+    // The browser took the gesture over (a scroll, a system dialog): nothing should move.
+    const cancel = (): void => end(false);
     const key = (e: KeyboardEvent): void => {
       if (e.key === 'Escape' && grab.current) end(false);
     };
     window.addEventListener('pointermove', move);
     window.addEventListener('pointerup', up);
-    window.addEventListener('pointercancel', up);
+    window.addEventListener('pointercancel', cancel);
     window.addEventListener('keydown', key);
     return () => {
       window.removeEventListener('pointermove', move);
       window.removeEventListener('pointerup', up);
-      window.removeEventListener('pointercancel', up);
+      window.removeEventListener('pointercancel', cancel);
       window.removeEventListener('keydown', key);
     };
   }, [end]);
