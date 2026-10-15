@@ -27,7 +27,7 @@ it('adds a device from the palette and edits it in the inspector', async () => {
   await user.click(screen.getByRole('button', { name: 'Add Server 2U to RK-01' }));
   expect(screen.getByRole('button', { name: 'SRV-01, U1–U2' })).toBeInTheDocument();
   expect(screen.getByRole('heading', { name: 'SRV-01' })).toBeInTheDocument();
-  expect(screen.getByText('450 W known')).toBeInTheDocument();
+  expect(screen.getByRole('img', { name: /^450 watts known of a / })).toBeInTheDocument();
 });
 
 it('lists depth and demand problems in the checks', async () => {
