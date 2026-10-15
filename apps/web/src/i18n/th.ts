@@ -394,6 +394,12 @@ export const th: Messages = {
     moreAbove: 'ส่วนบนของแร็คยังมีต่อ',
     slotTitle: (slot, name) => (name ? `สล็อต ${slot}: ${name}` : `สล็อต ${slot}: ว่าง`),
   },
+  catalogFilter: {
+    label: 'กรองคลังอุปกรณ์',
+    placeholder: 'กรองตามชื่อ รุ่น ชนิด หรือ 2U',
+    count: (shown, total) => `${shown} จาก ${total} เทมเพลต`,
+    none: (q) => `ไม่มีเทมเพลตที่ตรงกับ “${q}”`,
+  },
   palette: {
     title: 'คลังอุปกรณ์',
     expand: 'ขยายคลังอุปกรณ์',

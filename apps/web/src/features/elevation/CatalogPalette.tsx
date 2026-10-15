@@ -1,4 +1,7 @@
 import { CATEGORY_ORDER, formatDemand, type Rack, type Template } from '@glasshouse/domain';
+import { useState } from 'react';
+import { filterTemplates } from '../catalog/templateFilter';
+import { TemplateFilterField } from '../catalog/TemplateFilterField';
 import { Link } from 'react-router';
 import { IconChevronRight, IconPlus } from '../../ui/icons';
 import { TEMPLATE_MIME } from './dnd';
@@ -15,10 +18,12 @@ interface CatalogPaletteProps {
 
 export function CatalogPalette({ catalog, activeRack, onAdd, disabled = false, collapsed = false, onToggle }: CatalogPaletteProps) {
   const m = useT();
+  const [query, setQuery] = useState('');
+  const shown = filterTemplates(catalog, query, (t) => m.categories[t.category]);
   // Grouped as on the Catalog screen; within a group, rack devices before the Nodes that go in a Chassis.
   const groups = CATEGORY_ORDER.map((category) => ({
     category,
-    items: catalog.filter((t) => t.category === category).sort((a, b) => Number(a.mounting === 'slot') - Number(b.mounting === 'slot')),
+    items: shown.filter((t) => t.category === category).sort((a, b) => Number(a.mounting === 'slot') - Number(b.mounting === 'slot')),
   })).filter((g) => g.items.length > 0);
   return (
     <section className="palette" aria-labelledby="palette-h">
@@ -44,7 +49,8 @@ export function CatalogPalette({ catalog, activeRack, onAdd, disabled = false, c
       <p className="palette__note">
         {disabled ? m.palette.frozen : m.palette.dragHint(activeRack?.name ?? null)}
       </p>
-      {groups.map(({ category, items }) => (
+      <TemplateFilterField id="palette-filter" value={query} onChange={setQuery} shown={shown.length} total={catalog.length} />
+          {groups.map(({ category, items }) => (
       <section key={category} className="palette__group" aria-labelledby={`palette-${category}`}>
       <h3 id={`palette-${category}`} className="palette__group-h">
         {m.categories[category]}
