@@ -549,29 +549,30 @@
 }
 
 .power {
-  padding: 12px 16px 14px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.power__head {
   display: flex;
   flex-wrap: wrap;
-  align-items: baseline;
+  align-items: center;
   gap: 6px 14px;
+  padding: 8px 14px;
   font-size: var(--text-xs);
   color: var(--ink-2);
 }
 
-.power__head h2 {
-  font-size: var(--text-md);
+.power h2 {
+  font-size: var(--text-sm);
   font-weight: 700;
   color: var(--ink);
 }
 
+.power__figures {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  white-space: nowrap;
+}
+
 .power__known {
-  font-size: var(--text-md);
+  font-size: var(--text-sm);
   font-weight: 600;
   color: var(--ink);
 }
@@ -580,16 +581,24 @@
   color: var(--block);
 }
 
-.power__unknown {
-  margin-left: auto;
-  font-weight: 600;
-  color: var(--warn);
+/* The bar takes whatever the strip has left, but never shrinks to nothing. */
+.power__bar {
+  flex: 1 1 120px;
+  min-width: 80px;
+  height: 12px;
+  display: block;
 }
 
-.power__bar {
-  width: 100%;
-  height: 18px;
-  display: block;
+.power__unknown {
+  font-weight: 600;
+  color: var(--warn);
+  white-space: nowrap;
+}
+
+.power__extra {
+  display: inline-flex;
+  padding-left: 14px;
+  border-left: 1px solid var(--line);
 }
 
 .power__track {
@@ -696,7 +705,7 @@
   display: flex;
   flex-wrap: wrap;
   gap: 4px 14px;
-  margin: 8px 0 0;
+  margin: 0;
   padding: 0;
   font-size: var(--text-xs);
   color: var(--ink-2);

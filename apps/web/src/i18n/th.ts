@@ -436,9 +436,10 @@ export const th: Messages = {
     inChassisHint: 'เพิ่มจากผังสล็อตของ Chassis',
   },
   power: {
-    title: 'ความต้องการไฟของห้อง',
+    title: 'ความต้องการไฟ',
     known: (w) => `ทราบค่า ${w}`,
     ofLimit: (limit, pct, budget) => `จากขีดจำกัดออกแบบ ${limit} (${pct}% ของ ${budget})`,
+    ofShort: (limit) => `จาก ${limit} ที่จำกัด`,
     unknownDevices: (n) => `อุปกรณ์ไม่ทราบค่า ${n}`,
     unknownReserved: (n) => `ช่วงจองไม่ทราบค่า ${n}`,
     bar: (known, limit, budget) => `ทราบค่า ${known} วัตต์ จากขีดจำกัดออกแบบ ${limit} วัตต์ และกำลังไฟที่มี ${budget} วัตต์`,

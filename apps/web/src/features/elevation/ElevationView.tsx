@@ -207,8 +207,9 @@ export function ElevationView({ location, readOnly = false, viewingPast = false 
         <ChecksStrip className="checks--static checks--narrow" issues={issues} objects={names} onSelect={select} storageKey="glasshouse:elev-checks-open" />
       </aside>
       <div className="elev__power">
-        <PowerBar content={content} />
-        <StateLegend />
+        <PowerBar content={content}>
+          <StateLegend />
+        </PowerBar>
       </div>
       {more.above ? (
         <button type="button" className="elev__more elev__more--above" onClick={() => reveal(-1)}>

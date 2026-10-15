@@ -444,6 +444,7 @@ export const en = {
     title: 'Room demand',
     known: (w: string) => `${w} known`,
     ofLimit: (limit: string, pct: number, budget: string) => `of ${limit} design limit (${pct}% of ${budget})`,
+    ofShort: (limit: string) => `of ${limit} limit`,
     unknownDevices: (n: number) => `${n} unknown ${n === 1 ? 'Device' : 'Devices'}`,
     unknownReserved: (n: number) => `${n} unknown Reserved ${n === 1 ? 'range' : 'ranges'}`,
     bar: (known: number, limit: number, budget: number) => `${known} watts known of a ${limit} watt design limit and ${budget} watt budget`,

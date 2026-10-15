@@ -34,7 +34,7 @@ test('AC06/AC08/AC14/AC19: fill a chassis, move it, flag an unknown node, export
   await expect(page.getByRole('heading', { name: 'CH-01' })).toBeVisible();
   for (let slot = 1; slot <= 5; slot += 1) await page.getByRole('button', { name: `Add node to slot ${slot}` }).click();
   await expect(page.getByText('5 of 5 filled')).toBeVisible();
-  await expect(page.getByText('2,500 W known')).toBeVisible();
+  await expect(page.getByRole('img', { name: /^2500 watts known of a / })).toBeVisible();
 
   await page.getByLabel('Rack', { exact: true }).selectOption({ label: 'RK-02' });
   await expect(page.getByRole('button', { name: 'CH-01, U1–U6' })).toBeVisible();
