@@ -1,7 +1,9 @@
 import { applyPlanCommand, createObject, emptyContent, type PlanContent, type Rack, type Template } from '@glasshouse/domain';
-import { describe, expect, it } from 'vitest';
+import { act, renderHook } from '@testing-library/react';
+import type { PointerEvent as ReactPointerEvent } from 'react';
+import { describe, expect, it, vi } from 'vitest';
 import { useWorkspaceStore, resetWorkspaceStore } from '../../store/workspaceStore';
-import { dropPreview } from './deviceDrag';
+import { dropPreview, useDeviceDrag } from './deviceDrag';
 
 function setup(): PlanContent {
   resetWorkspaceStore();
@@ -45,5 +47,35 @@ describe('dropPreview', () => {
   it('returns null for unknown devices or racks', () => {
     expect(dropPreview(setup(), 'nope', 'rk-a', 1, 0)).toBeNull();
     expect(dropPreview(setup(), 'd1', 'nope', 1, 0)).toBeNull();
+  });
+});
+
+describe('useDeviceDrag', () => {
+  // A fake geometry: x picks the rack (left half rk-a, right half rk-b), y is the U under the pointer.
+  const hitTest = (x: number, y: number) => ({ rackId: x < 100 ? 'rk-a' : 'rk-b', pointerU: y });
+  const press = { clientX: 50, clientY: 10, button: 0 } as unknown as ReactPointerEvent;
+  const pointer = (type: string, x: number, y: number) => window.dispatchEvent(new MouseEvent(type, { clientX: x, clientY: y }) as unknown as PointerEvent);
+
+  function drag() {
+    const onDrop = vi.fn();
+    const content = setup();
+    const { result } = renderHook(() => useDeviceDrag({ content, disabled: false, hitTest, onDrop }));
+    act(() => result.current.start(press, 'd2', 10));
+    act(() => pointer('pointermove', 60, 14));
+    return { onDrop, result };
+  }
+
+  it('drops where the pointer is released, even if the last move event was elsewhere', () => {
+    const { onDrop } = drag();
+    // Browsers merge moves into frames: a quick release can arrive with no move at its position.
+    act(() => pointer('pointerup', 150, 5));
+    expect(onDrop).toHaveBeenCalledWith(expect.objectContaining({ rackId: 'rk-b', bottomU: 5 }));
+  });
+
+  it('cancels, rather than drops, when the browser cancels the pointer', () => {
+    const { onDrop, result } = drag();
+    act(() => pointer('pointercancel', 150, 5));
+    expect(onDrop).not.toHaveBeenCalled();
+    expect(result.current.preview).toBeNull();
   });
 });
