@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react';
 import { IconChevronCorner } from '../../ui/icons';
 import { usePersistentState } from '../../ui/usePersistentState';
 import { useT } from '../../i18n';
@@ -65,6 +65,26 @@ function Group({ group, tool, current, onTool }: GroupProps) {
   const m = useT();
   const groupLabel = m.tools.group[group.id];
   const flyout = useRef<HTMLSpanElement>(null);
+  // Menu keys: arrows and Home/End move through the tools; Escape closes and hands focus back to the group.
+  const onMenuKey = (e: ReactKeyboardEvent): void => {
+    if (!open) return;
+    const items = [...(flyout.current?.querySelectorAll<HTMLElement>('[role="menuitemradio"]') ?? [])];
+    const at = items.indexOf(document.activeElement as HTMLElement);
+    const go = (i: number): void => {
+      e.preventDefault();
+      items[(i + items.length) % items.length]?.focus();
+    };
+    if (e.key === 'ArrowDown') go(at + 1);
+    else if (e.key === 'ArrowUp') go(at - 1);
+    else if (e.key === 'Home') go(0);
+    else if (e.key === 'End') go(items.length - 1);
+    else if (e.key === 'Escape') {
+      e.preventDefault();
+      e.stopPropagation();
+      setOpen(false);
+      cell.current?.querySelector<HTMLElement>('.tool')?.focus();
+    }
+  };
   // Keyboard users land on the current tool when the list opens.
   useEffect(() => {
     if (!open) return;
@@ -80,7 +100,7 @@ function Group({ group, tool, current, onTool }: GroupProps) {
     return () => window.removeEventListener('pointerdown', close);
   }, [open]);
   return (
-    <span ref={cell} className="tool-group" onKeyDown={(e) => e.key === 'Escape' && setOpen(false)}>
+    <span ref={cell} className="tool-group" onKeyDown={onMenuKey}>
       {/* Clicking the group always shows its tools: many people never find the corner arrow. */}
       <ToolButton tool={current} active={tool === current} onTool={onTool} menu={group.tools.length > 1 ? { open, onToggle: () => setOpen((o) => !o) } : undefined} />
       {group.tools.length > 1 ? (

@@ -67,3 +67,20 @@ it('opens a group’s tools when its button is clicked, without switching tool y
   await user.click(within(menu).getByRole('menuitemradio', { name: 'Sliding door' }));
   expect(screen.getByTestId('tool')).toHaveTextContent('sliding_door');
 });
+
+it('moves through a group with the arrow keys, and Escape hands focus back to the group button', async () => {
+  const user = userEvent.setup();
+  render(<Harness />);
+  await user.click(screen.getByRole('button', { name: 'Place rack' }));
+  const menu = screen.getByRole('menu', { name: 'Objects tools' });
+  expect(within(menu).getByRole('menuitemradio', { name: 'Rack' })).toHaveFocus();
+  await user.keyboard('{ArrowDown}');
+  expect(within(menu).getByRole('menuitemradio', { name: 'Wall rack' })).toHaveFocus();
+  await user.keyboard('{ArrowUp}{ArrowUp}');
+  expect(within(menu).getByRole('menuitemradio', { name: 'Furniture' })).toHaveFocus();
+  await user.keyboard('{Home}');
+  expect(within(menu).getByRole('menuitemradio', { name: 'Rack' })).toHaveFocus();
+  await user.keyboard('{Escape}');
+  expect(screen.queryByRole('menu')).toBeNull();
+  expect(screen.getByRole('button', { name: 'Place rack' })).toHaveFocus();
+});
