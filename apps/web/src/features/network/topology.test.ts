@@ -1,6 +1,6 @@
-import { applyPlanCommand, createObject, emptyContent, type PlanCommand, type PlanContent, type Rack, type Template } from '@glasshouse/domain';
+import { applyPlanCommand, createObject, createWorkspace, currentRevision, emptyContent, withSample, type PlanCommand, type PlanContent, type Rack, type Template } from '@glasshouse/domain';
 import { describe, expect, it } from 'vitest';
-import { buildTopology, NODE_H } from './topology';
+import { buildTopology, NODE_H, NODE_W, type TopoNode } from './topology';
 
 const tpl = (category: Template['category'], ports: number): Template => ({
   id: `t-${category}-${ports}`, version: 1, label: category, model: '', category, mounting: 'rack', heightU: 1, depthMm: 400, demand: { kind: 'known', watts: 10 },
@@ -63,3 +63,17 @@ describe('buildTopology', () => {
   });
 });
 
+
+it('sets a core pair side by side over the switches they share (MLAG), not one after the other', () => {
+  const ws = withSample(createWorkspace(), '2026-10-16T00:00:00.000Z');
+  if (!ws.ok) throw new Error(ws.error.message);
+  const content = currentRevision(ws.value.projects[0]!.sites[0]!.rooms[0]!.plan).content;
+  const topo = buildTopology(content);
+  const at = (name: string) => topo.nodes.find((n) => n.name === name)!;
+  const [c1, c2, acc1, acc2] = ['CORE-01', 'CORE-02', 'ACC-01', 'ACC-02'].map(at) as [TopoNode, TopoNode, TopoNode, TopoNode];
+  expect(c1.y).toBe(c2.y);
+  // Next to each other: nothing fits between them.
+  expect(Math.abs(c2.x - c1.x)).toBeLessThan(NODE_W * 2);
+  // The pair sits over the switches below, not past their right end.
+  expect(Math.max(c1.x, c2.x)).toBeLessThan(Math.max(acc1.x, acc2.x) + NODE_W);
+});

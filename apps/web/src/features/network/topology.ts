@@ -2,6 +2,8 @@ import { carriedVids, describeEnd, findNode, findRackDevice, racksOf, type Categ
 
 export const NODE_W = 152;
 export const NODE_H = 50;
+/** Between a core pair: room for the bundle badge ('Po1 ×2') on the link that joins them. */
+const PAIR_GAP = 84;
 const H_GAP = 22;
 const ROW_H = 120;
 /** Vertical step between wrapped rows of leaves under one parent. */
@@ -177,8 +179,23 @@ export function buildTopology(content: PlanContent, { leafCols = DEFAULT_LEAF_CO
     x.set(id, Math.max(left, (first + last) / 2));
     return width;
   };
+  // A root with no tree of its own whose links all reach another root's tree (a core pair in MLAG)
+  // sits beside its partner, the pair centred over what they share, instead of off to one side.
+  const anchorOf = new Map<Id, Id>();
+  for (const r of roots) {
+    if ((children.get(r) ?? []).length > 0) continue;
+    const partner = roots.find((o) => o !== r && (children.get(o) ?? []).length > 0 && neighbours.get(r)?.has(o));
+    if (partner) anchorOf.set(r, partner);
+  }
   let cursor = MARGIN;
-  for (const r of roots) cursor += place(r, cursor) + H_GAP * 2;
+  for (const r of roots) if (!anchorOf.has(r)) cursor += place(r, cursor) + H_GAP * 2;
+  for (const anchor of new Set(anchorOf.values())) {
+    const row = [anchor, ...[...anchorOf].filter(([, a]) => a === anchor).map(([r]) => r)];
+    const centre = x.get(anchor)! + NODE_W / 2;
+    const span = row.length * NODE_W + (row.length - 1) * PAIR_GAP;
+    const left = Math.max(MARGIN, centre - span / 2);
+    row.forEach((id, i) => x.set(id, left + i * (NODE_W + PAIR_GAP)));
+  }
 
   const nodes: TopoNode[] = linked.map((id) => {
     const o = own.get(id)!;

@@ -409,6 +409,7 @@ export const en = {
     notHere: 'Not here',
     moreBelow: 'More of the rack below',
     moreAbove: 'More of the rack above',
+    moreRight: 'More racks',
     slotTitle: (slot: number, name: string | null) => (name ? `Slot ${slot}: ${name}` : `Slot ${slot}: empty`),
   },
   copyPaste: {

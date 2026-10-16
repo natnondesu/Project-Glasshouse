@@ -404,6 +404,7 @@ export const th: Messages = {
     notHere: 'วางตรงนี้ไม่ได้',
     moreBelow: 'ส่วนล่างของแร็คยังมีต่อ',
     moreAbove: 'ส่วนบนของแร็คยังมีต่อ',
+    moreRight: 'แร็คอื่นทางขวา',
     slotTitle: (slot, name) => (name ? `สล็อต ${slot}: ${name}` : `สล็อต ${slot}: ว่าง`),
   },
   copyPaste: {

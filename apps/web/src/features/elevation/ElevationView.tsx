@@ -5,6 +5,7 @@ import { SearchBox } from '../search/SearchBox';
 import type { SearchHit } from '../search/search';
 import { PanelCollapseTab, PanelRail } from '../../ui/PanelRail';
 import { usePersistentState } from '../../ui/usePersistentState';
+import { useInspectorOpen } from '../../ui/useInspectorOpen';
 import {
   equipmentStateOf,
   revisionIssues,
@@ -67,7 +68,6 @@ function revealInRacks(el: Element): void {
 }
 
 export function ElevationView({ location, readOnly = false, viewingPast = false }: { location: RoomLocation; readOnly?: boolean; viewingPast?: boolean }) {
-  const [inspectorOpen, setInspectorOpen] = usePersistentState('glasshouse:inspector-open', true);
   const m = useT();
   const [catalogOpen, setCatalogOpen] = usePersistentState('glasshouse:elevation-catalog-open', true);
   const revision = currentRevision(location.room.plan);
@@ -76,6 +76,8 @@ export function ElevationView({ location, readOnly = false, viewingPast = false 
   const commit = usePlanCommit(roomId);
   const catalog = useWorkspaceStore((s) => s.workspace.catalog);
   const [selectedId, select] = useSearchParamState('sel');
+  // Picking something to work on brings a folded inspector back.
+  const [inspectorOpen, setInspectorOpen] = useInspectorOpen(selectedId);
   const stateOf = (id: string) => equipmentStateOf(location.room.plan, id);
   const navigate = useNavigate();
   const [pulse, setPulse] = useState<string | null>(null);
@@ -89,12 +91,6 @@ export function ElevationView({ location, readOnly = false, viewingPast = false 
   }, [pulse]);
   const [message, setMessage] = useState<string | null>(null);
   useDeleteKey({ content, selectedId, readOnly, commit, onRemoved: select });
-  // Picking something to work on brings its inspector back if it was folded away.
-  const lastSelected = useRef(selectedId);
-  useEffect(() => {
-    if (selectedId && selectedId !== lastSelected.current && !inspectorOpen) setInspectorOpen(true);
-    lastSelected.current = selectedId;
-  }, [selectedId, inspectorOpen, setInspectorOpen]);
   const [portsFor, setPortsFor] = useState<string | null>(null);
   // Fit the tallest rack to the area's height (13–16 px per U), so a whole 42U rack shows on a laptop.
   const racksArea = useRef<HTMLElement>(null);
@@ -104,7 +100,7 @@ export function ElevationView({ location, readOnly = false, viewingPast = false 
     if (!el || typeof ResizeObserver === 'undefined') return;
     const update = (): void => {
       setAreaH(el.clientHeight);
-      setMore({ above: el.scrollTop > 4, below: el.scrollTop + el.clientHeight < el.scrollHeight - 4 });
+      setMore({ above: el.scrollTop > 4, below: el.scrollTop + el.clientHeight < el.scrollHeight - 4, right: el.scrollLeft + el.clientWidth < el.scrollWidth - 4 });
     };
     const ro = new ResizeObserver(update);
     ro.observe(el);
@@ -116,7 +112,8 @@ export function ElevationView({ location, readOnly = false, viewingPast = false 
     };
   }, []);
   // When a rack can't fit at a readable size, say so and offer the hidden part.
-  const [more, setMore] = useState({ above: false, below: false });
+  const [more, setMore] = useState({ above: false, below: false, right: false });
+  const revealRight = (): void => racksArea.current?.scrollBy({ left: racksArea.current.clientWidth * 0.8, behavior: 'smooth' });
   const reveal = (dir: 1 | -1): void => racksArea.current?.scrollBy({ top: dir * racksArea.current.clientHeight * 0.8, behavior: 'smooth' });
   const racks = racksOf(content);
   const tallest = Math.max(1, ...racks.map((r) => r.capacityU));
@@ -215,6 +212,12 @@ export function ElevationView({ location, readOnly = false, viewingPast = false 
         <button type="button" className="elev__more elev__more--above" onClick={() => reveal(-1)}>
           <IconChevronRight className="elev__more-icon" />
           {m.elevation.moreAbove}
+        </button>
+      ) : null}
+      {more.right ? (
+        <button type="button" className="elev__more elev__more--right" onClick={revealRight}>
+          {m.elevation.moreRight}
+          <IconChevronRight className="elev__more-icon elev__more-icon--right" />
         </button>
       ) : null}
       {more.below ? (
