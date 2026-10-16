@@ -251,6 +251,52 @@ function Cabinet({ size, color, wall, accent }: { size: [number, number, number]
   );
 }
 
+/**
+ * A third-party PDU: a power bar. Mounting ears, a red rocker switch, a row of sockets and a short
+ * cord, laid along the object's longer side so an older, square PDU still reads as a bar.
+ */
+function PowerBar({ size, color, wall }: { size: [number, number, number]; color: string; wall: string }) {
+  const [w, h, d] = size;
+  const along = w >= d;
+  const len = Math.max(w, d);
+  const bar = Math.max(0.03, Math.min(0.06, Math.min(w, d)));
+  const tall = Math.max(0.03, Math.min(0.05, h));
+  const sockets = Math.max(3, Math.min(8, Math.round((len - 0.12) / 0.055)));
+  const pitch = (len - 0.12) / sockets;
+  const face = -h / 2 + tall;
+  return (
+    <group rotation={[0, along ? 0 : Math.PI / 2, 0]}>
+      <group position={[0, -h / 2 + tall / 2, 0]}>
+        <mesh castShadow>
+          <boxGeometry args={[len - 0.04, tall, bar]} />
+          <meshStandardMaterial color="#1b2027" roughness={0.55} metalness={0.3} />
+        </mesh>
+        {[-1, 1].map((side) => (
+          <mesh key={side} position={[side * (len / 2 - 0.012), 0, 0]}>
+            <boxGeometry args={[0.024, tall * 0.25, bar + 0.02]} />
+            <meshStandardMaterial color="#14191f" roughness={0.6} metalness={0.4} />
+          </mesh>
+        ))}
+      </group>
+      <mesh position={[-len / 2 + 0.05, face + 0.002, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <planeGeometry args={[0.03, bar * 0.6]} />
+        <meshStandardMaterial color="#d6372b" emissive="#d6372b" emissiveIntensity={0.35} />
+      </mesh>
+      {Array.from({ length: sockets }, (_, i) => (
+        <mesh key={i} position={[-len / 2 + 0.09 + pitch * (i + 0.5), face + 0.002, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+          <planeGeometry args={[pitch * 0.7, bar * 0.7]} />
+          <meshStandardMaterial color={color} roughness={0.8} />
+        </mesh>
+      ))}
+      <mesh position={[-len / 2 - 0.08, -h / 2 + 0.006, 0]} rotation={[0, 0, Math.PI / 2]}>
+        <cylinderGeometry args={[0.005, 0.005, 0.16, 8]} />
+        <meshStandardMaterial color="#14191f" roughness={0.8} />
+      </mesh>
+      <Edges size={[len - 0.04, tall, bar]} color={wall} opacity={0.35} />
+    </group>
+  );
+}
+
 export function ObjectModel({ object, palette }: { object: Object3D; palette: Palette3D }) {
   const color = palette.object[object.type];
   let body;
@@ -258,7 +304,8 @@ export function ObjectModel({ object, palette }: { object: Object3D; palette: Pa
   else if (object.type === 'door') body = <Door size={object.size} color={color} wall={palette.wall} hinge={object.door?.hinge} opening={object.door?.opening} />;
   else if (object.type === 'wall_plug' || object.type === 'industrial_socket') body = <Faceplate size={object.size} color={color} wall={palette.wall} round={object.type === 'industrial_socket'} />;
   else if (object.type === 'floor_box') body = <FloorBoxLid size={object.size} color={color} wall={palette.wall} />;
-  else if (object.type === 'ups' || object.type === 'pdu') body = <Cabinet size={object.size} color={color} wall={palette.wall} accent={object.type === 'ups' ? '#4cd17a' : '#7fa2e8'} />;
+  else if (object.type === 'pdu') body = <PowerBar size={object.size} color={color} wall={palette.wall} />;
+  else if (object.type === 'ups') body = <Cabinet size={object.size} color={color} wall={palette.wall} accent="#4cd17a" />;
   else body = <Mcb size={object.size} color={color} wall={palette.wall} />;
   return (
     <group position={object.position} rotation={[0, object.yaw, 0]}>

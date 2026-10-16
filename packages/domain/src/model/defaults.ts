@@ -33,7 +33,7 @@ export const DEFAULT_CLEARANCE = { front: 1, rear: 0.6 } as const;
 /** A typical wall cabinet: 12U, 600 × 500 mm, hung with its bottom at 1.20 m. */
 export const DEFAULT_WALL_RACK = { capacityU: 12, w: 0.6, d: 0.5, usableDepthMm: 400, bottomM: 1.2 } as const;
 
-export const DEFAULT_RACK = { w: 0.6, d: 1.07, capacityU: 42, usableDepthMm: 1000 } as const;
+export const DEFAULT_RACK = { w: 0.8, d: 1.1, capacityU: 42, usableDepthMm: 1000 } as const;
 
 export const DEFAULT_SIZES: Record<SimpleObjectType, { w: number; d: number }> = {
   existing_rack: { w: 0.6, d: 1 },
@@ -44,7 +44,8 @@ export const DEFAULT_SIZES: Record<SimpleObjectType, { w: number; d: number }> =
   industrial_socket: { w: 0.2, d: 0.12 },
   floor_box: { w: 0.3, d: 0.3 },
   ups: { w: 0.6, d: 0.85 },
-  pdu: { w: 0.8, d: 0.8 },
+  /** A third-party PDU is a power bar: a 19-inch strip of sockets. */
+  pdu: { w: 0.48, d: 0.1 },
 };
 
 export const DEFAULT_HEIGHTS_M: Record<SimpleObjectType, number> = {
@@ -56,7 +57,7 @@ export const DEFAULT_HEIGHTS_M: Record<SimpleObjectType, number> = {
   industrial_socket: 0.6,
   floor_box: 0.03,
   ups: 1.6,
-  pdu: 1.9,
+  pdu: 0.05,
 };
 
 export const NAME_PREFIX: Record<RoomObjectType, string> = {

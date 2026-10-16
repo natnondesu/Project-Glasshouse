@@ -2,6 +2,8 @@ import { localToWorld, type RoomObject } from '@glasshouse/domain';
 import { toScreen, type View } from '../../viewport/math';
 
 const ARC_STEPS = 18;
+/** Sockets drawn on a power bar in plan. */
+const PDU_SOCKETS = 6;
 /** Sliding door drawing, in metres: the track sits off the wall face, the parked leaf laps the opening a little. */
 const SLIDE_STANDOFF_M = 0.05;
 const SLIDE_OVERLAP_M = 0.05;
@@ -112,7 +114,19 @@ export function SourceSymbol({ o, view }: { o: RoomObject; view: View }) {
       </g>
     );
   }
-  if (o.type === 'ups' || o.type === 'pdu') {
+  if (o.type === 'pdu') {
+    // A power bar from above: a row of sockets along it.
+    const n = PDU_SOCKETS;
+    return (
+      <g aria-hidden="true">
+        {Array.from({ length: n }, (_, i) => {
+          const [x, y] = s(-0.4 + (0.8 * i) / (n - 1), 0);
+          return <circle key={i} className="src__pin" cx={x} cy={y} r={Math.max(1, r * 0.22)} />;
+        })}
+      </g>
+    );
+  }
+  if (o.type === 'ups') {
     return <path aria-hidden="true" className="src__front" d={path([s(-0.5, 0.42), s(0.5, 0.42)])} />;
   }
   return null;
