@@ -12,6 +12,7 @@ import { initialLabelKinds, type LabelKind } from './labels';
 import { LabelMenu } from './LabelMenu';
 import { ObjectCard } from './ObjectCard';
 import { PowerPathToggle } from './PowerPathToggle';
+import { entrance, standAt, type WalkCamera } from './walk';
 import { IconClose } from '../../ui/icons';
 import { PanelManager } from '../plan/PanelManager';
 import { usePlanCommit } from '../../store/hooks';
@@ -55,10 +56,22 @@ export default function Room3DView({ location, readOnly = false }: { location: R
   const select = (id: string | null): void => setSelectedId(id);
   const [showFeeds, setShowFeeds] = usePersistentState('glasshouse:3d-feeds', true);
   const [focus, setFocus] = useState<Focus3D | null>(null);
+  // Walking: standing in the room at eye height instead of looking down on it.
+  const [walkCam, setWalkCam] = useState<WalkCamera | null>(null);
+  const [glide, setGlide] = useState<{ x: number; z: number } | null>(null);
+  const standAtId = (id: string): void => {
+    const target = scene.racks.find((r) => r.id === id) ?? scene.others.find((o) => o.id === id);
+    if (target) setWalkCam(standAt(scene, target));
+  };
+  const startWalk = (): void => {
+    const rack = scene.racks.find((r) => r.id === selectedId);
+    setWalkCam(rack ? standAt(scene, rack) : entrance(scene));
+  };
   const pickHit = (hit: SearchHit): void => {
     const target = scene.racks.find((r) => r.id === hit.objectId) ?? scene.others.find((o) => o.id === hit.objectId);
     if (!target) return;
     setSelectedId(hit.objectId);
+    if (walkCam) return standAtId(hit.objectId);
     const [x, , z] = target.position;
     // Swing to the hit without zooming out; come closer if the camera is far away.
     setCamera((prev) => ({ ...prev, target: [x, FOCUS_HEIGHT_M, z], distance: Math.min(prev.distance, FOCUS_DISTANCE_M) }));
@@ -73,7 +86,19 @@ export default function Room3DView({ location, readOnly = false }: { location: R
   return (
     <section className="room3d" aria-label={m.room3d.region}>
       {webgl ? (
-        <Room3DCanvas scene={scene} palette={palette} camera={camera} onCamera={setCamera} selectedId={selectedId} onSelect={select} labelKinds={labelKinds} focus={focus} showFeeds={showFeeds} path={path} />
+        <Room3DCanvas
+          scene={scene}
+          palette={palette}
+          camera={camera}
+          onCamera={setCamera}
+          selectedId={selectedId}
+          onSelect={select}
+          labelKinds={labelKinds}
+          focus={focus}
+          showFeeds={showFeeds}
+          path={path}
+          walk={walkCam ? { camera: walkCam, onCommit: setWalkCam, glide, onFloor: (x, z) => setGlide({ x, z }), onExit: () => setWalkCam(null) } : null}
+        />
       ) : (
         <p className="room3d__fallback" role="status">
           {m.room3d.noWebgl}
@@ -95,11 +120,24 @@ export default function Room3DView({ location, readOnly = false }: { location: R
       />
       <aside className="room3d__panel glass" aria-label={m.room3d.racksHere}>
         <h2>{m.room3d.racks}</h2>
+        {walkCam ? <p className="room3d__note">{m.room3d.walkRacks}</p> : null}
         {racks.length === 0 ? <p className="room3d__note">{m.room3d.noRacks}</p> : null}
         <ul>
           {racks.map((r) => (
             <li key={r.id}>
-              <button type="button" className="room3d__rack" aria-pressed={r.id === selectedId} onClick={() => setSelectedId(r.id === selectedId ? null : r.id)}>
+              <button
+                type="button"
+                className="room3d__rack"
+                aria-pressed={r.id === selectedId}
+                onClick={() => {
+                  // Walking, a rack in the list is somewhere to go: stand in front of it.
+                  if (walkCam) {
+                    setSelectedId(r.id);
+                    return standAtId(r.id);
+                  }
+                  setSelectedId(r.id === selectedId ? null : r.id);
+                }}
+              >
                 <span className="mono">{r.name}</span>
                 <span className="room3d__rack-sub">{r.owner === 'customer' ? m.room3d.customer : `${r.usedU}/${r.capacityU}U`}</span>
               </button>
@@ -133,10 +171,19 @@ export default function Room3DView({ location, readOnly = false }: { location: R
       </aside>
       {managed ? <PanelManager panel={managed} content={content} commit={commit} onClose={() => setManagedId(null)} readOnly={readOnly} /> : null}
       <div className="room3d__controls glass">
-        <span className="mono room3d__zoom" aria-live="polite">{`${camera.distance.toFixed(1)} m`}</span>
-        <button type="button" className="btn btn--sm" onClick={() => setCamera(home)}>
-          {m.room3d.reset}
+        <button type="button" className="btn btn--sm room3d__walk" aria-pressed={walkCam !== null} onClick={() => (walkCam ? setWalkCam(null) : startWalk())}>
+          {walkCam ? m.room3d.walkExit : m.room3d.walk}
         </button>
+        {walkCam ? (
+          <span className="mono room3d__zoom">{m.room3d.eyeHeight}</span>
+        ) : (
+          <>
+            <span className="mono room3d__zoom" aria-live="polite">{`${camera.distance.toFixed(1)} m`}</span>
+            <button type="button" className="btn btn--sm" onClick={() => setCamera(home)}>
+              {m.room3d.reset}
+            </button>
+          </>
+        )}
         <LabelMenu shown={labelKinds} onChange={setLabelKinds} />
         {pathName ? (
           <button type="button" className="btn btn--sm power-path__chip" aria-label={m.room3d.clearPath(pathName)} onClick={() => setPathFor(null)}>
@@ -149,7 +196,7 @@ export default function Room3DView({ location, readOnly = false }: { location: R
         <button type="button" className="btn btn--sm room3d__feeds" aria-pressed={showFeeds} onClick={() => setShowFeeds(!showFeeds)}>
           {showFeeds ? m.room3d.hideFeeds : m.room3d.showFeeds}
         </button>
-        <span className="room3d__hint">{m.room3d.hint}</span>
+        <span className="room3d__hint">{walkCam ? m.room3d.walkHint : m.room3d.hint}</span>
       </div>
     </section>
   );

@@ -77,7 +77,7 @@ export function HomeHero({ summary, lastOpened }: { summary: RoomSummary; lastOp
         </div>
       </div>
       <div className="home-hero__paper">
-        <SceneBoundary key={room.id} message={m.home.scene3dFailed}>
+        <SceneBoundary key={room.id} message={m.home.scene3dFailed} reload={m.home.reload}>
           <Suspense fallback={<p className="home-hero__fallback">{m.home.loading3d}</p>}>
             <HeroScene location={{ project, site, room }} />
           </Suspense>

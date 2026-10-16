@@ -11,12 +11,13 @@ it('keeps a failed 3D to its own panel with a message, instead of taking the pag
   render(
     <div>
       <h1>MDF-1</h1>
-      <SceneBoundary message="The 3D view couldn't load here.">
+      <SceneBoundary message="The 3D view couldn't load here." reload="Reload page">
         <Broken />
       </SceneBoundary>
     </div>,
   );
   expect(screen.getByRole('heading', { name: 'MDF-1' })).toBeInTheDocument();
   expect(screen.getByRole('status')).toHaveTextContent("The 3D view couldn't load here.");
+  expect(screen.getByRole('button', { name: 'Reload page' })).toBeInTheDocument();
   quiet.mockRestore();
 });
