@@ -208,3 +208,13 @@ it('picks a range with Shift and one more with ⌘, then changes only the field 
   expect(ports.Gi2!.vlan).toEqual({ mode: 'access', vid: 10 });
   expect(ports.Te1!.media).toBe('sfp_plus');
 });
+
+it('draws the faceplate in the layout the catalog sets, even for a device placed before it was set', async () => {
+  const user = userEvent.setup();
+  const s = useWorkspaceStore.getState();
+  s.dispatch({ type: 'template/update', id: 'tpl-switch-1u', patch: { ports: [{ count: 4, prefix: 'Gi', start: 1, media: 'rj45', speed: '1G', rows: 2 }, { count: 2, prefix: 'Te', start: 1, media: 'sfp_plus', speed: '10G' }] } });
+  open('sw');
+  await user.click(screen.getByRole('button', { name: 'Manage ports' }));
+  const mgr = screen.getByRole('dialog', { name: 'SW-01 ports' });
+  expect(within(mgr).getAllByRole('button', { name: /^Port / }).map((b) => b.getAttribute('aria-label')!.replace(/^Port (\S+),.*$/, '$1'))).toEqual(['Gi1', 'Gi3', 'Gi2', 'Gi4', 'Te1', 'Te2']);
+});

@@ -2,7 +2,9 @@ import { validatePortGroups } from './ports';
 import defaultCatalog from './default-catalog.json';
 import { validateDemand } from './demand';
 import { LIMITS } from './model/defaults';
-import type { Category, Template } from './model/types';
+import { racksOf } from './devices';
+import { currentRevision } from './lookup';
+import type { Category, Id, Template, Workspace } from './model/types';
 import { err, ok, withTarget, type Result } from './result';
 import { isWholeInRange, validateName } from './validation';
 
@@ -55,4 +57,18 @@ export function validateTemplate(t: Template): Result<Template> {
   const perRow = t.slotsPerRow ?? slots;
   if (!isWholeInRange(perRow, 1, slots)) return err('invalid_value', `Slots per row must be between 1 and ${slots}.`, [t.id]);
   return ok({ ...base, slotCount: slots, slotsPerRow: perRow });
+}
+
+/** How many placed devices and nodes, across every room's current revision, came from this template. */
+export function templateUses(ws: Workspace, templateId: Id): number {
+  let n = 0;
+  for (const p of ws.projects)
+    for (const s of p.sites)
+      for (const r of s.rooms)
+        for (const rack of racksOf(currentRevision(r.plan).content))
+          for (const d of rack.devices) {
+            if (d.templateId === templateId) n += 1;
+            if (d.kind === 'chassis') n += d.nodes.filter((x) => x.templateId === templateId).length;
+          }
+  return n;
 }

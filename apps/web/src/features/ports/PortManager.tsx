@@ -1,4 +1,4 @@
-import { type EquipmentState, vlanLabel, describeEnd, effectiveVlan, findNode, findRackDevice, linkAt, nextPortName, otherEnd, PORT_MEDIA_LABEL, portsOf, type Id, type PlanContent, type Port } from '@glasshouse/domain';
+import { faceplateBlocks, templateOf, type EquipmentState, vlanLabel, describeEnd, effectiveVlan, findNode, findRackDevice, linkAt, nextPortName, otherEnd, PORT_MEDIA_LABEL, portsOf, type Id, type PlanContent, type Port } from '@glasshouse/domain';
 import { useState } from 'react';
 import type { CommitFn } from '../../store/hooks';
 import { IconGrip, IconPlus } from '../../ui/icons';
@@ -6,6 +6,8 @@ import { StateIcon } from '../../ui/StateIcon';
 import { useFloatingPanel } from '../../ui/useFloatingPanel';
 import { PortDetail } from './PortDetail';
 import { BulkPortForm } from './BulkPortForm';
+import { Faceplate } from './Faceplate';
+import { useWorkspaceStore } from '../../store/workspaceStore';
 import './ports.css';
 import { useT, type Messages } from '../../i18n';
 
@@ -32,32 +34,15 @@ export function portLabel(m: Messages, content: PlanContent, deviceId: Id, port:
   return stateOf?.(far.deviceId) === 'maintenance' ? `${label}, ${m.ports.farInMaintenance}` : label;
 }
 
-interface Bank {
-  prefix: string;
-  ports: { port: Port; short: string }[];
-}
-
-/**
- * Consecutive ports sharing a name prefix form a bank, labelled once, with only the number on
- * each jack (Gi1/0/ then 1…48), like a real faceplate. Names without a trailing number stand alone.
- */
-function banksOf(ports: Port[]): Bank[] {
-  const banks: Bank[] = [];
-  for (const port of ports) {
-    const m = /^(.*?)(\d+)$/.exec(port.name);
-    const prefix = m ? m[1]! : '';
-    const short = m ? m[2]! : port.name;
-    const last = banks[banks.length - 1];
-    if (last && last.prefix === prefix && m) last.ports.push({ port, short });
-    else banks.push({ prefix, ports: [{ port, short }] });
-  }
-  return banks;
-}
-
 /** Floating port map for one device: a faceplate of its ports, and the selected port's link. */
 export function PortManager({ content, stateOf, roomId, deviceId, commit, readOnly, onClose }: PortManagerProps) {
   const m = useT();
-  const name = findRackDevice(content, deviceId)?.device.name ?? findNode(content, deviceId)?.node.name ?? m.search.device;
+  const owner = findRackDevice(content, deviceId)?.device ?? findNode(content, deviceId)?.node ?? null;
+  const name = owner?.name ?? m.search.device;
+  // Layout is only how the panel is drawn, matched by port name: take it from the catalog's current
+  // version of the template, so a layout set after placing still reaches devices already in rooms.
+  const catalog = useWorkspaceStore((s) => s.workspace.catalog);
+  const layoutGroups = owner ? (catalog.find((t) => t.id === owner.templateId)?.ports ?? templateOf(content, owner)?.ports) : undefined;
   const ports = portsOf(content, deviceId);
   // One port shows its own settings; several (Shift for a range, ⌘/Ctrl to add one) share a group form.
   const [picked, setPicked] = useState<string[]>(ports[0] ? [ports[0].name] : []);
@@ -137,39 +122,35 @@ export function PortManager({ content, stateOf, roomId, deviceId, commit, readOn
       {ports.length === 0 ? (
         <p className="port-mgr__empty">{m.ports.empty}</p>
       ) : (
-        <div className="port-mgr__face" role="group" aria-label={m.ports.face}>
-          {banksOf(ports).map((bank, b) => (
-            <div key={b} className="port-mgr__bank">
-              {bank.prefix ? <span className="port-mgr__bank-label mono">{bank.prefix}</span> : null}
-              <div className="port-mgr__jacks">
-                {bank.ports.map(({ port: p, short }) => {
-                  const label = portLabel(m, content, deviceId, p, stateOf);
-                  const link = linkAt(content, { deviceId, port: p.name });
-                  const isLinked = Boolean(link);
-                  const farMaint = link ? stateOf(otherEnd(link, { deviceId, port: p.name }).deviceId) === 'maintenance' : false;
-                  const vlan = effectiveVlan(content, { deviceId, port: p.name });
-                  const vlanNote = vlan ? ` · ${vlanLabel(vlan.vlan)}${vlan.from ? ` ${m.vlans.fromFar(vlan.from.device, vlan.from.port)}` : ''}` : '';
-                  return (
-                    <button
-                      key={p.name}
-                      type="button"
-                      className={`port port--${p.media}${isLinked ? ' is-linked' : ''}${farMaint ? ' is-far-maint' : ''}`}
-                      aria-pressed={live.includes(p.name)}
-                      aria-label={label}
-                      title={`${label} · ${PORT_MEDIA_LABEL[p.media]} ${p.speed}${p.lag ? ` · ${p.lag}` : ''}${vlanNote}`}
-                      onClick={(e) => pick(p.name, e)}
-                    >
-                      <span className="port__jack" aria-hidden="true">
-                        {farMaint ? <StateIcon state="maintenance" className="port__maint" /> : null}
-                      </span>
-                      <span className="port__name mono">{short}</span>
-                      {vlan ? <span className={`port__vlan mono${vlan.from ? ' is-inherited' : ''}`}>{vlan.vlan.mode === 'access' ? vlan.vlan.vid : m.vlans.tagTrunk}</span> : null}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          ))}
+        <div className="port-mgr__face">
+          <Faceplate
+            blocks={faceplateBlocks(layoutGroups, ports)}
+            label={m.ports.face}
+            jack={(p, short) => {
+              const label = portLabel(m, content, deviceId, p, stateOf);
+              const link = linkAt(content, { deviceId, port: p.name });
+              const isLinked = Boolean(link);
+              const farMaint = link ? stateOf(otherEnd(link, { deviceId, port: p.name }).deviceId) === 'maintenance' : false;
+              const vlan = effectiveVlan(content, { deviceId, port: p.name });
+              const vlanNote = vlan ? ` · ${vlanLabel(vlan.vlan)}${vlan.from ? ` ${m.vlans.fromFar(vlan.from.device, vlan.from.port)}` : ''}` : '';
+              return (
+                <button
+                  type="button"
+                  className={`port port--${p.media}${isLinked ? ' is-linked' : ''}${farMaint ? ' is-far-maint' : ''}`}
+                  aria-pressed={live.includes(p.name)}
+                  aria-label={label}
+                  title={`${label} · ${PORT_MEDIA_LABEL[p.media]} ${p.speed}${p.lag ? ` · ${p.lag}` : ''}${vlanNote}`}
+                  onClick={(e) => pick(p.name, e)}
+                >
+                  <span className="port__jack" aria-hidden="true">
+                    {farMaint ? <StateIcon state="maintenance" className="port__maint" /> : null}
+                  </span>
+                  <span className="port__name mono">{short}</span>
+                  {vlan ? <span className={`port__vlan mono${vlan.from ? ' is-inherited' : ''}`}>{vlan.vlan.mode === 'access' ? vlan.vlan.vid : m.vlans.tagTrunk}</span> : null}
+                </button>
+              );
+            }}
+          />
         </div>
       )}
       {ports.length > 1 ? <p className="port-mgr__hint">{m.ports.bulk.hint}</p> : null}

@@ -1,5 +1,5 @@
 import { useDocumentTitle } from '../../ui/useDocumentTitle';
-import { CATEGORY_ORDER, formatDemand, SEED_TEMPLATE_IDS, type Template } from '@glasshouse/domain';
+import { CATEGORY_ORDER, expandPorts, formatDemand, newId, portMix, SEED_TEMPLATE_IDS, type Template } from '@glasshouse/domain';
 import { useCallback, useState } from 'react';
 import { useBlocker } from 'react-router';
 import { CatalogFileActions } from './CatalogFileActions';
@@ -97,6 +97,7 @@ export function CatalogScreen() {
                       <span className="catalog__name">{t.label}</span>
                       <span className="stamp">{t.mounting === 'slot' ? m.catalog.slot : `${t.heightU}U`}</span>
                       <span className="catalog__w mono">{formatDemand(t.demand)}</span>
+                      {t.ports?.length ? <span className="catalog__ports mono">{portMix(expandPorts(t.ports))}</span> : null}
                       {t.illustrative ? <span className="catalog__flag">{m.catalog.illustrative}</span> : null}
                     </button>
                   </li>
@@ -132,7 +133,19 @@ export function CatalogScreen() {
             }}
           />
         ) : selected ? (
-          <TemplateEditor key={`${selected.id}:${selected.version}`} mode="edit" initial={selected} onDone={(id) => select(id)} onDirtyChange={setDirty} />
+          <TemplateEditor
+            key={`${selected.id}:${selected.version}`}
+            mode="edit"
+            initial={selected}
+            onDone={(id) => select(id)}
+            onDirtyChange={setDirty}
+            onDuplicate={(t) =>
+              guard(() => {
+                select(null);
+                setDraft({ ...t, id: newId(), version: 0, label: m.catalog.copyOf(t.label), illustrative: false });
+              })
+            }
+          />
         ) : (
           <p className="catalog__empty">{m.catalog.pick}</p>
         )}

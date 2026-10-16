@@ -1,10 +1,11 @@
-import { CATEGORY_ORDER, newId, type Category, type Template } from '@glasshouse/domain';
+import { CATEGORY_ORDER, newId, templateUses, type Category, type Template } from '@glasshouse/domain';
 import { useEffect, useState } from 'react';
 import { useWorkspaceStore } from '../../store/workspaceStore';
 import { DemandField } from '../../ui/DemandField';
 import { NumberField } from '../../ui/NumberField';
 import { TextField } from '../../ui/TextField';
 import { PortGroupsField } from './PortGroupsField';
+import { FrontPanel } from './FrontPanel';
 import { useT } from '../../i18n';
 
 
@@ -30,10 +31,13 @@ interface TemplateEditorProps {
   initial: Template;
   onDone: (id: string | null) => void;
   onDirtyChange?: (dirty: boolean) => void;
+  /** Starts a new template from this one, for a variant of the same gear. */
+  onDuplicate?: (template: Template) => void;
 }
 
-export function TemplateEditor({ mode, initial, onDone, onDirtyChange }: TemplateEditorProps) {
+export function TemplateEditor({ mode, initial, onDone, onDirtyChange, onDuplicate }: TemplateEditorProps) {
   const dispatch = useWorkspaceStore((s) => s.dispatch);
+  const uses = useWorkspaceStore((s) => templateUses(s.workspace, initial.id));
   const m = useT();
   const [draft, setDraft] = useState(initial);
   const [error, setError] = useState<string | null>(null);
@@ -80,11 +84,18 @@ export function TemplateEditor({ mode, initial, onDone, onDirtyChange }: Templat
         save();
       }}
     >
-      <header className="inspector__head">
+      <header className="inspector__head tpl-editor__head">
         <h2>{mode === 'create' ? m.catalog.newTemplate : initial.label}</h2>
         {mode === 'edit' ? <span className="stamp">v{initial.version}</span> : null}
+        {mode === 'edit' && onDuplicate ? (
+          <button type="button" className="btn btn--sm" onClick={() => onDuplicate(initial)}>
+            {m.catalog.duplicate}
+          </button>
+        ) : null}
       </header>
+      {mode === 'edit' ? <p className="inspector__note tpl-editor__uses">{m.catalog.uses(uses)}</p> : null}
       {initial.illustrative ? <p className="inspector__note">{m.catalog.illustrativeNote}</p> : null}
+      {draft.mounting === 'rack' ? <FrontPanel groups={draft.ports ?? []} heightU={draft.heightU} /> : null}
 
       <fieldset className="inspector__group">
         <legend className="visually-hidden">{m.catalog.identity}</legend>

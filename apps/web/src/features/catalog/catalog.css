@@ -2,7 +2,7 @@
   flex: 1;
   min-height: 0;
   display: grid;
-  grid-template-columns: minmax(300px, 420px) minmax(0, 560px);
+  grid-template-columns: minmax(300px, 380px) minmax(0, 960px);
   gap: var(--gap);
   align-items: start;
 }
@@ -79,6 +79,12 @@
   color: var(--ink-2);
 }
 
+.catalog__ports {
+  grid-column: 1 / -1;
+  font-size: var(--text-2xs);
+  color: var(--ink-2);
+}
+
 .catalog__flag {
   grid-column: 1 / -1;
   font-size: var(--text-2xs);
@@ -86,9 +92,57 @@
 }
 
 .tpl-editor {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 18px 22px;
+  align-items: start;
+}
+
+/* Identity, size and power sit side by side; the front panel, ports and actions take the full width. */
+.tpl-editor > :not(fieldset),
+.tpl-editor > .port-groups-field {
+  grid-column: 1 / -1;
+}
+
+.tpl-editor__head {
+  gap: 10px;
+}
+
+.tpl-editor__head h2 {
+  flex: 1;
+}
+
+.tpl-editor__uses {
+  margin-top: -10px;
+}
+
+@media (max-width: 1100px) {
+  .tpl-editor {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.front-panel {
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 8px;
+}
+
+.front-panel__face {
+  padding: 12px 14px;
+  border-radius: 8px;
+  background: linear-gradient(180deg, #1f262e, #262e37);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.06), inset 0 -2px 0 rgb(0 0 0 / 0.3);
+  overflow-x: auto;
+}
+
+.front-panel__empty {
+  font-size: var(--text-xs);
+  color: var(--ink-2);
+}
+
+.port--static {
+  cursor: default;
 }
 
 .tpl-editor__actions {
@@ -130,7 +184,7 @@
 
 .port-groups__row {
   display: grid;
-  grid-template-columns: 52px 10px minmax(0, 1fr) minmax(0, 0.8fr) minmax(0, 1.2fr) 44px auto;
+  grid-template-columns: 52px 10px minmax(0, 1fr) minmax(0, 0.8fr) minmax(0, 1.1fr) 44px minmax(0, 1.6fr) auto;
   align-items: center;
   gap: 6px;
 }
