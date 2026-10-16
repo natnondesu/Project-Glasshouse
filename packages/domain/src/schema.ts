@@ -100,7 +100,7 @@ const feed = z.object({ id, targetId: id, sourceId: id, label: z.string(), way: 
 const revision = z.object({
   number: int.positive(),
   state: z.enum(['draft', 'in_review', 'approved']),
-  content: z.object({ survey, objects: z.array(z.union([rack, simpleObject])), templatesUsed: z.array(templateSchema), dimensions: z.array(dimension), feeds: z.array(feed), links: z.array(link), vlans: z.array(z.object({ vid: int, name: z.string() })) }),
+  content: z.object({ survey, objects: z.array(z.union([rack, simpleObject])), templatesUsed: z.array(templateSchema), dimensions: z.array(dimension), feeds: z.array(feed), links: z.array(link), vlans: z.array(z.object({ vid: int, name: z.string() })), stacks: z.array(z.object({ id, name: z.string(), members: z.array(z.object({ deviceId: id, member: int })) })).optional() }),
   designedBy: unverifiedName.nullable(),
   approvedBy: unverifiedName.nullable(),
   submittedAt: z.string().nullable(),

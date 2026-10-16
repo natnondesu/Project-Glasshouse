@@ -13,6 +13,7 @@ import {
 } from "@glasshouse/domain";
 import type { CommitFn } from "../../store/hooks";
 import { DeviceInspector } from "./DeviceInspector";
+import { StackField } from "./StackField";
 import { NodeInspector } from "./NodeInspector";
 import { RackSummary } from "./RackSummary";
 import { ReservedInspector } from "./ReservedInspector";
@@ -75,6 +76,7 @@ export function EquipmentInspector({
         onSelect={onSelect}
         readOnly={readOnly}
         ports={ports}
+        stack={device.device.kind === 'device' && device.device.category === 'network' ? <StackField content={content} deviceId={device.device.id} commit={commit} onSelect={onSelect} readOnly={readOnly} /> : undefined}
       />
     );
   else if (node)

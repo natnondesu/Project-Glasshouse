@@ -248,6 +248,22 @@
   fill: var(--ink-2);
 }
 
+.topo-node__stack-back {
+  fill: var(--panel-light);
+  stroke: var(--line-strong);
+  stroke-width: 1.2;
+}
+
+.topo-node.is-stack .topo-node__where {
+  fill: var(--ink);
+}
+
+.topo-node__ring {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  fill: var(--acc-deep);
+}
+
 .topo-node__count {
   font-family: var(--font-mono);
   font-size: var(--text-sm);
@@ -482,4 +498,31 @@
 .topo--static {
   height: auto;
   max-height: 140mm;
+}
+
+.net-details__member {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-top: 8px;
+  border-top: 1px solid var(--line);
+}
+
+.net-details__member h4 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--text-sm);
+}
+
+.stack-no {
+  display: inline-grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 5px;
+  background: var(--network);
+  color: var(--ink);
+  font-size: var(--text-2xs);
+  font-weight: 700;
 }

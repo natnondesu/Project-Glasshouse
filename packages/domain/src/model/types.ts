@@ -260,6 +260,21 @@ export interface PlanContent {
   feeds: PowerFeed[];
   links: NetLink[];
   vlans: Vlan[];
+  /** Switch stacks: members act as one switch. Absent in files from before stacks. */
+  stacks?: Stack[];
+}
+
+/** Switches cabled and configured as one logical switch; each member keeps its own rack, U, power and ports. */
+export interface Stack {
+  id: Id;
+  name: string;
+  members: StackMember[];
+}
+
+export interface StackMember {
+  deviceId: Id;
+  /** 1–9: the member number its ports are named by (1/0/x, 2/0/x). */
+  member: number;
 }
 
 export type RevisionState = 'draft' | 'in_review' | 'approved';

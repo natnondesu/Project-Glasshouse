@@ -1,4 +1,4 @@
-import { carriedVids, describeEnd, effectiveVlan, findNode, findRackDevice, racksOf, type Category, type Id, type NetLink, type PlanContent } from '@glasshouse/domain';
+import { carriedVids, describeEnd, effectiveVlan, findNode, findRackDevice, racksOf, stacksOf, type Category, type Id, type NetLink, type PlanContent } from '@glasshouse/domain';
 
 /** The smallest box; every box in one diagram grows together to its longest name. */
 export const NODE_W = 152;
@@ -45,6 +45,9 @@ export interface TopoNode {
   blockLeft: number;
   /** With leaves folded away (a big room on paper): how many hung off this device. */
   leafCount: number;
+  /** A switch stack drawn as one box: its members' device IDs, in member order, and how many stack cables join them. */
+  memberIds?: Id[];
+  ring?: number;
 }
 
 export interface TopoEdge {
@@ -107,9 +110,13 @@ interface Owner {
   category: Category | 'node';
   rack: string;
   ports: number;
+  /** Stacks only: one line per member ("1  ICON-CS-B10-01"), and the member device IDs. */
+  memberLines?: string[];
+  memberIds?: Id[];
 }
 
-function owners(content: PlanContent): Map<Id, Owner> {
+/** Devices, chassis and nodes that have a place; a stack stands in for its members (the alias map). */
+function owners(content: PlanContent): { own: Map<Id, Owner>; alias: Map<Id, Id> } {
   const out = new Map<Id, Owner>();
   for (const rack of racksOf(content)) {
     for (const d of rack.devices) {
@@ -118,7 +125,24 @@ function owners(content: PlanContent): Map<Id, Owner> {
       if (d.kind === 'chassis') for (const n of d.nodes) out.set(n.id, { id: n.id, name: n.name, where: `${d.name} slot ${n.slot}`, category: 'node', rack: rack.name, ports: n.ports?.length ?? 0 });
     }
   }
-  return out;
+  const alias = new Map<Id, Id>();
+  for (const st of stacksOf(content)) {
+    const members = st.members.filter((m) => out.has(m.deviceId));
+    if (members.length === 0) continue;
+    for (const m of members) alias.set(m.deviceId, st.id);
+    const first = out.get(members[0]!.deviceId)!;
+    out.set(st.id, {
+      id: st.id,
+      name: `STACK ${st.name}`,
+      where: '',
+      category: 'network',
+      rack: first.rack,
+      ports: members.reduce((n, m) => n + out.get(m.deviceId)!.ports, 0),
+      memberLines: members.map((m) => `${m.member}  ${out.get(m.deviceId)!.name}`),
+      memberIds: members.map((m) => m.deviceId),
+    });
+  }
+  return { own: out, alias };
 }
 
 const byPlace = (o: Map<Id, Owner>) => (a: Id, b: Id): number => {
@@ -133,12 +157,16 @@ const byPlace = (o: Map<Id, Owner>) => (a: Id, b: Id): number => {
  * for paper, where a big room's every server can't fit one page at a readable size.
  */
 export function buildTopology(content: PlanContent, { leafCols = DEFAULT_LEAF_COLS, collapseLeaves = false }: { leafCols?: number; collapseLeaves?: boolean } = {}): Topology {
-  const own = owners(content);
+  const { own, alias } = owners(content);
+  const as = (id: Id): Id => alias.get(id) ?? id;
   const order = byPlace(own);
+  // Cables between members of one stack are its stack ring, counted on the stack's box rather than drawn.
+  const ring = new Map<Id, number>();
   const neighbours = new Map<Id, Set<Id>>();
   const pairs = new Map<string, NetLink[]>();
   for (const l of content.links) {
-    const [a, b] = [l.a.deviceId, l.b.deviceId];
+    const [a, b] = [as(l.a.deviceId), as(l.b.deviceId)];
+    if (a === b && own.get(a)?.memberIds) ring.set(a, (ring.get(a) ?? 0) + 1);
     if (a === b || !own.has(a) || !own.has(b)) continue;
     for (const [x, y] of [[a, b], [b, a]] as const) {
       if (!neighbours.has(x)) neighbours.set(x, new Set());
@@ -205,10 +233,26 @@ export function buildTopology(content: PlanContent, { leafCols = DEFAULT_LEAF_CO
 
   const shown = collapseLeaves ? linked.filter((id) => gearSet.has(id)) : linked;
   const leafCount = (id: Id): number => (collapseLeaves ? (children.get(id) ?? []).filter((k) => !gearSet.has(k)).length : 0);
-  const box = boxSize(shown.map((id) => own.get(id)!), collapseLeaves && shown.some((id) => leafCount(id) > 0) ? 1 : 0);
+  const extra = collapseLeaves && shown.some((id) => leafCount(id) > 0) ? 1 : 0;
+  // A stack's box is as wide as its longest member line; every box shares that width.
+  const box = boxSize(shown.map((id) => {
+    const o = own.get(id)!;
+    return o.memberLines ? { name: o.name, where: o.memberLines.reduce((a, b) => (b.length > a.length ? b : a), '') } : o;
+  }), extra);
   const nodeW = box.w;
-  const ROW_H = box.h + ROW_GAP;
   const LEAF_ROW_H = box.h + LEAF_ROW_GAP;
+  const textOf = (id: Id): { nameLines: string[]; whereLines: string[] } => {
+    const o = own.get(id)!;
+    const chars = box.chars || 1;
+    return { nameLines: wrapLabel(o.name, chars), whereLines: o.memberLines ? o.memberLines.flatMap((l) => wrapLabel(l, chars)) : wrapLabel(o.where, chars) };
+  };
+  // Only a stack's box grows (a line per member, and its ring); the rest keep the shared height.
+  const heightOf = (id: Id): number => {
+    if (!own.get(id)!.memberLines) return box.h;
+    const t = textOf(id);
+    const lines = t.nameLines.length + t.whereLines.length + (ring.get(id) ? 1 : 0) + extra;
+    return Math.max(box.h, FIRST_BASELINE + (lines - 1) * LINE_STEP + BOTTOM_PAD);
+  };
   const x = new Map<Id, number>();
   const leafRow = new Map<Id, number>();
   const blockLeft = new Map<Id, number>();
@@ -257,10 +301,33 @@ export function buildTopology(content: PlanContent, { leafCols = DEFAULT_LEAF_CO
     row.forEach((id, i) => x.set(id, left + i * (nodeW + PAIR_GAP)));
   }
 
+  // Rows of the tree are as tall as their tallest box, so a stack pushes only the rows below it down.
+  const rowH = new Map<number, number>();
+  for (const id of shown) if ((leafRow.get(id) ?? 0) === 0) rowH.set(depth.get(id)!, Math.max(rowH.get(depth.get(id)!) ?? 0, heightOf(id)));
+  const rowTop = (d: number): number => {
+    let y = MARGIN;
+    for (let k = 0; k < d; k += 1) y += (rowH.get(k) ?? box.h) + ROW_GAP;
+    return y;
+  };
   const nodes: TopoNode[] = shown.map((id) => {
     const o = own.get(id)!;
     const row = leafRow.get(id) ?? 0;
-    return { id, name: o.name, where: o.where, category: o.category, x: x.get(id)!, y: MARGIN + depth.get(id)! * ROW_H + row * LEAF_ROW_H, w: box.w, h: box.h, nameLines: wrapLabel(o.name, box.chars || 1), whereLines: wrapLabel(o.where, box.chars || 1), leaf: !gearSet.has(id), leafRow: row, blockLeft: blockLeft.get(id) ?? x.get(id)!, leafCount: leafCount(id) };
+    return {
+      id,
+      name: o.name,
+      where: o.where,
+      category: o.category,
+      x: x.get(id)!,
+      y: rowTop(depth.get(id)!) + row * LEAF_ROW_H,
+      w: box.w,
+      h: heightOf(id),
+      ...textOf(id),
+      leaf: !gearSet.has(id),
+      leafRow: row,
+      blockLeft: blockLeft.get(id) ?? x.get(id)!,
+      leafCount: leafCount(id),
+      ...(o.memberIds ? { memberIds: o.memberIds, ring: ring.get(id) ?? 0 } : {}),
+    };
   });
   const visible = new Set(shown);
   const edges: TopoEdge[] = [...pairs].filter(([key]) => key.split('|').every((id) => visible.has(id))).map(([key, links]) => {
@@ -274,8 +341,9 @@ export function buildTopology(content: PlanContent, { leafCols = DEFAULT_LEAF_CO
     }))].sort((p, q) => p - q);
     return { key, a, b, links, fibre, tree: parent.get(a) === b || parent.get(b) === a, vids };
   });
+  // A stack lists as one when it has no cables; its members are covered by it.
   const unlinked = [...own.values()]
-    .filter((o) => o.ports > 0 && !neighbours.has(o.id))
+    .filter((o) => !o.memberIds && o.ports > 0 && !neighbours.has(as(o.id)))
     .sort((p, q) => order(p.id, q.id))
     .map((o) => ({ id: o.id, name: o.name, where: o.where }));
   const width = Math.max(...nodes.map((n) => n.x + n.w), 0) + MARGIN;
@@ -285,6 +353,8 @@ export function buildTopology(content: PlanContent, { leafCols = DEFAULT_LEAF_CO
 
 /** Is this node (or a cable of this edge) in VLAN `vid`? */
 export function nodeCarries(content: PlanContent, id: Id, vid: number): boolean {
+  const stack = stacksOf(content).find((s) => s.id === id);
+  if (stack) return stack.members.some((m) => nodeCarries(content, m.deviceId, vid));
   const ports = findRackDevice(content, id)?.device.ports ?? findNode(content, id)?.node.ports ?? [];
   return ports.some((p) => carriedVids(content, effectiveVlan(content, { deviceId: id, port: p.name })?.vlan).includes(vid));
 }

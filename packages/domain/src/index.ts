@@ -28,6 +28,7 @@ export * from './paste';
 export * from './objectPaste';
 export * from './rackOrder';
 export * from './faceplate';
+export * from './stacks';
 export * from './commands/equipment';
 export * from './commands/nodes';
 export * from './power';

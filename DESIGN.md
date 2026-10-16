@@ -62,6 +62,8 @@ Colour never works alone. Blocking issues use a solid circle icon, warnings a da
 
 ## Elevation
 
+- A switch joins a stack (or starts one, named after itself without the trailing number) from its inspector: member number 1–9, the other members as links, Leave stack. Members wear an "S1" tag before their name in the rack, on screen and on paper. Only network gear in a rack can stack; a switch is in one stack at most.
+
 - Racks read in plan order: rows from the top of the drawing down, each left to right. Drag a rack by its name (or Alt+←/→) to reorder; the order is kept on the room beside the revisions, so it holds on an approved plan, travels in the file and orders the Install sheet. "Reset to plan order" appears once there is one.
 
 ## Network diagram
@@ -71,6 +73,7 @@ Colour never works alone. Blocking issues use a solid circle icon, warnings a da
 - Parallel cables draw as one line with a count (named after the LAG when they form one); copper solid, fibre dashed accent. Highlighting a VLAN fades what doesn't carry it.
 - Every box in a diagram is one size, grown to the longest name; past 26 characters a name wraps at a hyphen or space, never cut. Leaves wrap to the canvas's shape, so a big room is a block that scrolls a little both ways, not a strip many screens wide.
 - A port with no VLAN of its own carries the VLAN of the port at the other end of its cable: shown with a dashed underline and "from SW port", and counted when a VLAN is highlighted. Nothing is copied; setting this end overrides it.
+- A switch stack is one box: "STACK name", a line per member ("1  ICON-CS-B10-01"), and its stack ring (cables between members) as a count, drawn as two offset outlines. Cables to any member reach the box; only the stack's row grows taller. Any member in maintenance marks the stack. Selecting it lists each member with its own ports.
 - Gear in maintenance: burnt-orange box with an "In maintenance" tab, its cables orange. In the port panel, a jack whose far end is in maintenance gets an orange ring and the triangle, and the link line says so.
 
 ## 3D

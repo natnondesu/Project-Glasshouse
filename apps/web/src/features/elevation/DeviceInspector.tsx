@@ -23,6 +23,8 @@ interface DeviceInspectorProps {
   readOnly?: boolean;
   /** The ports block, placed before Configuration and kept usable on a frozen revision. */
   ports?: ReactNode;
+  /** Switches only: the stack it belongs to. */
+  stack?: ReactNode;
 }
 
 export function DeviceInspector({
@@ -33,6 +35,7 @@ export function DeviceInspector({
   onSelect,
   readOnly = false,
   ports = null,
+  stack = null,
 }: DeviceInspectorProps) {
   const m = useT();
   const [actionError, setActionError] = useState<string | null>(null);
@@ -177,6 +180,7 @@ export function DeviceInspector({
       </fieldset>
 
       {ports}
+      {stack}
 
       <fieldset
         className="inspector__lock inspector__lock--flow"

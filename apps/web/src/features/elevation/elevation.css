@@ -135,6 +135,18 @@
   pointer-events: none;
 }
 
+.dev__stack rect {
+  fill: var(--network);
+}
+
+.dev__stack text {
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  font-weight: 700;
+  fill: var(--ink);
+  pointer-events: none;
+}
+
 .dev__w {
   font-family: var(--font-mono);
   font-size: var(--text-2xs);
@@ -984,4 +996,59 @@ body.is-dragging-device * {
   border-left: 1px solid var(--line);
   font-size: var(--text-xs);
   color: var(--ink-2);
+}
+
+.stack-field__members {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: var(--text-sm);
+}
+
+.stack-field__members li {
+  display: grid;
+  grid-template-columns: 22px minmax(0, auto) minmax(0, 1fr);
+  align-items: baseline;
+  gap: 8px;
+}
+
+.stack-field__no {
+  display: inline-grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 5px;
+  background: var(--network);
+  color: var(--ink);
+  font-size: var(--text-2xs);
+  font-weight: 700;
+}
+
+.stack-field__goto {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--acc);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+.stack-field__where {
+  font-size: var(--text-xs);
+  color: var(--ink-2);
+}
+
+.stack-field__new,
+.stack-field__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.stack-field__actions {
+  flex-direction: row;
 }

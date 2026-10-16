@@ -18,6 +18,7 @@ import {
   lowestFreeBottomU,
   newId,
   orderedRacks,
+  stackOf,
   racksOf,
   type PlanContent,
   type Rack,
@@ -262,6 +263,10 @@ export function ElevationView({ location, readOnly = false, viewingPast = false 
                 onActivate={() => select(rack.id)}
                 pulseId={pulse}
                 stateOf={stateOf}
+                stackOf={(id) => {
+                  const hit = stackOf(content, id);
+                  return hit ? { name: hit.stack.name, member: hit.member } : null;
+                }}
                 uPx={uPx}
                 dragPreview={drag.preview}
                 onDeviceDragStart={readOnly ? undefined : drag.start}

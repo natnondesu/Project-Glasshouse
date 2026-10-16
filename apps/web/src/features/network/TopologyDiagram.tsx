@@ -70,7 +70,7 @@ function badgeAt(a: TopoNode, b: TopoNode, tree: boolean): [number, number] {
 export function TopologyDiagram({ content, topology, vid = null, scale = 1, selection = null, onSelect, stateOf, isStatic = false }: TopologyDiagramProps) {
   const m = useT();
   const byId = new Map(topology.nodes.map((n) => [n.id, n]));
-  const inMaint = (id: Id): boolean => stateOf?.(id) === 'maintenance';
+  const inMaint = (id: Id): boolean => (byId.get(id)?.memberIds ?? [id]).some((x) => stateOf?.(x) === 'maintenance');
   const act = (s: TopoSelection) => (isStatic || !onSelect ? {} : { role: 'button', tabIndex: 0, onClick: () => onSelect(s), onKeyDown: (e: KeyboardEvent) => (e.key === 'Enter' || e.key === ' ') && (e.preventDefault(), onSelect(s)) });
   // A selected device pulls its own cables and neighbours forward; everything else steps back.
   const focusId = selection?.kind === 'node' && !isStatic ? selection.id : null;
@@ -79,11 +79,12 @@ export function TopologyDiagram({ content, topology, vid = null, scale = 1, sele
   const dimEdge = (e: TopoEdge): boolean => (vid !== null && !e.vids.includes(vid)) || (focusId !== null && !touches(e));
   const dimNode = (n: TopoNode): boolean => (vid !== null && !nodeCarries(content, n.id, vid)) || (focusId !== null && n.id !== focusId && !neighbours.has(n.id));
   const lagAt = (r: { deviceId: Id; port: string }): string | undefined => describeEnd(content, r).port?.lag;
-  const tags = focusId ? portTags(focusId, topology.edges, byId, m.topology.morePorts, lagAt, m.topology.links) : [];
+  const ownerOf = new Map(topology.nodes.flatMap((n) => (n.memberIds ?? []).map((id) => [id, n.id] as const)));
+  const tags = focusId ? portTags(focusId, topology.edges, byId, m.topology.morePorts, lagAt, m.topology.links, (id) => ownerOf.get(id) ?? id) : [];
   // One LAG on either end: the bundle is named after it.
   const bundleName = (e: TopoEdge): string | null => {
     for (const device of [e.a, e.b]) {
-      const lags = new Set(e.links.map((l) => lagAt(l.a.deviceId === device ? l.a : l.b)));
+      const lags = new Set(e.links.map((l) => lagAt((ownerOf.get(l.a.deviceId) ?? l.a.deviceId) === device ? l.a : l.b)));
       const [only] = lags;
       if (lags.size === 1 && only) return only;
     }
@@ -111,7 +112,7 @@ export function TopologyDiagram({ content, topology, vid = null, scale = 1, sele
             aria-pressed={isStatic ? undefined : selected}
             {...act({ kind: 'edge', key: e.key })}
           >
-            <title>{e.links.map((l) => `${a.id === l.a.deviceId ? a.name : b.name} ${l.a.port} ↔ ${a.id === l.b.deviceId ? a.name : b.name} ${l.b.port}${l.label ? ` · ${l.label}` : ''}`).join('\n')}</title>
+            <title>{e.links.map((l) => `${describeEnd(content, l.a).device} ${l.a.port} ↔ ${describeEnd(content, l.b).device} ${l.b.port}${l.label ? ` · ${l.label}` : ''}`).join('\n')}</title>
             <path className="topo-edge__hit" d={edgePath(a, b, e.tree)} />
             <path className="topo-edge__line" d={edgePath(a, b, e.tree)} />
             {e.links.length > 1 ? (
@@ -122,16 +123,19 @@ export function TopologyDiagram({ content, topology, vid = null, scale = 1, sele
       })}
       {topology.nodes.map((n) => {
         const selected = selection?.kind === 'node' && selection.id === n.id;
-        const state = stateOf?.(n.id) ?? 'planned';
+        // A stack reads as its members: any in maintenance marks it; deployed only when all are.
+        const states = (n.memberIds ?? [n.id]).map((id) => stateOf?.(id) ?? 'planned');
+        const state = states.includes('maintenance') ? 'maintenance' : states.every((x) => x === 'deployed') ? 'deployed' : 'planned';
         return (
           <g
             key={n.id}
-            className={`topo-node topo-node--${n.category}${state === 'maintenance' ? ' is-maint' : ''}${n.leaf ? ' is-leaf' : ''}${dimNode(n) ? ' is-dim' : ''}${selected ? ' is-selected' : ''}${focusId && n.id !== focusId && neighbours.has(n.id) ? ' is-neighbour' : ''}`}
+            className={`topo-node topo-node--${n.category}${n.memberIds ? ' is-stack' : ''}${state === 'maintenance' ? ' is-maint' : ''}${n.leaf ? ' is-leaf' : ''}${dimNode(n) ? ' is-dim' : ''}${selected ? ' is-selected' : ''}${focusId && n.id !== focusId && neighbours.has(n.id) ? ' is-neighbour' : ''}`}
             data-topo-id={n.id}
-            aria-label={isStatic ? undefined : `${m.topology.deviceLabel(n.name, n.where)}${state === 'maintenance' ? `, ${m.equipment.state.maintenance}` : ''}`}
+            aria-label={isStatic ? undefined : `${m.topology.deviceLabel(n.name, n.memberIds ? n.whereLines.join(', ') : n.where)}${state === 'maintenance' ? `, ${m.equipment.state.maintenance}` : ''}`}
             aria-pressed={isStatic ? undefined : selected}
             {...act({ kind: 'node', id: n.id })}
           >
+            {n.memberIds ? <rect className="topo-node__stack-back" x={n.x + 5} y={n.y + 5} width={n.w} height={n.h} rx={8} /> : null}
             <rect className="topo-node__body" x={n.x} y={n.y} width={n.w} height={n.h} rx={8} />
             <rect className="topo-node__stripe" x={n.x} y={n.y} width={5} height={n.h} rx={2} />
             <StateGlyph state={state} cx={n.x + 16} cy={n.y + 17} className="topo-node__state" />
@@ -150,8 +154,13 @@ export function TopologyDiagram({ content, topology, vid = null, scale = 1, sele
                 </tspan>
               ))}
             </text>
+            {n.ring ? (
+              <text className="topo-node__ring" x={n.x + 26} y={n.y + NAME_BASELINE + (n.nameLines.length + n.whereLines.length) * LINE_STEP}>
+                {m.stack.ring(n.ring)}
+              </text>
+            ) : null}
             {n.leafCount > 0 ? (
-              <text className="topo-node__count" x={n.x + 26} y={n.y + NAME_BASELINE + (n.nameLines.length + n.whereLines.length) * LINE_STEP}>
+              <text className="topo-node__count" x={n.x + 26} y={n.y + NAME_BASELINE + (n.nameLines.length + n.whereLines.length + (n.ring ? 1 : 0)) * LINE_STEP}>
                 {m.topology.devicesBelow(n.leafCount)}
               </text>
             ) : null}
