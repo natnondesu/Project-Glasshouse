@@ -46,7 +46,7 @@ export function findReserved(content: PlanContent, id: Id): { rack: Rack; range:
   return null;
 }
 
-const allDeviceNames = (content: PlanContent): string[] =>
+export const allDeviceNames = (content: PlanContent): string[] =>
   racksOf(content).flatMap((r) => r.devices.flatMap((d) => (d.kind === 'chassis' ? [d.name, ...d.nodes.map((n) => n.name)] : [d.name])));
 
 export function nextDeviceName(content: PlanContent, template: Template): string {

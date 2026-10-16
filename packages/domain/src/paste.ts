@@ -17,7 +17,7 @@ export interface PasteDeviceCommand {
 }
 
 /** VLAN settings only survive where every VLAN they name exists in this room. */
-function keepKnownVlan(port: Port, vids: ReadonlySet<number>): Port {
+export function keepKnownVlan(port: Port, vids: ReadonlySet<number>): Port {
   const v: PortVlan | undefined = port.vlan;
   if (!v) return port;
   const named = v.mode === 'access' ? [v.vid] : [...(v.allowed === 'all' ? [] : v.allowed), ...(v.native === null ? [] : [v.native])];
@@ -26,7 +26,7 @@ function keepKnownVlan(port: Port, vids: ReadonlySet<number>): Port {
   return rest;
 }
 
-const idTaken = (content: PlanContent, id: Id): boolean => findRackDevice(content, id) !== null || findNode(content, id) !== null || findReserved(content, id) !== null;
+export const idTaken = (content: PlanContent, id: Id): boolean => findRackDevice(content, id) !== null || findNode(content, id) !== null || findReserved(content, id) !== null;
 
 /**
  * A copy of a device: new ID and next free name, same template, demand, configuration, notes and

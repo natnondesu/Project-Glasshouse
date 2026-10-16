@@ -444,6 +444,11 @@ export const en = {
     moreRight: 'More racks',
     slotTitle: (slot: number, name: string | null) => (name ? `Slot ${slot}: ${name}` : `Slot ${slot}: empty`),
   },
+  planCopy: {
+    copied: (name: string) => `Copied ${name}. Press ⌘V or Ctrl+V to paste a copy beside it.`,
+    pasted: (name: string, from: string) => `Pasted ${name}, a copy of ${from}. Cables and power feeds stay with the original.`,
+    noSpace: (name: string) => `No room left beside ${name} for a copy.`,
+  },
   copyPaste: {
     copied: (name: string) => `Copied ${name}. Select a rack, then press ⌘V or Ctrl+V to paste.`,
     pasted: (name: string, rack: string, u: number) => `Pasted a copy of ${name} into ${rack} at U${u}.`,

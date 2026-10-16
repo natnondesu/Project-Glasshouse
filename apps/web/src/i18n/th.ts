@@ -439,6 +439,11 @@ export const th: Messages = {
     moreRight: 'แร็คอื่นทางขวา',
     slotTitle: (slot, name) => (name ? `สล็อต ${slot}: ${name}` : `สล็อต ${slot}: ว่าง`),
   },
+  planCopy: {
+    copied: (name) => `คัดลอก ${name} แล้ว กด ⌘V หรือ Ctrl+V เพื่อวางสำเนาข้างกัน`,
+    pasted: (name, from) => `วาง ${name} ซึ่งคัดลอกจาก ${from} แล้ว สายและไฟยังอยู่กับต้นฉบับ`,
+    noSpace: (name) => `ไม่มีที่ว่างข้าง ${name} สำหรับสำเนา`,
+  },
   copyPaste: {
     copied: (name) => `คัดลอก ${name} แล้ว เลือกแร็คแล้วกด ⌘V หรือ Ctrl+V เพื่อวาง`,
     pasted: (name, rack, u) => `วางสำเนาของ ${name} ลงใน ${rack} ที่ U${u}`,
