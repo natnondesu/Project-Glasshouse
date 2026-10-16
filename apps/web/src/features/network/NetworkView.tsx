@@ -1,12 +1,12 @@
 import { currentRevision, equipmentStateOf, findNode, findRackDevice, type RoomLocation } from '@glasshouse/domain';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import { useT } from '../../i18n';
 import { usePlanCommit } from '../../store/hooks';
 import { IconMinus, IconPlus } from '../../ui/icons';
 import { PortManager } from '../ports/PortManager';
 import { NetworkDetails } from './NetworkDetails';
 import { TopologyDiagram, type TopoSelection } from './TopologyDiagram';
-import { buildTopology } from './topology';
+import { shapedTopology } from './topology';
 import { VlanList } from './VlanList';
 import { PanelCollapseTab, PanelRail } from '../../ui/PanelRail';
 import { useInspectorOpen } from '../../ui/useInspectorOpen';
@@ -18,12 +18,31 @@ const MIN_SCALE = 0.25;
 const FIT_FLOOR = 0.85;
 const MAX_SCALE = 2;
 
+/** The canvas size, rounded so small resizes don't relayout the diagram. */
+function useViewShape(ref: RefObject<HTMLDivElement | null>): { w: number; h: number } {
+  const [shape, setShape] = useState({ w: 1200, h: 600 });
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || typeof ResizeObserver === 'undefined') return;
+    const round = (n: number): number => Math.max(200, Math.round(n / 100) * 100);
+    const ro = new ResizeObserver(() => setShape((s) => {
+      const next = { w: round(el.clientWidth), h: round(el.clientHeight) };
+      return next.w === s.w && next.h === s.h ? s : next;
+    }));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [ref]);
+  return shape;
+}
+
 export function NetworkView({ location, readOnly }: { location: RoomLocation; readOnly: boolean }) {
   const m = useT();
   const content = currentRevision(location.room.plan).content;
   const roomId = location.room.id;
   const commit = usePlanCommit(roomId);
-  const topology = useMemo(() => buildTopology(content), [content]);
+  const area = useRef<HTMLDivElement>(null);
+  const view = useViewShape(area);
+  const topology = useMemo(() => shapedTopology(content, view.w, view.h), [content, view.w, view.h]);
   const [vid, setVid] = useState<number | null>(null);
   const [scale, setScale] = useState(1);
   const [selection, setSelection] = useState<TopoSelection>(null);
@@ -31,7 +50,6 @@ export function NetworkView({ location, readOnly }: { location: RoomLocation; re
   // The details and VLAN column folds away so the diagram gets the width; picking a device brings it back.
   const selectedKey = selection ? (selection.kind === 'node' ? selection.id : selection.key) : null;
   const [sideOpen, setSideOpen] = useInspectorOpen(selectedKey);
-  const area = useRef<HTMLDivElement>(null);
   const zoom = (k: number): void => setScale((s) => Math.min(MAX_SCALE, Math.max(MIN_SCALE, s * k)));
   const fit = (): void => {
     const w = area.current?.clientWidth ?? topology.width;
@@ -105,7 +123,7 @@ export function NetworkView({ location, readOnly }: { location: RoomLocation; re
       <PanelCollapseTab label={m.panels.inspector} side="right" className="network__tab" onCollapse={() => setSideOpen(false)} />
       <aside className="network__side">
         <section className="net-panel glass">
-          <NetworkDetails content={content} roomId={roomId} topology={topology} selection={selection} onManagePorts={setPortsFor} />
+          <NetworkDetails content={content} stateOf={(id) => equipmentStateOf(location.room.plan, id)} roomId={roomId} topology={topology} selection={selection} onManagePorts={setPortsFor} />
           {topology.unlinked.length > 0 ? (
             <details className="net-unlinked">
               <summary>{m.topology.unlinked(topology.unlinked.length)}</summary>
@@ -129,7 +147,7 @@ export function NetworkView({ location, readOnly }: { location: RoomLocation; re
         <PanelRail label={m.panels.inspector} side="right" className="network__rail" onExpand={() => setSideOpen(true)} />
       )}
       {portsFor && (findRackDevice(content, portsFor) || findNode(content, portsFor)) ? (
-        <PortManager key={portsFor} content={content} roomId={roomId} deviceId={portsFor} commit={commit} readOnly={readOnly} onClose={() => setPortsFor(null)} />
+        <PortManager key={portsFor} content={content} stateOf={(id) => equipmentStateOf(location.room.plan, id)} roomId={roomId} deviceId={portsFor} commit={commit} readOnly={readOnly} onClose={() => setPortsFor(null)} />
       ) : null}
     </div>
   );

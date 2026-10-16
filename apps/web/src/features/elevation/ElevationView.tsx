@@ -257,7 +257,7 @@ export function ElevationView({ location, readOnly = false, viewingPast = false 
         <PanelRail label={m.panels.inspector} side="right" className="elev__rail" onExpand={() => setInspectorOpen(true)} />
       )}
       {portsFor && (findRackDevice(content, portsFor) || findNode(content, portsFor)) ? (
-        <PortManager key={portsFor} content={content} roomId={roomId} deviceId={portsFor} commit={commit} readOnly={readOnly} onClose={() => setPortsFor(null)} />
+        <PortManager key={portsFor} content={content} stateOf={stateOf} roomId={roomId} deviceId={portsFor} commit={commit} readOnly={readOnly} onClose={() => setPortsFor(null)} />
       ) : null}
       {message ? (
         <p role="status" className="elev__message">

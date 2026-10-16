@@ -57,3 +57,18 @@ it('prints the diagram and VLAN list on the Install sheet', () => {
   expect(screen.getByRole('img', { name: 'Network diagram' })).toBeInTheDocument();
   expect(screen.getByRole('table', { name: 'VLANs' })).toHaveTextContent('99Management16 ports');
 });
+
+it('marks gear in maintenance on its box and its cables, and on the far end of each of its ports', async () => {
+  const user = userEvent.setup();
+  const ws = useWorkspaceStore.getState().workspace;
+  const racks = ws.projects[0]!.sites[0]!.rooms[0]!.plan.revisions[0]!.content.objects.flatMap((o) => ('devices' in o ? o.devices : []));
+  const acc = racks.find((d) => d.name === 'ACC-01')!;
+  useWorkspaceStore.getState().dispatch({ type: 'equipment/state', roomId: server, ids: [acc.id], state: 'maintenance' });
+  const { container } = open();
+  const box = screen.getByRole('button', { name: /^ACC-01, RK-0\d · U\d+, In maintenance$/ });
+  expect(box).toHaveClass('is-maint');
+  expect(box).toHaveTextContent('In maintenance');
+  expect(container.querySelectorAll('.topo-edge.is-maint').length).toBeGreaterThan(0);
+  await user.click(screen.getByRole('button', { name: /^CORE-01, RK-01 · U42/ }));
+  expect(within(screen.getByRole('table', { name: 'Ports' })).getByRole('row', { name: /^Te1\/1\/1 / })).toHaveTextContent('to ACC-01 Te1/1/1In maintenance');
+});

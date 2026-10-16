@@ -5,7 +5,7 @@ import { emptyContent } from './factories';
 import { migrate } from './migrations';
 import type { PlanContent, Rack, Template } from './model/types';
 import { createObject } from './objects';
-import { cableSchedule, expandPorts, portsOf, validatePortGroups } from './ports';
+import { cableSchedule, effectiveVlan, expandPorts, portsOf, validatePortGroups } from './ports';
 import { validateTemplate } from './catalog';
 
 const SWITCH: Template = {
@@ -101,6 +101,17 @@ describe('links', () => {
   it('warns about media mismatches', () => {
     const c = run(room(), link('l1', ['srv', 'eth0'], ['sw', 'Te1/1/1']));
     expect(linkIssues(c).map((i) => i.message)).toEqual(['SRV-01 eth0 (RJ45) is linked to SW-01 Te1/1/1 (SFP+).']);
+  });
+
+  it('gives a port with no VLAN of its own the VLAN of the port it is cabled to, saying where from', () => {
+    let c = run(room(), { type: 'vlan/add', vlan: { vid: 451, name: 'Servers' } }, { type: 'vlan/add', vlan: { vid: 10, name: 'Mgmt' } }, link('l1', ['srv', 'eth0'], ['sw', 'Gi1/0/1']));
+    expect(effectiveVlan(c, { deviceId: 'srv', port: 'eth0' })).toBeNull();
+    c = run(c, { type: 'port/vlan', deviceId: 'sw', name: 'Gi1/0/1', vlan: { mode: 'access', vid: 451 } });
+    expect(effectiveVlan(c, { deviceId: 'srv', port: 'eth0' })).toEqual({ vlan: { mode: 'access', vid: 451 }, from: { device: 'SW-01', port: 'Gi1/0/1' } });
+    // Its own setting wins, and nothing is copied: the far end keeps its own.
+    c = run(c, { type: 'port/vlan', deviceId: 'srv', name: 'eth0', vlan: { mode: 'access', vid: 10 } });
+    expect(effectiveVlan(c, { deviceId: 'srv', port: 'eth0' })).toEqual({ vlan: { mode: 'access', vid: 10 }, from: null });
+    expect(effectiveVlan(c, { deviceId: 'srv', port: 'eth1' })).toBeNull();
   });
 
   it('lists a cable schedule with rack, device and port on each end', () => {

@@ -2,7 +2,7 @@ import { describeEnd, type EquipmentState, type Id, type PlanContent } from '@gl
 import type { KeyboardEvent } from 'react';
 import { useT } from '../../i18n';
 import { StateGlyph } from '../../ui/StateIcon';
-import { NODE_H, NODE_W, nodeCarries, type TopoEdge, type TopoNode, type Topology } from './topology';
+import { nodeCarries, ROW_GAP, type TopoEdge, type TopoNode, type Topology } from './topology';
 import { portTags, type PortTag } from './portTags';
 
 export type TopoSelection = { kind: 'node'; id: Id } | { kind: 'edge'; key: string } | null;
@@ -20,9 +20,9 @@ interface TopologyDiagramProps {
   isStatic?: boolean;
 }
 
-const mid = (n: TopoNode): [number, number] => [n.x + NODE_W / 2, n.y + NODE_H / 2];
-/** Vertical space between a parent and its first row (ROW_H minus a node). */
-const ROW_H_GAP = 120 - NODE_H;
+const mid = (n: TopoNode): [number, number] => [n.x + n.w / 2, n.y + n.h / 2];
+const NAME_BASELINE = 21;
+const LINE_STEP = 17;
 
 /** Gap between a wrapped leaf block and its spine, so the spine never touches a box. */
 const SPINE_GAP = 11;
@@ -32,24 +32,24 @@ function edgePath(a: TopoNode, b: TopoNode, tree: boolean): string {
     const [top, bottom] = a.y <= b.y ? [a, b] : [b, a];
     if (bottom.leaf && bottom.leafRow > 0) {
       // Org-chart spine: down from the parent, along the block's left edge, then into the wrapped row.
-      const x1 = top.x + NODE_W / 2;
-      const y1 = top.y + NODE_H;
-      const firstBus = y1 + (ROW_H_GAP / 2);
+      const x1 = top.x + top.w / 2;
+      const y1 = top.y + top.h;
+      const firstBus = y1 + (ROW_GAP / 2);
       const spine = bottom.blockLeft - SPINE_GAP;
       const rowBus = bottom.y - 17;
-      const x2 = bottom.x + NODE_W / 2;
+      const x2 = bottom.x + bottom.w / 2;
       return `M${x1} ${y1} V${firstBus} H${spine} V${rowBus} H${x2} V${bottom.y}`;
     }
-    const x1 = top.x + NODE_W / 2;
-    const y1 = top.y + NODE_H;
-    const x2 = bottom.x + NODE_W / 2;
+    const x1 = top.x + top.w / 2;
+    const y1 = top.y + top.h;
+    const x2 = bottom.x + bottom.w / 2;
     const y2 = bottom.y;
     const bus = y1 + (y2 - y1) / 2;
     return `M${x1} ${y1} V${bus} H${x2} V${y2}`;
   }
   if (a.y === b.y) {
     const [l, r] = a.x <= b.x ? [a, b] : [b, a];
-    return `M${l.x + NODE_W} ${l.y + NODE_H / 2} H${r.x}`;
+    return `M${l.x + l.w} ${l.y + l.h / 2} H${r.x}`;
   }
   const [x1, y1] = mid(a);
   const [x2, y2] = mid(b);
@@ -60,7 +60,7 @@ function edgePath(a: TopoNode, b: TopoNode, tree: boolean): string {
 function badgeAt(a: TopoNode, b: TopoNode, tree: boolean): [number, number] {
   if (tree) {
     const [top, bottom] = a.y <= b.y ? [a, b] : [b, a];
-    return [bottom.x + NODE_W / 2, top.y + NODE_H + (bottom.y - top.y - NODE_H) / 2 + (bottom.y - top.y - NODE_H) / 4];
+    return [bottom.x + bottom.w / 2, top.y + top.h + (bottom.y - top.y - top.h) / 2 + (bottom.y - top.y - top.h) / 4];
   }
   const [x1, y1] = mid(a);
   const [x2, y2] = mid(b);
@@ -70,6 +70,7 @@ function badgeAt(a: TopoNode, b: TopoNode, tree: boolean): [number, number] {
 export function TopologyDiagram({ content, topology, vid = null, scale = 1, selection = null, onSelect, stateOf, isStatic = false }: TopologyDiagramProps) {
   const m = useT();
   const byId = new Map(topology.nodes.map((n) => [n.id, n]));
+  const inMaint = (id: Id): boolean => stateOf?.(id) === 'maintenance';
   const act = (s: TopoSelection) => (isStatic || !onSelect ? {} : { role: 'button', tabIndex: 0, onClick: () => onSelect(s), onKeyDown: (e: KeyboardEvent) => (e.key === 'Enter' || e.key === ' ') && (e.preventDefault(), onSelect(s)) });
   // A selected device pulls its own cables and neighbours forward; everything else steps back.
   const focusId = selection?.kind === 'node' && !isStatic ? selection.id : null;
@@ -105,7 +106,7 @@ export function TopologyDiagram({ content, topology, vid = null, scale = 1, sele
         return (
           <g
             key={e.key}
-            className={`topo-edge${e.fibre ? ' is-fibre' : ''}${dimEdge(e) ? ' is-dim' : ''}${selected ? ' is-selected' : ''}${touches(e) ? ' is-focus' : ''}`}
+            className={`topo-edge${e.fibre ? ' is-fibre' : ''}${inMaint(e.a) || inMaint(e.b) ? ' is-maint' : ''}${dimEdge(e) ? ' is-dim' : ''}${selected ? ' is-selected' : ''}${touches(e) ? ' is-focus' : ''}`}
             aria-label={isStatic ? undefined : m.topology.edgeLabel(a.name, b.name, e.links.length)}
             aria-pressed={isStatic ? undefined : selected}
             {...act({ kind: 'edge', key: e.key })}
@@ -125,21 +126,35 @@ export function TopologyDiagram({ content, topology, vid = null, scale = 1, sele
         return (
           <g
             key={n.id}
-            className={`topo-node topo-node--${n.category}${n.leaf ? ' is-leaf' : ''}${dimNode(n) ? ' is-dim' : ''}${selected ? ' is-selected' : ''}${focusId && n.id !== focusId && neighbours.has(n.id) ? ' is-neighbour' : ''}`}
+            className={`topo-node topo-node--${n.category}${state === 'maintenance' ? ' is-maint' : ''}${n.leaf ? ' is-leaf' : ''}${dimNode(n) ? ' is-dim' : ''}${selected ? ' is-selected' : ''}${focusId && n.id !== focusId && neighbours.has(n.id) ? ' is-neighbour' : ''}`}
             data-topo-id={n.id}
-            aria-label={isStatic ? undefined : m.topology.deviceLabel(n.name, n.where)}
+            aria-label={isStatic ? undefined : `${m.topology.deviceLabel(n.name, n.where)}${state === 'maintenance' ? `, ${m.equipment.state.maintenance}` : ''}`}
             aria-pressed={isStatic ? undefined : selected}
             {...act({ kind: 'node', id: n.id })}
           >
-            <rect className="topo-node__body" x={n.x} y={n.y} width={NODE_W} height={NODE_H} rx={8} />
-            <rect className="topo-node__stripe" x={n.x} y={n.y} width={5} height={NODE_H} rx={2} />
+            <rect className="topo-node__body" x={n.x} y={n.y} width={n.w} height={n.h} rx={8} />
+            <rect className="topo-node__stripe" x={n.x} y={n.y} width={5} height={n.h} rx={2} />
             <StateGlyph state={state} cx={n.x + 16} cy={n.y + 17} className="topo-node__state" />
-            <text className="topo-node__name" x={n.x + 26} y={n.y + 21}>
-              {n.name}
+            {state === 'maintenance' ? <MaintTab x={n.x + n.w} y={n.y} text={m.equipment.state.maintenance} /> : null}
+            <text className="topo-node__name" x={n.x + 26} y={n.y + NAME_BASELINE}>
+              {n.nameLines.map((line, i) => (
+                <tspan key={i} x={n.x + 26} dy={i === 0 ? 0 : LINE_STEP}>
+                  {line}
+                </tspan>
+              ))}
             </text>
-            <text className="topo-node__where" x={n.x + 26} y={n.y + 38}>
-              {n.where}
+            <text className="topo-node__where" x={n.x + 26} y={n.y + NAME_BASELINE + n.nameLines.length * LINE_STEP}>
+              {n.whereLines.map((line, i) => (
+                <tspan key={i} x={n.x + 26} dy={i === 0 ? 0 : LINE_STEP}>
+                  {line}
+                </tspan>
+              ))}
             </text>
+            {n.leafCount > 0 ? (
+              <text className="topo-node__count" x={n.x + 26} y={n.y + NAME_BASELINE + (n.nameLines.length + n.whereLines.length) * LINE_STEP}>
+                {m.topology.devicesBelow(n.leafCount)}
+              </text>
+            ) : null}
           </g>
         );
       })}
@@ -147,6 +162,22 @@ export function TopologyDiagram({ content, topology, vid = null, scale = 1, sele
         <PortTagLabel key={t.key} tag={t} />
       ))}
     </svg>
+  );
+}
+
+const MAINT_CHAR_PX = 7.2;
+
+/** A tab on the box's top edge, right-aligned: gear in maintenance reads from across the diagram. */
+function MaintTab({ x, y, text }: { x: number; y: number; text: string }) {
+  const w = text.length * MAINT_CHAR_PX + 26;
+  return (
+    <g className="topo-node__maint" aria-hidden="true">
+      <rect x={x - w - 8} y={y - 10} width={w} height={20} rx={10} />
+      <StateGlyph state="maintenance" cx={x - w + 4} cy={y} />
+      <text x={x - w + 14} y={y + 4.5}>
+        {text}
+      </text>
+    </g>
   );
 }
 

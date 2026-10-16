@@ -1,4 +1,4 @@
-import { carriedVids, type Id, type PlanContent, type Port, type PortVlan } from '@glasshouse/domain';
+import { carriedVids, effectiveVlan, vlanLabel, type Id, type PlanContent, type Port, type PortVlan } from '@glasshouse/domain';
 import { useState } from 'react';
 import { Link } from 'react-router';
 import { useT } from '../../i18n';
@@ -17,6 +17,7 @@ export function PortVlanField({ content, roomId, deviceId, port, commit }: PortV
   const m = useT();
   const [error, setError] = useState<string | null>(null);
   const v = port.vlan;
+  const inherited = v ? null : effectiveVlan(content, { deviceId, port: port.name });
   const set = (vlan: PortVlan | null): void => setError(commit({ type: 'port/vlan', deviceId, name: port.name, vlan }));
   const vids = content.vlans.map((x) => x.vid);
   const label = (vid: number): string => {
@@ -90,6 +91,11 @@ export function PortVlanField({ content, roomId, deviceId, port, commit }: PortV
           </label>
         ) : null}
       </div>
+      {inherited?.from ? (
+        <p className="port-vlan__note port-vlan__inherited">
+          {m.vlans.inherited(inherited.vlan.mode === 'access' ? `VLAN ${label(inherited.vlan.vid)}` : vlanLabel(inherited.vlan), inherited.from.device, inherited.from.port)}
+        </p>
+      ) : null}
       {v?.mode === 'trunk' ? (
         <fieldset className="port-vlan__allowed">
           <legend className="field__label">{m.vlans.allowed}</legend>

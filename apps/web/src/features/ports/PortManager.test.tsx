@@ -41,7 +41,8 @@ it('links a server NIC to a switch port, labels the cable, then unlinks it', asy
   await user.click(screen.getByRole('button', { name: 'Manage ports' }));
   const mgr = screen.getByRole('dialog', { name: 'SRV-01 ports' });
   await user.click(within(mgr).getByRole('button', { name: 'Port eth0, free' }));
-  await user.selectOptions(within(mgr).getByLabelText('Link to device'), 'sw');
+  await user.type(within(mgr).getByRole('combobox', { name: 'Link to device' }), 'sw');
+  await user.click(within(mgr).getByRole('option', { name: 'SW-01, RK-01, 6 free' }));
   await user.selectOptions(within(mgr).getByLabelText('Link to port'), 'Gi3');
   await user.click(within(mgr).getByRole('button', { name: 'Link' }));
   expect(content().links).toMatchObject([{ a: { deviceId: 'srv', port: 'eth0' }, b: { deviceId: 'sw', port: 'Gi3' } }]);
@@ -78,7 +79,8 @@ it('links to a device without ports by creating one as part of the link', async 
   await user.click(screen.getByRole('button', { name: 'Manage ports' }));
   const mgr = screen.getByRole('dialog', { name: 'SW-01 ports' });
   await user.click(within(mgr).getByRole('button', { name: 'Port Gi1, free' }));
-  await user.selectOptions(within(mgr).getByLabelText('Link to device'), 'bare');
+  await user.type(within(mgr).getByRole('combobox', { name: 'Link to device' }), 'srv-02');
+  await user.click(within(mgr).getByRole('option', { name: /^SRV-02, RK-01, No free port/ }));
   expect(within(within(mgr).getByLabelText('Link to port')).getByRole('option', { name: 'New port: eth0' })).toBeInTheDocument();
   await user.selectOptions(within(mgr).getByLabelText('Link to port'), 'New port: eth0');
   await user.click(within(mgr).getByRole('button', { name: 'Link' }));
@@ -141,4 +143,39 @@ it('sets the VLAN on every member of a LAG from one port’s VLAN field', async 
     { mode: 'access', vid: 10 },
   ]);
   expect(sw.ports!.find((p) => p.name === 'Gi3')!.vlan).toBeUndefined();
+});
+
+it('finds the far device by typing any part of its name or rack, and says how many ports are free', async () => {
+  const user = userEvent.setup();
+  open('srv');
+  await user.click(screen.getByRole('button', { name: 'Manage ports' }));
+  const mgr = screen.getByRole('dialog', { name: 'SRV-01 ports' });
+  await user.click(within(mgr).getByRole('button', { name: 'Port eth0, free' }));
+  const box = within(mgr).getByRole('combobox', { name: 'Link to device' });
+  await user.click(box);
+  // Focus lists everything, like the dropdown it replaces; eth0 itself doesn't count as free.
+  const options = () => within(within(mgr).getByRole('listbox', { name: 'Link to device' })).getAllByRole('option');
+  expect(options().map((o) => o.getAttribute('aria-label'))).toEqual(['SW-01, RK-01, 6 free', 'SRV-01, RK-01, No free port · adds one']);
+  await user.type(box, 'rk-01 sw');
+  expect(options()).toHaveLength(1);
+  await user.keyboard('{Enter}');
+  expect(box).toHaveValue('SW-01 · RK-01');
+  expect(within(mgr).getByLabelText('Link to port')).toBeEnabled();
+  await user.clear(box);
+  await user.type(box, 'nothing like it');
+  expect(within(mgr).getByRole('status')).toHaveTextContent('No device matches “nothing like it”.');
+  expect(within(mgr).getByLabelText('Link to port')).toBeDisabled();
+});
+
+it('says on the jack and the link when the device at the other end is in maintenance', async () => {
+  const user = userEvent.setup();
+  const s = useWorkspaceStore.getState();
+  s.dispatch({ type: 'plan', roomId: 'r', command: { type: 'link/add', link: { id: 'l1', a: { deviceId: 'srv', port: 'eth0' }, b: { deviceId: 'sw', port: 'Gi1' }, label: '', cable: null } } });
+  s.dispatch({ type: 'equipment/state', roomId: 'r', ids: ['sw'], state: 'maintenance' });
+  open('srv');
+  await user.click(screen.getByRole('button', { name: 'Manage ports' }));
+  const mgr = screen.getByRole('dialog', { name: 'SRV-01 ports' });
+  const jack = within(mgr).getByRole('button', { name: 'Port eth0, linked to SW-01 Gi1, the far end is in maintenance' });
+  await user.click(jack);
+  expect(within(mgr).getByText(/Linked to/).closest('p')).toHaveTextContent('In maintenance');
 });

@@ -57,17 +57,32 @@ Colour never works alone. Blocking issues use a solid circle icon, warnings a da
 - The legend is on demand from the zoom bar, never left over the drawing.
 - Below 1360px the inspector starts collapsed so the drawing gets the room (Plan, Elevation and Network alike); once someone opens or closes it, that choice is remembered, and selecting something new reopens it.
 - Names and figures are never cut: a rack name too wide for the rack sits under it, and a fill count that doesn't fit is left out.
+- A selected node fills its slot in accent with a heavy outline; its chassis gets a dashed accent outline.
 
 ## Network diagram
 
 - Generated from the cables, never hand-drawn. Switch-like gear (Network category, 4+ ports) forms the rows; single-cable devices hang under their switch in wrapped rows of up to six (fewer on the printed page).
 - A core pair joined by a bundle sits side by side over the switches they share. Diagram labels are 13px so the 85% fit floor keeps them at 11px.
 - Parallel cables draw as one line with a count (named after the LAG when they form one); copper solid, fibre dashed accent. Highlighting a VLAN fades what doesn't carry it.
+- Every box in a diagram is one size, grown to the longest name; past 26 characters a name wraps at a hyphen or space, never cut. Leaves wrap to the canvas's shape, so a big room is a block that scrolls a little both ways, not a strip many screens wide.
+- A port with no VLAN of its own carries the VLAN of the port at the other end of its cable: shown with a dashed underline and "from SW port", and counted when a VLAN is highlighted. Nothing is copied; setting this end overrides it.
+- Gear in maintenance: burnt-orange box with an "In maintenance" tab, its cables orange. In the port panel, a jack whose far end is in maintenance gets an orange ring and the triangle, and the link line says so.
 
 ## 3D
 
 - Labels are sprites at a fixed screen size; the Labels menu picks which kinds are always labelled, the rest label on hover.
 - A highlighted power path glows and carries arrowheads moving from source to load (still under reduced motion); everything else on the power layer fades.
+
+## Port panel
+
+- Stays inside the screen wherever it's dragged; below the faceplate it scrolls.
+- Link to device is a type-to-filter list (any words of the device or rack name), each option with its rack and free-port count.
+
+## Install sheet
+
+- Cable schedule: seven columns, each end one cell (device over its rack), so 70 cables fit A4 portrait.
+- The BOM prints on A4 landscape with fixed column shares; names wrap at hyphens.
+- The network page prints the full diagram on portrait, else on landscape; a room too big for either prints its network gear only, each switch counting the devices on it (the cable schedule lists them). Never below the 11px floor.
 
 ## Home
 
