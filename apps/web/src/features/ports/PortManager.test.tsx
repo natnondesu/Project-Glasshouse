@@ -179,3 +179,32 @@ it('says on the jack and the link when the device at the other end is in mainten
   await user.click(jack);
   expect(within(mgr).getByText(/Linked to/).closest('p')).toHaveTextContent('In maintenance');
 });
+
+it('picks a range with Shift and one more with ⌘, then changes only the field filled in on all of them', async () => {
+  const user = userEvent.setup();
+  const s = useWorkspaceStore.getState();
+  s.dispatch({ type: 'plan', roomId: 'r', command: { type: 'vlan/add', vlan: { vid: 10, name: 'Servers' } } });
+  s.dispatch({ type: 'plan', roomId: 'r', command: { type: 'port/vlan', deviceId: 'sw', name: 'Gi2', vlan: { mode: 'access', vid: 10 } } });
+  open('sw');
+  await user.click(screen.getByRole('button', { name: 'Manage ports' }));
+  const mgr = screen.getByRole('dialog', { name: 'SW-01 ports' });
+  await user.click(within(mgr).getByRole('button', { name: 'Port Gi1, free' }));
+  await user.keyboard('{Shift>}');
+  await user.click(within(mgr).getByRole('button', { name: 'Port Gi3, free' }));
+  await user.keyboard('{/Shift}{Meta>}');
+  await user.click(within(mgr).getByRole('button', { name: 'Port Te1, free' }));
+  await user.keyboard('{/Meta}');
+  expect(within(mgr).getAllByRole('button', { pressed: true }).map((b) => b.getAttribute('aria-label'))).toEqual(['Port Gi1, free', 'Port Gi2, free', 'Port Gi3, free', 'Port Te1, free']);
+  const apply = within(mgr).getByRole('button', { name: 'Apply to 4 ports' });
+  expect(apply).toBeDisabled();
+  // Mixed speeds (1G and 10G) say so; the field stays on "Leave as is" unless changed.
+  expect(within(mgr).getByLabelText('Speed')).toHaveDisplayValue('Leave as is (mixed)');
+  await user.selectOptions(within(mgr).getByLabelText('Speed'), '25G');
+  await user.click(apply);
+  expect(within(mgr).getByRole('status')).toHaveTextContent('Applied to 4 ports.');
+  const ports = Object.fromEntries((content().objects[0] as Rack).devices.find((d) => d.id === 'sw')!.ports!.map((p) => [p.name, p]));
+  expect(['Gi1', 'Gi2', 'Gi3', 'Gi4', 'Te1'].map((n) => ports[n]!.speed)).toEqual(['25G', '25G', '25G', '1G', '25G']);
+  // Untouched fields keep each port's own value.
+  expect(ports.Gi2!.vlan).toEqual({ mode: 'access', vid: 10 });
+  expect(ports.Te1!.media).toBe('sfp_plus');
+});

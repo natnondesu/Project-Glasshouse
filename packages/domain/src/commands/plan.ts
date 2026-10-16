@@ -11,6 +11,7 @@ import { applyFeedCommand, type FeedCommand } from '../feeds';
 import { applyPanelCommand, type PanelCommand } from '../sources';
 import { applyPortCommand, pruneLinks, type PortCommand } from '../ports';
 import { applyVlanCommand, type VlanCommand } from '../vlans';
+import { applyBulkPortCommand, type BulkPortCommand } from './portBulk';
 
 export type PlanCommand =
   | { type: 'survey/update'; patch: SurveyPatch }
@@ -27,6 +28,7 @@ export type PlanCommand =
   | FeedCommand
   | PanelCommand
   | PortCommand
+  | BulkPortCommand
   | VlanCommand;
 
 export function applyPlanCommand(content: PlanContent, cmd: PlanCommand): Result<PlanContent> {
@@ -81,6 +83,8 @@ function applyOne(content: PlanContent, cmd: PlanCommand): Result<PlanContent> {
     case 'panel/configure':
     case 'panel/way':
       return applyPanelCommand(content, cmd);
+    case 'port/bulk':
+      return applyBulkPortCommand(content, cmd);
     case 'port/add':
     case 'port/update':
     case 'port/remove':

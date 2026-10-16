@@ -436,3 +436,59 @@
   height: 10px;
   color: #ffb27a;
 }
+
+.port-mgr__hint {
+  margin: 6px 16px 0;
+  font-size: var(--text-2xs);
+  color: var(--ink-2);
+}
+
+/* Group edit: several ports at once. */
+.port-bulk__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: var(--text-sm);
+}
+
+.port-bulk__names {
+  font-size: var(--text-xs);
+  color: var(--ink-2);
+  overflow-wrap: anywhere;
+}
+
+.port-bulk__note,
+.port-bulk__done {
+  font-size: var(--text-xs);
+  color: var(--ink-2);
+}
+
+.port-bulk__row {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+
+.port-bulk__row--lag {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.port-bulk__clear-lag {
+  align-self: end;
+  padding-bottom: 9px;
+  font-size: var(--text-sm);
+  white-space: nowrap;
+}
+
+.port-bulk__warn {
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: var(--warn-bg);
+  color: var(--warn);
+  font-size: var(--text-xs);
+}
+
+.port-bulk__actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}

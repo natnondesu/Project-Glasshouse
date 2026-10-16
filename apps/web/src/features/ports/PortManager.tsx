@@ -5,6 +5,7 @@ import { IconGrip, IconPlus } from '../../ui/icons';
 import { StateIcon } from '../../ui/StateIcon';
 import { useFloatingPanel } from '../../ui/useFloatingPanel';
 import { PortDetail } from './PortDetail';
+import { BulkPortForm } from './BulkPortForm';
 import './ports.css';
 import { useT, type Messages } from '../../i18n';
 
@@ -58,11 +59,30 @@ export function PortManager({ content, stateOf, roomId, deviceId, commit, readOn
   const m = useT();
   const name = findRackDevice(content, deviceId)?.device.name ?? findNode(content, deviceId)?.node.name ?? m.search.device;
   const ports = portsOf(content, deviceId);
-  const [selected, setSelected] = useState<string | null>(ports[0]?.name ?? null);
+  // One port shows its own settings; several (Shift for a range, ⌘/Ctrl to add one) share a group form.
+  const [picked, setPicked] = useState<string[]>(ports[0] ? [ports[0].name] : []);
+  const [anchor, setAnchor] = useState<string | null>(ports[0]?.name ?? null);
+  const setSelected = (name: string | null): void => {
+    setPicked(name ? [name] : []);
+    setAnchor(name);
+  };
+  const pick = (name: string, e: { shiftKey: boolean; metaKey: boolean; ctrlKey: boolean }): void => {
+    if (e.shiftKey && anchor !== null) {
+      const names = ports.map((p) => p.name);
+      const [a, b] = [names.indexOf(anchor), names.indexOf(name)].sort((x, y) => x - y) as [number, number];
+      if (a >= 0) return setPicked(names.slice(a, b + 1));
+    }
+    if (e.metaKey || e.ctrlKey) {
+      setAnchor(name);
+      return setPicked((cur) => (cur.includes(name) ? cur.filter((n) => n !== name) : [...cur, name]));
+    }
+    setSelected(name);
+  };
   const [error, setError] = useState<string | null>(null);
   const { pos, headProps } = useFloatingPanel('glasshouse:port-manager-at', { x: 560, y: 150 });
   const linked = ports.filter((p) => linkAt(content, { deviceId, port: p.name })).length;
-  const current = ports.find((p) => p.name === selected) ?? null;
+  const live = picked.filter((n) => ports.some((p) => p.name === n));
+  const current = live.length === 1 ? (ports.find((p) => p.name === live[0]) ?? null) : null;
 
   const addPort = (): void => {
     const last = ports[ports.length - 1];
@@ -134,10 +154,10 @@ export function PortManager({ content, stateOf, roomId, deviceId, commit, readOn
                       key={p.name}
                       type="button"
                       className={`port port--${p.media}${isLinked ? ' is-linked' : ''}${farMaint ? ' is-far-maint' : ''}`}
-                      aria-pressed={p.name === selected}
+                      aria-pressed={live.includes(p.name)}
                       aria-label={label}
                       title={`${label} · ${PORT_MEDIA_LABEL[p.media]} ${p.speed}${p.lag ? ` · ${p.lag}` : ''}${vlanNote}`}
-                      onClick={() => setSelected(p.name)}
+                      onClick={(e) => pick(p.name, e)}
                     >
                       <span className="port__jack" aria-hidden="true">
                         {farMaint ? <StateIcon state="maintenance" className="port__maint" /> : null}
@@ -152,6 +172,12 @@ export function PortManager({ content, stateOf, roomId, deviceId, commit, readOn
           ))}
         </div>
       )}
+      {ports.length > 1 ? <p className="port-mgr__hint">{m.ports.bulk.hint}</p> : null}
+      {live.length > 1 ? (
+        <div className="port-mgr__body">
+          <BulkPortForm key={live.join('|')} content={content} deviceId={deviceId} names={ports.filter((p) => live.includes(p.name)).map((p) => p.name)} commit={commit} readOnly={readOnly} onClear={() => setSelected(null)} />
+        </div>
+      ) : null}
       {current ? (
         // The scroller is a div: browsers don't scroll a <fieldset> even with overflow set, so it clipped instead.
         <div className="port-mgr__body">
