@@ -48,3 +48,18 @@ it('folds to its heading and counts, and remembers it', async () => {
   render(<ChecksStrip issues={[issue({})]} objects={[{ id: 'x', name: 'EX-01' }]} onSelect={vi.fn()} />);
   expect(screen.getByRole('button', { name: 'Show checks' })).toBeInTheDocument();
 });
+
+it('counts what holds approval the way the Review badge does: blocks, acknowledgements, open notes', () => {
+  render(
+    <ChecksStrip
+      issues={[issue({ key: 'a' }), issue({ key: 'b', severity: 'needs_ack', code: 'unknown_demand' as Issue['code'] }), issue({ key: 'c', severity: 'warn', code: 'clearance_door' })]}
+      objects={[{ id: 'x', name: 'EX-01' }]}
+      onSelect={vi.fn()}
+      openNotes={1}
+    />,
+  );
+  expect(screen.getByText('1 blocks approval')).toBeInTheDocument();
+  expect(screen.getByText('1 to acknowledge')).toBeInTheDocument();
+  expect(screen.getByText('1 open note')).toBeInTheDocument();
+  expect(screen.getByText('1 warning')).toBeInTheDocument();
+});

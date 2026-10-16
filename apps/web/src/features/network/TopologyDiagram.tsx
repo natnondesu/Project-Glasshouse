@@ -150,23 +150,24 @@ export function TopologyDiagram({ content, topology, vid = null, scale = 1, sele
   );
 }
 
-const BADGE_CHAR_PX = 6.7;
+/** 13px Geist Mono advance: diagram labels stay at the 11px floor at the 85% fit. */
+const BADGE_CHAR_PX = 7.9;
 
 /** The cable count on a bundle, named after its LAG when it has one. */
 function BundleBadge({ x, y, text }: { x: number; y: number; text: string }) {
   const w = Math.max(26, text.length * BADGE_CHAR_PX + 12);
   return (
     <g className="topo-edge__badge">
-      <rect x={x - w / 2} y={y - 9} width={w} height={18} rx={9} />
-      <text x={x} y={y + 4} textAnchor="middle">
+      <rect x={x - w / 2} y={y - 10} width={w} height={20} rx={10} />
+      <text x={x} y={y + 5} textAnchor="middle">
         {text}
       </text>
     </g>
   );
 }
 
-const TAG_LINE_H = 14;
-const TAG_CHAR_PX = 6.7;
+const TAG_LINE_H = 16;
+const TAG_CHAR_PX = 7.9;
 const TAG_PAD = 5;
 
 /** Port pairs on a paper chip, so they read over lines and boxes. */

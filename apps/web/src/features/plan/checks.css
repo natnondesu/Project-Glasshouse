@@ -37,7 +37,7 @@
 }
 
 .checks__note {
-  margin-left: auto;
+  margin: 6px 0 0;
 }
 
 .checks__count {
@@ -156,4 +156,11 @@
 
 .checks.is-collapsed .checks__head {
   padding-bottom: 4px;
+}
+
+/* A plain warning doesn't hold approval: quieter than what does. */
+.checks__count--info {
+  border: 1px solid var(--line-strong);
+  background: var(--control-bg);
+  color: var(--ink-2);
 }

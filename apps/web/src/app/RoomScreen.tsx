@@ -9,13 +9,13 @@ import { ReviewView } from '../features/review/ReviewView';
 import { locationAtRevision, useRoomLocation, useViewedRevisionNumber } from '../store/hooks';
 import { RevisionBanner } from './RevisionBanner';
 import { ErrorBoundary } from './ErrorBoundary';
-import { FrozenBanner } from './FrozenBanner';
 import { NotFound } from './NotFound';
 
 // three.js is large and only this view needs it: keep it out of the main bundle.
 const Room3DView = lazy(() => import('../features/room3d/Room3DView'));
 import { ViewTabs } from './ViewTabs';
 import { useT } from '../i18n';
+import { useDocumentTitle } from '../ui/useDocumentTitle';
 
 /** View route segment to its tab label key, for the page heading. */
 const TAB_LABEL: Record<string, 'plan' | 'elevation' | 'threeD' | 'network' | 'bom' | 'review'> = { plan: 'plan', elevation: 'elevation', '3d': 'threeD', network: 'network', bom: 'bom', review: 'review' };
@@ -25,6 +25,8 @@ export function RoomScreen() {
   const realLocation = useRoomLocation(roomId);
   const viewedNumber = useViewedRevisionNumber();
   const m = useT();
+  const tabLabel = TAB_LABEL[view] ? m.views[TAB_LABEL[view]!] : view;
+  useDocumentTitle(realLocation ? `${realLocation.room.name} · ${tabLabel}` : null);
   if (!realLocation) return <NotFound message={m.shell.roomMissing} />;
   const past = view === 'review' ? null : locationAtRevision(realLocation, viewedNumber);
   const location = past ?? realLocation;
@@ -46,9 +48,8 @@ export function RoomScreen() {
   return (
     <div className="room-screen">
       <h1 className="visually-hidden">{m.views.pageTitle(realLocation.room.name, TAB_LABEL[view] ? m.views[TAB_LABEL[view]!] : view)}</h1>
-      <ViewTabs roomId={roomId} />
+      <ViewTabs roomId={roomId} frozen={!past && readOnly && view !== 'review' ? revision : null} />
       {past ? <RevisionBanner roomId={roomId} view={view} viewed={revision} current={currentRevision(realLocation.room.plan)} /> : null}
-      {!past && readOnly && (view === 'plan' || view === 'elevation' || view === 'network') ? <FrozenBanner roomId={roomId} revision={revision} /> : null}
       <ErrorBoundary key={view} label={m.views.drawing[view] ?? m.views.drawing.other!}>
         {body}
       </ErrorBoundary>

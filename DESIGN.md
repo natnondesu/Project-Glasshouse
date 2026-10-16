@@ -42,6 +42,8 @@ Colour never works alone. Blocking issues use a solid circle icon, warnings a da
 
 - One focus treatment: a solid 2px accent ring (`--focus-ring`, or `--focus-ring-inset` where an outline would be clipped). SVG items show focus by thickening their own line in accent.
 - Freezing actions confirm in place: Submit and Approve show what will freeze and the check status before they act. A disabled Approve says what it waits for.
+- A frozen revision is said once, in the tab bar: a chip ("R01 Approved · read-only") beside Start new draft, never a banner over each view.
+- Checks counts what holds approval the way the Review badge does: blocks, to acknowledge, open notes; plain warnings get a quieter chip. Its head stays one line.
 - Frozen revisions read as a record, not a form: values sit as plain figures beside their units, remove buttons are hidden, and the panel says Read-only with a lock instead of "Changes save as you type".
 - Approval is a stamp: APPROVED, revision, date and approver in a ruled green box, with the Install sheet as the next step.
 
@@ -53,18 +55,23 @@ Colour never works alone. Blocking issues use a solid circle icon, warnings a da
 - Wall-mounted racks are drawn dashed, as overhead items are; their label adds 'wall'.
 - Doors: a swing door draws its leaf open at 90° and the quarter-circle swing; a sliding door draws its track, the leaf parked beside the opening and an arrow for the direction, with no swing.
 - The legend is on demand from the zoom bar, never left over the drawing.
-- Below 1360px the inspector starts collapsed so the drawing gets the room; once someone opens or closes it, that choice is remembered.
+- Below 1360px the inspector starts collapsed so the drawing gets the room (Plan, Elevation and Network alike); once someone opens or closes it, that choice is remembered, and selecting something new reopens it.
 - Names and figures are never cut: a rack name too wide for the rack sits under it, and a fill count that doesn't fit is left out.
 
 ## Network diagram
 
 - Generated from the cables, never hand-drawn. Switch-like gear (Network category, 4+ ports) forms the rows; single-cable devices hang under their switch in wrapped rows of up to six (fewer on the printed page).
+- A core pair joined by a bundle sits side by side over the switches they share. Diagram labels are 13px so the 85% fit floor keeps them at 11px.
 - Parallel cables draw as one line with a count (named after the LAG when they form one); copper solid, fibre dashed accent. Highlighting a VLAN fades what doesn't carry it.
 
 ## 3D
 
 - Labels are sprites at a fixed screen size; the Labels menu picks which kinds are always labelled, the rest label on hover.
 - A highlighted power path glows and carries arrowheads moving from source to load (still under reduced motion); everything else on the power layer fades.
+
+## Browser tab
+
+- The document title names the place: "Server room A · Network · Glasshouse", in the interface language.
 
 ## Confirmations
 

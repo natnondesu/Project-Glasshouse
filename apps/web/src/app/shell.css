@@ -185,6 +185,8 @@
 }
 
 .view-tabs__meta {
+  display: inline-flex;
+  align-items: center;
   margin-left: auto;
   font-size: var(--text-xs);
   color: var(--ink-2);
@@ -280,9 +282,32 @@
   color: var(--ink-2);
 }
 
-.frozen-banner--approved {
+/* A frozen revision, said once in the tab bar. */
+.frozen-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-right: 10px;
+}
+
+.frozen-chip__state {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border: 1px solid var(--warn-border);
+  border-radius: 999px;
+  background: var(--warn-bg);
+  color: var(--warn);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.frozen-chip__state.is-approved {
   border-color: var(--ok-border);
-  background: rgb(232 245 239 / 0.92);
+  background: var(--ok-bg);
+  color: var(--ok);
 }
 
 .frozen-banner--history {

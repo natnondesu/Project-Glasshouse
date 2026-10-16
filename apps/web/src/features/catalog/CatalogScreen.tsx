@@ -1,3 +1,4 @@
+import { useDocumentTitle } from '../../ui/useDocumentTitle';
 import { CATEGORY_ORDER, formatDemand, SEED_TEMPLATE_IDS, type Template } from '@glasshouse/domain';
 import { useCallback, useState } from 'react';
 import { useBlocker } from 'react-router';
@@ -23,6 +24,7 @@ export function CatalogScreen() {
   const [pending, setPending] = useState<(() => void) | null>(null);
   // Only leaving the Catalog is blocked here; switching Templates inside it goes through guard().
   const m = useT();
+  useDocumentTitle(m.catalog.title);
   const [query, setQuery] = useState('');
   const shown = filterTemplates(catalog, query, (t) => m.categories[t.category]);
   const blocker = useBlocker(({ currentLocation, nextLocation }) => dirty && currentLocation.pathname !== nextLocation.pathname);

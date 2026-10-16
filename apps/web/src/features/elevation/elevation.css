@@ -503,7 +503,8 @@
   display: flex;
   align-items: flex-start;
   gap: 28px;
-  padding: 14px 12px;
+  /* Room on the right for the inspector's collapse tab, so it never covers a rack's U numbers. */
+  padding: 14px 28px 14px 12px;
   border-radius: 20px;
   background: rgb(255 255 255 / 0.25);
   box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.55);
@@ -898,4 +899,17 @@ body.is-dragging-device * {
   background: rgb(247 249 251 / 0.97);
   box-shadow: var(--shadow-float);
   pointer-events: none;
+}
+
+/* More racks off to the right: the same cue as above and below, on the right edge. */
+.elev__more--right {
+  align-self: center;
+  justify-self: end;
+  margin-right: 30px;
+  padding: 6px 10px 6px 14px;
+}
+
+.elev__more-icon--right,
+.elev__more--right .elev__more-icon {
+  transform: none;
 }

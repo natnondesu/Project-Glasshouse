@@ -1,9 +1,18 @@
 .network {
+  position: relative;
   display: grid;
   grid-template-columns: minmax(0, 1fr) 340px;
   gap: 12px;
   min-height: 0;
   height: 100%;
+}
+
+.network.is-side-closed {
+  grid-template-columns: minmax(0, 1fr) 44px;
+}
+
+.network__tab {
+  right: 343px;
 }
 
 .network__main {
@@ -199,7 +208,7 @@
 
 .topo-edge__badge text {
   font-family: var(--font-mono);
-  font-size: var(--text-2xs);
+  font-size: var(--text-sm);
   fill: var(--ink);
 }
 
@@ -235,7 +244,7 @@
 
 .topo-node__where {
   font-family: var(--font-mono);
-  font-size: var(--text-2xs);
+  font-size: var(--text-sm);
   fill: var(--ink-2);
 }
 
@@ -298,7 +307,7 @@
 
 .topo-tag text {
   font-family: var(--font-mono);
-  font-size: var(--text-2xs);
+  font-size: var(--text-sm);
   fill: var(--d-ink);
 }
 

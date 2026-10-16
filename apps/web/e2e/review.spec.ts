@@ -27,9 +27,9 @@ test('AC13/AC16: submit, freeze, self-approve, start a new draft', async ({ page
   await page.getByRole('button', { name: 'Submit for review' }).click();
   await page.getByRole('button', { name: 'Confirm submit' }).click();
   await page.getByRole('link', { name: 'Plan' }).click();
-  await expect(page.getByText(/Revision 01 is In review/)).toBeVisible();
+  await expect(page.getByText('R01 In review · read-only')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Place rack' })).toHaveCount(0);
-  await page.getByRole('link', { name: 'Open review' }).click();
+  await page.getByRole('link', { name: /^Review/ }).click();
   await page.getByLabel('Reviewer name (unverified)').fill('Ploy');
   await page.getByRole('button', { name: 'Approve revision' }).click();
   await page.getByRole('button', { name: 'Confirm approval' }).click();

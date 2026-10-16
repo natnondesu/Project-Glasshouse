@@ -18,13 +18,13 @@ import { hitTest } from './hitTest';
 import { PanelManager } from './PanelManager';
 import { ALL_LAYERS, type PlanLayers } from './ViewMenu';
 import { usePersistentState } from '../../ui/usePersistentState';
+import { useInspectorOpen } from '../../ui/useInspectorOpen';
 import './plan.css';
 import { useT } from '../../i18n';
 
 /** Room the fit leaves on the right for the inspector, or for its collapsed rail. */
 const INSET_WITH_INSPECTOR = FIT_INSETS.right;
 const INSET_WITHOUT_INSPECTOR = 76;
-const WIDE_ENOUGH_FOR_INSPECTOR_PX = 1360;
 /** Space kept between the room and the checks strip below it. */
 const CHECKS_GAP_PX = 48;
 const PULSE_MS = 1700;
@@ -53,9 +53,7 @@ export function PlanView({ location, readOnly = false }: { location: RoomLocatio
 
   const issues = useMemo(() => revisionIssues(revision), [revision]);
   const m = useT();
-  const [inspectorPref, setInspectorOpen] = usePersistentState<boolean | null>('glasshouse:inspector-open', null);
-  // Until someone chooses, laptops narrower than this give the drawing the room and keep the inspector one click away.
-  const inspectorOpen = inspectorPref ?? window.innerWidth >= WIDE_ENOUGH_FOR_INSPECTOR_PX;
+  const [inspectorOpen, setInspectorOpen] = useInspectorOpen();
   // Fit around the checks strip as it really is (one line when all is well), not a worst-case band.
   const [checksH, setChecksH] = useState<number | undefined>(undefined);
   useLayoutEffect(() => {
@@ -130,7 +128,7 @@ export function PlanView({ location, readOnly = false }: { location: RoomLocatio
           </p>
         ) : null}
       </section>
-      <ChecksStrip issues={issues} objects={content.objects} onSelect={select} />
+      <ChecksStrip issues={issues} objects={content.objects} onSelect={select} openNotes={location.room.plan.notes.filter((n) => !n.resolved).length} />
       {inspectorOpen ? (
         <>
           <PanelCollapseTab label={m.panels.inspector} side="right" className="plan-view__tab" onCollapse={() => setInspectorOpen(false)} />

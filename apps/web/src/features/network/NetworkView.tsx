@@ -8,11 +8,13 @@ import { NetworkDetails } from './NetworkDetails';
 import { TopologyDiagram, type TopoSelection } from './TopologyDiagram';
 import { buildTopology } from './topology';
 import { VlanList } from './VlanList';
+import { PanelCollapseTab, PanelRail } from '../../ui/PanelRail';
+import { useInspectorOpen } from '../../ui/useInspectorOpen';
 import './network.css';
 
 const ZOOM_STEP = 1.25;
 const MIN_SCALE = 0.25;
-/** "Fit" stops here: below it, node text drops under the 11px floor, so the canvas scrolls instead. */
+/** "Fit" stops here: the diagram's smallest text is 13px, which is the 11px floor at 85%. Below, it scrolls. */
 const FIT_FLOOR = 0.85;
 const MAX_SCALE = 2;
 
@@ -26,6 +28,9 @@ export function NetworkView({ location, readOnly }: { location: RoomLocation; re
   const [scale, setScale] = useState(1);
   const [selection, setSelection] = useState<TopoSelection>(null);
   const [portsFor, setPortsFor] = useState<string | null>(null);
+  // The details and VLAN column folds away so the diagram gets the width; picking a device brings it back.
+  const selectedKey = selection ? (selection.kind === 'node' ? selection.id : selection.key) : null;
+  const [sideOpen, setSideOpen] = useInspectorOpen(selectedKey);
   const area = useRef<HTMLDivElement>(null);
   const zoom = (k: number): void => setScale((s) => Math.min(MAX_SCALE, Math.max(MIN_SCALE, s * k)));
   const fit = (): void => {
@@ -39,9 +44,16 @@ export function NetworkView({ location, readOnly }: { location: RoomLocation; re
     fitted.current = true;
     fit();
   }, [topology]);
+  // Folding the side column changes the room the diagram has: fit again once the layout has settled.
+  const lastSide = useRef(sideOpen);
+  useEffect(() => {
+    if (lastSide.current === sideOpen) return;
+    lastSide.current = sideOpen;
+    requestAnimationFrame(fit);
+  }, [sideOpen]);
 
   return (
-    <div className="network">
+    <div className={`network${sideOpen ? '' : ' is-side-closed'}`}>
       <section className="network__main glass" aria-label={m.topology.region}>
         <div className="network__bar">
           <label className="network__filter">
@@ -88,6 +100,9 @@ export function NetworkView({ location, readOnly }: { location: RoomLocation; re
           )}
         </div>
       </section>
+      {sideOpen ? (
+      <>
+      <PanelCollapseTab label={m.panels.inspector} side="right" className="network__tab" onCollapse={() => setSideOpen(false)} />
       <aside className="network__side">
         <section className="net-panel glass">
           <NetworkDetails content={content} roomId={roomId} topology={topology} selection={selection} onManagePorts={setPortsFor} />
@@ -109,6 +124,10 @@ export function NetworkView({ location, readOnly }: { location: RoomLocation; re
         </section>
         <VlanList content={content} commit={commit} readOnly={readOnly} />
       </aside>
+      </>
+      ) : (
+        <PanelRail label={m.panels.inspector} side="right" className="network__rail" onExpand={() => setSideOpen(true)} />
+      )}
       {portsFor && (findRackDevice(content, portsFor) || findNode(content, portsFor)) ? (
         <PortManager key={portsFor} content={content} roomId={roomId} deviceId={portsFor} commit={commit} readOnly={readOnly} onClose={() => setPortsFor(null)} />
       ) : null}

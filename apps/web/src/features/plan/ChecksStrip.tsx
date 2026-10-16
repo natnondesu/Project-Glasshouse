@@ -12,14 +12,18 @@ interface ChecksStripProps {
   className?: string;
   /** Where the open/closed choice is remembered: each view keeps its own. */
   storageKey?: string;
+  /** Unresolved review notes: they hold approval too, so the strip counts them like the Review badge. */
+  openNotes?: number;
 }
 
-export function ChecksStrip({ issues, objects, onSelect, className, storageKey = 'glasshouse:checks-open' }: ChecksStripProps) {
+export function ChecksStrip({ issues, objects, onSelect, className, storageKey = 'glasshouse:checks-open', openNotes = 0 }: ChecksStripProps) {
   const [open, setOpen] = usePersistentState(storageKey, true);
   const names = new Map(objects.map((o) => [o.id, o.name]));
   const m = useT();
+  // The same three things the Review badge adds up: blocking checks, acknowledgements, open notes.
   const blocks = issues.filter((i) => i.severity === 'block').length;
-  const warnings = issues.length - blocks;
+  const needsAck = issues.filter((i) => i.severity === 'needs_ack').length;
+  const warnings = issues.length - blocks - needsAck;
   return (
     <section className={`checks glass${className ? ` ${className}` : ''}${open ? '' : ' is-collapsed'}`} aria-labelledby="checks-heading">
       <header className="checks__head">
@@ -29,10 +33,11 @@ export function ChecksStrip({ issues, objects, onSelect, className, storageKey =
           </button>
         ) : null}
         <h2 id="checks-heading">{m.checks.title}</h2>
-        {issues.length === 0 ? <span className="checks__ok">{m.checks.ok}</span> : null}
+        {issues.length === 0 && openNotes === 0 ? <span className="checks__ok">{m.checks.ok}</span> : null}
         {blocks > 0 ? <span className="checks__count checks__count--block">{m.checks.blocks(blocks)}</span> : null}
-        {warnings > 0 ? <span className="checks__count checks__count--warn">{m.checks.warnings(warnings)}</span> : null}
-        {blocks > 0 && open ? <span className="checks__note">{m.checks.note}</span> : null}
+        {needsAck > 0 ? <span className="checks__count checks__count--warn">{m.checks.needsAck(needsAck)}</span> : null}
+        {openNotes > 0 ? <span className="checks__count checks__count--warn">{m.checks.openNotes(openNotes)}</span> : null}
+        {warnings > 0 ? <span className="checks__count checks__count--info">{m.checks.warnings(warnings)}</span> : null}
       </header>
       {issues.length > 0 && open ? (
         <ul id="checks-list" className="checks__list">
@@ -56,6 +61,8 @@ export function ChecksStrip({ issues, objects, onSelect, className, storageKey =
           })}
         </ul>
       ) : null}
+      {/* Under the list, so the head stays one line however many counts it carries. */}
+      {blocks + needsAck + openNotes > 0 && open ? <p className="checks__note">{m.checks.note}</p> : null}
     </section>
   );
 }

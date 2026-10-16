@@ -1,3 +1,4 @@
+import { useDocumentTitle } from '../../ui/useDocumentTitle';
 import { bomRowsFor, cableSchedule, equipmentStateOf, currentRevision, latestApproved, racksOf, type Chassis, type Rack } from '@glasshouse/domain';
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
@@ -58,6 +59,8 @@ export function InstallSheet() {
   const viewedNumber = useViewedRevisionNumber();
   const navigate = useNavigate();
   const m = useT();
+  const sheetRev = location ? latestApproved(location.room.plan) : null;
+  useDocumentTitle(location ? `${location.room.name} · ${sheetRev ? m.views.installSheet(String(sheetRev.number).padStart(2, '0')) : m.views.installAfter}` : null);
   if (!location) return <NotFound message={m.shell.roomMissing} />;
   const approved = location.room.plan.revisions.filter((r) => r.state === 'approved');
   const revision = approved.find((r) => r.number === viewedNumber) ?? latestApproved(location.room.plan);
