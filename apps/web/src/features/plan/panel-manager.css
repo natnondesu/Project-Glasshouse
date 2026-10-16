@@ -67,6 +67,16 @@
 
 /* The lock wrapper takes no part in layout (a fieldset can't pass its height on in Chromium),
    so the ways table, not the panel, scrolls. Disabling still applies to everything inside. */
+.panel-mgr__grip {
+  flex: none;
+  margin-right: -4px;
+  color: var(--ink-3);
+}
+
+.panel-mgr__head:hover .panel-mgr__grip {
+  color: var(--ink);
+}
+
 .panel-mgr__body {
   display: contents;
 }

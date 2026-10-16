@@ -26,6 +26,16 @@
   cursor: grabbing;
 }
 
+.port-mgr__grip {
+  flex: none;
+  margin-right: -6px;
+  color: var(--ink-3);
+}
+
+.port-mgr__head:hover .port-mgr__grip {
+  color: var(--ink);
+}
+
 .port-mgr__head h2 {
   flex: 1;
   font-size: var(--text-md);
@@ -197,13 +207,25 @@
   flex-direction: column;
   gap: 10px;
   min-width: 0;
-  /* A fieldset won't shrink below its content by default; without this the panel cut off its bottom instead of scrolling. */
-  min-height: 0;
-  flex: 1 1 auto;
   margin: 0;
   padding: 14px 16px 16px;
   border: 0;
+}
+
+/*
+ * Everything under the faceplate scrolls here. Shadows at the edges say there's more (they fade
+ * as you reach the end): the attached-local covers ride with the content and hide them.
+ */
+.port-mgr__body {
+  flex: 1 1 auto;
+  min-height: 0;
   overflow-y: auto;
+  overscroll-behavior: contain;
+  background:
+    linear-gradient(rgb(247 249 251), rgb(247 249 251 / 0)) top / 100% 24px no-repeat local,
+    linear-gradient(rgb(247 249 251 / 0), rgb(247 249 251)) bottom / 100% 24px no-repeat local,
+    radial-gradient(farthest-side at 50% 0, rgb(14 24 36 / 0.16), transparent) top / 100% 10px no-repeat scroll,
+    radial-gradient(farthest-side at 50% 100%, rgb(14 24 36 / 0.16), transparent) bottom / 100% 10px no-repeat scroll;
 }
 
 .port-mgr__row {

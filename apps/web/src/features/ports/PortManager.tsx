@@ -1,7 +1,7 @@
 import { type EquipmentState, vlanLabel, describeEnd, effectiveVlan, findNode, findRackDevice, linkAt, nextPortName, otherEnd, PORT_MEDIA_LABEL, portsOf, type Id, type PlanContent, type Port } from '@glasshouse/domain';
 import { useState } from 'react';
 import type { CommitFn } from '../../store/hooks';
-import { IconPlus } from '../../ui/icons';
+import { IconGrip, IconPlus } from '../../ui/icons';
 import { StateIcon } from '../../ui/StateIcon';
 import { useFloatingPanel } from '../../ui/useFloatingPanel';
 import { PortDetail } from './PortDetail';
@@ -79,7 +79,8 @@ export function PortManager({ content, stateOf, roomId, deviceId, commit, readOn
 
   return (
     <section className="port-mgr glass" role="dialog" aria-label={m.ports.title(name)} style={{ left: pos.x, top: pos.y, maxHeight: `calc(100vh - ${pos.y + PANEL_BOTTOM_GAP_PX}px)` }}>
-      <header className="port-mgr__head" {...headProps}>
+      <header className="port-mgr__head" title={m.panels.dragToMove} {...headProps}>
+        <IconGrip className="port-mgr__grip" />
         <h2>
           <span className="mono">{m.ports.title(name)}</span>
         </h2>
@@ -151,7 +152,12 @@ export function PortManager({ content, stateOf, roomId, deviceId, commit, readOn
           ))}
         </div>
       )}
-      {current ? <PortDetail key={ports.indexOf(current)} content={content} stateOf={stateOf} roomId={roomId} deviceId={deviceId} port={current} commit={commit} readOnly={readOnly} onRenamed={setSelected} onRemoved={() => setSelected(null)} /> : null}
+      {current ? (
+        // The scroller is a div: browsers don't scroll a <fieldset> even with overflow set, so it clipped instead.
+        <div className="port-mgr__body">
+          <PortDetail key={ports.indexOf(current)} content={content} stateOf={stateOf} roomId={roomId} deviceId={deviceId} port={current} commit={commit} readOnly={readOnly} onRenamed={setSelected} onRemoved={() => setSelected(null)} />
+        </div>
+      ) : null}
     </section>
   );
 }

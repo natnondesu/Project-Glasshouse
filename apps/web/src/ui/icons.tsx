@@ -229,3 +229,8 @@ export const IconCheck = (p: IconProps) => (
     <path d="M2.5 7.5L5.5 10.5L11.5 3.5" />
   </svg>
 );
+export const IconGrip = (p: IconProps) => (
+  <svg {...frame(14)} stroke="none" fill="currentColor" {...p}>
+    {[3.5, 7, 10.5].flatMap((y) => [5, 9].map((x) => <circle key={`${x}-${y}`} cx={x} cy={y} r="1.2" />))}
+  </svg>
+);

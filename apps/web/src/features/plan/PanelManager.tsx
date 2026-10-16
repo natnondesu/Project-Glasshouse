@@ -1,6 +1,7 @@
 import { loadA, panelOf, rackCurrentA, wayPhase, type PlanContent, type RoomObject } from '@glasshouse/domain';
 import { useState } from 'react';
 import { useFloatingPanel } from '../../ui/useFloatingPanel';
+import { IconGrip } from '../../ui/icons';
 import { useT } from '../../i18n';
 import { feedColor } from './feeds';
 import type { CommitFn } from './usePlanGestures';
@@ -18,6 +19,9 @@ interface PanelManagerProps {
 }
 
 /** Floating MCB panel schedule: which feed is on which way, at what rating and phase. */
+/** The panel ends this far above the bottom of the plan, wherever it was dragged to. */
+const PANEL_BOTTOM_GAP_PX = 12;
+
 export function PanelManager({ panel, content, commit, onClose, readOnly = false }: PanelManagerProps) {
   const config = panelOf(panel);
   const m = useT();
@@ -29,8 +33,9 @@ export function PanelManager({ panel, content, commit, onClose, readOnly = false
   const act = (problem: string | null): void => setError(problem);
 
   return (
-    <section className="panel-mgr glass" role="dialog" aria-label={m.panelMgr.title(panel.name)} style={{ left: pos.x, top: pos.y }}>
-      <header className="panel-mgr__head" {...headProps}>
+    <section className="panel-mgr glass" role="dialog" aria-label={m.panelMgr.title(panel.name)} style={{ left: pos.x, top: pos.y, maxHeight: `calc(100% - ${pos.y + PANEL_BOTTOM_GAP_PX}px)` }}>
+      <header className="panel-mgr__head" title={m.panels.dragToMove} {...headProps}>
+        <IconGrip className="panel-mgr__grip" />
         <h2>
           <span className="mono">{m.panelMgr.title(panel.name)}</span>
         </h2>

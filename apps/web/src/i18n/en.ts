@@ -81,6 +81,7 @@ export const en = {
     writeFailed: (msg: string) => `Couldn't write a fresh workspace: ${msg}`,
   },
   panels: {
+    dragToMove: 'Drag to move',
     projects: 'Projects',
     inspector: 'Inspector',
     show: (label: string) => `Show ${label.toLowerCase()}`,

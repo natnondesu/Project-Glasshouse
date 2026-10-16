@@ -81,6 +81,7 @@ export const th: Messages = {
     writeFailed: (msg) => `สร้างพื้นที่ทำงานใหม่ไม่สำเร็จ: ${msg}`,
   },
   panels: {
+    dragToMove: 'ลากเพื่อย้าย',
     projects: 'โปรเจกต์',
     inspector: 'รายละเอียด',
     show: (label) => `แสดง${label}`,

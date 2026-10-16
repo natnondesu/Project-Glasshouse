@@ -36,3 +36,23 @@ test('gives two devices ports, links them, and prints the cable on the BOM CSV',
   const { readFileSync } = await import('node:fs');
   expect(readFileSync(file, 'utf8')).toContain('UPLINK-1,RK-02,SW-02,port1,RK-02,SW-03,port1,Cat 6A');
 });
+
+test('on a short screen the port panel stays on screen and its settings scroll with the wheel', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 640 });
+  await page.goto('/');
+  await page.getByRole('complementary', { name: 'Projects' }).getByRole('link', { name: /Server room A/ }).click();
+  await page.getByRole('link', { name: 'Network' }).click();
+  await page.getByRole('group', { name: 'Network diagram' }).getByRole('button', { name: /^CORE-01, / }).click();
+  await page.getByRole('button', { name: 'Manage ports' }).click();
+  const mgr = page.getByRole('dialog', { name: 'CORE-01 ports' });
+  const box = (await mgr.boundingBox())!;
+  expect(box.y + box.height).toBeLessThanOrEqual(640);
+  // The last control in the panel starts below the fold, and the wheel brings it into view.
+  const last = mgr.getByRole('button', { name: /^(Unlink|Link)$/ });
+  await expect(last).not.toBeInViewport();
+  const body = mgr.locator('.port-mgr__body');
+  await body.hover();
+  await page.mouse.wheel(0, 600);
+  await expect(last).toBeInViewport();
+  expect(await body.evaluate((el) => el.scrollTop)).toBeGreaterThan(0);
+});
