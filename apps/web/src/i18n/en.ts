@@ -210,6 +210,8 @@ export const en = {
     ok: 'No issues found',
     blocks: (n: number) => `${n} ${n === 1 ? 'blocks approval' : 'block approval'}`,
     warnings: (n: number) => `${n} ${n === 1 ? 'warning' : 'warnings'}`,
+    needsAck: (n: number) => `${n} ${n === 1 ? 'needs' : 'need'} acknowledgement`,
+    openNotes: (n: number) => `${n} open review ${n === 1 ? 'note' : 'notes'}`,
     note: 'You can keep drafting; approval waits for these.',
     blockIcon: 'Blocks approval',
     warnIcon: 'Warning',

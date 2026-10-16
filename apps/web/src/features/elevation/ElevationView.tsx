@@ -201,7 +201,7 @@ export function ElevationView({ location, readOnly = false, viewingPast = false 
         <div className={`glass elev__palette${catalogOpen ? '' : ' is-collapsed'}`}>
           <CatalogPalette catalog={catalog} activeRack={activeRack} onAdd={(t) => activeRack && place(t, activeRack)} disabled={readOnly} collapsed={!catalogOpen} onToggle={() => setCatalogOpen(!catalogOpen)} />
         </div>
-        <ChecksStrip className="checks--static checks--narrow" issues={issues} objects={names} onSelect={select} storageKey="glasshouse:elev-checks-open" />
+        <ChecksStrip className="checks--static checks--narrow" issues={issues} objects={names} onSelect={select} storageKey="glasshouse:elev-checks-open" openNotes={location.room.plan.notes.filter((n) => !n.resolved).length} />
       </aside>
       <div className="elev__power">
         <PowerBar content={content}>
