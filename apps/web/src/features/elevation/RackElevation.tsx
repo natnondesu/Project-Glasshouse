@@ -49,6 +49,10 @@ interface RackElevationProps {
   onDeviceDragStart?: (e: PointerEvent, deviceId: string, bottomU: number) => void;
   /** Pixels per rack unit; the elevation fits it to the screen, the sheet keeps the default. */
   uPx?: number;
+  /** Reordering: a press on the name may become a drag; Alt+←/→ moves it. */
+  onNamePointerDown?: (e: PointerEvent<HTMLButtonElement>) => void;
+  onNameKeyDown?: (e: KeyboardEvent<HTMLButtonElement>) => void;
+  nameTitle?: string;
 }
 
 const categoryOf = (d: RackDevice): string => (d.kind === 'chassis' ? 'chassis' : d.category);
@@ -190,7 +194,7 @@ export function rackHitAt(x: number, y: number): RackHit | null {
   return { rackId: svg.dataset.rackId!, pointerU: capacityU - Math.floor((y - top - PAD) / unit) };
 }
 
-export function RackElevation({ rack, active, selectedId, flagged, onSelect, onActivate, onDropTemplate, isStatic = false, pulseId = null, stateOf = PLANNED, dragPreview = null, onDeviceDragStart, uPx = U_PX }: RackElevationProps) {
+export function RackElevation({ rack, active, selectedId, flagged, onSelect, onActivate, onDropTemplate, isStatic = false, pulseId = null, stateOf = PLANNED, dragPreview = null, onDeviceDragStart, uPx = U_PX, onNamePointerDown, onNameKeyDown, nameTitle }: RackElevationProps) {
   const m = useT();
   const [showFacts, setShowFacts] = useState(false);
   const height = rack.capacityU * uPx;
@@ -250,6 +254,9 @@ export function RackElevation({ rack, active, selectedId, flagged, onSelect, onA
               aria-pressed={active}
               aria-describedby={showFacts ? factsId : undefined}
               onClick={onActivate}
+              onPointerDown={onNamePointerDown}
+              onKeyDown={onNameKeyDown}
+              title={nameTitle}
               onFocus={() => setShowFacts(true)}
               onBlur={() => setShowFacts(false)}
             >

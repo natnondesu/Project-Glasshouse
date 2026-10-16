@@ -417,6 +417,9 @@ export const th: Messages = {
     lockedNote: 'แสดงสถานะปัจจุบัน กลับไปที่ฉบับปัจจุบันเพื่อเปลี่ยน',
   },
   elevation: {
+    reorderHint: 'ลากชื่อเพื่อย้ายแร็คนี้ หรือกด Alt+← / Alt+→',
+    customOrder: 'เรียงแร็คตามที่กำหนดเอง',
+    planOrder: 'เรียงตามผังห้อง',
     noRacksTitle: 'ห้องนี้ยังไม่มีแร็ค',
     noRacksBody: 'วางแร็คในแปลนก่อน แล้วกลับมาใส่อุปกรณ์',
     goToPlan: 'ไปที่แปลน',
@@ -438,6 +441,11 @@ export const th: Messages = {
     moreAbove: 'ส่วนบนของแร็คยังมีต่อ',
     moreRight: 'แร็คอื่นทางขวา',
     slotTitle: (slot, name) => (name ? `สล็อต ${slot}: ${name}` : `สล็อต ${slot}: ว่าง`),
+  },
+  planCopy: {
+    copied: (name) => `คัดลอก ${name} แล้ว กด ⌘V หรือ Ctrl+V เพื่อวางสำเนาข้างกัน`,
+    pasted: (name, from) => `วาง ${name} ซึ่งคัดลอกจาก ${from} แล้ว สายและไฟยังอยู่กับต้นฉบับ`,
+    noSpace: (name) => `ไม่มีที่ว่างข้าง ${name} สำหรับสำเนา`,
   },
   copyPaste: {
     copied: (name) => `คัดลอก ${name} แล้ว เลือกแร็คแล้วกด ⌘V หรือ Ctrl+V เพื่อวาง`,
@@ -542,6 +550,20 @@ export const th: Messages = {
     needNodeTemplate: 'เพิ่มเทมเพลต Node ในคลังอุปกรณ์ก่อน',
   },
   ports: {
+    bulk: {
+      hint: 'Shift-คลิกเพื่อเลือกเป็นช่วง หรือ ⌘/Ctrl-คลิกเพื่อเลือกหลายพอร์ตแล้วแก้พร้อมกัน',
+      legend: (n) => `${n} พอร์ต`,
+      selected: (n) => `เลือก ${n} พอร์ต:`,
+      clear: 'ล้างการเลือก',
+      note: 'เปลี่ยนเฉพาะช่องที่กรอก ช่องที่เป็น “คงเดิม” จะใช้ค่าเดิมของแต่ละพอร์ต',
+      keepMixed: 'คงเดิม (ค่าต่างกัน)',
+      keepValue: (v) => `คงเดิม (${v})`,
+      noLag: 'ไม่มี',
+      clearLag: 'นำออกจาก LAG',
+      lagOutside: (lags, ports) => `${lags} ใช้ VLAN ร่วมกัน ${ports} ที่อยู่นอกการเลือกจะเปลี่ยนด้วย`,
+      apply: (n) => `ใช้กับ ${n} พอร์ต`,
+      applied: (n) => `ใช้กับ ${n} พอร์ตแล้ว`,
+    },
     lag: 'LAG',
     lagHint: 'ตั้งชื่อกลุ่ม (Po1, bond0) เพื่อรวมพอร์ต พอร์ตในกลุ่มใช้ VLAN เดียวกัน',
     lagShared: (lag, n) => `${lag}: ${n} พอร์ต การตั้งค่า VLAN ด้านล่างใช้กับทุกพอร์ตในกลุ่ม`,

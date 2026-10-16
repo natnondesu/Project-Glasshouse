@@ -300,6 +300,8 @@ export interface Plan {
   history: HistoryEvent[];
   /** Per device, chassis or node; outside revisions so it can change after approval. */
   equipmentState: Record<Id, EquipmentState>;
+  /** The team's order for racks in Elevation and on the Install sheet; absent means plan order. */
+  rackOrder?: Id[];
 }
 
 export interface Room {

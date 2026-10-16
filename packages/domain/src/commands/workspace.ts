@@ -10,6 +10,7 @@ import { applyReviewCommand, type ReviewCommand } from './review';
 import { applyImport, type ImportResolution, type ProjectFile } from '../projectFile';
 import { withSample } from '../sample';
 import { setEquipmentState } from '../equipmentState';
+import { setRackOrder } from '../rackOrder';
 
 export type WorkspaceCommand =
   | { type: 'project/create'; id: Id; name: string }
@@ -26,6 +27,7 @@ export type WorkspaceCommand =
   | { type: 'backup/mark'; at: string }
   | { type: 'sample/load'; at: string }
   | { type: 'equipment/state'; roomId: Id; ids: Id[]; state: EquipmentState }
+  | { type: 'rack/order'; roomId: Id; ids: Id[] | null }
   | { type: 'project/import'; file: ProjectFile; resolution: ImportResolution }
   | CatalogCommand;
 
@@ -145,6 +147,13 @@ export function apply(ws: Workspace, cmd: WorkspaceCommand): Result<Workspace> {
       const loc = findRoom(ws, cmd.roomId);
       if (!loc) return gone('room', cmd.roomId);
       const result = setEquipmentState(loc.room.plan, cmd.ids, cmd.state);
+      if (!result.ok) return result;
+      return ok(produce(ws, (d) => void (draftRoom(d, cmd.roomId).plan = castDraft(result.value))));
+    }
+    case 'rack/order': {
+      const loc = findRoom(ws, cmd.roomId);
+      if (!loc) return gone('room', cmd.roomId);
+      const result = setRackOrder(loc.room.plan, cmd.ids);
       if (!result.ok) return result;
       return ok(produce(ws, (d) => void (draftRoom(d, cmd.roomId).plan = castDraft(result.value))));
     }

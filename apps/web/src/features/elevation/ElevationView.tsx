@@ -17,6 +17,7 @@ import {
   getRack,
   lowestFreeBottomU,
   newId,
+  orderedRacks,
   racksOf,
   type PlanContent,
   type Rack,
@@ -34,6 +35,7 @@ import { EquipmentInspector } from './EquipmentInspector';
 import { PowerBar } from './PowerBar';
 import { useDeleteKey } from './useDeleteKey';
 import { useCopyPaste } from './useCopyPaste';
+import { useRackReorder } from './useRackReorder';
 import { MIN_U_PX, rackHitAt, RackElevation, U_PX } from './RackElevation';
 import { useDeviceDrag } from './deviceDrag';
 import { useT } from '../../i18n';
@@ -115,7 +117,11 @@ export function ElevationView({ location, readOnly = false, viewingPast = false 
   const [more, setMore] = useState({ above: false, below: false, right: false });
   const revealRight = (): void => racksArea.current?.scrollBy({ left: racksArea.current.clientWidth * 0.8, behavior: 'smooth' });
   const reveal = (dir: 1 | -1): void => racksArea.current?.scrollBy({ top: dir * racksArea.current.clientHeight * 0.8, behavior: 'smooth' });
-  const racks = racksOf(content);
+  const racks = orderedRacks(content, location.room.plan.rackOrder);
+  const reorder = useRackReorder({ area: racksArea, racks, roomId, enabled: !viewingPast && racks.length > 1 });
+  const customOrder = Boolean(location.room.plan.rackOrder?.length);
+  const dragIndex = reorder.drag ? racks.findIndex((r) => r.id === reorder.drag!.id) : -1;
+  const others = reorder.drag ? racks.filter((r) => r.id !== reorder.drag!.id) : [];
   const tallest = Math.max(1, ...racks.map((r) => r.capacityU));
   const uPx = areaH ? Math.max(MIN_U_PX, Math.min(U_PX, Math.floor((areaH - RACK_CHROME_PX) / tallest))) : U_PX;
   const issues = useMemo(() => revisionIssues(revision), [revision]);
@@ -206,6 +212,14 @@ export function ElevationView({ location, readOnly = false, viewingPast = false 
       <div className="elev__power">
         <PowerBar content={content}>
           <StateLegend />
+          {customOrder ? (
+            <span className="elev__order">
+              {m.elevation.customOrder}
+              <button type="button" className="btn btn--sm btn--quiet" disabled={viewingPast} onClick={reorder.reset}>
+                {m.elevation.planOrder}
+              </button>
+            </span>
+          ) : null}
         </PowerBar>
       </div>
       {more.above ? (
@@ -226,27 +240,42 @@ export function ElevationView({ location, readOnly = false, viewingPast = false 
           {m.elevation.moreBelow}
         </button>
       ) : null}
-      <section ref={racksArea} className="elev__racks" aria-label={m.elevation.racks}>
-        {racks.map((rack) => (
-          <RackElevation
-            key={rack.id}
-            rack={rack}
-            active={rack.id === activeRack?.id}
-            selectedId={selectedId}
-            flagged={flagged}
-            onSelect={select}
-            onActivate={() => select(rack.id)}
-            pulseId={pulse}
-            stateOf={stateOf}
-            uPx={uPx}
-            dragPreview={drag.preview}
-            onDeviceDragStart={readOnly ? undefined : drag.start}
-            onDropTemplate={(templateId, u) => {
-              const template = catalog.find((t) => t.id === templateId);
-              if (template) place(template, rack, u);
-            }}
-          />
-        ))}
+      <section ref={racksArea} className={`elev__racks${reorder.drag ? ' is-reordering' : ''}`} aria-label={m.elevation.racks}>
+        {racks.map((rack) => {
+          const dragging = reorder.drag?.id === rack.id;
+          // The accent line goes before the rack the dragged one would land in front of, or after the last.
+          const landsBefore = reorder.drag && !dragging && others[reorder.drag.target]?.id === rack.id && reorder.drag.target !== dragIndex;
+          const landsAfter = reorder.drag && !dragging && reorder.drag.target === others.length && others[others.length - 1]?.id === rack.id && dragIndex !== racks.length - 1;
+          return (
+            <div
+              key={rack.id}
+              data-rack-slot={rack.id}
+              className={`elev__slot${dragging ? ' is-dragging' : ''}${landsBefore ? ' is-drop-before' : ''}${landsAfter ? ' is-drop-after' : ''}`}
+              style={dragging ? { transform: `translateX(${reorder.drag!.dx}px)` } : undefined}
+            >
+              <RackElevation
+                rack={rack}
+                active={rack.id === activeRack?.id}
+                selectedId={selectedId}
+                flagged={flagged}
+                onSelect={select}
+                onActivate={() => select(rack.id)}
+                pulseId={pulse}
+                stateOf={stateOf}
+                uPx={uPx}
+                dragPreview={drag.preview}
+                onDeviceDragStart={readOnly ? undefined : drag.start}
+                onNamePointerDown={(e) => reorder.start(e, rack.id)}
+                onNameKeyDown={(e) => reorder.onKey(e, rack.id)}
+                nameTitle={racks.length > 1 && !viewingPast ? m.elevation.reorderHint : undefined}
+                onDropTemplate={(templateId, u) => {
+                  const template = catalog.find((t) => t.id === templateId);
+                  if (template) place(template, rack, u);
+                }}
+              />
+            </div>
+          );
+        })}
       </section>
       {inspectorOpen ? (
         <>

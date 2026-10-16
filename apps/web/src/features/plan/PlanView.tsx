@@ -12,6 +12,7 @@ import { PlanCanvas } from './PlanCanvas';
 import { Toolbar } from './Toolbar';
 import type { Tool } from './tools';
 import { usePlanGestures } from './usePlanGestures';
+import { usePlanCopyPaste } from './usePlanCopyPaste';
 import { ZoomControls } from './ZoomControls';
 import { PlanLegend } from './drafting';
 import { hitTest } from './hitTest';
@@ -28,6 +29,7 @@ const INSET_WITHOUT_INSPECTOR = 76;
 /** Space kept between the room and the checks strip below it. */
 const CHECKS_GAP_PX = 48;
 const PULSE_MS = 1700;
+const MESSAGE_MS = 4500;
 
 export function PlanView({ location, readOnly = false }: { location: RoomLocation; readOnly?: boolean }) {
   const revision = currentRevision(location.room.plan);
@@ -61,6 +63,13 @@ export function PlanView({ location, readOnly = false }: { location: RoomLocatio
     if (el) setChecksH(Math.min(FIT_INSETS.bottom, el.getBoundingClientRect().height + CHECKS_GAP_PX));
   }, []);
   const viewport = useViewport({ w: content.survey.width, d: content.survey.length }, inspectorOpen ? INSET_WITH_INSPECTOR : INSET_WITHOUT_INSPECTOR, checksH);
+  const [message, setMessage] = useState<string | null>(null);
+  useEffect(() => {
+    if (!message) return;
+    const timer = setTimeout(() => setMessage(null), MESSAGE_MS);
+    return () => clearTimeout(timer);
+  }, [message]);
+  usePlanCopyPaste({ content, roomId: location.room.id, selectedId: selected?.id ?? null, readOnly, commit, onPasted: select, say: setMessage });
   const gestures = usePlanGestures({ content, tool, setTool, selectedId: selected?.id ?? selectedDimension?.id ?? null, select, viewport, commit, readOnly });
 
   return (
@@ -122,9 +131,9 @@ export function PlanView({ location, readOnly = false }: { location: RoomLocatio
         {managed ? (
           <PanelManager panel={managed} content={content} commit={commit} onClose={() => setManagedPanel(null)} readOnly={readOnly} />
         ) : null}
-        {gestures.message ? (
+        {message ?? gestures.message ? (
           <p role="status" className="plan-view__message">
-            {gestures.message}
+            {message ?? gestures.message}
           </p>
         ) : null}
       </section>

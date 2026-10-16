@@ -11,6 +11,8 @@ import { applyFeedCommand, type FeedCommand } from '../feeds';
 import { applyPanelCommand, type PanelCommand } from '../sources';
 import { applyPortCommand, pruneLinks, type PortCommand } from '../ports';
 import { applyVlanCommand, type VlanCommand } from '../vlans';
+import { applyBulkPortCommand, type BulkPortCommand } from './portBulk';
+import { pasteObject, type PasteObjectCommand } from '../objectPaste';
 
 export type PlanCommand =
   | { type: 'survey/update'; patch: SurveyPatch }
@@ -21,12 +23,14 @@ export type PlanCommand =
   | { type: 'floor/update'; id: Id; patch: Partial<Omit<Rect, 'id'>> }
   | { type: 'floor/remove'; id: Id }
   | ObjectCommand
+  | PasteObjectCommand
   | EquipmentCommand
   | NodeCommand
   | DimensionCommand
   | FeedCommand
   | PanelCommand
   | PortCommand
+  | BulkPortCommand
   | VlanCommand;
 
 export function applyPlanCommand(content: PlanContent, cmd: PlanCommand): Result<PlanContent> {
@@ -57,6 +61,8 @@ function applyOne(content: PlanContent, cmd: PlanCommand): Result<PlanContent> {
       return rotateObject(content, cmd.id, cmd.by);
     case 'object/remove':
       return removeObject(content, cmd.id);
+    case 'object/paste':
+      return pasteObject(content, cmd);
     case 'device/place':
     case 'device/move':
     case 'device/update':
@@ -81,6 +87,8 @@ function applyOne(content: PlanContent, cmd: PlanCommand): Result<PlanContent> {
     case 'panel/configure':
     case 'panel/way':
       return applyPanelCommand(content, cmd);
+    case 'port/bulk':
+      return applyBulkPortCommand(content, cmd);
     case 'port/add':
     case 'port/update':
     case 'port/remove':

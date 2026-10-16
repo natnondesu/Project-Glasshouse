@@ -422,6 +422,9 @@ export const en = {
     lockedNote: 'Showing the current state; switch back to the current revision to change it.',
   },
   elevation: {
+    reorderHint: 'Drag the name to move this rack, or Alt+← / Alt+→',
+    customOrder: 'Racks in your order',
+    planOrder: 'Reset to plan order',
     noRacksTitle: 'This room has no racks yet',
     noRacksBody: 'Place a rack on the Plan first, then come back to fill it.',
     goToPlan: 'Go to the plan',
@@ -443,6 +446,11 @@ export const en = {
     moreAbove: 'More of the rack above',
     moreRight: 'More racks',
     slotTitle: (slot: number, name: string | null) => (name ? `Slot ${slot}: ${name}` : `Slot ${slot}: empty`),
+  },
+  planCopy: {
+    copied: (name: string) => `Copied ${name}. Press ⌘V or Ctrl+V to paste a copy beside it.`,
+    pasted: (name: string, from: string) => `Pasted ${name}, a copy of ${from}. Cables and power feeds stay with the original.`,
+    noSpace: (name: string) => `No room left beside ${name} for a copy.`,
   },
   copyPaste: {
     copied: (name: string) => `Copied ${name}. Select a rack, then press ⌘V or Ctrl+V to paste.`,
@@ -547,6 +555,20 @@ export const en = {
     needNodeTemplate: 'Add a Node template to the Catalog first.',
   },
   ports: {
+    bulk: {
+      hint: 'Shift-click a range, or ⌘/Ctrl-click to pick several ports and change them together.',
+      legend: (n: number) => `${n} ports`,
+      selected: (n: number) => `${n} ports selected:`,
+      clear: 'Clear selection',
+      note: 'Only what you fill in changes. Fields left on “Leave as is” keep each port’s own value.',
+      keepMixed: 'Leave as is (mixed)',
+      keepValue: (v: string) => `Leave as is (${v})`,
+      noLag: 'none',
+      clearLag: 'Take out of LAG',
+      lagOutside: (lags: string, ports: string) => `${lags} share one VLAN setting, so ${ports} outside the selection changes too.`,
+      apply: (n: number) => `Apply to ${n} ports`,
+      applied: (n: number) => `Applied to ${n} ports.`,
+    },
     lag: 'LAG',
     lagHint: 'Name a group (Po1, bond0) to bundle ports; members share one VLAN setting.',
     lagShared: (lag: string, n: number) => `${lag}: ${n} ${n === 1 ? 'port' : 'ports'}. The VLAN setting below applies to all of them.`,
