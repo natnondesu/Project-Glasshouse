@@ -1,13 +1,25 @@
-import { carriedVids, describeEnd, findNode, findRackDevice, racksOf, type Category, type Id, type NetLink, type PlanContent } from '@glasshouse/domain';
+import { carriedVids, describeEnd, effectiveVlan, findNode, findRackDevice, racksOf, type Category, type Id, type NetLink, type PlanContent } from '@glasshouse/domain';
 
+/** The smallest box; every box in one diagram grows together to its longest name. */
 export const NODE_W = 152;
 export const NODE_H = 50;
+/** 13px Geist Mono advance (bold names are the same width). */
+const CHAR_PX = 7.9;
+/** Text starts after the stripe and state glyph; a little air on the right. */
+const TEXT_LEFT = 26;
+const TEXT_RIGHT = 12;
+/** Past this many characters a line wraps rather than widening every box further. */
+const MAX_LINE_CHARS = 26;
+const FIRST_BASELINE = 21;
+const LINE_STEP = 17;
+const BOTTOM_PAD = 12;
 /** Between a core pair: room for the bundle badge ('Po1 ×2') on the link that joins them. */
 const PAIR_GAP = 84;
 const H_GAP = 22;
-const ROW_H = 120;
-/** Vertical step between wrapped rows of leaves under one parent. */
-const LEAF_ROW_H = NODE_H + 34;
+/** Space between a parent's box and its children's row; the elbow runs through it. */
+export const ROW_GAP = 70;
+/** Space between wrapped rows of leaves under one parent: room for a two-line port tag. */
+const LEAF_ROW_GAP = 46;
 const DEFAULT_LEAF_COLS = 6;
 const MARGIN = 24;
 const SWITCH_MIN_PORTS = 4;
@@ -20,6 +32,12 @@ export interface TopoNode {
   category: Category | 'node';
   x: number;
   y: number;
+  /** Box size, the same for every node in a diagram. */
+  w: number;
+  h: number;
+  /** Name and place, wrapped to the box width. */
+  nameLines: string[];
+  whereLines: string[];
   /** Leaves hang off one other device (a server on its switch); the rest is network gear. */
   leaf: boolean;
   /** Wrapped row of a leaf under its parent (0 = first), and the left edge of that leaf block. */
@@ -46,6 +64,34 @@ export interface Topology {
   height: number;
   /** Devices with ports but no cables, listed beside the diagram. */
   unlinked: { id: Id; name: string; where: string }[];
+}
+
+/**
+ * Splits text into lines of at most `max` characters, preferring breaks after '-', '_', '.', '/'
+ * or a space so names break where people read them. Never cuts characters away.
+ */
+export function wrapLabel(text: string, max: number): string[] {
+  const lines: string[] = [];
+  let rest = text;
+  while (rest.length > max) {
+    const window = rest.slice(0, max + 1);
+    const space = window.lastIndexOf(' ');
+    const mark = Math.max(...['-', '_', '.', '/'].map((c) => window.slice(0, max).lastIndexOf(c)));
+    const cut = space > 0 ? space : mark > 0 ? mark + 1 : max;
+    lines.push(rest.slice(0, cut).trimEnd());
+    rest = rest.slice(cut).trimStart();
+  }
+  lines.push(rest);
+  return lines;
+}
+
+/** One box size for the whole diagram, so rows stay aligned: fits the longest line, wrapping past the cap. */
+function boxSize(labels: { name: string; where: string }[]): { w: number; h: number; chars: number } {
+  const longest = Math.max(0, ...labels.flatMap((l) => [l.name.length, l.where.length]));
+  const chars = Math.min(longest, MAX_LINE_CHARS);
+  const w = Math.max(NODE_W, Math.ceil(TEXT_LEFT + chars * CHAR_PX + TEXT_RIGHT));
+  const lines = Math.max(2, ...labels.map((l) => wrapLabel(l.name, chars || 1).length + wrapLabel(l.where, chars || 1).length));
+  return { w, h: Math.max(NODE_H, FIRST_BASELINE + (lines - 1) * LINE_STEP + BOTTOM_PAD), chars };
 }
 
 const FIBRE_CABLES = new Set(['om3', 'om4', 'os2', 'aoc']);
@@ -149,6 +195,10 @@ export function buildTopology(content: PlanContent, { leafCols = DEFAULT_LEAF_CO
   // Leaves first under each parent, then the gear below it, each in rack order.
   for (const list of children.values()) list.sort((a, b) => Number(gearSet.has(a)) - Number(gearSet.has(b)) || order(a, b));
 
+  const box = boxSize(linked.map((id) => own.get(id)!));
+  const nodeW = box.w;
+  const ROW_H = box.h + ROW_GAP;
+  const LEAF_ROW_H = box.h + LEAF_ROW_GAP;
   const x = new Map<Id, number>();
   const leafRow = new Map<Id, number>();
   const blockLeft = new Map<Id, number>();
@@ -156,7 +206,7 @@ export function buildTopology(content: PlanContent, { leafCols = DEFAULT_LEAF_CO
     const kids = children.get(id) ?? [];
     if (kids.length === 0) {
       x.set(id, left);
-      return NODE_W;
+      return nodeW;
     }
     // Leaves wrap into rows of `leafCols`, so a 40-server switch stays readable instead of 7 000 px wide.
     const leaves = kids.filter((k) => !gearSet.has(k));
@@ -165,14 +215,14 @@ export function buildTopology(content: PlanContent, { leafCols = DEFAULT_LEAF_CO
     if (leaves.length) {
       const cols = Math.max(1, Math.min(leafCols, leaves.length));
       leaves.forEach((k, i) => {
-        x.set(k, left + (i % cols) * (NODE_W + H_GAP));
+        x.set(k, left + (i % cols) * (nodeW + H_GAP));
         leafRow.set(k, Math.floor(i / cols));
         blockLeft.set(k, left);
       });
-      cursor = left + cols * (NODE_W + H_GAP);
+      cursor = left + cols * (nodeW + H_GAP);
     }
     for (const k of gearKids) cursor += place(k, cursor) + H_GAP;
-    const width = Math.max(NODE_W, cursor - H_GAP - left);
+    const width = Math.max(nodeW, cursor - H_GAP - left);
     const firstRow = kids.filter((k) => (leafRow.get(k) ?? 0) === 0);
     const first = x.get(firstRow[0]!)!;
     const last = x.get(firstRow[firstRow.length - 1]!)!;
@@ -191,23 +241,24 @@ export function buildTopology(content: PlanContent, { leafCols = DEFAULT_LEAF_CO
   for (const r of roots) if (!anchorOf.has(r)) cursor += place(r, cursor) + H_GAP * 2;
   for (const anchor of new Set(anchorOf.values())) {
     const row = [anchor, ...[...anchorOf].filter(([, a]) => a === anchor).map(([r]) => r)];
-    const centre = x.get(anchor)! + NODE_W / 2;
-    const span = row.length * NODE_W + (row.length - 1) * PAIR_GAP;
+    const centre = x.get(anchor)! + nodeW / 2;
+    const span = row.length * nodeW + (row.length - 1) * PAIR_GAP;
     const left = Math.max(MARGIN, centre - span / 2);
-    row.forEach((id, i) => x.set(id, left + i * (NODE_W + PAIR_GAP)));
+    row.forEach((id, i) => x.set(id, left + i * (nodeW + PAIR_GAP)));
   }
 
   const nodes: TopoNode[] = linked.map((id) => {
     const o = own.get(id)!;
     const row = leafRow.get(id) ?? 0;
-    return { id, name: o.name, where: o.where, category: o.category, x: x.get(id)!, y: MARGIN + depth.get(id)! * ROW_H + row * LEAF_ROW_H, leaf: !gearSet.has(id), leafRow: row, blockLeft: blockLeft.get(id) ?? x.get(id)! };
+    return { id, name: o.name, where: o.where, category: o.category, x: x.get(id)!, y: MARGIN + depth.get(id)! * ROW_H + row * LEAF_ROW_H, w: box.w, h: box.h, nameLines: wrapLabel(o.name, box.chars || 1), whereLines: wrapLabel(o.where, box.chars || 1), leaf: !gearSet.has(id), leafRow: row, blockLeft: blockLeft.get(id) ?? x.get(id)! };
   });
   const edges: TopoEdge[] = [...pairs].map(([key, links]) => {
     const [a, b] = key.split('|') as [Id, Id];
     const fibre = links.some((l) => (l.cable && FIBRE_CABLES.has(l.cable)) || [l.a, l.b].some((r) => describeEnd(content, r).port?.media !== 'rj45'));
     const vids = [...new Set(links.flatMap((l) => {
-      const va = carriedVids(content, describeEnd(content, l.a).port?.vlan);
-      const vb = carriedVids(content, describeEnd(content, l.b).port?.vlan);
+      // A server end with no VLAN of its own carries its switch port's, so the cable still lights up.
+      const va = carriedVids(content, effectiveVlan(content, l.a)?.vlan);
+      const vb = carriedVids(content, effectiveVlan(content, l.b)?.vlan);
       return va.filter((v) => vb.includes(v));
     }))].sort((p, q) => p - q);
     return { key, a, b, links, fibre, tree: parent.get(a) === b || parent.get(b) === a, vids };
@@ -216,15 +267,30 @@ export function buildTopology(content: PlanContent, { leafCols = DEFAULT_LEAF_CO
     .filter((o) => o.ports > 0 && !neighbours.has(o.id))
     .sort((p, q) => order(p.id, q.id))
     .map((o) => ({ id: o.id, name: o.name, where: o.where }));
-  const width = Math.max(...nodes.map((n) => n.x + NODE_W), 0) + MARGIN;
-  const height = Math.max(...nodes.map((n) => n.y + NODE_H), 0) + MARGIN;
+  const width = Math.max(...nodes.map((n) => n.x + n.w), 0) + MARGIN;
+  const height = Math.max(...nodes.map((n) => n.y + n.h), 0) + MARGIN;
   return { nodes, edges, width, height, unlinked };
 }
 
 /** Is this node (or a cable of this edge) in VLAN `vid`? */
 export function nodeCarries(content: PlanContent, id: Id, vid: number): boolean {
   const ports = findRackDevice(content, id)?.device.ports ?? findNode(content, id)?.node.ports ?? [];
-  return ports.some((p) => carriedVids(content, p.vlan).includes(vid));
+  return ports.some((p) => carriedVids(content, effectiveVlan(content, { deviceId: id, port: p.name })?.vlan).includes(vid));
+}
+
+/**
+ * The leaf wrapping whose shape best fits a view of `viewW` × `viewH`: a big room becomes a block
+ * you scroll a little both ways instead of a strip many screens wide.
+ */
+export function shapedTopology(content: PlanContent, viewW: number, viewH: number): Topology {
+  let best: { t: Topology; fit: number } | null = null;
+  for (const leafCols of [6, 4, 3, 2]) {
+    const t = buildTopology(content, { leafCols });
+    const fit = Math.min(viewW / Math.max(t.width, 1), viewH / Math.max(t.height, 1));
+    // Fewer columns only when the shape is clearly better: wrapping costs vertical reading.
+    if (!best || fit > best.fit * 1.15) best = { t, fit };
+  }
+  return best!.t;
 }
 
 /** The widest leaf wrapping that still fits `maxWidth`, for print; falls back to one column. */

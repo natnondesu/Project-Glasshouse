@@ -335,7 +335,22 @@
 .net-details__ports {
   width: 100%;
   border-collapse: collapse;
+  /* Fixed columns: a long trunk list wraps in its own column instead of squeezing where the cable goes. */
+  table-layout: fixed;
   font-size: var(--text-xs);
+}
+
+.net-details__ports th {
+  width: 30%;
+}
+
+.net-details__ports .net-details__vlan {
+  width: 26%;
+}
+
+.net-details__ports th,
+.net-details__ports td {
+  overflow-wrap: anywhere;
 }
 
 .net-details__ports th,
@@ -349,7 +364,12 @@
 
 .net-details__vlan {
   color: var(--acc-deep);
-  white-space: nowrap;
+}
+
+.net-details__vlan.is-inherited {
+  color: var(--ink-2);
+  text-decoration: underline dashed;
+  text-underline-offset: 2px;
 }
 
 .net-details__none {

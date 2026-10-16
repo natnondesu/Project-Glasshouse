@@ -1,4 +1,4 @@
-import { vlanLabel, describeEnd, findNode, findRackDevice, linkAt, nextPortName, otherEnd, PORT_MEDIA_LABEL, portsOf, type Id, type PlanContent, type Port } from '@glasshouse/domain';
+import { vlanLabel, describeEnd, effectiveVlan, findNode, findRackDevice, linkAt, nextPortName, otherEnd, PORT_MEDIA_LABEL, portsOf, type Id, type PlanContent, type Port } from '@glasshouse/domain';
 import { useState } from 'react';
 import type { CommitFn } from '../../store/hooks';
 import { IconPlus } from '../../ui/icons';
@@ -6,6 +6,9 @@ import { useFloatingPanel } from '../../ui/useFloatingPanel';
 import { PortDetail } from './PortDetail';
 import './ports.css';
 import { useT, type Messages } from '../../i18n';
+
+/** The panel ends this far above the bottom of the screen, wherever it was dragged to. */
+const PANEL_BOTTOM_GAP_PX = 12;
 
 interface PortManagerProps {
   content: PlanContent;
@@ -71,7 +74,7 @@ export function PortManager({ content, roomId, deviceId, commit, readOnly, onClo
   };
 
   return (
-    <section className="port-mgr glass" role="dialog" aria-label={m.ports.title(name)} style={{ left: pos.x, top: pos.y }}>
+    <section className="port-mgr glass" role="dialog" aria-label={m.ports.title(name)} style={{ left: pos.x, top: pos.y, maxHeight: `calc(100vh - ${pos.y + PANEL_BOTTOM_GAP_PX}px)` }}>
       <header className="port-mgr__head" {...headProps}>
         <h2>
           <span className="mono">{m.ports.title(name)}</span>
@@ -111,6 +114,8 @@ export function PortManager({ content, roomId, deviceId, commit, readOnly, onClo
                 {bank.ports.map(({ port: p, short }) => {
                   const label = portLabel(m, content, deviceId, p);
                   const isLinked = Boolean(linkAt(content, { deviceId, port: p.name }));
+                  const vlan = effectiveVlan(content, { deviceId, port: p.name });
+                  const vlanNote = vlan ? ` · ${vlanLabel(vlan.vlan)}${vlan.from ? ` ${m.vlans.fromFar(vlan.from.device, vlan.from.port)}` : ''}` : '';
                   return (
                     <button
                       key={p.name}
@@ -118,12 +123,12 @@ export function PortManager({ content, roomId, deviceId, commit, readOnly, onClo
                       className={`port port--${p.media}${isLinked ? ' is-linked' : ''}`}
                       aria-pressed={p.name === selected}
                       aria-label={label}
-                      title={`${label} · ${PORT_MEDIA_LABEL[p.media]} ${p.speed}${p.lag ? ` · ${p.lag}` : ''}${p.vlan ? ` · ${vlanLabel(p.vlan)}` : ''}`}
+                      title={`${label} · ${PORT_MEDIA_LABEL[p.media]} ${p.speed}${p.lag ? ` · ${p.lag}` : ''}${vlanNote}`}
                       onClick={() => setSelected(p.name)}
                     >
                       <span className="port__jack" aria-hidden="true" />
                       <span className="port__name mono">{short}</span>
-                      {p.vlan ? <span className="port__vlan mono">{p.vlan.mode === 'access' ? p.vlan.vid : m.vlans.tagTrunk}</span> : null}
+                      {vlan ? <span className={`port__vlan mono${vlan.from ? ' is-inherited' : ''}`}>{vlan.vlan.mode === 'access' ? vlan.vlan.vid : m.vlans.tagTrunk}</span> : null}
                     </button>
                   );
                 })}

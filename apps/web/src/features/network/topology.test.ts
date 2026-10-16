@@ -1,6 +1,6 @@
 import { applyPlanCommand, createObject, createWorkspace, currentRevision, emptyContent, withSample, type PlanCommand, type PlanContent, type Rack, type Template } from '@glasshouse/domain';
 import { describe, expect, it } from 'vitest';
-import { buildTopology, NODE_H, NODE_W, type TopoNode } from './topology';
+import { buildTopology, NODE_H, NODE_W, shapedTopology, wrapLabel, type TopoNode } from './topology';
 
 const tpl = (category: Template['category'], ports: number): Template => ({
   id: `t-${category}-${ports}`, version: 1, label: category, model: '', category, mounting: 'rack', heightU: 1, depthMm: 400, demand: { kind: 'known', watts: 10 },
@@ -76,4 +76,41 @@ it('sets a core pair side by side over the switches they share (MLAG), not one a
   expect(Math.abs(c2.x - c1.x)).toBeLessThan(NODE_W * 2);
   // The pair sits over the switches below, not past their right end.
   expect(Math.max(c1.x, c2.x)).toBeLessThan(Math.max(acc1.x, acc2.x) + NODE_W);
+});
+
+describe('box size', () => {
+  it('grows every box to the longest name instead of letting it run past the edge', () => {
+    const named = (id: string, name: string, u: number, t: Template): PlanCommand => ({ type: 'device/place', id, rackId: 'rk', bottomU: u, template: { ...t, label: name } });
+    const content = build([rack, dev('sw', 40, tpl('network', 8)), named('s1', 'Deepvision-Wstorage-02', 1, tpl('server', 2)), link('s1', 'p1', 'sw', 'p1')]);
+    const renamed = applyPlanCommand(content, { type: 'device/update', id: 's1', patch: { name: 'Deepvision-Wstorage-02' } });
+    const t = buildTopology(renamed.ok ? renamed.value : content);
+    const [a, b] = t.nodes;
+    expect(a!.w).toBe(b!.w);
+    expect(a!.w).toBeGreaterThan(NODE_W);
+    expect(t.nodes.every((x) => x.nameLines.join('') === x.name)).toBe(true);
+  });
+
+  it('wraps a name past the cap at a hyphen or space, never dropping characters', () => {
+    expect(wrapLabel('Neopolis-Compute-05', 30)).toEqual(['Neopolis-Compute-05']);
+    expect(wrapLabel('Deepvision-Taskmanager-Controller-01', 26)).toEqual(['Deepvision-Taskmanager-', 'Controller-01']);
+    expect(wrapLabel('Video Wall Controller Main Lobby', 26)).toEqual(['Video Wall Controller Main', 'Lobby']);
+    expect(wrapLabel('A'.repeat(30), 26).join('')).toBe('A'.repeat(30));
+  });
+});
+
+it('wraps leaves tighter when the view is tall rather than drawing one long strip', () => {
+  const servers = Array.from({ length: 24 }, (_, i) => `s${i}`);
+  const content = build([rack, dev('sw', 42, tpl('network', 48)), ...servers.map((id, i) => dev(id, 1 + i, tpl('server', 2))), ...servers.map((id, i) => link(id, 'p1', 'sw', `p${i + 1}`))]);
+  const wide = shapedTopology(content, 4000, 300);
+  const tall = shapedTopology(content, 800, 900);
+  expect(tall.width).toBeLessThan(wide.width);
+  expect(tall.height).toBeGreaterThan(wide.height);
+});
+
+it('counts a server cable as carrying its switch port’s VLAN when the server end is not set, so highlighting keeps it', async () => {
+  const { nodeCarries } = await import('./topology');
+  const content = build([rack, { type: 'vlan/add', vlan: { vid: 451, name: 'Servers' } }, dev('sw', 40, tpl('network', 8)), dev('s1', 1, tpl('server', 2)), link('s1', 'p1', 'sw', 'p1'), { type: 'port/vlan', deviceId: 'sw', name: 'p1', vlan: { mode: 'access', vid: 451 } }]);
+  const t = buildTopology(content);
+  expect(t.edges[0]!.vids).toEqual([451]);
+  expect(nodeCarries(content, 's1', 451)).toBe(true);
 });

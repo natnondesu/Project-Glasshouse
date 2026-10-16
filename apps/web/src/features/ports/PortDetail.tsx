@@ -4,6 +4,7 @@ import type { CommitFn } from '../../store/hooks';
 import { TextField } from '../../ui/TextField';
 import { portOwners } from './portOwners';
 import { PortVlanField } from './PortVlanField';
+import { DevicePicker } from './DevicePicker';
 import { useT } from '../../i18n';
 
 /** Sentinel option: create a port on the far device as part of linking. */
@@ -136,7 +137,9 @@ function LinkPicker({ content, from, commit, onError }: { content: PlanContent; 
   const fromPort = describeEnd(content, from).port;
   const fromMedia = fromPort?.media;
   const target = owners.find((o) => o.id === deviceId);
-  const free = (target?.ports ?? []).filter((p) => !(deviceId === from.deviceId && p.name === from.port) && !linkAt(content, { deviceId, port: p.name }));
+  const freeOn = (id: Id): Port[] => (owners.find((o) => o.id === id)?.ports ?? []).filter((p) => !(id === from.deviceId && p.name === from.port) && !linkAt(content, { deviceId: id, port: p.name }));
+  const freeOf = (id: Id): number => freeOn(id).length;
+  const free = freeOn(deviceId);
   // Linking to a device without a spare port adds one: servers often have no ports in their template.
   const newName = !target ? '' : target.ports.length ? nextPortName(target.ports) : FIRST_PORT;
   const link = (): void => {
@@ -152,26 +155,16 @@ function LinkPicker({ content, from, commit, onError }: { content: PlanContent; 
   return (
     <div className="port-mgr__link">
       <p className="port-mgr__link-to">{m.ports.notLinked}</p>
-      <div className="port-mgr__row">
-        <label className="field">
-          <span className="field__label">{m.ports.linkDevice}</span>
-          <span className="field__box">
-            <select
-              className="field__input"
-              aria-label={m.ports.linkDevice}
-              value={deviceId}
-              onChange={(e) => {
-                setDeviceId(e.target.value);
-                setPort('');
-              }}
-            >
-              <option value="">{m.ports.choose}</option>
-              {owners.map((o) => (
-                <option key={o.id} value={o.id}>{`${o.rack} · ${o.name}`}</option>
-              ))}
-            </select>
-          </span>
-        </label>
+      <div className="port-mgr__row port-mgr__row--pick">
+        <DevicePicker
+          owners={owners}
+          freeOf={freeOf}
+          value={deviceId}
+          onChange={(id) => {
+            setDeviceId(id);
+            setPort('');
+          }}
+        />
         <label className="field">
           <span className="field__label">{m.ports.linkPort}</span>
           <span className="field__box">
@@ -186,9 +179,15 @@ function LinkPicker({ content, from, commit, onError }: { content: PlanContent; 
             </select>
           </span>
         </label>
-        <button type="button" className="btn btn--sm btn--ink" disabled={!deviceId || !port} onClick={link}>
-          {m.ports.link}
-        </button>
+        {/* An empty label slot keeps the button level with the fields while the device list is open below. */}
+        <div className="field">
+          <span className="field__label" aria-hidden="true">
+            {'\u00a0'}
+          </span>
+          <button type="button" className="btn btn--sm btn--ink" disabled={!deviceId || !port} onClick={link}>
+            {m.ports.link}
+          </button>
+        </div>
       </div>
     </div>
   );

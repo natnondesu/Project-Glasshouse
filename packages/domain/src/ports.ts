@@ -1,5 +1,5 @@
 import { findNode, findRackDevice } from './devices';
-import type { CableType, Id, NetLink, PlanContent, Port, PortGroup, PortMedia, PortRef, Rack, RoomObject } from './model/types';
+import type { CableType, Id, NetLink, PlanContent, Port, PortGroup, PortMedia, PortRef, PortVlan, Rack, RoomObject } from './model/types';
 import { err, ok, type Result } from './result';
 import { vlanLabel } from './vlans';
 
@@ -227,6 +227,21 @@ export function cableSchedule(content: PlanContent): CableRow[] {
 export function describeEnd(content: PlanContent, r: PortRef): { device: string; port: Port | null } {
   const owner = ownerOf(content, r.deviceId);
   return { device: owner?.name ?? 'Removed device', port: owner?.ports.find((p) => p.name === r.port) ?? null };
+}
+
+/**
+ * The VLAN a port carries: its own setting, or else what the port at the other end of its cable is
+ * set to. A server NIC is rarely configured in the plan; it carries whatever its switch port gives it.
+ * `from` names that far port when the VLAN is inherited.
+ */
+export function effectiveVlan(content: PlanContent, r: PortRef): { vlan: PortVlan; from: { device: string; port: string } | null } | null {
+  const own = ownerOf(content, r.deviceId)?.ports.find((p) => p.name === r.port);
+  if (own?.vlan) return { vlan: own.vlan, from: null };
+  const link = linkAt(content, r);
+  if (!link) return null;
+  const far = otherEnd(link, r);
+  const end = describeEnd(content, far);
+  return end.port?.vlan ? { vlan: end.port.vlan, from: { device: end.device, port: far.port } } : null;
 }
 
 /** A name for one more port, following the last one: eth0 → eth1, Gi1/0/48 → Gi1/0/49. */

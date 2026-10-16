@@ -1,8 +1,10 @@
 import type { Id, PortRef } from '@glasshouse/domain';
-import { NODE_H, NODE_W, type TopoEdge, type TopoNode } from './topology';
+import { type TopoEdge, type TopoNode } from './topology';
 
 /** Port pairs shown per cable bundle before the rest are summarised. */
 export const MAX_TAG_LINES = 3;
+/** Above a leaf the tag shares the gap between wrapped rows, which fits two lines. */
+const MAX_LEAF_TAG_LINES = 2;
 
 export interface PortTag {
   key: string;
@@ -41,7 +43,8 @@ export function portTags(selectedId: Id, edges: TopoEdge[], byId: Map<Id, TopoNo
       bundles.set(key, (bundles.get(key) ?? 0) + 1);
     }
     pairs.unshift(...[...bundles].map(([k, n]) => (n > 1 ? `${k} · ${links(n)}` : k)));
-    const lines = pairs.length > MAX_TAG_LINES ? [...pairs.slice(0, MAX_TAG_LINES - 1), more(pairs.length - (MAX_TAG_LINES - 1))] : pairs;
+    const max = other.leaf ? MAX_LEAF_TAG_LINES : MAX_TAG_LINES;
+    const lines = pairs.length > max ? [...pairs.slice(0, max - 1), more(pairs.length - (max - 1))] : pairs;
     tags.push({ key: e.key, lines, ...placeNear(self, other, e.tree) });
   }
   return tags;
@@ -50,18 +53,18 @@ export function portTags(selectedId: Id, edges: TopoEdge[], byId: Map<Id, TopoNo
 const TAG_GAP = 8;
 
 function placeNear(self: TopoNode, other: TopoNode, tree: boolean): Omit<PortTag, 'key' | 'lines'> {
-  const cx = other.x + NODE_W / 2;
+  const cx = other.x + other.w / 2;
   if (tree) {
     // The neighbour below: just above its box. Above: just under its box, where the line leaves it.
-    return other.y > self.y ? { x: cx, y: other.y - TAG_GAP, anchor: 'middle', up: true } : { x: cx, y: other.y + NODE_H + TAG_GAP + 10, anchor: 'middle', up: false };
+    return other.y > self.y ? { x: cx, y: other.y - TAG_GAP, anchor: 'middle', up: true } : { x: cx, y: other.y + other.h + TAG_GAP + 10, anchor: 'middle', up: false };
   }
   if (other.y === self.y) {
     return other.x > self.x
-      ? { x: other.x - TAG_GAP, y: other.y + NODE_H / 2 - TAG_GAP, anchor: 'end', up: true }
-      : { x: other.x + NODE_W + TAG_GAP, y: other.y + NODE_H / 2 - TAG_GAP, anchor: 'start', up: true };
+      ? { x: other.x - TAG_GAP, y: other.y + other.h / 2 - TAG_GAP, anchor: 'end', up: true }
+      : { x: other.x + other.w + TAG_GAP, y: other.y + other.h / 2 - TAG_GAP, anchor: 'start', up: true };
   }
   // A straight cross link: a quarter of the way back from the neighbour's centre.
-  const [sx, sy] = [self.x + NODE_W / 2, self.y + NODE_H / 2];
-  const [ox, oy] = [cx, other.y + NODE_H / 2];
+  const [sx, sy] = [self.x + self.w / 2, self.y + self.h / 2];
+  const [ox, oy] = [cx, other.y + other.h / 2];
   return { x: ox + (sx - ox) * 0.25, y: oy + (sy - oy) * 0.25, anchor: 'middle', up: oy > sy };
 }

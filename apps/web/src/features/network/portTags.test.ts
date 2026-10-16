@@ -2,7 +2,7 @@ import { expect, it } from 'vitest';
 import type { TopoEdge, TopoNode } from './topology';
 import { portTags } from './portTags';
 
-const node = (id: string, x: number, y: number): TopoNode => ({ id, name: id.toUpperCase(), x, y } as TopoNode);
+const node = (id: string, x: number, y: number, leaf = false): TopoNode => ({ id, name: id.toUpperCase(), x, y, w: 152, h: 50, leaf } as TopoNode);
 const link = (a: string, ap: string, b: string, bp: string) => ({ id: `${a}${ap}`, a: { deviceId: a, port: ap }, b: { deviceId: b, port: bp } });
 const byId = new Map([node('sw', 300, 40), node('s1', 100, 200), node('s2', 400, 200)].map((n) => [n.id, n]));
 const edges = [
@@ -29,4 +29,10 @@ it('collapses a LAG into one line naming both groups', () => {
   const lagAt = (r: { deviceId: string; port: string }) => (r.deviceId === 'sw' && r.port !== 'Gi1/0/2' ? 'Po2' : r.deviceId === 's2' ? 'bond0' : undefined);
   const tags = portTags('sw', edges, byId, more, lagAt, (n) => `${n} links`);
   expect(tags[1]!.lines).toEqual(['Po2 ⇄ bond0 · 3 links', 'Gi1/0/2 ⇄ eth0']);
+});
+
+it('keeps a tag above a leaf to two lines, so it fits between wrapped rows', () => {
+  const leaves = new Map([node('sw', 300, 40), node('s2', 400, 200, true)].map((n) => [n.id, n]));
+  const [tag] = portTags('sw', [edges[1]!], leaves, more);
+  expect(tag!.lines).toEqual(['Gi1/0/2 ⇄ eth0', '+3 more']);
 });

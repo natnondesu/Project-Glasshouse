@@ -17,7 +17,8 @@ test('gives two devices ports, links them, and prints the cable on the BOM CSV',
     await mgr.getByRole('button', { name: 'Add port' }).click();
     await expect(mgr.getByRole('button', { name: /^Port port1, free/ })).toBeVisible();
     if (name === 'SW-02') {
-      await mgr.getByLabel('Link to device').selectOption({ label: 'RK-02 · SW-03' });
+      await mgr.getByRole('combobox', { name: 'Link to device' }).fill('sw-03');
+      await mgr.getByRole('option', { name: /^SW-03, RK-02/ }).click();
       await mgr.getByLabel('Link to port').selectOption('port1');
       await mgr.getByRole('button', { name: 'Link' }).click();
       await expect(mgr.getByRole('button', { name: 'Port port1, linked to SW-03 port1' })).toBeVisible();

@@ -1,4 +1,4 @@
-import { describeEnd, findNode, findRackDevice, linkAt, otherEnd, portsOf, vlanLabel, type Id, type PlanContent } from '@glasshouse/domain';
+import { describeEnd, effectiveVlan, findNode, findRackDevice, linkAt, otherEnd, portsOf, vlanLabel, type Id, type PlanContent } from '@glasshouse/domain';
 import { Link } from 'react-router';
 import { useT } from '../../i18n';
 import type { TopoSelection } from './TopologyDiagram';
@@ -37,12 +37,15 @@ export function NetworkDetails({ content, roomId, topology, selection, onManageP
             {portsOf(content, id).map((p) => {
               const link = linkAt(content, { deviceId: id, port: p.name });
               const far = link ? otherEnd(link, { deviceId: id, port: p.name }) : null;
+              const vlan = effectiveVlan(content, { deviceId: id, port: p.name });
               return (
                 <tr key={p.name}>
                   <th scope="row" className="mono">
                     {p.name}
                   </th>
-                  <td className="mono net-details__vlan">{vlanLabel(p.vlan)}</td>
+                  <td className={`mono net-details__vlan${vlan?.from ? ' is-inherited' : ''}`} title={vlan?.from ? m.vlans.fromFar(vlan.from.device, vlan.from.port) : undefined}>
+                    {vlan ? vlanLabel(vlan.vlan) : ''}
+                  </td>
                   <td>{far ? m.topology.to(describeEnd(content, far).device, far.port) : <span className="net-details__none">{m.topology.notCabled}</span>}</td>
                 </tr>
               );

@@ -91,8 +91,9 @@
   gap: 10px;
   margin: 10px 16px 0;
   padding: 10px 12px 12px;
-  max-height: 300px;
+  max-height: min(300px, 40vh);
   overflow-y: auto;
+  flex: none;
   border-radius: 8px;
   background: linear-gradient(180deg, #1f262e, #262e37);
   box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.06), inset 0 -2px 0 rgb(0 0 0 / 0.3);
@@ -196,6 +197,9 @@
   flex-direction: column;
   gap: 10px;
   min-width: 0;
+  /* A fieldset won't shrink below its content by default; without this the panel cut off its bottom instead of scrolling. */
+  min-height: 0;
+  flex: 1 1 auto;
   margin: 0;
   padding: 14px 16px 16px;
   border: 0;
@@ -219,6 +223,10 @@
 
 .port-mgr__link .port-mgr__row {
   grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) auto;
+}
+
+.port-mgr__row--pick {
+  align-items: start;
 }
 
 .port-mgr__link-to {
@@ -247,6 +255,13 @@
   font-size: var(--text-2xs);
   line-height: 1;
   color: #8fc2ff;
+}
+
+/* Carried from the far end, not set here: dashed underline, so it reads differently without colour alone. */
+.port__vlan.is-inherited {
+  color: #b9c6d3;
+  text-decoration: underline dashed;
+  text-underline-offset: 2px;
 }
 
 .port-vlan {
@@ -298,4 +313,77 @@
   margin: 0 0 8px;
   font-size: var(--text-xs);
   color: var(--ink-2);
+}
+
+/* Link-to-device picker: the list sits in the panel's flow so the panel edge can't clip it. */
+.device-pick {
+  flex: 1 1 220px;
+  min-width: 0;
+}
+
+.device-pick__list,
+.device-pick__empty {
+  margin: 4px 0 0;
+  padding: 4px;
+  list-style: none;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.device-pick__list {
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.device-pick__empty {
+  padding: 8px 10px;
+  font-size: var(--text-xs);
+  color: var(--ink-2);
+}
+
+.device-pick__option {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas: 'name free' 'rack free';
+  gap: 0 10px;
+  align-items: center;
+  padding: 5px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.device-pick__option[aria-selected='true'] {
+  background: var(--ink);
+  color: #fff;
+}
+
+.device-pick__name {
+  grid-area: name;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.device-pick__rack {
+  grid-area: rack;
+  font-size: var(--text-xs);
+  color: var(--ink-2);
+}
+
+.device-pick__free {
+  grid-area: free;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  color: var(--ok);
+  white-space: nowrap;
+}
+
+.device-pick__free.is-none {
+  color: var(--ink-2);
+}
+
+.device-pick__option[aria-selected='true'] .device-pick__rack,
+.device-pick__option[aria-selected='true'] .device-pick__free {
+  color: rgb(255 255 255 / 0.8);
 }
