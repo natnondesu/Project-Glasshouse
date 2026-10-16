@@ -16,8 +16,12 @@ export interface PasteDeviceCommand {
   templates: Template[];
 }
 
-/** VLAN settings only survive where every VLAN they name exists in this room. */
-export function keepKnownVlan(port: Port, vids: ReadonlySet<number>): Port {
+/**
+ * A copied port: VLAN settings only survive where every VLAN they name exists in this room, and an
+ * uplink to another room stays with the original (two ports can't be that one cable's end).
+ */
+export function keepKnownVlan(original: Port, vids: ReadonlySet<number>): Port {
+  const { remote: _uplink, ...port } = original;
   const v: PortVlan | undefined = port.vlan;
   if (!v) return port;
   const named = v.mode === 'access' ? [v.vid] : [...(v.allowed === 'all' ? [] : v.allowed), ...(v.native === null ? [] : [v.native])];

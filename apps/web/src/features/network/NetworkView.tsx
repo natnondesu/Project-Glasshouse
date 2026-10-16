@@ -7,6 +7,8 @@ import { PortManager } from '../ports/PortManager';
 import { NetworkDetails } from './NetworkDetails';
 import { TopologyDiagram, type TopoSelection } from './TopologyDiagram';
 import { shapedTopology } from './topology';
+import { remoteNamer } from './uplinks';
+import { useWorkspaceStore } from '../../store/workspaceStore';
 import { VlanList } from './VlanList';
 import { PanelCollapseTab, PanelRail } from '../../ui/PanelRail';
 import { useInspectorOpen } from '../../ui/useInspectorOpen';
@@ -42,7 +44,8 @@ export function NetworkView({ location, readOnly }: { location: RoomLocation; re
   const commit = usePlanCommit(roomId);
   const area = useRef<HTMLDivElement>(null);
   const view = useViewShape(area);
-  const topology = useMemo(() => shapedTopology(content, view.w, view.h), [content, view.w, view.h]);
+  const ws = useWorkspaceStore((st) => st.workspace);
+  const topology = useMemo(() => shapedTopology(content, view.w, view.h, remoteNamer(ws, m)), [content, view.w, view.h, ws, m]);
   const [vid, setVid] = useState<number | null>(null);
   const [scale, setScale] = useState(1);
   const [selection, setSelection] = useState<TopoSelection>(null);
@@ -88,6 +91,12 @@ export function NetworkView({ location, readOnly }: { location: RoomLocation; re
             {m.topology.copper}
             <span className="network__swatch network__swatch--fibre" />
             {m.topology.fibre}
+            {topology.nodes.some((n) => n.remoteRoomId) ? (
+              <>
+                <span className="network__swatch network__swatch--uplink" />
+                {m.uplink.legend}
+              </>
+            ) : null}
           </span>
           <span className="network__zoom">
             <button type="button" className="icon-btn icon-btn--sm" aria-label={m.topology.zoomOut} onClick={() => zoom(1 / ZOOM_STEP)}>

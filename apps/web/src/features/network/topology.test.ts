@@ -148,3 +148,13 @@ it('draws a stack as one box: cables to any member reach it, cables between memb
   expect(t.edges.map((e) => e.key).sort()).toEqual(['s1|st', 's2|st']);
   expect(t.unlinked).toEqual([]);
 });
+
+it('draws an uplink’s far device as its own box, named for its room, cabled to the local port', () => {
+  const content = build([rack, dev('sw', 40, tpl('network', 8)), { type: 'port/remote', deviceId: 'sw', name: 'p8', remote: { roomId: 'idf', deviceId: 'far', port: 'Gi1' } }]);
+  expect(buildTopology(content).nodes).toEqual([]);
+  const t = buildTopology(content, { remotes: () => ({ name: 'IDF-SW', where: 'In IDF' }) });
+  const far = t.nodes.find((n) => n.remoteRoomId === 'idf')!;
+  expect(far).toMatchObject({ name: 'IDF-SW', where: 'In IDF', category: 'remote' });
+  expect(t.edges).toHaveLength(1);
+  expect(t.edges[0]!.fibre).toBe(false);
+});

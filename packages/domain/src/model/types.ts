@@ -55,6 +55,15 @@ export interface Port {
   vlan?: PortVlan;
   /** A LAG (port-channel, bond) on this device; its members share one VLAN setting. */
   lag?: string;
+  /** An uplink to a port in another room of the same site, instead of a cable in this room. */
+  remote?: RemoteEnd;
+}
+
+/** The far end of an uplink in another room: each room records its own end and approves on its own. */
+export interface RemoteEnd {
+  roomId: Id;
+  deviceId: Id;
+  port: string;
 }
 
 /** A room VLAN; the VLAN ID is its identity, as on the switches. */

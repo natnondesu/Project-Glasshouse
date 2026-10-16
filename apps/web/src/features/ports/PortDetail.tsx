@@ -6,6 +6,7 @@ import { StateIcon } from '../../ui/StateIcon';
 import { portOwners } from './portOwners';
 import { PortVlanField } from './PortVlanField';
 import { DevicePicker } from './DevicePicker';
+import { RemoteLinked, RemotePicker } from './RemoteLink';
 import { useT } from '../../i18n';
 
 /** Sentinel option: create a port on the far device as part of linking. */
@@ -29,6 +30,7 @@ export function PortDetail({ content, stateOf, roomId, deviceId, port, commit, r
   const m = useT();
   const lagMembers = port.lag ? portsOf(content, deviceId).filter((p) => p.lag === port.lag).length : 0;
   const [error, setError] = useState<string | null>(null);
+  const [remoteMode, setRemoteMode] = useState(false);
   const ref = { deviceId, port: port.name };
   const link = linkAt(content, ref);
   const update = (patch: Partial<Port>): string | null => {
@@ -83,7 +85,20 @@ export function PortDetail({ content, stateOf, roomId, deviceId, port, commit, r
         <p className="port-mgr__lag-note">{port.lag ? m.ports.lagShared(port.lag, lagMembers) : m.ports.lagHint}</p>
       </div>
       <PortVlanField content={content} roomId={roomId} deviceId={deviceId} port={port} commit={commit} />
-      {link ? <LinkedTo content={content} stateOf={stateOf} linkId={link.id} far={otherEnd(link, ref)} commit={commit} onError={setError} /> : <LinkPicker content={content} from={ref} commit={commit} onError={setError} />}
+      {port.remote ? (
+        <RemoteLinked roomId={roomId} deviceId={deviceId} port={port as Port & { remote: NonNullable<Port['remote']> }} commit={commit} />
+      ) : link ? (
+        <LinkedTo content={content} stateOf={stateOf} linkId={link.id} far={otherEnd(link, ref)} commit={commit} onError={setError} />
+      ) : remoteMode ? (
+        <RemotePicker roomId={roomId} deviceId={deviceId} port={port} commit={commit} onDone={() => setRemoteMode(false)} />
+      ) : (
+        <>
+          <LinkPicker content={content} from={ref} commit={commit} onError={setError} />
+          <button type="button" className="btn btn--sm btn--quiet port-mgr__remote-open" onClick={() => setRemoteMode(true)}>
+            {m.uplink.another}
+          </button>
+        </>
+      )}
       {error ? (
         <p role="alert" className="field__error">
           {error}

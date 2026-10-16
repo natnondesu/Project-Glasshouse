@@ -1,4 +1,4 @@
-import { faceplateBlocks, templateOf, type EquipmentState, vlanLabel, describeEnd, effectiveVlan, findNode, findRackDevice, linkAt, nextPortName, otherEnd, PORT_MEDIA_LABEL, portsOf, type Id, type PlanContent, type Port } from '@glasshouse/domain';
+import { faceplateBlocks, resolveRemote, templateOf, type EquipmentState, vlanLabel, describeEnd, effectiveVlan, findNode, findRackDevice, linkAt, nextPortName, otherEnd, PORT_MEDIA_LABEL, portsOf, type Id, type PlanContent, type Port } from '@glasshouse/domain';
 import { useState } from 'react';
 import type { CommitFn } from '../../store/hooks';
 import { IconGrip, IconPlus } from '../../ui/icons';
@@ -42,6 +42,7 @@ export function PortManager({ content, stateOf, roomId, deviceId, commit, readOn
   // Layout is only how the panel is drawn, matched by port name: take it from the catalog's current
   // version of the template, so a layout set after placing still reaches devices already in rooms.
   const catalog = useWorkspaceStore((s) => s.workspace.catalog);
+  const ws = useWorkspaceStore((s) => s.workspace);
   const layoutGroups = owner ? (catalog.find((t) => t.id === owner.templateId)?.ports ?? templateOf(content, owner)?.ports) : undefined;
   const ports = portsOf(content, deviceId);
   // One port shows its own settings; several (Shift for a range, ⌘/Ctrl to add one) share a group form.
@@ -127,7 +128,8 @@ export function PortManager({ content, stateOf, roomId, deviceId, commit, readOn
             blocks={faceplateBlocks(layoutGroups, ports)}
             label={m.ports.face}
             jack={(p, short) => {
-              const label = portLabel(m, content, deviceId, p, stateOf);
+              const far = p.remote ? resolveRemote(ws, p.remote) : null;
+              const label = p.remote ? m.uplink.portLabel(p.name, far?.room?.name ?? m.uplink.gone, far?.device?.name ?? m.uplink.gone, p.remote.port) : portLabel(m, content, deviceId, p, stateOf);
               const link = linkAt(content, { deviceId, port: p.name });
               const isLinked = Boolean(link);
               const farMaint = link ? stateOf(otherEnd(link, { deviceId, port: p.name }).deviceId) === 'maintenance' : false;
@@ -136,7 +138,7 @@ export function PortManager({ content, stateOf, roomId, deviceId, commit, readOn
               return (
                 <button
                   type="button"
-                  className={`port port--${p.media}${isLinked ? ' is-linked' : ''}${farMaint ? ' is-far-maint' : ''}`}
+                  className={`port port--${p.media}${isLinked ? ' is-linked' : ''}${p.remote ? ' is-uplink' : ''}${farMaint ? ' is-far-maint' : ''}`}
                   aria-pressed={live.includes(p.name)}
                   aria-label={label}
                   title={`${label} · ${PORT_MEDIA_LABEL[p.media]} ${p.speed}${p.lag ? ` · ${p.lag}` : ''}${vlanNote}`}

@@ -95,6 +95,13 @@ Colour never works alone. Blocking issues use a solid circle icon, warnings a da
 - Link to device is a type-to-filter list (any words of the device or rack name), each option with its rack and free-port count.
 - Shift-click picks a range of jacks, ⌘/Ctrl-click adds one. Several picked show a group form: every field starts on "Leave as is" (with the shared value, or "mixed"), and Apply changes only what was filled in, in one undo step. A LAG's members outside the selection are named before their shared VLAN changes.
 
+## Uplinks between rooms
+
+- A port can be an uplink to a port in another room of the same site instead of a cable in its room: Link to another room… picks the room, the device (same search) and a free port there, and by default sets the far end to point back, while that room is a draft. Each room keeps its own end and approves on its own.
+- The jack gets a dashed accent ring; the port reads "uplink to IDF-SW Gi1 in IDF" with whether the far end points back. Unlink clears both ends while the far room is a draft.
+- Checks warn (never block) when the far end doesn't point back, no longer exists, or is cabled inside its room.
+- The network diagram draws the far device as a dashed box "In IDF", on a dotted accent line; it links to that room's network. Cable schedule and CSV list uplinks with the far room as the rack.
+
 ## Install sheet
 
 - Cable schedule: seven columns, each end one cell (device over its rack), so 70 cables fit A4 portrait.

@@ -1,4 +1,4 @@
-import { carriedVids, describeEnd, effectiveVlan, findNode, findRackDevice, racksOf, stacksOf, type Category, type Id, type NetLink, type PlanContent } from '@glasshouse/domain';
+import { carriedVids, describeEnd, effectiveVlan, findNode, findRackDevice, racksOf, stacksOf, type Category, type Id, type NetLink, type PlanContent, type RemoteEnd } from '@glasshouse/domain';
 
 /** The smallest box; every box in one diagram grows together to its longest name. */
 export const NODE_W = 152;
@@ -29,7 +29,7 @@ export interface TopoNode {
   name: string;
   /** "RK-01 · U42" or "CH-01 slot 3". */
   where: string;
-  category: Category | 'node';
+  category: Category | 'node' | 'remote';
   x: number;
   y: number;
   /** Box size, the same for every node in a diagram. */
@@ -45,6 +45,8 @@ export interface TopoNode {
   blockLeft: number;
   /** With leaves folded away (a big room on paper): how many hung off this device. */
   leafCount: number;
+  /** An uplink's far device, in another room: the room to go to. */
+  remoteRoomId?: Id;
   /** A switch stack drawn as one box: its members' device IDs, in member order, and how many stack cables join them. */
   memberIds?: Id[];
   ring?: number;
@@ -101,13 +103,17 @@ function boxSize(labels: { name: string; where: string }[], extraLines = 0): { w
   return { w, h: Math.max(NODE_H, FIRST_BASELINE + (lines - 1) * LINE_STEP + BOTTOM_PAD), chars };
 }
 
+/** Names an uplink's far device and its room, for its box. */
+export type Remotes = (r: RemoteEnd) => { name: string; where: string };
+
 const FIBRE_CABLES = new Set(['om3', 'om4', 'os2', 'aoc']);
 
 interface Owner {
   id: Id;
   name: string;
   where: string;
-  category: Category | 'node';
+  category: Category | 'node' | 'remote';
+  remoteRoomId?: Id;
   rack: string;
   ports: number;
   /** Stacks only: one line per member ("1  ICON-CS-B10-01"), and the member device IDs. */
@@ -156,15 +162,35 @@ const byPlace = (o: Map<Id, Owner>) => (a: Id, b: Id): number => {
  * `collapseLeaves` draws only the network gear, each box counting the single-cable devices under it:
  * for paper, where a big room's every server can't fit one page at a readable size.
  */
-export function buildTopology(content: PlanContent, { leafCols = DEFAULT_LEAF_COLS, collapseLeaves = false }: { leafCols?: number; collapseLeaves?: boolean } = {}): Topology {
+export function buildTopology(
+  content: PlanContent,
+  { leafCols = DEFAULT_LEAF_COLS, collapseLeaves = false, remotes }: { leafCols?: number; collapseLeaves?: boolean; remotes?: Remotes } = {},
+): Topology {
   const { own, alias } = owners(content);
+  // Uplinks to other rooms: each far device is a box of its own, cabled to the local port by a stand-in link.
+  const uplinks: NetLink[] = [];
+  if (remotes) {
+    for (const [id, o] of [...own]) {
+      if (o.memberLines) continue;
+      const ports = findRackDevice(content, id)?.device.ports ?? findNode(content, id)?.node.ports ?? [];
+      for (const p of ports) {
+        if (!p.remote) continue;
+        const farId = `remote:${p.remote.roomId}:${p.remote.deviceId}`;
+        if (!own.has(farId)) {
+          const far = remotes(p.remote);
+          own.set(farId, { id: farId, name: far.name, where: far.where, category: 'remote', rack: `~${far.where}`, ports: 1, remoteRoomId: p.remote.roomId });
+        }
+        uplinks.push({ id: `uplink:${id}:${p.name}`, a: { deviceId: id, port: p.name }, b: { deviceId: farId, port: p.remote.port }, label: '', cable: null });
+      }
+    }
+  }
   const as = (id: Id): Id => alias.get(id) ?? id;
   const order = byPlace(own);
   // Cables between members of one stack are its stack ring, counted on the stack's box rather than drawn.
   const ring = new Map<Id, number>();
   const neighbours = new Map<Id, Set<Id>>();
   const pairs = new Map<string, NetLink[]>();
-  for (const l of content.links) {
+  for (const l of [...content.links, ...uplinks]) {
     const [a, b] = [as(l.a.deviceId), as(l.b.deviceId)];
     if (a === b && own.get(a)?.memberIds) ring.set(a, (ring.get(a) ?? 0) + 1);
     if (a === b || !own.has(a) || !own.has(b)) continue;
@@ -327,12 +353,17 @@ export function buildTopology(content: PlanContent, { leafCols = DEFAULT_LEAF_CO
       blockLeft: blockLeft.get(id) ?? x.get(id)!,
       leafCount: leafCount(id),
       ...(o.memberIds ? { memberIds: o.memberIds, ring: ring.get(id) ?? 0 } : {}),
+      ...(o.remoteRoomId ? { remoteRoomId: o.remoteRoomId } : {}),
     };
   });
   const visible = new Set(shown);
   const edges: TopoEdge[] = [...pairs].filter(([key]) => key.split('|').every((id) => visible.has(id))).map(([key, links]) => {
     const [a, b] = key.split('|') as [Id, Id];
-    const fibre = links.some((l) => (l.cable && FIBRE_CABLES.has(l.cable)) || [l.a, l.b].some((r) => describeEnd(content, r).port?.media !== 'rj45'));
+    // A port not in this room (an uplink's far end) says nothing about the medium.
+    const fibre = links.some((l) => (l.cable && FIBRE_CABLES.has(l.cable)) || [l.a, l.b].some((r) => {
+      const port = describeEnd(content, r).port;
+      return port !== null && port.media !== 'rj45';
+    }));
     const vids = [...new Set(links.flatMap((l) => {
       // A server end with no VLAN of its own carries its switch port's, so the cable still lights up.
       const va = carriedVids(content, effectiveVlan(content, l.a)?.vlan);
@@ -343,7 +374,7 @@ export function buildTopology(content: PlanContent, { leafCols = DEFAULT_LEAF_CO
   });
   // A stack lists as one when it has no cables; its members are covered by it.
   const unlinked = [...own.values()]
-    .filter((o) => !o.memberIds && o.ports > 0 && !neighbours.has(as(o.id)))
+    .filter((o) => !o.memberIds && !o.remoteRoomId && o.ports > 0 && !neighbours.has(as(o.id)))
     .sort((p, q) => order(p.id, q.id))
     .map((o) => ({ id: o.id, name: o.name, where: o.where }));
   const width = Math.max(...nodes.map((n) => n.x + n.w), 0) + MARGIN;
@@ -363,10 +394,10 @@ export function nodeCarries(content: PlanContent, id: Id, vid: number): boolean 
  * The leaf wrapping whose shape best fits a view of `viewW` × `viewH`: a big room becomes a block
  * you scroll a little both ways instead of a strip many screens wide.
  */
-export function shapedTopology(content: PlanContent, viewW: number, viewH: number): Topology {
+export function shapedTopology(content: PlanContent, viewW: number, viewH: number, remotes?: Remotes): Topology {
   let best: { t: Topology; fit: number } | null = null;
   for (const leafCols of [6, 4, 3, 2]) {
-    const t = buildTopology(content, { leafCols });
+    const t = buildTopology(content, { leafCols, remotes });
     const fit = Math.min(viewW / Math.max(t.width, 1), viewH / Math.max(t.height, 1));
     // Fewer columns only when the shape is clearly better: wrapping costs vertical reading.
     if (!best || fit > best.fit * 1.15) best = { t, fit };
@@ -375,9 +406,9 @@ export function shapedTopology(content: PlanContent, viewW: number, viewH: numbe
 }
 
 /** For print: the widest leaf wrapping that fits `maxWidth` × `maxHeight` at full size, or null. */
-export function fitTopology(content: PlanContent, maxWidth: number, maxHeight = Infinity): Topology | null {
+export function fitTopology(content: PlanContent, maxWidth: number, maxHeight = Infinity, remotes?: Remotes): Topology | null {
   for (const leafCols of [6, 4, 3, 2]) {
-    const t = buildTopology(content, { leafCols });
+    const t = buildTopology(content, { leafCols, remotes });
     if (t.width <= maxWidth && t.height <= maxHeight) return t;
   }
   return null;

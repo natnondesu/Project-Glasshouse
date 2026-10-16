@@ -22,6 +22,7 @@ import { usePersistentState } from '../../ui/usePersistentState';
 import { useInspectorOpen } from '../../ui/useInspectorOpen';
 import './plan.css';
 import { useT } from '../../i18n';
+import { useRoomIssues } from '../network/uplinks';
 
 /** Room the fit leaves on the right for the inspector, or for its collapsed rail. */
 const INSET_WITH_INSPECTOR = FIT_INSETS.right;
@@ -53,7 +54,7 @@ export function PlanView({ location, readOnly = false }: { location: RoomLocatio
   const selected = content.objects.find((o) => o.id === selectedParam) ?? null;
   const selectedDimension = content.dimensions.find((d) => d.id === selectedParam) ?? null;
 
-  const issues = useMemo(() => revisionIssues(revision), [revision]);
+  const issues = useRoomIssues(revision, location.room.id);
   const m = useT();
   const [inspectorOpen, setInspectorOpen] = useInspectorOpen();
   // Fit around the checks strip as it really is (one line when all is well), not a worst-case band.

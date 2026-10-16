@@ -10,7 +10,7 @@ import { RackElevation } from '../elevation/RackElevation';
 import { SheetPlan } from './SheetPlan';
 import { BomTable, CableScheduleTable, SlotMapsTable, VlanTable } from './SheetTables';
 import { TopologyDiagram } from '../network/TopologyDiagram';
-import { buildTopology, fitTopology, type Topology } from '../network/topology';
+import { buildTopology, fitTopology, type Remotes, type Topology } from '../network/topology';
 
 /**
  * Room for the diagram on A4 inside 12 mm margins, under the title block, in px. Divided by the
@@ -24,15 +24,17 @@ const LANDSCAPE = { w: 1030 / DIAGRAM_FLOOR, h: 560 / DIAGRAM_FLOOR };
  * The full diagram on portrait, else on landscape; a room too big for either prints its network
  * gear with device counts (the cable schedule lists every cable).
  */
-function sheetTopology(content: PlanContent): { topology: Topology; landscape: boolean } {
-  const portrait = fitTopology(content, PORTRAIT.w, PORTRAIT.h);
+function sheetTopology(content: PlanContent, remotes: Remotes): { topology: Topology; landscape: boolean } {
+  const portrait = fitTopology(content, PORTRAIT.w, PORTRAIT.h, remotes);
   if (portrait) return { topology: portrait, landscape: false };
-  const wide = fitTopology(content, LANDSCAPE.w, LANDSCAPE.h);
-  const topology = wide ?? buildTopology(content, { collapseLeaves: true });
+  const wide = fitTopology(content, LANDSCAPE.w, LANDSCAPE.h, remotes);
+  const topology = wide ?? buildTopology(content, { collapseLeaves: true, remotes });
   return { topology, landscape: topology.width > PORTRAIT.w };
 }
 import '../network/network.css';
 import { SheetTitleBlock } from './SheetTitleBlock';
+import { farEndOf, remoteNamer } from '../network/uplinks';
+import { useWorkspaceStore } from '../../store/workspaceStore';
 import './sheet.css';
 
 /** Two racks fit side by side on A4 up to this height; taller ones get a page each (and scale to fit). */
@@ -76,6 +78,7 @@ export function InstallSheet() {
   const viewedNumber = useViewedRevisionNumber();
   const navigate = useNavigate();
   const m = useT();
+  const workspace = useWorkspaceStore((s) => s.workspace);
   const sheetRev = location ? latestApproved(location.room.plan) : null;
   useDocumentTitle(location ? `${location.room.name} · ${sheetRev ? m.views.installSheet(String(sheetRev.number).padStart(2, '0')) : m.views.installAfter}` : null);
   if (!location) return <NotFound message={m.shell.roomMissing} />;
@@ -99,7 +102,7 @@ export function InstallSheet() {
   const racks: Rack[] = orderedRacks(revision.content, location.room.plan.rackOrder);
   const chassis = racks.flatMap((rack) => rack.devices.filter((d): d is Chassis => d.kind === 'chassis').map((c) => ({ rack, chassis: c })));
   const title = (section: string) => <SheetTitleBlock location={location} revision={revision} printedAt={printedAt} section={section} />;
-  const { topology, landscape } = sheetTopology(revision.content);
+  const { topology, landscape } = sheetTopology(revision.content, remoteNamer(workspace, m));
 
   return (
     <main className="sheet">
@@ -165,7 +168,7 @@ export function InstallSheet() {
 
       {revision.content.links.length > 0 ? (
         <section className="sheet-page sheet-page--flow">
-          <CableScheduleTable rows={cableSchedule(revision.content)} titleBlock={title(m.sheet.cableSchedule)} />
+          <CableScheduleTable rows={cableSchedule(revision.content, farEndOf(workspace, m))} titleBlock={title(m.sheet.cableSchedule)} />
         </section>
       ) : null}
 
