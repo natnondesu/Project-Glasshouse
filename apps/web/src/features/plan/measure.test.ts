@@ -4,7 +4,7 @@ import { measureBetween, snapMeasurePoint, wallGaps } from './measure';
 
 const room = (): PlanContent => {
   const c = emptyContent();
-  const rack = { ...createObject('rack', { x: 1, y: 0.6 }, []), name: 'RK-01' };
+  const rack = { ...createObject('rack', { x: 1, y: 0.6 }, []), name: 'RK-01', w: 0.6, d: 1.07 };
   return { ...c, objects: [rack] };
 };
 

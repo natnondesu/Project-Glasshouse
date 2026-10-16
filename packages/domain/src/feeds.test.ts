@@ -62,7 +62,9 @@ describe('power feeds', () => {
     expect(start![0]).toBeCloseTo(0.1, 6);
     expect(start![1]).toBeCloseTo(2.65, 6);
     const end = rest[rest.length - 1]!;
-    expect(end).toEqual([3.3, 2]);
+    // The rack's rear centre: x 3 + half its 0.8 m width.
+    expect(end[0]).toBeCloseTo(3.4, 6);
+    expect(end[1]).toBeCloseTo(2, 6);
     // Shorter way round: up the left wall, along the top wall, kept just inside the room.
     const corner = rest.find(([x, y]) => x < 0.3 && y < 0.3);
     expect(corner).toBeDefined();

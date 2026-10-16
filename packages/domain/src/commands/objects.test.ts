@@ -27,7 +27,7 @@ describe('object factories', () => {
 
   it('creates racks with defaults', () => {
     const rack = createObject('rack', { x: 1, y: 2 }, []);
-    expect(rack).toMatchObject({ type: 'rack', w: 0.6, d: 1.07, capacityU: 42, usableDepthMm: 1000, owner: 'oxygenai', clearance: { front: 1, rear: 0.6 } });
+    expect(rack).toMatchObject({ type: 'rack', w: 0.8, d: 1.1, capacityU: 42, usableDepthMm: 1000, owner: 'oxygenai', clearance: { front: 1, rear: 0.6 } });
     expect(effectiveHeight(rack)).toBe(2.05);
     expect(effectiveHeight(createObject('door', { x: 0, y: 0 }, []))).toBe(2.1);
   });

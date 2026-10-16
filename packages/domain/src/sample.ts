@@ -81,7 +81,7 @@ export function createSampleProject(at: string): Result<Project> {
   plan(serverId, { type: 'survey/update', patch: { width: 6, length: 4.8, powerBudget: 8000, networkHandoff: 'Fibre patch panel on the north wall' } });
   plan(serverId, { type: 'floor/update', id: firstAreaId(serverId), patch: { x: 0, y: 0, w: 6, d: 4.8 } });
   const s1 = rack('RK-01', 1.0, 0.7);
-  const s2 = rack('RK-02', 1.6, 0.7);
+  const s2 = rack('RK-02', 1.8, 0.7);
   plan(serverId, { type: 'object/add', object: s1 });
   plan(serverId, { type: 'object/add', object: s2 });
   // A small but complete network: two cores joined by a LAG, two access switches and an edge
@@ -194,7 +194,7 @@ export function createSampleProject(at: string): Result<Project> {
   // A cable shaft: no floor, but nothing to walk around either.
   plan(mdfId, { type: 'floor/cut', rect: { id: newId(), x: 5.3, y: 2.4, w: 0.5, d: 0.4, kind: 'void' } });
   const m1 = rack('RK-01', 0.4, 0.6);
-  const m2 = rack('RK-02', 1.0, 0.6);
+  const m2 = rack('RK-02', 1.2, 0.6);
   const customer = rack('RK-C1', 4.2, 0.6, 'customer');
   plan(mdfId, { type: 'object/add', object: m1 });
   plan(mdfId, { type: 'object/add', object: m2 });
