@@ -19,7 +19,11 @@ test('draw a saved dimension from the wall to a rack; it follows the rack and su
   const dim = page.getByRole('button', { name: 'Dimension 0.40 m, wall to RK-01' });
   await expect(dim).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Dimension' })).toBeVisible();
-  await expect(page.getByLabel('Line offset')).toHaveValue('-0.30');
+  // Clicks map through the footprint's box, wall stroke included, so at some fits the first point
+  // snaps a few px lower and the offset rounds one 0.05 m step either way. The drag below is exact.
+  const offset = page.getByLabel('Line offset');
+  const placed = Number(await offset.inputValue());
+  expect(Math.abs(placed + 0.3)).toBeLessThanOrEqual(0.051);
 
   // Drag the line further from the rack with the mouse.
   await page.getByRole('button', { name: 'Select', exact: true }).click();
@@ -28,7 +32,7 @@ test('draw a saved dimension from the wall to a rack; it follows the rack and su
   await page.mouse.move(...at(0.2, 0.2), { steps: 4 });
   await page.mouse.move(...at(0.2, 0.1), { steps: 4 });
   await page.mouse.up();
-  await expect(page.getByLabel('Line offset')).toHaveValue('-0.50');
+  await expect(offset).toHaveValue((placed - 0.2).toFixed(2));
 
   await page.getByRole('button', { name: 'Select', exact: true }).click();
   await page.getByRole('button', { name: 'RK-01, Rack' }).focus();

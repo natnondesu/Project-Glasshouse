@@ -46,9 +46,8 @@ export function CatalogPalette({ catalog, activeRack, onAdd, disabled = false, c
       </div>
       {collapsed ? null : (
         <>
-      <p className="palette__note">
-        {disabled ? m.palette.frozen : m.palette.dragHint(activeRack?.name ?? null)}
-      </p>
+      {/* Frozen is said once, in the tab bar; the catalog only explains dragging when it can. */}
+      {disabled ? null : <p className="palette__note">{m.palette.dragHint(activeRack?.name ?? null)}</p>}
       <TemplateFilterField id="palette-filter" value={query} onChange={setQuery} shown={shown.length} total={catalog.length} />
           {groups.map(({ category, items }) => (
       <section key={category} className="palette__group" aria-labelledby={`palette-${category}`}>

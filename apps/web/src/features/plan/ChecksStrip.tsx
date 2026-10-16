@@ -38,7 +38,6 @@ export function ChecksStrip({ issues, objects, onSelect, className, storageKey =
         {needsAck > 0 ? <span className="checks__count checks__count--warn">{m.checks.needsAck(needsAck)}</span> : null}
         {openNotes > 0 ? <span className="checks__count checks__count--warn">{m.checks.openNotes(openNotes)}</span> : null}
         {warnings > 0 ? <span className="checks__count checks__count--info">{m.checks.warnings(warnings)}</span> : null}
-        {blocks + needsAck + openNotes > 0 && open ? <span className="checks__note">{m.checks.note}</span> : null}
       </header>
       {issues.length > 0 && open ? (
         <ul id="checks-list" className="checks__list">
@@ -62,6 +61,8 @@ export function ChecksStrip({ issues, objects, onSelect, className, storageKey =
           })}
         </ul>
       ) : null}
+      {/* Under the list, so the head stays one line however many counts it carries. */}
+      {blocks + needsAck + openNotes > 0 && open ? <p className="checks__note">{m.checks.note}</p> : null}
     </section>
   );
 }

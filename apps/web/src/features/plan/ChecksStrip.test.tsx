@@ -59,7 +59,7 @@ it('counts what holds approval the way the Review badge does: blocks, acknowledg
     />,
   );
   expect(screen.getByText('1 blocks approval')).toBeInTheDocument();
-  expect(screen.getByText('1 needs acknowledgement')).toBeInTheDocument();
-  expect(screen.getByText('1 open review note')).toBeInTheDocument();
+  expect(screen.getByText('1 to acknowledge')).toBeInTheDocument();
+  expect(screen.getByText('1 open note')).toBeInTheDocument();
   expect(screen.getByText('1 warning')).toBeInTheDocument();
 });

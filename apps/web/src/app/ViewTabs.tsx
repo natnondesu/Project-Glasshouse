@@ -1,4 +1,5 @@
-import { approvalBlockers, currentRevision, latestApproved } from '@glasshouse/domain';
+import { approvalBlockers, currentRevision, latestApproved, type Revision } from '@glasshouse/domain';
+import { FrozenChip } from './FrozenChip';
 import { Link, NavLink } from 'react-router';
 import { pad2 } from '../ui/StatusStamp';
 import { useT } from '../i18n';
@@ -13,7 +14,8 @@ const VIEWS = [
   { id: 'review', key: 'review' },
 ] as const;
 
-export function ViewTabs({ roomId }: { roomId: string }) {
+/** `frozen`: the revision on screen when it can't be edited; the bar says so once, with Start new draft. */
+export function ViewTabs({ roomId, frozen = null }: { roomId: string; frozen?: Revision | null }) {
   const location = useRoomLocation(roomId);
   const m = useT();
   const rev = useViewedRevisionNumber();
@@ -38,6 +40,7 @@ export function ViewTabs({ roomId }: { roomId: string }) {
         ))}
       </span>
       <span className="view-tabs__meta">
+        {frozen ? <FrozenChip roomId={roomId} revision={frozen} /> : null}
         {approved ? (
           <Link to={`/rooms/${roomId}/install-sheet`} className="btn btn--sm">
             {m.views.installSheet(pad2(approved.number))}
