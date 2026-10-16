@@ -75,7 +75,7 @@ Colour never works alone. Blocking issues use a solid circle icon, warnings a da
 
 ## Port panel
 
-- Stays inside the screen wherever it's dragged; below the faceplate it scrolls.
+- Stays inside the screen wherever it's dragged; below the faceplate it scrolls (a div: a fieldset won't scroll), with edge shadows while there's more. A grip in the header and a "Drag to move" tip say it moves; the panel manager works the same way.
 - Link to device is a type-to-filter list (any words of the device or rack name), each option with its rack and free-port count.
 
 ## Install sheet
