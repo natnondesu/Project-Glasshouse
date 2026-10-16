@@ -1,4 +1,4 @@
-import { describeEnd, type EquipmentState, type Id, type PlanContent } from '@glasshouse/domain';
+import { describeEnd, stacksOf, type EquipmentState, type Id, type PlanContent } from '@glasshouse/domain';
 import type { KeyboardEvent } from 'react';
 import { useT } from '../../i18n';
 import { StateGlyph } from '../../ui/StateIcon';
@@ -18,6 +18,8 @@ interface TopologyDiagramProps {
   stateOf?: (id: Id) => EquipmentState;
   /** Print: fills the page width and isn't interactive. */
   isStatic?: boolean;
+  /** A search hit's box, ringed for a moment. */
+  pulseId?: Id | null;
 }
 
 const mid = (n: TopoNode): [number, number] => [n.x + n.w / 2, n.y + n.h / 2];
@@ -67,7 +69,7 @@ function badgeAt(a: TopoNode, b: TopoNode, tree: boolean): [number, number] {
   return [(x1 + x2) / 2, (y1 + y2) / 2];
 }
 
-export function TopologyDiagram({ content, topology, vid = null, scale = 1, selection = null, onSelect, stateOf, isStatic = false }: TopologyDiagramProps) {
+export function TopologyDiagram({ content, topology, vid = null, scale = 1, selection = null, onSelect, stateOf, isStatic = false, pulseId = null }: TopologyDiagramProps) {
   const m = useT();
   const byId = new Map(topology.nodes.map((n) => [n.id, n]));
   // An uplink's far device isn't in this room: its box knows its name.
@@ -82,7 +84,9 @@ export function TopologyDiagram({ content, topology, vid = null, scale = 1, sele
   const dimNode = (n: TopoNode): boolean => (vid !== null && !nodeCarries(content, n.id, vid)) || (focusId !== null && n.id !== focusId && !neighbours.has(n.id));
   const lagAt = (r: { deviceId: Id; port: string }): string | undefined => describeEnd(content, r).port?.lag;
   const ownerOf = new Map(topology.nodes.flatMap((n) => (n.memberIds ?? []).map((id) => [id, n.id] as const)));
-  const tags = focusId ? portTags(focusId, topology.edges, byId, m.topology.morePorts, lagAt, m.topology.links, (id) => ownerOf.get(id) ?? id) : [];
+  const memberNo = new Map(stacksOf(content).flatMap((st) => st.members.map((x) => [x.deviceId, x.member] as const)));
+  const focusIsStack = Boolean(focusId && byId.get(focusId)?.memberIds);
+  const tags = focusId ? portTags(focusId, topology.edges, byId, m.topology.morePorts, lagAt, m.topology.links, (id) => ownerOf.get(id) ?? id, (id) => (focusIsStack ? (memberNo.get(id) ?? null) : null)) : [];
   // One LAG on either end: the bundle is named after it.
   const bundleName = (e: TopoEdge): string | null => {
     for (const device of [e.a, e.b]) {
@@ -131,7 +135,7 @@ export function TopologyDiagram({ content, topology, vid = null, scale = 1, sele
         return (
           <g
             key={n.id}
-            className={`topo-node topo-node--${n.category}${n.memberIds ? ' is-stack' : ''}${state === 'maintenance' ? ' is-maint' : ''}${n.leaf ? ' is-leaf' : ''}${dimNode(n) ? ' is-dim' : ''}${selected ? ' is-selected' : ''}${focusId && n.id !== focusId && neighbours.has(n.id) ? ' is-neighbour' : ''}`}
+            className={`topo-node topo-node--${n.category}${n.id === pulseId ? ' is-search-pulse' : ''}${n.memberIds ? ' is-stack' : ''}${state === 'maintenance' ? ' is-maint' : ''}${n.leaf ? ' is-leaf' : ''}${dimNode(n) ? ' is-dim' : ''}${selected ? ' is-selected' : ''}${focusId && n.id !== focusId && neighbours.has(n.id) ? ' is-neighbour' : ''}`}
             data-topo-id={n.id}
             aria-label={isStatic ? undefined : `${m.topology.deviceLabel(n.name, n.memberIds ? n.whereLines.join(', ') : n.where)}${state === 'maintenance' ? `, ${m.equipment.state.maintenance}` : ''}`}
             aria-pressed={isStatic ? undefined : selected}

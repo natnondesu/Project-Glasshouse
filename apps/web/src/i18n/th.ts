@@ -722,6 +722,7 @@ export const th: Messages = {
     unlabelled: 'ไม่มีป้าย',
   },
   topology: {
+    notInDiagram: (name) => `${name} ยังไม่มีสาย จึงไม่อยู่ในแผนภาพ ดูได้ในรายการที่ยังไม่ได้ต่อสาย`,
     devicesBelow: (n) => `+${n} เครื่อง`,
     links: (n) => `${n} เส้น`,
     morePorts: (n) => `+อีก ${n}`,

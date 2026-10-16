@@ -23,7 +23,7 @@ export interface PortTag {
  * branch and the tags would pile up there.
  */
 /** A LAG's members collapse into one line: 'Po1 ⇄ bond0 · 4 links'. */
-export function portTags(selectedId: Id, edges: TopoEdge[], byId: Map<Id, TopoNode>, more: (n: number) => string, lagAt: (r: PortRef) => string | undefined = () => undefined, links: (n: number) => string = (n) => `${n} links`, ownerOf: (deviceId: Id) => Id = (id) => id): PortTag[] {
+export function portTags(selectedId: Id, edges: TopoEdge[], byId: Map<Id, TopoNode>, more: (n: number) => string, lagAt: (r: PortRef) => string | undefined = () => undefined, links: (n: number) => string = (n) => `${n} links`, ownerOf: (deviceId: Id) => Id = (id) => id, memberOf: (deviceId: Id) => number | null = () => null): PortTag[] {
   const tags: PortTag[] = [];
   for (const e of edges) {
     if (e.a !== selectedId && e.b !== selectedId) continue;
@@ -36,11 +36,14 @@ export function portTags(selectedId: Id, edges: TopoEdge[], byId: Map<Id, TopoNo
       // A stack answers for its members' ports.
       const [mine, theirs] = ownerOf(l.a.deviceId) === selectedId ? [l.a, l.b] : [l.b, l.a];
       const lag = lagAt(mine);
+      // On a stack, which member the port is on: both members may name it GE1/0/3.
+      const member = memberOf(mine.deviceId);
+      const on = member === null ? '' : `S${member} `;
       if (!lag) {
-        pairs.push(`${mine.port} ⇄ ${theirs.port}`);
+        pairs.push(`${on}${mine.port} ⇄ ${theirs.port}`);
         continue;
       }
-      const key = `${lag} ⇄ ${lagAt(theirs) ?? theirs.port}`;
+      const key = `${on}${lag} ⇄ ${lagAt(theirs) ?? theirs.port}`;
       bundles.set(key, (bundles.get(key) ?? 0) + 1);
     }
     pairs.unshift(...[...bundles].map(([k, n]) => (n > 1 ? `${k} · ${links(n)}` : k)));
