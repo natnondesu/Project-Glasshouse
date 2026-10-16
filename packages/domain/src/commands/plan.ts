@@ -13,6 +13,7 @@ import { applyPortCommand, pruneLinks, type PortCommand } from '../ports';
 import { applyVlanCommand, type VlanCommand } from '../vlans';
 import { applyBulkPortCommand, type BulkPortCommand } from './portBulk';
 import { pasteObject, type PasteObjectCommand } from '../objectPaste';
+import { applyStackCommand, pruneStacks, type StackCommand } from '../stacks';
 
 export type PlanCommand =
   | { type: 'survey/update'; patch: SurveyPatch }
@@ -31,12 +32,13 @@ export type PlanCommand =
   | PanelCommand
   | PortCommand
   | BulkPortCommand
+  | StackCommand
   | VlanCommand;
 
 export function applyPlanCommand(content: PlanContent, cmd: PlanCommand): Result<PlanContent> {
   const result = applyOne(content, cmd);
-  // Removing a rack, device, node or port leaves links pointing nowhere; drop them in one place.
-  return result.ok ? { ...result, value: pruneLinks(result.value) } : result;
+  // Removing a rack, device, node or port leaves links (and stack members) pointing nowhere; drop them in one place.
+  return result.ok ? { ...result, value: pruneStacks(pruneLinks(result.value)) } : result;
 }
 
 function applyOne(content: PlanContent, cmd: PlanCommand): Result<PlanContent> {
@@ -87,6 +89,11 @@ function applyOne(content: PlanContent, cmd: PlanCommand): Result<PlanContent> {
     case 'panel/configure':
     case 'panel/way':
       return applyPanelCommand(content, cmd);
+    case 'stack/create':
+    case 'stack/rename':
+    case 'stack/remove':
+    case 'stack/member':
+      return applyStackCommand(content, cmd);
     case 'port/bulk':
       return applyBulkPortCommand(content, cmd);
     case 'port/add':

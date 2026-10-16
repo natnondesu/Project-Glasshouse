@@ -124,3 +124,27 @@ it('for paper, folds single-cable devices into a count on their switch and keeps
   expect(t.edges).toHaveLength(1);
   expect(buildTopology(content).nodes).toHaveLength(14);
 });
+
+it('draws a stack as one box: cables to any member reach it, cables between members are its ring', () => {
+  const content = build([
+    rack,
+    dev('m1', 40, tpl('network', 8)),
+    dev('m2', 38, tpl('network', 8)),
+    dev('s1', 1, tpl('server', 2)),
+    dev('s2', 3, tpl('server', 2)),
+    link('m1', 'p8', 'm2', 'p8'),
+    link('m1', 'p7', 'm2', 'p7'),
+    link('s1', 'p1', 'm1', 'p1'),
+    link('s2', 'p1', 'm2', 'p1'),
+    { type: 'stack/create', stack: { id: 'st', name: 'CORE', members: [{ deviceId: 'm1', member: 1 }, { deviceId: 'm2', member: 2 }] } },
+  ]);
+  const t = buildTopology(content);
+  expect(t.nodes.map((n) => n.id).sort()).toEqual(['s1', 's2', 'st']);
+  const stack = t.nodes.find((n) => n.id === 'st')!;
+  expect(stack).toMatchObject({ name: 'STACK CORE', memberIds: ['m1', 'm2'], ring: 2 });
+  expect(stack.whereLines).toEqual(['1  SW-01', '2  SW-02']);
+  // Taller than the servers' boxes, which keep the shared height.
+  expect(stack.h).toBeGreaterThan(t.nodes.find((n) => n.id === 's1')!.h);
+  expect(t.edges.map((e) => e.key).sort()).toEqual(['s1|st', 's2|st']);
+  expect(t.unlinked).toEqual([]);
+});

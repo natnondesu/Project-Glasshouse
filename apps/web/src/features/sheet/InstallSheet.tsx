@@ -1,5 +1,5 @@
 import { useDocumentTitle } from '../../ui/useDocumentTitle';
-import { bomRowsFor, cableSchedule, equipmentStateOf, currentRevision, latestApproved, orderedRacks, type Chassis, type PlanContent, type Rack } from '@glasshouse/domain';
+import { bomRowsFor, cableSchedule, equipmentStateOf, currentRevision, latestApproved, orderedRacks, stackOf, type Chassis, type PlanContent, type Rack } from '@glasshouse/domain';
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
 import { NotFound } from '../../app/NotFound';
@@ -135,7 +135,10 @@ export function InstallSheet() {
           {title(m.sheet.rackElevations)}
           <div className="sheet-elevations">
             {group.map((rack) => (
-              <RackElevation key={rack.id} rack={rack} active={false} selectedId={null} flagged={NO_FLAGS} onSelect={noop} onActivate={noop} onDropTemplate={noop} isStatic stateOf={(id) => equipmentStateOf(location.room.plan, id)} />
+              <RackElevation key={rack.id} rack={rack} active={false} selectedId={null} flagged={NO_FLAGS} onSelect={noop} onActivate={noop} onDropTemplate={noop} isStatic stateOf={(id) => equipmentStateOf(location.room.plan, id)} stackOf={(id) => {
+                const hit = stackOf(revision.content, id);
+                return hit ? { name: hit.stack.name, member: hit.member } : null;
+              }} />
             ))}
           </div>
         </section>

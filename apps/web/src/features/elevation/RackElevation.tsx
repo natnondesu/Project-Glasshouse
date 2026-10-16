@@ -16,6 +16,7 @@ const LABEL_W = 24;
 const RACK_W = 200;
 const PAD = 2;
 const PLANNED = (): EquipmentState => 'planned';
+const NO_STACK = (): null => null;
 const STATE_X = 13;
 const NAME_X = 23;
 const NAME_CHAR_PX = 7.3;
@@ -23,6 +24,8 @@ const SUB_CHAR_PX = 6.7;
 /** Room for a name left of the wattage, and left of a chassis's slot cells. */
 const DEVICE_NAME_PX = RACK_W - 80;
 const CHASSIS_NAME_PX = 50;
+/** A stack member's number tag, before the name: "S2". */
+const STACK_TAG_W = 22;
 
 /** Shortens text to fit `px` at a monospace character width; the full text is in the block's <title>. */
 function fitText(text: string, px: number, charPx = NAME_CHAR_PX): string {
@@ -44,6 +47,8 @@ interface RackElevationProps {
   pulseId?: string | null;
   /** On-site state per device or node; absent means planned. */
   stateOf?: (id: string) => EquipmentState;
+  /** The stack a device belongs to, for its tag. */
+  stackOf?: (id: string) => { name: string; member: number } | null;
   /** Where a dragged device would land, if over this rack. */
   dragPreview?: DropPreview | null;
   onDeviceDragStart?: (e: PointerEvent, deviceId: string, bottomU: number) => void;
@@ -107,9 +112,9 @@ function control(isStatic: boolean, label: string, selected: boolean, onClick: (
   return isStatic ? {} : { role: 'button', tabIndex: 0, 'aria-label': label, 'aria-pressed': selected, onClick, onKeyDown: onKey };
 }
 
-function DeviceBlock(props: { device: RackDevice; y: number; selected: boolean; selectedId: string | null; flagged: boolean; onSelect: (id: string) => void; onKey: (e: KeyboardEvent) => void; isStatic: boolean; pulse: boolean; state: EquipmentState; stateOf: (id: string) => EquipmentState; dragSource: boolean; onDragStart?: (e: PointerEvent) => void }) {
+function DeviceBlock(props: { device: RackDevice; stack: { name: string; member: number } | null; y: number; selected: boolean; selectedId: string | null; flagged: boolean; onSelect: (id: string) => void; onKey: (e: KeyboardEvent) => void; isStatic: boolean; pulse: boolean; state: EquipmentState; stateOf: (id: string) => EquipmentState; dragSource: boolean; onDragStart?: (e: PointerEvent) => void }) {
   const m = useT();
-  const { device, y, selected, selectedId, flagged, onSelect, onKey, isStatic, pulse, state, stateOf, dragSource, onDragStart } = props;
+  const { device, stack, y, selected, selectedId, flagged, onSelect, onKey, isStatic, pulse, state, stateOf, dragSource, onDragStart } = props;
   // A selected node lights its slot, and its chassis is outlined so the rack shows where it is.
   const holdsSelected = device.kind === 'chassis' && device.nodes.some((n) => n.id === selectedId);
   const h = device.heightU * useContext(UnitContext);
@@ -122,11 +127,17 @@ function DeviceBlock(props: { device: RackDevice; y: number; selected: boolean; 
       onPointerDown={onDragStart}
       {...control(isStatic, `${device.name}, ${formatURange(device)}`, selected, () => onSelect(device.id), onKey)}
     >
-      <title>{`${device.name}, ${formatURange(device)} · ${m.equipment.state[state]}`}</title>
+      <title>{`${device.name}, ${formatURange(device)} · ${m.equipment.state[state]}${stack ? ` · ${m.stack.tag(stack.name, stack.member)}` : ''}`}</title>
       <rect x={4} y={y + 1} width={RACK_W - 8} height={h - 2} rx={3} className="dev__body" />
       <StateGlyph state={state} cx={STATE_X} cy={textY - 4} className="dev__state" />
-      <text x={NAME_X} y={textY} className="dev__name">
-        {fitText(device.name, (device.kind === 'chassis' ? CHASSIS_NAME_PX : DEVICE_NAME_PX) - (NAME_X - 12))}
+      {stack ? (
+        <g className="dev__stack" aria-hidden="true">
+          <rect x={NAME_X - 2} y={textY - 11} width={STACK_TAG_W - 4} height={14} rx={3} />
+          <text x={NAME_X - 2 + (STACK_TAG_W - 4) / 2} y={textY} textAnchor="middle">{`S${stack.member}`}</text>
+        </g>
+      ) : null}
+      <text x={NAME_X + (stack ? STACK_TAG_W : 0)} y={textY} className="dev__name">
+        {fitText(device.name, (device.kind === 'chassis' ? CHASSIS_NAME_PX : DEVICE_NAME_PX) - (NAME_X - 12) - (stack ? STACK_TAG_W : 0))}
       </text>
       {device.kind === 'chassis' ? (
         <ChassisSlots chassis={device} y={y} onSelect={isStatic ? null : onSelect} stateOf={stateOf} selectedId={isStatic ? null : selectedId} />
@@ -194,7 +205,7 @@ export function rackHitAt(x: number, y: number): RackHit | null {
   return { rackId: svg.dataset.rackId!, pointerU: capacityU - Math.floor((y - top - PAD) / unit) };
 }
 
-export function RackElevation({ rack, active, selectedId, flagged, onSelect, onActivate, onDropTemplate, isStatic = false, pulseId = null, stateOf = PLANNED, dragPreview = null, onDeviceDragStart, uPx = U_PX, onNamePointerDown, onNameKeyDown, nameTitle }: RackElevationProps) {
+export function RackElevation({ rack, active, selectedId, flagged, onSelect, onActivate, onDropTemplate, isStatic = false, pulseId = null, stateOf = PLANNED, stackOf = NO_STACK, dragPreview = null, onDeviceDragStart, uPx = U_PX, onNamePointerDown, onNameKeyDown, nameTitle }: RackElevationProps) {
   const m = useT();
   const [showFacts, setShowFacts] = useState(false);
   const height = rack.capacityU * uPx;
@@ -300,7 +311,7 @@ export function RackElevation({ rack, active, selectedId, flagged, onSelect, onA
             <ReservedBlock key={r.id} range={r} y={yTop(topU(r))} patternId={patternId} selected={r.id === selectedId} onSelect={onSelect} onKey={keySelect(r.id)} isStatic={isStatic} pulse={r.id === pulseId} />
           ))}
           {rack.devices.map((d) => (
-            <DeviceBlock key={d.id} device={d} y={yTop(topU(d))} selected={d.id === selectedId} selectedId={selectedId} flagged={flagged.has(d.id)} onSelect={onSelect} onKey={keySelect(d.id)} isStatic={isStatic} pulse={d.id === pulseId || (d.kind === 'chassis' && d.nodes.some((n) => n.id === pulseId))} state={stateOf(d.id)} stateOf={stateOf} dragSource={dragPreview?.deviceId === d.id} onDragStart={!isStatic && onDeviceDragStart ? (e) => onDeviceDragStart(e, d.id, d.bottomU) : undefined} />
+            <DeviceBlock key={d.id} device={d} stack={stackOf(d.id)} y={yTop(topU(d))} selected={d.id === selectedId} selectedId={selectedId} flagged={flagged.has(d.id)} onSelect={onSelect} onKey={keySelect(d.id)} isStatic={isStatic} pulse={d.id === pulseId || (d.kind === 'chassis' && d.nodes.some((n) => n.id === pulseId))} state={stateOf(d.id)} stateOf={stateOf} dragSource={dragPreview?.deviceId === d.id} onDragStart={!isStatic && onDeviceDragStart ? (e) => onDeviceDragStart(e, d.id, d.bottomU) : undefined} />
           ))}
           {dragPreview && dragPreview.rackId === rack.id ? <DropGhost preview={dragPreview} y={yTop(dragPreview.bottomU + dragPreview.heightU - 1)} /> : null}
         </g>
