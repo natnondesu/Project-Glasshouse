@@ -10,6 +10,8 @@ import { shapedTopology } from './topology';
 import { remoteNamer } from './uplinks';
 import { useWorkspaceStore } from '../../store/workspaceStore';
 import { VlanList } from './VlanList';
+import { SearchBox } from '../search/SearchBox';
+import type { SearchHit } from '../search/search';
 import { PanelCollapseTab, PanelRail } from '../../ui/PanelRail';
 import { useInspectorOpen } from '../../ui/useInspectorOpen';
 import './network.css';
@@ -19,6 +21,8 @@ const MIN_SCALE = 0.25;
 /** "Fit" stops here: the diagram's smallest text is 13px, which is the 11px floor at 85%. Below, it scrolls. */
 const FIT_FLOOR = 0.85;
 const MAX_SCALE = 2;
+const PULSE_MS = 1700;
+const MESSAGE_MS = 4500;
 
 /** The canvas size, rounded so small resizes don't relayout the diagram. */
 function useViewShape(ref: RefObject<HTMLDivElement | null>): { w: number; h: number } {
@@ -49,6 +53,40 @@ export function NetworkView({ location, readOnly }: { location: RoomLocation; re
   const [vid, setVid] = useState<number | null>(null);
   const [scale, setScale] = useState(1);
   const [selection, setSelection] = useState<TopoSelection>(null);
+  const [pulse, setPulse] = useState<{ id: string; n: number } | null>(null);
+  const [notShown, setNotShown] = useState<string | null>(null);
+  useEffect(() => {
+    if (!pulse) return;
+    // Bring the found box into view once it is drawn, then let the ring fade.
+    document.querySelector(`[data-topo-id="${CSS.escape(pulse.id)}"]`)?.scrollIntoView?.({ block: 'center', inline: 'center', behavior: 'smooth' });
+    const t = setTimeout(() => setPulse(null), PULSE_MS);
+    return () => clearTimeout(t);
+  }, [pulse]);
+  useEffect(() => {
+    if (!notShown) return;
+    const t = setTimeout(() => setNotShown(null), MESSAGE_MS);
+    return () => clearTimeout(t);
+  }, [notShown]);
+  /** A search hit's box: the device's own, its stack's, or (for a rack) its first device in the diagram. */
+  const findBox = (hit: SearchHit): string | null => {
+    const shown = new Set(topology.nodes.map((n) => n.id));
+    const id = hit.elementId ?? hit.objectId;
+    if (shown.has(id)) return id;
+    const stack = topology.nodes.find((n) => n.memberIds?.includes(id));
+    if (stack) return stack.id;
+    const chassis = findNode(content, id)?.chassis.id;
+    if (chassis && shown.has(chassis)) return chassis;
+    if (!hit.elementId) return topology.nodes.find((n) => (findRackDevice(content, n.id)?.rack.id ?? findNode(content, n.id)?.rack.id) === hit.objectId || n.memberIds?.some((mid) => findRackDevice(content, mid)?.rack.id === hit.objectId))?.id ?? null;
+    return null;
+  };
+  const pick = (hit: SearchHit): void => {
+    const id = findBox(hit);
+    if (!id) return setNotShown(m.topology.notInDiagram(hit.name));
+    setNotShown(null);
+    setSelection({ kind: 'node', id });
+    setSideOpen(true);
+    setPulse({ id, n: Date.now() });
+  };
   const [portsFor, setPortsFor] = useState<string | null>(null);
   // The details and VLAN column folds away so the diagram gets the width; picking a device brings it back.
   const selectedKey = selection ? (selection.kind === 'node' ? selection.id : selection.key) : null;
@@ -77,6 +115,7 @@ export function NetworkView({ location, readOnly }: { location: RoomLocation; re
     <div className={`network${sideOpen ? '' : ' is-side-closed'}`}>
       <section className="network__main glass" aria-label={m.topology.region}>
         <div className="network__bar">
+          <SearchBox className="search--inline network__search" content={content} roomName={location.room.name} plan={location.room.plan} onPick={pick} />
           <label className="network__filter">
             <span>{m.topology.highlight}</span>
             <select value={vid ?? ''} onChange={(e) => setVid(e.target.value ? Number(e.target.value) : null)}>
@@ -112,12 +151,18 @@ export function NetworkView({ location, readOnly }: { location: RoomLocation; re
           </span>
         </div>
         <div ref={area} className="network__canvas">
+          {notShown ? (
+            <p role="status" className="network__message">
+              {notShown}
+            </p>
+          ) : null}
           {topology.nodes.length === 0 ? (
             <p className="network__empty">{m.topology.empty}</p>
           ) : (
             <TopologyDiagram
               content={content}
               topology={topology}
+              pulseId={pulse?.id ?? null}
               vid={vid}
               scale={scale}
               selection={selection}

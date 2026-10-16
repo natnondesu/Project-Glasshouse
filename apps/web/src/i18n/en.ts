@@ -727,6 +727,7 @@ export const en = {
     unlabelled: 'unlabelled',
   },
   topology: {
+    notInDiagram: (name: string) => `${name} has no cables yet, so it isn't in the diagram. It's under Not cabled.`,
     devicesBelow: (n: number) => `+${n} ${n === 1 ? 'device' : 'devices'}`,
     links: (n: number) => `${n} links`,
     morePorts: (n: number) => `+${n} more`,

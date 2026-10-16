@@ -72,3 +72,12 @@ it('marks gear in maintenance on its box and its cables, and on the far end of e
   await user.click(screen.getByRole('button', { name: /^CORE-01, RK-01 · U42/ }));
   expect(within(screen.getByRole('table', { name: 'Ports' })).getByRole('row', { name: /^Te1\/1\/1 / })).toHaveTextContent('to ACC-01 Te1/1/1In maintenance');
 });
+
+it('finds a device from the search box: selects its box and lists its ports', async () => {
+  const user = userEvent.setup();
+  open();
+  await user.type(screen.getByRole('combobox', { name: 'Search this room' }), 'acc-01');
+  await user.keyboard('{Enter}');
+  expect(screen.getByRole('button', { name: /^ACC-01, RK-0\d/ })).toHaveAttribute('aria-pressed', 'true');
+  expect(screen.getByRole('table', { name: 'Ports' })).toBeInTheDocument();
+});

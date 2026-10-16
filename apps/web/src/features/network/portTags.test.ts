@@ -36,3 +36,10 @@ it('keeps a tag above a leaf to two lines, so it fits between wrapped rows', () 
   const [tag] = portTags('sw', [edges[1]!], leaves, more);
   expect(tag!.lines).toEqual(['Gi1/0/2 ⇄ eth0', '+3 more']);
 });
+
+it('on a stack, starts each tag with the member the port is on, since members can share port names', () => {
+  const stackNodes = new Map([node('st', 300, 40), node('s1', 100, 200, true)].map((n) => [n.id, n]));
+  const e = [{ key: 'st|s1', a: 'st', b: 's1', tree: true, links: [link('m2', 'GE1/0/3', 's1', 'eth0')] }] as unknown as TopoEdge[];
+  const [tag] = portTags('st', e, stackNodes, more, () => undefined, (n) => `${n} links`, (id) => (id === 'm2' ? 'st' : id), (id) => (id === 'm2' ? 2 : null));
+  expect(tag!.lines).toEqual(['S2 GE1/0/3 ⇄ eth0']);
+});

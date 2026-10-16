@@ -553,3 +553,51 @@
   font-size: var(--text-2xs);
   font-weight: 700;
 }
+
+.network__search {
+  width: 240px;
+  flex: none;
+}
+
+.network__canvas {
+  position: relative;
+}
+
+.network__message {
+  position: sticky;
+  top: 10px;
+  left: 50%;
+  z-index: 3;
+  width: max-content;
+  max-width: calc(100% - 32px);
+  margin: 10px auto 0;
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: var(--ink);
+  color: #fff;
+  font-size: var(--text-sm);
+}
+
+/* A search hit: an accent ring that fades; held still (no fade) under reduced motion. */
+.topo-node.is-search-pulse .topo-node__body {
+  stroke: var(--acc);
+  stroke-width: 4;
+  animation: topo-pulse 1.6s ease-out;
+}
+
+@keyframes topo-pulse {
+  0%,
+  60% {
+    stroke-width: 6;
+  }
+
+  100% {
+    stroke-width: 2.5;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .topo-node.is-search-pulse .topo-node__body {
+    animation: none;
+  }
+}
