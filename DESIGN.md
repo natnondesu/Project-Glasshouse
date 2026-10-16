@@ -58,6 +58,11 @@ Colour never works alone. Blocking issues use a solid circle icon, warnings a da
 - Below 1360px the inspector starts collapsed so the drawing gets the room (Plan, Elevation and Network alike); once someone opens or closes it, that choice is remembered, and selecting something new reopens it.
 - Names and figures are never cut: a rack name too wide for the rack sits under it, and a fill count that doesn't fit is left out.
 - A selected node fills its slot in accent with a heavy outline; its chassis gets a dashed accent outline.
+- ⌘/Ctrl+C and V copy a plan object (a rack with its devices). The copy takes the next free name (Neopolis-01 → Neopolis-05) and lands beside the original, else on the nearest spot clear of objects, cut-outs and clearance zones; pasting again builds a row. Cables, feeds and on-site state stay with the original.
+
+## Elevation
+
+- Racks read in plan order: rows from the top of the drawing down, each left to right. Drag a rack by its name (or Alt+←/→) to reorder; the order is kept on the room beside the revisions, so it holds on an approved plan, travels in the file and orders the Install sheet. "Reset to plan order" appears once there is one.
 
 ## Network diagram
 
@@ -77,6 +82,7 @@ Colour never works alone. Blocking issues use a solid circle icon, warnings a da
 
 - Stays inside the screen wherever it's dragged; below the faceplate it scrolls (a div: a fieldset won't scroll), with edge shadows while there's more. A grip in the header and a "Drag to move" tip say it moves; the panel manager works the same way.
 - Link to device is a type-to-filter list (any words of the device or rack name), each option with its rack and free-port count.
+- Shift-click picks a range of jacks, ⌘/Ctrl-click adds one. Several picked show a group form: every field starts on "Leave as is" (with the shared value, or "mixed"), and Apply changes only what was filled in, in one undo step. A LAG's members outside the selection are named before their shared VLAN changes.
 
 ## Install sheet
 

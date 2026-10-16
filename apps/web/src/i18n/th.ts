@@ -417,6 +417,9 @@ export const th: Messages = {
     lockedNote: 'แสดงสถานะปัจจุบัน กลับไปที่ฉบับปัจจุบันเพื่อเปลี่ยน',
   },
   elevation: {
+    reorderHint: 'ลากชื่อเพื่อย้ายแร็คนี้ หรือกด Alt+← / Alt+→',
+    customOrder: 'เรียงแร็คตามที่กำหนดเอง',
+    planOrder: 'เรียงตามผังห้อง',
     noRacksTitle: 'ห้องนี้ยังไม่มีแร็ค',
     noRacksBody: 'วางแร็คในแปลนก่อน แล้วกลับมาใส่อุปกรณ์',
     goToPlan: 'ไปที่แปลน',

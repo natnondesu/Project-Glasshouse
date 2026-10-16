@@ -108,6 +108,7 @@ const plan = z.object({
     }),
   ),
   equipmentState: z.record(z.string(), z.enum(['planned', 'deployed', 'maintenance'])),
+  rackOrder: z.array(z.string()).optional(),
 });
 const room = z.object({ id, name: z.string(), notes: z.string(), plan });
 const site = z.object({ id, name: z.string(), notes: z.string(), rooms: z.array(room) });

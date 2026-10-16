@@ -931,3 +931,57 @@ body.is-dragging-device * {
 .elev__more--right .elev__more-icon {
   transform: none;
 }
+
+/* Reordering racks: the dragged one follows the pointer, raised; an accent line marks where it lands. */
+.elev__slot {
+  position: relative;
+  flex: none;
+}
+
+.elev__slot.is-dragging {
+  z-index: 4;
+  opacity: 0.9;
+  filter: drop-shadow(0 12px 24px rgb(14 24 36 / 0.22));
+  cursor: grabbing;
+}
+
+.elev__slot.is-drop-before::before,
+.elev__slot.is-drop-after::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  border-radius: 2px;
+  background: var(--acc);
+}
+
+/* Half the gap between racks (28px), so the line sits between them. */
+.elev__slot.is-drop-before::before {
+  left: -15.5px;
+}
+
+.elev__slot.is-drop-after::after {
+  right: -15.5px;
+}
+
+.rack-elev__name[title] {
+  cursor: grab;
+  user-select: none;
+}
+
+.elev__racks.is-reordering {
+  user-select: none;
+  cursor: grabbing;
+}
+
+.elev__order {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  padding-left: 12px;
+  border-left: 1px solid var(--line);
+  font-size: var(--text-xs);
+  color: var(--ink-2);
+}

@@ -26,6 +26,7 @@ export * from './occupancy';
 export * from './devices';
 export * from './paste';
 export * from './objectPaste';
+export * from './rackOrder';
 export * from './commands/equipment';
 export * from './commands/nodes';
 export * from './power';

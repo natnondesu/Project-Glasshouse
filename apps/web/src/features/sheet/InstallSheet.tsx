@@ -1,5 +1,5 @@
 import { useDocumentTitle } from '../../ui/useDocumentTitle';
-import { bomRowsFor, cableSchedule, equipmentStateOf, currentRevision, latestApproved, racksOf, type Chassis, type PlanContent, type Rack } from '@glasshouse/domain';
+import { bomRowsFor, cableSchedule, equipmentStateOf, currentRevision, latestApproved, orderedRacks, type Chassis, type PlanContent, type Rack } from '@glasshouse/domain';
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
 import { NotFound } from '../../app/NotFound';
@@ -95,7 +95,8 @@ export function InstallSheet() {
     );
   }
 
-  const racks: Rack[] = [...racksOf(revision.content)].sort((a, b) => a.name.localeCompare(b.name));
+  // The order the team set in Elevation (plan order by default), so paper reads like the screen.
+  const racks: Rack[] = orderedRacks(revision.content, location.room.plan.rackOrder);
   const chassis = racks.flatMap((rack) => rack.devices.filter((d): d is Chassis => d.kind === 'chassis').map((c) => ({ rack, chassis: c })));
   const title = (section: string) => <SheetTitleBlock location={location} revision={revision} printedAt={printedAt} section={section} />;
   const { topology, landscape } = sheetTopology(revision.content);

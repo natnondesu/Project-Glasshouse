@@ -422,6 +422,9 @@ export const en = {
     lockedNote: 'Showing the current state; switch back to the current revision to change it.',
   },
   elevation: {
+    reorderHint: 'Drag the name to move this rack, or Alt+← / Alt+→',
+    customOrder: 'Racks in your order',
+    planOrder: 'Reset to plan order',
     noRacksTitle: 'This room has no racks yet',
     noRacksBody: 'Place a rack on the Plan first, then come back to fill it.',
     goToPlan: 'Go to the plan',
