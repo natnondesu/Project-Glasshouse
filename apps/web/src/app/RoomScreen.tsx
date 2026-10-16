@@ -16,6 +16,7 @@ const Room3DView = lazy(() => import('../features/room3d/Room3DView'));
 import { ViewTabs } from './ViewTabs';
 import { useT } from '../i18n';
 import { useDocumentTitle } from '../ui/useDocumentTitle';
+import { useRememberRoom } from '../features/home/lastRoom';
 
 /** View route segment to its tab label key, for the page heading. */
 const TAB_LABEL: Record<string, 'plan' | 'elevation' | 'threeD' | 'network' | 'bom' | 'review'> = { plan: 'plan', elevation: 'elevation', '3d': 'threeD', network: 'network', bom: 'bom', review: 'review' };
@@ -27,6 +28,7 @@ export function RoomScreen() {
   const m = useT();
   const tabLabel = TAB_LABEL[view] ? m.views[TAB_LABEL[view]!] : view;
   useDocumentTitle(realLocation ? `${realLocation.room.name} · ${tabLabel}` : null);
+  useRememberRoom(realLocation ? roomId : null);
   if (!realLocation) return <NotFound message={m.shell.roomMissing} />;
   const past = view === 'review' ? null : locationAtRevision(realLocation, viewedNumber);
   const location = past ?? realLocation;

@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 
 test('connect a rack to an MCB panel and see the run on the plan and the Install sheet', async ({ page }) => {
   await page.goto('/');
-  await page.getByRole('link', { name: /MDF-1/ }).click();
+  await page.getByRole('complementary', { name: 'Projects' }).getByRole('link', { name: /MDF-1/ }).click();
   await page.getByRole('button', { name: 'RK-C1, Rack' }).focus();
   const feeds = page.getByRole('group', { name: 'Power feeds' });
   // RK-C1 already takes Feed A from the PDU; the sample room has six runs.
@@ -15,7 +15,7 @@ test('connect a rack to an MCB panel and see the run on the plan and the Install
 
 test('open an approved revision from the review history, read-only', async ({ page }) => {
   await page.goto('/');
-  await page.getByRole('link', { name: /Server room A/ }).click();
+  await page.getByRole('complementary', { name: 'Projects' }).getByRole('link', { name: /Server room A/ }).click();
   await page.getByRole('link', { name: /^Review/ }).click();
   await page.getByRole('button', { name: 'Start new draft' }).click();
   await page.getByRole('link', { name: 'View R01' }).click();
@@ -27,7 +27,7 @@ test('open an approved revision from the review history, read-only', async ({ pa
 
 test('place a UPS, feed a rack from it, feed the UPS from the MCB, and wire feeds to ways', async ({ page }) => {
   await page.goto('/');
-  await page.getByRole('link', { name: /MDF-1/ }).click();
+  await page.getByRole('complementary', { name: 'Projects' }).getByRole('link', { name: /MDF-1/ }).click();
   await expect(page.getByTestId('zoom-value')).not.toHaveText('100 px/m');
   await page.getByRole('button', { name: 'More Power source tools' }).click();
   await page.getByRole('menuitemradio', { name: 'UPS' }).click();

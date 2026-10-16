@@ -34,7 +34,7 @@ async function dragTo(page: Page, block: Locator, rack: Locator, u: number): Pro
 
 test('drags a device to another U and across racks; a blocked spot explains itself', async ({ page }) => {
   await page.goto('/');
-  await page.getByRole('link', { name: /MDF-1/ }).click();
+  await page.getByRole('complementary', { name: 'Projects' }).getByRole('link', { name: /MDF-1/ }).click();
   await page.getByRole('link', { name: 'Elevation' }).click();
   const racks = page.locator('svg[data-rack-id]');
   const chassis = page.getByRole('button', { name: /^CH-01,/ });

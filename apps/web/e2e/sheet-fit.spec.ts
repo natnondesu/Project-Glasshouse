@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 
 test('every Install sheet table fits inside its A4 page', async ({ page }) => {
   await page.goto('/');
-  await page.getByRole('link', { name: /Server room A/ }).click();
+  await page.getByRole('complementary', { name: 'Projects' }).getByRole('link', { name: /Server room A/ }).click();
   await page.getByRole('link', { name: /Install sheet/ }).click();
   await expect(page.getByRole('table', { name: 'Bill of materials' })).toBeVisible();
   await expect(page.getByRole('table', { name: 'Cable schedule' })).toBeVisible();

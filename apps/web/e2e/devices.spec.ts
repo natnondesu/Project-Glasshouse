@@ -66,7 +66,7 @@ test('AC09/AC10: template edits leave placed devices alone; a too-deep device bl
   await page.getByLabel('Demand in watts').fill('999');
   await page.getByRole('button', { name: 'Save template' }).click();
 
-  await page.getByRole('link', { name: /MDF-1/ }).last().click();
+  await page.getByRole('complementary', { name: 'Projects' }).getByRole('link', { name: /MDF-1/ }).last().click();
   await page.getByRole('link', { name: 'Elevation' }).click();
   // Select from the keyboard: Firefox's automation mis-scrolls SVG blocks near the bottom of a rack.
   await page.getByRole('button', { name: /^SRV-01,/ }).focus();

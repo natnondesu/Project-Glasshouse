@@ -14,7 +14,7 @@ async function selected(page: Page): Promise<string> {
 test('3D clicks pick the rack under the pointer and nothing beside it', async ({ page, browserName }) => {
   test.skip(browserName !== 'chromium', 'Pixel positions are measured in Chromium');
   await page.goto('/');
-  await page.getByRole('link', { name: /MDF-1/ }).click();
+  await page.getByRole('complementary', { name: 'Projects' }).getByRole('link', { name: /MDF-1/ }).click();
   await page.getByRole('link', { name: '3D' }).click();
   const canvas = page.locator('.room3d canvas');
   await canvas.waitFor({ timeout: 20_000 });

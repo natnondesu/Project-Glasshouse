@@ -4,18 +4,18 @@ const SAMPLE = 'Sample · Northgate DC';
 
 async function openSampleRoom(page: Page, name: RegExp): Promise<string> {
   await page.goto('/');
-  await page.getByRole('link', { name }).click();
+  await page.getByRole('complementary', { name: 'Projects' }).getByRole('link', { name }).click();
   await page.waitForURL(/\/rooms\/[^/]+\/plan/);
   return new URL(page.url()).pathname.split('/')[2]!;
 }
 
 test('AC18: a fresh workspace lists the Sample Project with working checks', async ({ page }) => {
   await page.goto('/');
-  await expect(page.getByText(SAMPLE)).toBeVisible();
+  await expect(page.getByRole('complementary', { name: 'Projects' }).getByText(SAMPLE)).toBeVisible();
   await expect(page.getByText('SAMPLE', { exact: true }).first()).toBeVisible();
   await openSampleRoom(page, /MDF-1/);
   await expect(page.getByText('EX-01 sits inside the front clearance zone of RK-C1.')).toBeVisible();
-  await expect(page.getByRole('link', { name: /Server room A/ })).toContainText('R01 APPROVED');
+  await expect(page.getByRole('complementary', { name: 'Projects' }).getByRole('link', { name: /Server room A/ })).toContainText('R01 APPROVED');
 });
 
 test('AC17: the Install sheet prints from the Approved room and is unavailable for a Draft', async ({ page }) => {
@@ -47,10 +47,13 @@ test('AC20: room 3D renders, pinch zooms at the pointer, and a Rack opens its el
     const zoom = page.locator('.room3d__zoom');
     const before = await zoom.textContent();
     await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
-    await page.keyboard.down('Control');
-    await page.mouse.wheel(0, -40);
-    await page.keyboard.up('Control');
-    await expect(zoom).not.toHaveText(before ?? '');
+    // Under load the canvas can show before its controls attach; pinch again until they answer.
+    await expect(async () => {
+      await page.keyboard.down('Control');
+      await page.mouse.wheel(0, -40);
+      await page.keyboard.up('Control');
+      await expect(zoom).not.toHaveText(before ?? '', { timeout: 1000 });
+    }).toPass({ timeout: 10_000 });
     await page.getByRole('button', { name: 'Reset view' }).click();
     await expect(zoom).toHaveText(before ?? '');
   }

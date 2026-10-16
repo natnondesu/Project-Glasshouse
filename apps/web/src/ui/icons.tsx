@@ -209,3 +209,23 @@ export const IconWallRack = (p: IconProps) => (
     <path d="M7 6.5H12M7 9H12" />
   </svg>
 );
+export const IconPause = (p: IconProps) => (
+  <svg {...frame(16)} strokeWidth={2.2} strokeLinecap="round" {...p}>
+    <path d="M5 3V13M11 3V13" />
+  </svg>
+);
+export const IconPlay = (p: IconProps) => (
+  <svg {...frame(16)} strokeLinejoin="round" {...p}>
+    <path d="M5 3L13 8L5 13Z" fill="currentColor" />
+  </svg>
+);
+export const IconArrowRight = (p: IconProps) => (
+  <svg {...frame(16)} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" {...p}>
+    <path d="M3 8H12.5M8.5 4L12.5 8L8.5 12" />
+  </svg>
+);
+export const IconCheck = (p: IconProps) => (
+  <svg {...frame(14)} strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round" {...p}>
+    <path d="M2.5 7.5L5.5 10.5L11.5 3.5" />
+  </svg>
+);

@@ -53,7 +53,7 @@ test('AC14: an unknown reserved range blocks approval until acknowledged', async
   await expect(page.getByRole('button', { name: 'Approve revision' })).toBeEnabled();
   await page.getByRole('button', { name: 'Approve revision' }).click();
   await page.getByRole('button', { name: 'Confirm approval' }).click();
-  await expect(page.getByRole('link', { name: /MDF-1/ }).last()).toContainText('R01 APPROVED');
+  await expect(page.getByRole('complementary', { name: 'Projects' }).getByRole('link', { name: /MDF-1/ }).last()).toContainText('R01 APPROVED');
 });
 
 test('AC15: export a project file, change the room, import and take incoming', async ({ page }) => {
@@ -83,5 +83,5 @@ test('backup reminder, backup and confirmed restore', async ({ page }) => {
   await page.getByRole('button', { name: 'Delete', exact: true }).click();
   await page.getByLabel('Choose a backup file').setInputFiles(backup);
   await page.getByRole('button', { name: 'Replace workspace' }).click();
-  await expect(page.getByRole('link', { name: /MDF-1/ }).last()).toBeVisible();
+  await expect(page.getByRole('complementary', { name: 'Projects' }).getByRole('link', { name: /MDF-1/ }).last()).toBeVisible();
 });

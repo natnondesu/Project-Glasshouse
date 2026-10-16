@@ -69,6 +69,12 @@ Colour never works alone. Blocking issues use a solid circle icon, warnings a da
 - Labels are sprites at a fixed screen size; the Labels menu picks which kinds are always labelled, the rest label on hover.
 - A highlighted power path glows and carries arrowheads moving from source to load (still under reduced motion); everything else on the power layer fades.
 
+## Home
+
+- The project tree stays. Beside it, the last room opened leads: name, approval stamp, racks / devices / power, what still holds approval, Open room and the Install sheet, and the room live in 3D on paper.
+- The 3D turns slowly (about one turn a minute). It stops under the pointer so a drag looks around from there, has a pause button, holds still under reduced motion, stops drawing when scrolled away, and never takes the scroll wheel. Clicking a rack opens it in the elevation.
+- Below, every room is a card per site: its plan drawn small (blocking objects in red), revision chip, facts, and its approval holds in the Review badge's terms. A dashed card adds a room to that site.
+
 ## Browser tab
 
 - The document title names the place: "Server room A · Network · Glasshouse", in the interface language.

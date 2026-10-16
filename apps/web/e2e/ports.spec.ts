@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 
 test('gives two devices ports, links them, and prints the cable on the BOM CSV', async ({ page }) => {
   await page.goto('/');
-  await page.getByRole('link', { name: /MDF-1/ }).click();
+  await page.getByRole('complementary', { name: 'Projects' }).getByRole('link', { name: /MDF-1/ }).click();
   await page.getByRole('link', { name: 'Elevation' }).click();
   const box = page.getByRole('combobox', { name: 'Search this room' });
 
