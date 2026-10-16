@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { createMemoryRouter, RouterProvider } from 'react-router';
 import { beforeEach, expect, it } from 'vitest';
@@ -18,33 +18,36 @@ beforeEach(() => {
 
 const open = (path = '/') => render(<RouterProvider router={createMemoryRouter(routes, { initialEntries: [path] })} />);
 
+// Home repeats rooms as cards: ask the tree itself.
+const tree = () => within(screen.getByRole('complementary', { name: 'Projects' }));
+
 it('collapses and expands projects and sites, and remembers it', async () => {
   const user = userEvent.setup();
   const { unmount } = open();
-  await user.click(screen.getByRole('button', { name: 'Collapse Site A' }));
-  expect(screen.queryByRole('link', { name: /MDF-1/ })).toBeNull();
-  await user.click(screen.getByRole('button', { name: 'Collapse Northgate' }));
-  expect(screen.queryByText('Site A')).toBeNull();
+  await user.click(tree().getByRole('button', { name: 'Collapse Site A' }));
+  expect(tree().queryByRole('link', { name: /MDF-1/ })).toBeNull();
+  await user.click(tree().getByRole('button', { name: 'Collapse Northgate' }));
+  expect(tree().queryByText('Site A')).toBeNull();
   unmount();
   open();
-  expect(screen.queryByText('Site A')).toBeNull();
-  await user.click(screen.getByRole('button', { name: 'Expand Northgate' }));
-  expect(screen.getByRole('button', { name: 'Expand Site A' })).toHaveAttribute('aria-expanded', 'false');
+  expect(tree().queryByText('Site A')).toBeNull();
+  await user.click(tree().getByRole('button', { name: 'Expand Northgate' }));
+  expect(tree().getByRole('button', { name: 'Expand Site A' })).toHaveAttribute('aria-expanded', 'false');
 });
 
 it('keeps the open room visible even inside a collapsed site', async () => {
   const user = userEvent.setup();
   const { unmount } = open();
-  await user.click(screen.getByRole('button', { name: 'Collapse Site A' }));
+  await user.click(tree().getByRole('button', { name: 'Collapse Site A' }));
   unmount();
   open('/rooms/r/plan');
-  expect(screen.getByRole('link', { name: /MDF-1/ })).toBeInTheDocument();
+  expect(tree().getByRole('link', { name: /MDF-1/ })).toBeInTheDocument();
 });
 
 it('colours the revision chip by state: approved is green', () => {
   const s = useWorkspaceStore.getState();
   s.dispatch({ type: 'review', roomId: 'r', command: { type: 'review/submit', designedBy: '', at: '2026-10-14T00:00:00.000Z' } });
   open();
-  expect(screen.getByText('R01 IN REVIEW')).toHaveClass('stamp--in_review');
-  expect(screen.getByText('R01 DRAFT')).toHaveClass('stamp--draft');
+  expect(tree().getByText('R01 IN REVIEW')).toHaveClass('stamp--in_review');
+  expect(tree().getByText('R01 DRAFT')).toHaveClass('stamp--draft');
 });

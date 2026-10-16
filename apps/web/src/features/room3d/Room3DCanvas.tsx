@@ -1,5 +1,5 @@
 import { Canvas, useFrame, useThree, type ThreeEvent } from '@react-three/fiber';
-import { useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { MeshBasicMaterial, Plane, Raycaster, Vector2, Vector3 } from 'three';
 import { wheelZoomFactor } from '../../viewport/math';
 import { cameraPosition, dollyToward, orbit, panGround, type OrbitCamera } from './camera';
@@ -34,10 +34,12 @@ export type CameraUpdate = (update: (prev: OrbitCamera) => OrbitCamera) => void;
 interface ControllerProps {
   camera: OrbitCamera;
   onChange: CameraUpdate;
+  /** Off where the canvas sits in a scrolling page, so the wheel scrolls the page. */
+  wheel: boolean;
 }
 
 /** Trackpad-first: drag orbits, two-finger scroll pans, pinch or ⌘/Ctrl+scroll zooms at the pointer; Shift- or right-drag also pans. */
-function CameraController({ camera, onChange }: ControllerProps) {
+function CameraController({ camera, onChange, wheel }: ControllerProps) {
   const { camera: three, gl, size, raycaster } = useThree();
   useEffect(() => {
     raycaster.params.Line = { ...raycaster.params.Line, threshold: LINE_PICK_THRESHOLD_M };
@@ -94,7 +96,7 @@ function CameraController({ camera, onChange }: ControllerProps) {
     el.addEventListener('pointermove', onMove);
     el.addEventListener('pointerup', onUp);
     el.addEventListener('pointercancel', onUp);
-    el.addEventListener('wheel', onWheel, { passive: false });
+    if (wheel) el.addEventListener('wheel', onWheel, { passive: false });
     el.addEventListener('contextmenu', noMenu);
     return () => {
       el.removeEventListener('pointerdown', onDown);
@@ -104,10 +106,38 @@ function CameraController({ camera, onChange }: ControllerProps) {
       el.removeEventListener('wheel', onWheel);
       el.removeEventListener('contextmenu', noMenu);
     };
-  }, [gl, three, size.height, onChange]);
+  }, [gl, three, size.height, onChange, wheel]);
 
   return null;
 }
+
+/**
+ * Turns the camera around the room at `rate` rad/s, frame by frame without re-rendering the scene.
+ * When it stops (rate 0), the angle it reached becomes the camera's, so a drag carries on from there.
+ */
+function Spinner({ camera, rate, onCommit }: { camera: OrbitCamera; rate: number; onCommit: (azimuth: number) => void }) {
+  const { camera: three } = useThree();
+  const azimuth = useRef(camera.azimuth);
+  useEffect(() => {
+    azimuth.current = camera.azimuth;
+  }, [camera]);
+  useFrame((_, dt) => {
+    if (rate === 0) return;
+    // A long frame (tab switch, slow device) shouldn't make the room jump.
+    azimuth.current += rate * Math.min(dt, MAX_SPIN_STEP_S);
+    const [x, y, z] = cameraPosition({ ...camera, azimuth: azimuth.current });
+    three.position.set(x, y, z);
+    three.lookAt(...camera.target);
+  });
+  const wasSpinning = useRef(rate !== 0);
+  useEffect(() => {
+    if (wasSpinning.current && rate === 0) onCommit(azimuth.current);
+    wasSpinning.current = rate !== 0;
+  }, [rate, onCommit]);
+  return null;
+}
+
+const MAX_SPIN_STEP_S = 0.1;
 
 interface Room3DCanvasProps {
   scene: Scene3D;
@@ -124,6 +154,12 @@ interface Room3DCanvasProps {
   showFeeds?: boolean;
   /** A highlighted power path: its feeds glow and show flow; other feeds fade. */
   path?: PowerPath | null;
+  /** Turn around the room by itself, in rad/s; 0 holds still. */
+  spin?: number;
+  /** Wheel and trackpad scroll zoom and pan; off lets them scroll the page instead. */
+  wheel?: boolean;
+  /** Stop drawing frames altogether, e.g. while scrolled out of view. */
+  idle?: boolean;
 }
 
 export interface Focus3D {
@@ -154,7 +190,7 @@ function FocusRing({ focus, color }: { focus: Focus3D; color: string }) {
   );
 }
 
-export function Room3DCanvas({ scene, palette, camera, onCamera, selectedId, onSelect, labelKinds, focus = null, showFeeds = true, path = null }: Room3DCanvasProps) {
+export function Room3DCanvas({ scene, palette, camera, onCamera, selectedId, onSelect, labelKinds, focus = null, showFeeds = true, path = null, spin = 0, wheel = true, idle = false }: Room3DCanvasProps) {
   const m = useT();
   const existing = scene.others.filter((o) => o.type === 'existing_rack');
   const blockClick = (e: ThreeEvent<MouseEvent>): void => {
@@ -166,11 +202,13 @@ export function Room3DCanvas({ scene, palette, camera, onCamera, selectedId, onS
     document.body.style.cursor = '';
   };
   const others = scene.others.filter((o) => o.type !== 'existing_rack');
+  const commitSpin = useCallback((azimuth: number) => onCamera((prev) => ({ ...prev, azimuth })), [onCamera]);
   return (
     <Canvas
       className="room3d__canvas"
       shadows="percentage"
       dpr={[1, 2]}
+      frameloop={idle ? 'never' : 'always'}
       camera={{ fov: FOV_DEG, near: 0.05, far: 300, position: cameraPosition(camera) }}
       aria-label={m.room3d.canvas}
       onPointerMissed={(e) => {
@@ -191,7 +229,8 @@ export function Room3DCanvas({ scene, palette, camera, onCamera, selectedId, onS
         shadow-camera-top={Math.max(scene.width, scene.length)}
         shadow-camera-bottom={-Math.max(scene.width, scene.length)}
       />
-      <CameraController camera={camera} onChange={onCamera} />
+      <CameraController camera={camera} onChange={onCamera} wheel={wheel} />
+      <Spinner camera={camera} rate={spin} onCommit={commitSpin} />
       {focus ? <FocusRing key={focus.n} focus={focus} color={palette.front} /> : null}
       {/* Room geometry takes clicks too, so a wall or column in front of a rack blocks it. */}
       <group onClick={blockClick} onPointerOver={blockHover}>

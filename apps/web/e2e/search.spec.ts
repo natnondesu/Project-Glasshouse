@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 
 test('search finds a node on the plan, jumps to it in the elevation, and in 3D', async ({ page }) => {
   await page.goto('/');
-  await page.getByRole('link', { name: /MDF-1/ }).click();
+  await page.getByRole('complementary', { name: 'Projects' }).getByRole('link', { name: /MDF-1/ }).click();
   await expect(page.getByTestId('zoom-value')).not.toHaveText('100 px/m');
   await page.keyboard.press('/');
   const box = page.getByRole('combobox', { name: 'Search this room' });
