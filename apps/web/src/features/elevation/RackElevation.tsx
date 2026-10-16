@@ -53,7 +53,7 @@ interface RackElevationProps {
 
 const categoryOf = (d: RackDevice): string => (d.kind === 'chassis' ? 'chassis' : d.category);
 
-function ChassisSlots({ chassis, y, onSelect, stateOf }: { chassis: Chassis; y: number; onSelect: ((id: string) => void) | null; stateOf: (id: string) => EquipmentState }) {
+function ChassisSlots({ chassis, y, onSelect, stateOf, selectedId }: { chassis: Chassis; y: number; onSelect: ((id: string) => void) | null; stateOf: (id: string) => EquipmentState; selectedId: string | null }) {
   const m = useT();
   const left = 66;
   const right = RACK_W - 12;
@@ -71,7 +71,7 @@ function ChassisSlots({ chassis, y, onSelect, stateOf }: { chassis: Chassis; y: 
         const node = chassis.nodes.find((n) => n.slot === slot);
         const x = left + (i % cols) * (w + gap);
         const cy = top + Math.floor(i / cols) * (h + gap);
-        const cls = node ? `${node.demand.kind === 'unknown' ? 'slot-cell slot-cell--unknown' : 'slot-cell slot-cell--filled'} slot-cell--state-${stateOf(node.id)}` : 'slot-cell';
+        const cls = node ? `${node.demand.kind === 'unknown' ? 'slot-cell slot-cell--unknown' : 'slot-cell slot-cell--filled'} slot-cell--state-${stateOf(node.id)}${node.id === selectedId ? ' is-selected' : ''}` : 'slot-cell';
         return (
           <g
             key={slot}
@@ -88,7 +88,7 @@ function ChassisSlots({ chassis, y, onSelect, stateOf }: { chassis: Chassis; y: 
             <rect x={x} y={cy} width={w} height={h} rx={2} className={cls}>
               <title>{m.elevation.slotTitle(slot, node ? node.name : null)}</title>
             </rect>
-            <text x={x + w / 2} y={cy + h / 2 + 4} textAnchor="middle" className="slot-cell__n">
+            <text x={x + w / 2} y={cy + h / 2 + 4} textAnchor="middle" className={`slot-cell__n${node && node.id === selectedId ? ' is-selected' : ''}`}>
               {node && node.demand.kind === 'unknown' ? '?' : slot}
             </text>
           </g>
@@ -103,12 +103,14 @@ function control(isStatic: boolean, label: string, selected: boolean, onClick: (
   return isStatic ? {} : { role: 'button', tabIndex: 0, 'aria-label': label, 'aria-pressed': selected, onClick, onKeyDown: onKey };
 }
 
-function DeviceBlock(props: { device: RackDevice; y: number; selected: boolean; flagged: boolean; onSelect: (id: string) => void; onKey: (e: KeyboardEvent) => void; isStatic: boolean; pulse: boolean; state: EquipmentState; stateOf: (id: string) => EquipmentState; dragSource: boolean; onDragStart?: (e: PointerEvent) => void }) {
+function DeviceBlock(props: { device: RackDevice; y: number; selected: boolean; selectedId: string | null; flagged: boolean; onSelect: (id: string) => void; onKey: (e: KeyboardEvent) => void; isStatic: boolean; pulse: boolean; state: EquipmentState; stateOf: (id: string) => EquipmentState; dragSource: boolean; onDragStart?: (e: PointerEvent) => void }) {
   const m = useT();
-  const { device, y, selected, flagged, onSelect, onKey, isStatic, pulse, state, stateOf, dragSource, onDragStart } = props;
+  const { device, y, selected, selectedId, flagged, onSelect, onKey, isStatic, pulse, state, stateOf, dragSource, onDragStart } = props;
+  // A selected node lights its slot, and its chassis is outlined so the rack shows where it is.
+  const holdsSelected = device.kind === 'chassis' && device.nodes.some((n) => n.id === selectedId);
   const h = device.heightU * useContext(UnitContext);
   const textY = y + Math.min(h, 32) / 2 + 4;
-  const classes = ['dev', `dev--${categoryOf(device)}`, selected ? 'is-selected' : '', flagged ? 'is-flagged' : ''].filter(Boolean).join(' ');
+  const classes = ['dev', `dev--${categoryOf(device)}`, selected ? 'is-selected' : '', holdsSelected ? 'holds-selected' : '', flagged ? 'is-flagged' : ''].filter(Boolean).join(' ');
   return (
     <g
       className={`${classes} dev--state-${state}${pulse ? ' is-search-pulse' : ''}${dragSource ? ' is-drag-source' : ''}${onDragStart ? ' is-draggable' : ''}`}
@@ -123,7 +125,7 @@ function DeviceBlock(props: { device: RackDevice; y: number; selected: boolean; 
         {fitText(device.name, (device.kind === 'chassis' ? CHASSIS_NAME_PX : DEVICE_NAME_PX) - (NAME_X - 12))}
       </text>
       {device.kind === 'chassis' ? (
-        <ChassisSlots chassis={device} y={y} onSelect={isStatic ? null : onSelect} stateOf={stateOf} />
+        <ChassisSlots chassis={device} y={y} onSelect={isStatic ? null : onSelect} stateOf={stateOf} selectedId={isStatic ? null : selectedId} />
       ) : (
         <text x={RACK_W - 12} y={textY} textAnchor="end" className="dev__w">
           {formatDemand(device.demand)}
@@ -291,7 +293,7 @@ export function RackElevation({ rack, active, selectedId, flagged, onSelect, onA
             <ReservedBlock key={r.id} range={r} y={yTop(topU(r))} patternId={patternId} selected={r.id === selectedId} onSelect={onSelect} onKey={keySelect(r.id)} isStatic={isStatic} pulse={r.id === pulseId} />
           ))}
           {rack.devices.map((d) => (
-            <DeviceBlock key={d.id} device={d} y={yTop(topU(d))} selected={d.id === selectedId} flagged={flagged.has(d.id)} onSelect={onSelect} onKey={keySelect(d.id)} isStatic={isStatic} pulse={d.id === pulseId || (d.kind === 'chassis' && d.nodes.some((n) => n.id === pulseId))} state={stateOf(d.id)} stateOf={stateOf} dragSource={dragPreview?.deviceId === d.id} onDragStart={!isStatic && onDeviceDragStart ? (e) => onDeviceDragStart(e, d.id, d.bottomU) : undefined} />
+            <DeviceBlock key={d.id} device={d} y={yTop(topU(d))} selected={d.id === selectedId} selectedId={selectedId} flagged={flagged.has(d.id)} onSelect={onSelect} onKey={keySelect(d.id)} isStatic={isStatic} pulse={d.id === pulseId || (d.kind === 'chassis' && d.nodes.some((n) => n.id === pulseId))} state={stateOf(d.id)} stateOf={stateOf} dragSource={dragPreview?.deviceId === d.id} onDragStart={!isStatic && onDeviceDragStart ? (e) => onDeviceDragStart(e, d.id, d.bottomU) : undefined} />
           ))}
           {dragPreview && dragPreview.rackId === rack.id ? <DropGhost preview={dragPreview} y={yTop(dragPreview.bottomU + dragPreview.heightU - 1)} /> : null}
         </g>

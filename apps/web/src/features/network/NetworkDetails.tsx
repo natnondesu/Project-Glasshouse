@@ -1,11 +1,13 @@
-import { describeEnd, effectiveVlan, findNode, findRackDevice, linkAt, otherEnd, portsOf, vlanLabel, type Id, type PlanContent } from '@glasshouse/domain';
+import { type EquipmentState, describeEnd, effectiveVlan, findNode, findRackDevice, linkAt, otherEnd, portsOf, vlanLabel, type Id, type PlanContent } from '@glasshouse/domain';
 import { Link } from 'react-router';
 import { useT } from '../../i18n';
+import { StateIcon } from '../../ui/StateIcon';
 import type { TopoSelection } from './TopologyDiagram';
 import type { Topology } from './topology';
 
 interface NetworkDetailsProps {
   content: PlanContent;
+  stateOf: (id: Id) => EquipmentState;
   roomId: Id;
   topology: Topology;
   selection: TopoSelection;
@@ -13,7 +15,7 @@ interface NetworkDetailsProps {
 }
 
 /** What's selected in the diagram: a device's ports and where they go, or the cables on one line. */
-export function NetworkDetails({ content, roomId, topology, selection, onManagePorts }: NetworkDetailsProps) {
+export function NetworkDetails({ content, stateOf, roomId, topology, selection, onManagePorts }: NetworkDetailsProps) {
   const m = useT();
   if (!selection) return <p className="net-details__hint">{m.topology.pick}</p>;
   if (selection.kind === 'node') {
@@ -46,7 +48,15 @@ export function NetworkDetails({ content, roomId, topology, selection, onManageP
                   <td className={`mono net-details__vlan${vlan?.from ? ' is-inherited' : ''}`} title={vlan?.from ? m.vlans.fromFar(vlan.from.device, vlan.from.port) : undefined}>
                     {vlan ? vlanLabel(vlan.vlan) : ''}
                   </td>
-                  <td>{far ? m.topology.to(describeEnd(content, far).device, far.port) : <span className="net-details__none">{m.topology.notCabled}</span>}</td>
+                  <td>
+                    {far ? m.topology.to(describeEnd(content, far).device, far.port) : <span className="net-details__none">{m.topology.notCabled}</span>}
+                    {far && stateOf(far.deviceId) === 'maintenance' ? (
+                      <span className="net-details__maint">
+                        <StateIcon state="maintenance" />
+                        {m.equipment.state.maintenance}
+                      </span>
+                    ) : null}
+                  </td>
                 </tr>
               );
             })}

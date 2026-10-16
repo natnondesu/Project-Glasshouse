@@ -64,3 +64,12 @@ it('selects devices and nodes, and activates the rack from its caption', async (
   expect(onActivate).toHaveBeenCalled();
   expect(screen.getByRole('button', { name: 'SRV-01, U20–U21' })).toHaveClass('is-selected', 'is-flagged');
 });
+
+it('lights the selected node’s slot and outlines its chassis, so the selection is visible in the rack', () => {
+  const { container } = render(<RackElevation rack={rack} active selectedId="n2" flagged={new Set()} onSelect={() => {}} onActivate={() => {}} onDropTemplate={() => {}} />);
+  const cell = container.querySelector('[data-elev-id="n2"] .slot-cell');
+  expect(cell).toHaveClass('is-selected');
+  expect(container.querySelector('[data-elev-id="ch"]')).toHaveClass('holds-selected');
+  expect(container.querySelector('[data-elev-id="ch"]')).not.toHaveClass('is-selected');
+  expect(container.querySelectorAll('.slot-cell.is-selected')).toHaveLength(1);
+});

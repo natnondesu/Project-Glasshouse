@@ -1,7 +1,8 @@
-import { vlanLabel, describeEnd, effectiveVlan, findNode, findRackDevice, linkAt, nextPortName, otherEnd, PORT_MEDIA_LABEL, portsOf, type Id, type PlanContent, type Port } from '@glasshouse/domain';
+import { type EquipmentState, vlanLabel, describeEnd, effectiveVlan, findNode, findRackDevice, linkAt, nextPortName, otherEnd, PORT_MEDIA_LABEL, portsOf, type Id, type PlanContent, type Port } from '@glasshouse/domain';
 import { useState } from 'react';
 import type { CommitFn } from '../../store/hooks';
 import { IconPlus } from '../../ui/icons';
+import { StateIcon } from '../../ui/StateIcon';
 import { useFloatingPanel } from '../../ui/useFloatingPanel';
 import { PortDetail } from './PortDetail';
 import './ports.css';
@@ -12,6 +13,8 @@ const PANEL_BOTTOM_GAP_PX = 12;
 
 interface PortManagerProps {
   content: PlanContent;
+  /** On-site state, so ports cabled to gear in maintenance say so. */
+  stateOf: (id: Id) => EquipmentState;
   roomId: Id;
   deviceId: Id;
   commit: CommitFn;
@@ -19,12 +22,13 @@ interface PortManagerProps {
   onClose: () => void;
 }
 
-export function portLabel(m: Messages, content: PlanContent, deviceId: Id, port: Port): string {
+export function portLabel(m: Messages, content: PlanContent, deviceId: Id, port: Port, stateOf?: (id: Id) => EquipmentState): string {
   const ref = { deviceId, port: port.name };
   const link = linkAt(content, ref);
   if (!link) return m.ports.portFree(port.name);
   const far = otherEnd(link, ref);
-  return m.ports.portLinked(port.name, describeEnd(content, far).device, far.port);
+  const label = m.ports.portLinked(port.name, describeEnd(content, far).device, far.port);
+  return stateOf?.(far.deviceId) === 'maintenance' ? `${label}, ${m.ports.farInMaintenance}` : label;
 }
 
 interface Bank {
@@ -50,7 +54,7 @@ function banksOf(ports: Port[]): Bank[] {
 }
 
 /** Floating port map for one device: a faceplate of its ports, and the selected port's link. */
-export function PortManager({ content, roomId, deviceId, commit, readOnly, onClose }: PortManagerProps) {
+export function PortManager({ content, stateOf, roomId, deviceId, commit, readOnly, onClose }: PortManagerProps) {
   const m = useT();
   const name = findRackDevice(content, deviceId)?.device.name ?? findNode(content, deviceId)?.node.name ?? m.search.device;
   const ports = portsOf(content, deviceId);
@@ -79,6 +83,12 @@ export function PortManager({ content, roomId, deviceId, commit, readOnly, onClo
         <h2>
           <span className="mono">{m.ports.title(name)}</span>
         </h2>
+        {stateOf(deviceId) === 'maintenance' ? (
+          <span className="port-mgr__maint">
+            <StateIcon state="maintenance" />
+            {m.equipment.state.maintenance}
+          </span>
+        ) : null}
         <span className="port-mgr__count mono">{m.ports.summary(ports.length, linked)}</span>
         <button type="button" className="icon-btn icon-btn--sm" aria-label={m.ports.close(name)} onClick={onClose}>
           ×
@@ -112,21 +122,25 @@ export function PortManager({ content, roomId, deviceId, commit, readOnly, onClo
               {bank.prefix ? <span className="port-mgr__bank-label mono">{bank.prefix}</span> : null}
               <div className="port-mgr__jacks">
                 {bank.ports.map(({ port: p, short }) => {
-                  const label = portLabel(m, content, deviceId, p);
-                  const isLinked = Boolean(linkAt(content, { deviceId, port: p.name }));
+                  const label = portLabel(m, content, deviceId, p, stateOf);
+                  const link = linkAt(content, { deviceId, port: p.name });
+                  const isLinked = Boolean(link);
+                  const farMaint = link ? stateOf(otherEnd(link, { deviceId, port: p.name }).deviceId) === 'maintenance' : false;
                   const vlan = effectiveVlan(content, { deviceId, port: p.name });
                   const vlanNote = vlan ? ` · ${vlanLabel(vlan.vlan)}${vlan.from ? ` ${m.vlans.fromFar(vlan.from.device, vlan.from.port)}` : ''}` : '';
                   return (
                     <button
                       key={p.name}
                       type="button"
-                      className={`port port--${p.media}${isLinked ? ' is-linked' : ''}`}
+                      className={`port port--${p.media}${isLinked ? ' is-linked' : ''}${farMaint ? ' is-far-maint' : ''}`}
                       aria-pressed={p.name === selected}
                       aria-label={label}
                       title={`${label} · ${PORT_MEDIA_LABEL[p.media]} ${p.speed}${p.lag ? ` · ${p.lag}` : ''}${vlanNote}`}
                       onClick={() => setSelected(p.name)}
                     >
-                      <span className="port__jack" aria-hidden="true" />
+                      <span className="port__jack" aria-hidden="true">
+                        {farMaint ? <StateIcon state="maintenance" className="port__maint" /> : null}
+                      </span>
                       <span className="port__name mono">{short}</span>
                       {vlan ? <span className={`port__vlan mono${vlan.from ? ' is-inherited' : ''}`}>{vlan.vlan.mode === 'access' ? vlan.vlan.vid : m.vlans.tagTrunk}</span> : null}
                     </button>
@@ -137,7 +151,7 @@ export function PortManager({ content, roomId, deviceId, commit, readOnly, onClo
           ))}
         </div>
       )}
-      {current ? <PortDetail key={ports.indexOf(current)} content={content} roomId={roomId} deviceId={deviceId} port={current} commit={commit} readOnly={readOnly} onRenamed={setSelected} onRemoved={() => setSelected(null)} /> : null}
+      {current ? <PortDetail key={ports.indexOf(current)} content={content} stateOf={stateOf} roomId={roomId} deviceId={deviceId} port={current} commit={commit} readOnly={readOnly} onRenamed={setSelected} onRemoved={() => setSelected(null)} /> : null}
     </section>
   );
 }

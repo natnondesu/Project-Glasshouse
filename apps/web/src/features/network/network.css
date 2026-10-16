@@ -255,6 +255,39 @@
   fill: var(--acc-deep);
 }
 
+/* In maintenance: burnt-orange box, a labelled tab, and its cables in the same colour. */
+.topo-node.is-maint .topo-node__body {
+  stroke: var(--maint);
+  stroke-width: 2.5;
+}
+
+.topo-node.is-maint .topo-node__stripe {
+  fill: var(--maint);
+}
+
+.topo-node.is-maint .topo-node__state {
+  color: var(--maint);
+}
+
+.topo-node__maint rect {
+  fill: var(--maint);
+}
+
+.topo-node__maint .state-icon {
+  color: #fff;
+}
+
+.topo-node__maint text {
+  font-family: var(--font-ui);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  fill: #fff;
+}
+
+.topo-edge.is-maint .topo-edge__line {
+  stroke: var(--maint);
+}
+
 .topo-node__state {
   color: var(--ink-2);
 }
@@ -377,6 +410,15 @@
   color: var(--ink-2);
   text-decoration: underline dashed;
   text-underline-offset: 2px;
+}
+
+.net-details__maint {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 2px;
+  font-weight: 600;
+  color: var(--maint);
 }
 
 .net-details__none {

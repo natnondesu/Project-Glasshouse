@@ -166,3 +166,16 @@ it('finds the far device by typing any part of its name or rack, and says how ma
   expect(within(mgr).getByRole('status')).toHaveTextContent('No device matches “nothing like it”.');
   expect(within(mgr).getByLabelText('Link to port')).toBeDisabled();
 });
+
+it('says on the jack and the link when the device at the other end is in maintenance', async () => {
+  const user = userEvent.setup();
+  const s = useWorkspaceStore.getState();
+  s.dispatch({ type: 'plan', roomId: 'r', command: { type: 'link/add', link: { id: 'l1', a: { deviceId: 'srv', port: 'eth0' }, b: { deviceId: 'sw', port: 'Gi1' }, label: '', cable: null } } });
+  s.dispatch({ type: 'equipment/state', roomId: 'r', ids: ['sw'], state: 'maintenance' });
+  open('srv');
+  await user.click(screen.getByRole('button', { name: 'Manage ports' }));
+  const mgr = screen.getByRole('dialog', { name: 'SRV-01 ports' });
+  const jack = within(mgr).getByRole('button', { name: 'Port eth0, linked to SW-01 Gi1, the far end is in maintenance' });
+  await user.click(jack);
+  expect(within(mgr).getByText(/Linked to/).closest('p')).toHaveTextContent('In maintenance');
+});

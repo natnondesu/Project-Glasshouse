@@ -70,6 +70,7 @@ function badgeAt(a: TopoNode, b: TopoNode, tree: boolean): [number, number] {
 export function TopologyDiagram({ content, topology, vid = null, scale = 1, selection = null, onSelect, stateOf, isStatic = false }: TopologyDiagramProps) {
   const m = useT();
   const byId = new Map(topology.nodes.map((n) => [n.id, n]));
+  const inMaint = (id: Id): boolean => stateOf?.(id) === 'maintenance';
   const act = (s: TopoSelection) => (isStatic || !onSelect ? {} : { role: 'button', tabIndex: 0, onClick: () => onSelect(s), onKeyDown: (e: KeyboardEvent) => (e.key === 'Enter' || e.key === ' ') && (e.preventDefault(), onSelect(s)) });
   // A selected device pulls its own cables and neighbours forward; everything else steps back.
   const focusId = selection?.kind === 'node' && !isStatic ? selection.id : null;
@@ -105,7 +106,7 @@ export function TopologyDiagram({ content, topology, vid = null, scale = 1, sele
         return (
           <g
             key={e.key}
-            className={`topo-edge${e.fibre ? ' is-fibre' : ''}${dimEdge(e) ? ' is-dim' : ''}${selected ? ' is-selected' : ''}${touches(e) ? ' is-focus' : ''}`}
+            className={`topo-edge${e.fibre ? ' is-fibre' : ''}${inMaint(e.a) || inMaint(e.b) ? ' is-maint' : ''}${dimEdge(e) ? ' is-dim' : ''}${selected ? ' is-selected' : ''}${touches(e) ? ' is-focus' : ''}`}
             aria-label={isStatic ? undefined : m.topology.edgeLabel(a.name, b.name, e.links.length)}
             aria-pressed={isStatic ? undefined : selected}
             {...act({ kind: 'edge', key: e.key })}
@@ -125,15 +126,16 @@ export function TopologyDiagram({ content, topology, vid = null, scale = 1, sele
         return (
           <g
             key={n.id}
-            className={`topo-node topo-node--${n.category}${n.leaf ? ' is-leaf' : ''}${dimNode(n) ? ' is-dim' : ''}${selected ? ' is-selected' : ''}${focusId && n.id !== focusId && neighbours.has(n.id) ? ' is-neighbour' : ''}`}
+            className={`topo-node topo-node--${n.category}${state === 'maintenance' ? ' is-maint' : ''}${n.leaf ? ' is-leaf' : ''}${dimNode(n) ? ' is-dim' : ''}${selected ? ' is-selected' : ''}${focusId && n.id !== focusId && neighbours.has(n.id) ? ' is-neighbour' : ''}`}
             data-topo-id={n.id}
-            aria-label={isStatic ? undefined : m.topology.deviceLabel(n.name, n.where)}
+            aria-label={isStatic ? undefined : `${m.topology.deviceLabel(n.name, n.where)}${state === 'maintenance' ? `, ${m.equipment.state.maintenance}` : ''}`}
             aria-pressed={isStatic ? undefined : selected}
             {...act({ kind: 'node', id: n.id })}
           >
             <rect className="topo-node__body" x={n.x} y={n.y} width={n.w} height={n.h} rx={8} />
             <rect className="topo-node__stripe" x={n.x} y={n.y} width={5} height={n.h} rx={2} />
             <StateGlyph state={state} cx={n.x + 16} cy={n.y + 17} className="topo-node__state" />
+            {state === 'maintenance' ? <MaintTab x={n.x + n.w} y={n.y} text={m.equipment.state.maintenance} /> : null}
             <text className="topo-node__name" x={n.x + 26} y={n.y + NAME_BASELINE}>
               {n.nameLines.map((line, i) => (
                 <tspan key={i} x={n.x + 26} dy={i === 0 ? 0 : LINE_STEP}>
@@ -160,6 +162,22 @@ export function TopologyDiagram({ content, topology, vid = null, scale = 1, sele
         <PortTagLabel key={t.key} tag={t} />
       ))}
     </svg>
+  );
+}
+
+const MAINT_CHAR_PX = 7.2;
+
+/** A tab on the box's top edge, right-aligned: gear in maintenance reads from across the diagram. */
+function MaintTab({ x, y, text }: { x: number; y: number; text: string }) {
+  const w = text.length * MAINT_CHAR_PX + 26;
+  return (
+    <g className="topo-node__maint" aria-hidden="true">
+      <rect x={x - w - 8} y={y - 10} width={w} height={20} rx={10} />
+      <StateGlyph state="maintenance" cx={x - w + 4} cy={y} />
+      <text x={x - w + 14} y={y + 4.5}>
+        {text}
+      </text>
+    </g>
   );
 }
 

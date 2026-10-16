@@ -387,3 +387,30 @@
 .device-pick__option[aria-selected='true'] .device-pick__free {
   color: rgb(255 255 255 / 0.8);
 }
+
+/* Equipment in maintenance: burnt orange with the triangle, never colour alone. */
+.port-mgr__maint {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 7px;
+  border: 1px solid var(--maint);
+  border-radius: 999px;
+  font-size: var(--text-2xs);
+  font-weight: 600;
+  color: var(--maint);
+  white-space: nowrap;
+}
+
+.port.is-far-maint .port__jack {
+  display: grid;
+  place-items: center;
+  outline: 2px solid #ff9a4d;
+  outline-offset: 1px;
+}
+
+.port__maint {
+  width: 10px;
+  height: 10px;
+  color: #ffb27a;
+}

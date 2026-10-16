@@ -558,6 +558,7 @@ export const th: Messages = {
     fibre: 'ช่องไฟเบอร์',
     empty: 'ยังไม่มีพอร์ต เพิ่มพอร์ต หรือคืนค่าตามเทมเพลต',
     face: 'พอร์ต',
+    farInMaintenance: 'ปลายสายอีกด้านอยู่ระหว่างซ่อมบำรุง',
     portFree: (port) => `พอร์ต ${port}, ว่าง`,
     portLinked: (port, device, far) => `พอร์ต ${port}, ต่อกับ ${device} ${far}`,
     portLegend: (port) => `พอร์ต ${port}`,

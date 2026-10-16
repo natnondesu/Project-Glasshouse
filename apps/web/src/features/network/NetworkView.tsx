@@ -123,7 +123,7 @@ export function NetworkView({ location, readOnly }: { location: RoomLocation; re
       <PanelCollapseTab label={m.panels.inspector} side="right" className="network__tab" onCollapse={() => setSideOpen(false)} />
       <aside className="network__side">
         <section className="net-panel glass">
-          <NetworkDetails content={content} roomId={roomId} topology={topology} selection={selection} onManagePorts={setPortsFor} />
+          <NetworkDetails content={content} stateOf={(id) => equipmentStateOf(location.room.plan, id)} roomId={roomId} topology={topology} selection={selection} onManagePorts={setPortsFor} />
           {topology.unlinked.length > 0 ? (
             <details className="net-unlinked">
               <summary>{m.topology.unlinked(topology.unlinked.length)}</summary>
@@ -147,7 +147,7 @@ export function NetworkView({ location, readOnly }: { location: RoomLocation; re
         <PanelRail label={m.panels.inspector} side="right" className="network__rail" onExpand={() => setSideOpen(true)} />
       )}
       {portsFor && (findRackDevice(content, portsFor) || findNode(content, portsFor)) ? (
-        <PortManager key={portsFor} content={content} roomId={roomId} deviceId={portsFor} commit={commit} readOnly={readOnly} onClose={() => setPortsFor(null)} />
+        <PortManager key={portsFor} content={content} stateOf={(id) => equipmentStateOf(location.room.plan, id)} roomId={roomId} deviceId={portsFor} commit={commit} readOnly={readOnly} onClose={() => setPortsFor(null)} />
       ) : null}
     </div>
   );

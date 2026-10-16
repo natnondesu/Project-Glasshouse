@@ -563,6 +563,7 @@ export const en = {
     fibre: 'Fibre cage',
     empty: 'No ports yet. Add one, or reset to the template’s ports.',
     face: 'Ports',
+    farInMaintenance: 'the far end is in maintenance',
     portFree: (port: string) => `Port ${port}, free`,
     portLinked: (port: string, device: string, far: string) => `Port ${port}, linked to ${device} ${far}`,
     portLegend: (port: string) => `Port ${port}`,

@@ -159,6 +159,24 @@
   stroke: var(--warn);
 }
 
+.slot-cell.is-selected {
+  fill: var(--acc);
+  fill-opacity: 1;
+  stroke: var(--ink);
+  stroke-width: 2.5;
+  stroke-dasharray: none;
+}
+
+.slot-cell__n.is-selected {
+  fill: #fff;
+}
+
+.dev.holds-selected .dev__body {
+  stroke: var(--acc);
+  stroke-width: 1.5;
+  stroke-dasharray: 4 3;
+}
+
 .slot-cell__n {
   font-family: var(--font-mono);
   font-size: var(--text-2xs);
