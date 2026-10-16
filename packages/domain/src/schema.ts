@@ -27,7 +27,19 @@ export const templateSchema = z.object({
   slotCount: int.positive().nullable(),
   slotsPerRow: int.positive().nullable(),
   illustrative: z.boolean(),
-  ports: z.array(z.object({ count: int, prefix: z.string(), start: int, media: z.enum(['rj45', 'sfp', 'sfp_plus', 'qsfp']), speed: z.string() })).optional(),
+  ports: z
+    .array(
+      z.object({
+        count: int,
+        prefix: z.string(),
+        start: int,
+        media: z.enum(['rj45', 'sfp', 'sfp_plus', 'qsfp']),
+        speed: z.string(),
+        rows: z.union([z.literal(1), z.literal(2)]).optional(),
+        order: z.enum(['odd_top', 'linear']).optional(),
+      }),
+    )
+    .optional(),
 });
 const rect = z.object({ id, x: num, y: num, w: num, d: num, kind: z.enum(['void', 'solid']).optional() });
 const survey = z.object({

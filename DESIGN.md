@@ -78,7 +78,15 @@ Colour never works alone. Blocking issues use a solid circle icon, warnings a da
 - Labels are sprites at a fixed screen size; the Labels menu picks which kinds are always labelled, the rest label on hover.
 - A highlighted power path glows and carries arrowheads moving from source to load (still under reduced motion); everything else on the power layer fades.
 
+## Catalog
+
+- Its own page: the template list (each with its port mix) beside a wide editor whose top is the template's front panel, drawn as placed devices will show it and redrawn as you edit.
+- Each port group sets its layout: one row, or two rows with odd numbers on top (how most switches number) or left to right. Groups draw as labelled blocks; jacks come in modules of six columns that wrap to fit.
+- Duplicate starts a variant from a template; the editor says how many placed devices use it (they keep the version they were placed from).
+
 ## Port panel
+
+- The faceplate follows the template's layout (the catalog's current version, matched by port name, so a layout set later reaches placed gear). A port removed on a device leaves its place empty; ports a device gained sit in blocks of their own.
 
 - Stays inside the screen wherever it's dragged; below the faceplate it scrolls (a div: a fieldset won't scroll), with edge shadows while there's more. A grip in the header and a "Drag to move" tip say it moves; the panel manager works the same way.
 - Link to device is a type-to-filter list (any words of the device or rack name), each option with its rack and free-port count.

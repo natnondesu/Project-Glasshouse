@@ -23,6 +23,8 @@ export function validatePortGroups(groups: PortGroup[]): string | null {
     if (!Number.isInteger(g.start) || g.start < 0) return 'Port numbers start at 0 or more.';
     if (g.prefix.length > PREFIX_MAX) return `Port name prefixes are up to ${PREFIX_MAX} characters.`;
     if (!PORT_MEDIA.includes(g.media)) return 'Unknown port type.';
+    if (g.rows !== undefined && g.rows !== 1 && g.rows !== 2) return 'A port group has one or two rows.';
+    if (g.order !== undefined && g.order !== 'odd_top' && g.order !== 'linear') return 'Unknown port numbering.';
   }
   const ports = expandPorts(groups);
   if (ports.length > MAX_PORTS) return `A device has at most ${MAX_PORTS} ports.`;

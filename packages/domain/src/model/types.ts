@@ -40,6 +40,10 @@ export interface PortGroup {
   start: number;
   media: PortMedia;
   speed: string;
+  /** Front panel: one row (default) or two, like a 48-port switch's double row of jacks. */
+  rows?: 1 | 2;
+  /** Two rows only: odd numbers on top and even below (default, how most switches number), or left to right along the top then the bottom. */
+  order?: 'odd_top' | 'linear';
 }
 
 /** A device's own port. Names are unique per device and are how links refer to it. */

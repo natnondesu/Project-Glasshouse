@@ -23,7 +23,7 @@ export function PortGroupsField({ id, groups, onChange }: { id: string; groups: 
   const patch = (i: number, p: Partial<PortGroup>): void => onChange(groups.map((g, j) => (j === i ? { ...g, ...p } : g)));
   const int = (v: string): number => (v.trim() === '' ? 0 : Math.trunc(Number(v)));
   return (
-    <fieldset className="inspector__group" aria-label={m.ports.groups}>
+    <fieldset className="inspector__group port-groups-field" aria-label={m.ports.groups}>
       <legend className="lbl">{m.ports.groups}</legend>
       {groups.length === 0 ? <p className="inspector__note">{m.ports.groupsEmpty}</p> : null}
       <ol className="port-groups">
@@ -54,6 +54,20 @@ export function PortGroupsField({ id, groups, onChange }: { id: string; groups: 
             </select>
             <input className="field__input mono" aria-label={m.ports.groupPrefix(i + 1)} placeholder={m.ports.prefix} value={g.prefix} onChange={(e) => patch(i, { prefix: e.target.value })} />
             <input className="field__input mono" aria-label={m.ports.groupStart(i + 1)} inputMode="numeric" value={String(g.start)} onChange={(e) => patch(i, { start: int(e.target.value) })} />
+            <select
+              className="field__input"
+              aria-label={m.ports.groupRows(i + 1)}
+              value={g.rows === 2 ? `2-${g.order ?? 'odd_top'}` : '1'}
+              onChange={(e) => {
+                const [rows, order] = e.target.value.split('-') as ['1' | '2', PortGroup['order']];
+                const { rows: _r, order: _o, ...rest } = g;
+                onChange(groups.map((x, j) => (j === i ? (rows === '2' ? { ...rest, rows: 2, order } : rest) : x)));
+              }}
+            >
+              <option value="1">{m.ports.oneRow}</option>
+              <option value="2-odd_top">{m.ports.twoRowsOdd}</option>
+              <option value="2-linear">{m.ports.twoRowsLinear}</option>
+            </select>
             <button type="button" className="icon-btn icon-btn--sm" aria-label={m.ports.removeGroup(i + 1)} onClick={() => onChange(groups.filter((_, j) => j !== i))}>
               <IconTrash />
             </button>
