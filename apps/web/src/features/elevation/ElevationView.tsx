@@ -54,8 +54,8 @@ function entityNames(content: PlanContent): { id: string; name: string }[] {
 }
 
 const PULSE_MS = 1700;
-/** Vertical space a rack needs besides its units: caption, padding and frame. */
-const RACK_CHROME_PX = 110;
+/** Space a rack needs besides its units: area padding (28), the name-only caption (39) and the drawing's own padding, measured. */
+const RACK_CHROME_PX = 76;
 
 /** Centres an SVG block in the rack scroll area. Firefox ignores scrollIntoView on SVG children, so scroll the area itself. */
 function revealInRacks(el: Element): void {

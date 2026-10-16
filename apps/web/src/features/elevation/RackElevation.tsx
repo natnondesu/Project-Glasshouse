@@ -1,5 +1,5 @@
 import { formatDemand, formatURange, type EquipmentState, rackPower, topU, usedU, type Chassis, type Rack, type RackDevice, type ReservedRange, formatMetres } from '@glasshouse/domain';
-import { createContext, useContext, type DragEvent, type KeyboardEvent, type PointerEvent } from 'react';
+import { createContext, useContext, type DragEvent, type KeyboardEvent, type PointerEvent, useState } from 'react';
 import { TEMPLATE_MIME } from './dnd';
 import { StateGlyph } from '../../ui/StateIcon';
 import { useT } from '../../i18n';
@@ -190,6 +190,7 @@ export function rackHitAt(x: number, y: number): RackHit | null {
 
 export function RackElevation({ rack, active, selectedId, flagged, onSelect, onActivate, onDropTemplate, isStatic = false, pulseId = null, stateOf = PLANNED, dragPreview = null, onDeviceDragStart, uPx = U_PX }: RackElevationProps) {
   const m = useT();
+  const [showFacts, setShowFacts] = useState(false);
   const height = rack.capacityU * uPx;
   const yTop = (top: number): number => PAD + (rack.capacityU - top) * uPx;
   const power = rackPower(rack);
@@ -217,23 +218,48 @@ export function RackElevation({ rack, active, selectedId, flagged, onSelect, onA
     onDropTemplate(templateId, Math.min(rack.capacityU, Math.max(1, u)));
   };
 
+  const facts = (
+    <>
+      <span className="rack-elev__meta">
+        {m.inspector.ownerName[rack.owner]} · <span className="mono">{`${usedU(rack)}/${rack.capacityU}U`}</span> ·{' '}
+        <span className="mono">{`${knownW.toLocaleString('en-US')} W${m.elevation.unknownSuffix(unknown)}`}</span>
+      </span>
+      <span className="rack-elev__depth mono">{m.elevation.usableDepth(rack.usableDepthMm)}</span>
+      {rack.wallBottomM !== undefined ? <span className="rack-elev__depth mono">{m.elevation.wallMounted(formatMetres(rack.wallBottomM))}</span> : null}
+    </>
+  );
+  const factsId = `rack-facts-${rack.id}`;
+
   return (
     <figure className={`rack-elev${active ? ' is-active' : ''}`}>
-      {/* No wider than the drawing: a long line wraps instead of pushing the next rack away. */}
+      {/* On screen only the name, so every rack starts at the same height; the facts show on hover or
+          focus (and in the rack's inspector). Paper keeps them under the name for the installers. */}
       <figcaption className="rack-elev__cap" style={{ maxWidth: LABEL_W * 2 + RACK_W }}>
         {isStatic ? (
-          <span className="rack-elev__name mono">{rack.name}</span>
+          <>
+            <span className="rack-elev__name mono">{rack.name}</span>
+            {facts}
+          </>
         ) : (
-          <button type="button" className="rack-elev__name mono" aria-pressed={active} onClick={onActivate}>
-            {rack.name}
-          </button>
+          <span className="rack-elev__name-wrap" onMouseEnter={() => setShowFacts(true)} onMouseLeave={() => setShowFacts(false)}>
+            <button
+              type="button"
+              className="rack-elev__name mono"
+              aria-pressed={active}
+              aria-describedby={showFacts ? factsId : undefined}
+              onClick={onActivate}
+              onFocus={() => setShowFacts(true)}
+              onBlur={() => setShowFacts(false)}
+            >
+              {rack.name}
+            </button>
+            {showFacts ? (
+              <span className="rack-elev__facts glass" role="tooltip" id={factsId}>
+                {facts}
+              </span>
+            ) : null}
+          </span>
         )}
-        <span className="rack-elev__meta">
-          {m.inspector.ownerName[rack.owner]} · <span className="mono">{`${usedU(rack)}/${rack.capacityU}U`}</span> ·{' '}
-          <span className="mono">{`${knownW.toLocaleString('en-US')} W${m.elevation.unknownSuffix(unknown)}`}</span>
-        </span>
-        <span className="rack-elev__depth mono">{m.elevation.usableDepth(rack.usableDepthMm)}</span>
-        {rack.wallBottomM !== undefined ? <span className="rack-elev__depth mono">{m.elevation.wallMounted(formatMetres(rack.wallBottomM))}</span> : null}
       </figcaption>
       <svg
         className="rack-elev__svg"

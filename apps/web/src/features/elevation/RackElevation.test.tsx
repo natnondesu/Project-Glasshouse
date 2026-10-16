@@ -33,8 +33,22 @@ it('draws devices, the reserved range and U numbers on both rails', () => {
   expect(screen.getByRole('button', { name: 'SRV-01, U20–U21' })).toBeInTheDocument();
   expect(screen.getByRole('button', { name: 'Reserved range U1–U4, Customer core' })).toBeInTheDocument();
   expect(screen.getAllByText('42')).toHaveLength(2);
+});
+
+it('shows only the name above the rack, and the rack facts on hover or focus of the name', async () => {
+  const user = userEvent.setup();
+  render(<RackElevation rack={rack} active selectedId={null} flagged={new Set()} onSelect={() => {}} onActivate={() => {}} onDropTemplate={() => {}} />);
+  expect(screen.queryByText('12/42U')).toBeNull();
+  await user.hover(screen.getByRole('button', { name: rack.name }));
+  expect(screen.getByRole('tooltip')).toHaveTextContent('12/42U');
+  expect(screen.getByRole('tooltip')).toHaveTextContent('470 W + 2 unknown');
+  await user.unhover(screen.getByRole('button', { name: rack.name }));
+  expect(screen.queryByRole('tooltip')).toBeNull();
+});
+
+it('keeps the rack facts under the name on paper', () => {
+  render(<RackElevation rack={rack} active={false} selectedId={null} flagged={new Set()} onSelect={() => {}} onActivate={() => {}} onDropTemplate={() => {}} isStatic />);
   expect(screen.getByText('12/42U')).toBeInTheDocument();
-  expect(screen.getByText('470 W + 2 unknown')).toBeInTheDocument();
 });
 
 it('selects devices and nodes, and activates the rack from its caption', async () => {
