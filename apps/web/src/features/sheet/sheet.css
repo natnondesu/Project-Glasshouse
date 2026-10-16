@@ -62,6 +62,12 @@
   min-height: 0;
 }
 
+/* The BOM's twelve columns need landscape: on portrait a big room's names broke mid-word. */
+.sheet-page--landscape {
+  width: min(297mm, 100%);
+  page: landscape;
+}
+
 .sheet-title {
   display: flex;
   flex-direction: column;
@@ -225,6 +231,11 @@
   margin: 12mm;
 }
 
+@page landscape {
+  size: A4 landscape;
+  margin: 12mm;
+}
+
 @media print {
   html,
   body {
@@ -287,18 +298,49 @@
   border: 1px solid var(--line);
 }
 
+.sheet-topo__note {
+  margin: 2mm 0 0;
+  font-size: var(--text-2xs);
+  color: var(--ink-2);
+}
+
 .sheet-vlans {
   width: auto;
   min-width: 50%;
 }
 
-/* The BOM carries 13 columns: at the 11px floor it still fits A4 portrait; other sheet tables print at 12px. */
+/* The BOM prints at the 11px floor on A4 landscape; other sheet tables print at 12px. */
 /* The BOM has the most columns: a little less padding keeps it inside A4 with a full network. */
 .sheet-table--bom th,
 .sheet-table--bom td {
   padding-inline: 5px;
 }
 
+/* Tighter tracking so one-word headers (POSITION, CONFIGURATION) keep to their column. */
+.sheet-table--bom th {
+  letter-spacing: 0.02em;
+}
+
 .sheet-table--bom {
   font-size: var(--text-2xs);
+}
+
+/* Cable schedule: seven columns, each end one cell (device over its rack), so 70 cables fit A4 portrait. */
+.sheet-cables__end span {
+  display: block;
+}
+
+.sheet-cables__rack {
+  font-size: var(--text-2xs);
+  color: var(--ink-2);
+}
+
+.sheet-table--fixed {
+  table-layout: fixed;
+}
+
+/* In fixed columns even a long unbroken name wraps inside its cell rather than spilling into the next. */
+.sheet-table--fixed th,
+.sheet-table--fixed td {
+  overflow-wrap: anywhere;
 }

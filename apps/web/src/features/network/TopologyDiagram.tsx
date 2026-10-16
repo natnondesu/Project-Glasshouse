@@ -148,6 +148,11 @@ export function TopologyDiagram({ content, topology, vid = null, scale = 1, sele
                 </tspan>
               ))}
             </text>
+            {n.leafCount > 0 ? (
+              <text className="topo-node__count" x={n.x + 26} y={n.y + NAME_BASELINE + (n.nameLines.length + n.whereLines.length) * LINE_STEP}>
+                {m.topology.devicesBelow(n.leafCount)}
+              </text>
+            ) : null}
           </g>
         );
       })}

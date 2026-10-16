@@ -59,7 +59,7 @@ describe('buildTopology', () => {
     const rows = new Set(t.nodes.filter((x) => x.leaf).map((x) => x.leafRow));
     expect([...rows].sort()).toEqual([0, 1]);
     expect(t.nodes.filter((x) => x.leafRow === 1)).toHaveLength(2);
-    expect(fitTopology(content, 700).width).toBeLessThanOrEqual(700);
+    expect(fitTopology(content, 700)!.width).toBeLessThanOrEqual(700);
   });
 });
 
@@ -113,4 +113,14 @@ it('counts a server cable as carrying its switch port’s VLAN when the server e
   const t = buildTopology(content);
   expect(t.edges[0]!.vids).toEqual([451]);
   expect(nodeCarries(content, 's1', 451)).toBe(true);
+});
+
+it('for paper, folds single-cable devices into a count on their switch and keeps the gear and its cables', () => {
+  const servers = Array.from({ length: 12 }, (_, i) => `s${i}`);
+  const content = build([rack, dev('core', 42, tpl('network', 24)), dev('acc', 40, tpl('network', 24)), link('acc', 'p24', 'core', 'p1'), ...servers.map((id, i) => dev(id, 1 + i * 2, tpl('server', 2))), ...servers.map((id, i) => link(id, 'p1', 'acc', `p${i + 1}`))]);
+  const t = buildTopology(content, { collapseLeaves: true });
+  expect(t.collapsed).toBe(true);
+  expect(t.nodes.map((n) => [n.name, n.leafCount]).sort()).toEqual([['SW-01', 0], ['SW-02', 12]]);
+  expect(t.edges).toHaveLength(1);
+  expect(buildTopology(content).nodes).toHaveLength(14);
 });

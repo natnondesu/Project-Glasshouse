@@ -7,7 +7,14 @@ import { vlanUsage } from '../network/vlanUsage';
 // The sheet prints the approved design on A4: on-site state is live (it's on the elevations) and the
 // title block already names the project, site and room. Height is in Position (U1–U4), so it isn't repeated.
 const SHEET_COLUMNS = BOM_COLUMNS.filter((c) => !['project', 'site', 'room', 'kind', 'state', 'heightU'].includes(c.key));
-const SHORT = new Set<string>(['rack', 'chassis', 'slot', 'name', 'position', 'heightU', 'depthMm', 'demandW']);
+// Figures and U ranges stay on one line; names and racks may wrap at their hyphens so a big room still fits the page.
+const SHORT = new Set<string>(['slot', 'position', 'heightU', 'depthMm', 'demandW']);
+/**
+ * Fixed column shares (percent of the page): auto widths let one long cell (a trunk list, a LAG port)
+ * widen its column for every row and push the table off A4.
+ */
+const BOM_WIDTHS: Partial<Record<string, number>> = { rack: 10, chassis: 10, slot: 4, name: 13, model: 13, category: 8, position: 7, depthMm: 5, demandW: 6, ports: 8, config: 11, notes: 5 };
+const CABLE_WIDTHS = [12, 23, 12, 23, 11, 8, 11];
 
 /**
  * Long tables carry the title block in <thead>: browsers repeat <thead> on every printed page,
@@ -71,7 +78,12 @@ export function BomTable({ rows, revision, titleBlock }: { rows: BomRow[]; revis
   const m = useT();
   const acks = acknowledged(revision);
   return (
-    <table className="sheet-table sheet-table--bom" aria-label={m.sheet.bom}>
+    <table className="sheet-table sheet-table--bom sheet-table--fixed" aria-label={m.sheet.bom}>
+      <colgroup>
+        {SHEET_COLUMNS.map((c) => (
+          <col key={c.key} style={{ width: `${BOM_WIDTHS[c.key] ?? 100 / SHEET_COLUMNS.length}%` }} />
+        ))}
+      </colgroup>
       <TitleHead span={SHEET_COLUMNS.length} titleBlock={titleBlock}>
         <tr>
           {SHEET_COLUMNS.map((c) => (
@@ -109,8 +121,8 @@ export function BomTable({ rows, revision, titleBlock }: { rows: BomRow[]; revis
             .sort((a, b) => a.rack.localeCompare(b.rack) || a.f.label.localeCompare(b.f.label))
             .map(({ f, rack, panel }) => (
               <tr key={f.id}>
-                <td className="is-short">{rack}</td>
-                <td className="is-short">{f.label}</td>
+                <td>{rack}</td>
+                <td>{f.label}</td>
                 <td colSpan={SHEET_COLUMNS.length - 2}>{panel}</td>
               </tr>
             ))}
@@ -141,15 +153,18 @@ export function BomTable({ rows, revision, titleBlock }: { rows: BomRow[]; revis
 export function CableScheduleTable({ rows, titleBlock }: { rows: CableRow[]; titleBlock: ReactNode }) {
   const m = useT();
   return (
-    <table className="sheet-table" aria-label={m.sheet.cableSchedule}>
-      <TitleHead span={9} titleBlock={titleBlock}>
+    <table className="sheet-table sheet-cables sheet-table--fixed" aria-label={m.sheet.cableSchedule}>
+      <colgroup>
+        {CABLE_WIDTHS.map((w, i) => (
+          <col key={i} style={{ width: `${w}%` }} />
+        ))}
+      </colgroup>
+      <TitleHead span={7} titleBlock={titleBlock}>
         <tr>
           <th scope="col">{m.sheet.cable.label}</th>
-          <th scope="col">{m.sheet.cable.fromRack}</th>
-          <th scope="col">{m.sheet.cable.fromDevice}</th>
+          <th scope="col">{m.sheet.cable.from}</th>
           <th scope="col">{m.sheet.cable.port}</th>
-          <th scope="col">{m.sheet.cable.toRack}</th>
-          <th scope="col">{m.sheet.cable.toDevice}</th>
+          <th scope="col">{m.sheet.cable.to}</th>
           <th scope="col">{m.sheet.cable.port}</th>
           <th scope="col">{m.sheet.cable.cable}</th>
           <th scope="col">{m.sheet.cable.vlan}</th>
@@ -159,18 +174,26 @@ export function CableScheduleTable({ rows, titleBlock }: { rows: CableRow[]; tit
         {rows.map((r) => (
           <tr key={r.id}>
             <td className="mono is-short">{r.label || <span className="sheet-empty">{m.sheet.unlabelled}</span>}</td>
-            <td className="mono is-short">{r.from.rack}</td>
-            <td className="mono is-short">{r.from.device}</td>
-            <td className="mono is-short">{r.from.port}</td>
-            <td className="mono is-short">{r.to.rack}</td>
-            <td className="mono is-short">{r.to.device}</td>
-            <td className="mono is-short">{r.to.port}</td>
-            <td>{r.cable}</td>
+            <End device={r.from.device} rack={r.from.rack} />
+            <td className="mono">{r.from.port}</td>
+            <End device={r.to.device} rack={r.to.rack} />
+            <td className="mono">{r.to.port}</td>
+            <td className="is-short">{r.cable}</td>
             <td className="mono">{r.vlan}</td>
           </tr>
         ))}
       </tbody>
     </table>
+  );
+}
+
+/** One end of a cable: the device, and the rack to find it in under it. Names wrap at their hyphens rather than widen the page. */
+function End({ device, rack }: { device: string; rack: string }) {
+  return (
+    <td className="sheet-cables__end">
+      <span className="mono">{device}</span>
+      <span className="sheet-cables__rack mono">{rack}</span>
+    </td>
   );
 }
 

@@ -43,6 +43,8 @@ export interface TopoNode {
   /** Wrapped row of a leaf under its parent (0 = first), and the left edge of that leaf block. */
   leafRow: number;
   blockLeft: number;
+  /** With leaves folded away (a big room on paper): how many hung off this device. */
+  leafCount: number;
 }
 
 export interface TopoEdge {
@@ -62,6 +64,8 @@ export interface Topology {
   edges: TopoEdge[];
   width: number;
   height: number;
+  /** Single-cable devices are folded into counts on their switches (print, big rooms). */
+  collapsed: boolean;
   /** Devices with ports but no cables, listed beside the diagram. */
   unlinked: { id: Id; name: string; where: string }[];
 }
@@ -86,11 +90,11 @@ export function wrapLabel(text: string, max: number): string[] {
 }
 
 /** One box size for the whole diagram, so rows stay aligned: fits the longest line, wrapping past the cap. */
-function boxSize(labels: { name: string; where: string }[]): { w: number; h: number; chars: number } {
+function boxSize(labels: { name: string; where: string }[], extraLines = 0): { w: number; h: number; chars: number } {
   const longest = Math.max(0, ...labels.flatMap((l) => [l.name.length, l.where.length]));
   const chars = Math.min(longest, MAX_LINE_CHARS);
   const w = Math.max(NODE_W, Math.ceil(TEXT_LEFT + chars * CHAR_PX + TEXT_RIGHT));
-  const lines = Math.max(2, ...labels.map((l) => wrapLabel(l.name, chars || 1).length + wrapLabel(l.where, chars || 1).length));
+  const lines = Math.max(2, ...labels.map((l) => wrapLabel(l.name, chars || 1).length + wrapLabel(l.where, chars || 1).length)) + extraLines;
   return { w, h: Math.max(NODE_H, FIRST_BASELINE + (lines - 1) * LINE_STEP + BOTTOM_PAD), chars };
 }
 
@@ -124,7 +128,11 @@ const byPlace = (o: Map<Id, Owner>) => (a: Id, b: Id): number => {
 };
 
 /** A diagram of the room's cabling, laid out as a tidy tree per connected group. */
-export function buildTopology(content: PlanContent, { leafCols = DEFAULT_LEAF_COLS }: { leafCols?: number } = {}): Topology {
+/**
+ * `collapseLeaves` draws only the network gear, each box counting the single-cable devices under it:
+ * for paper, where a big room's every server can't fit one page at a readable size.
+ */
+export function buildTopology(content: PlanContent, { leafCols = DEFAULT_LEAF_COLS, collapseLeaves = false }: { leafCols?: number; collapseLeaves?: boolean } = {}): Topology {
   const own = owners(content);
   const order = byPlace(own);
   const neighbours = new Map<Id, Set<Id>>();
@@ -195,7 +203,9 @@ export function buildTopology(content: PlanContent, { leafCols = DEFAULT_LEAF_CO
   // Leaves first under each parent, then the gear below it, each in rack order.
   for (const list of children.values()) list.sort((a, b) => Number(gearSet.has(a)) - Number(gearSet.has(b)) || order(a, b));
 
-  const box = boxSize(linked.map((id) => own.get(id)!));
+  const shown = collapseLeaves ? linked.filter((id) => gearSet.has(id)) : linked;
+  const leafCount = (id: Id): number => (collapseLeaves ? (children.get(id) ?? []).filter((k) => !gearSet.has(k)).length : 0);
+  const box = boxSize(shown.map((id) => own.get(id)!), collapseLeaves && shown.some((id) => leafCount(id) > 0) ? 1 : 0);
   const nodeW = box.w;
   const ROW_H = box.h + ROW_GAP;
   const LEAF_ROW_H = box.h + LEAF_ROW_GAP;
@@ -203,7 +213,7 @@ export function buildTopology(content: PlanContent, { leafCols = DEFAULT_LEAF_CO
   const leafRow = new Map<Id, number>();
   const blockLeft = new Map<Id, number>();
   const place = (id: Id, left: number): number => {
-    const kids = children.get(id) ?? [];
+    const kids = (children.get(id) ?? []).filter((k) => !collapseLeaves || gearSet.has(k));
     if (kids.length === 0) {
       x.set(id, left);
       return nodeW;
@@ -247,12 +257,13 @@ export function buildTopology(content: PlanContent, { leafCols = DEFAULT_LEAF_CO
     row.forEach((id, i) => x.set(id, left + i * (nodeW + PAIR_GAP)));
   }
 
-  const nodes: TopoNode[] = linked.map((id) => {
+  const nodes: TopoNode[] = shown.map((id) => {
     const o = own.get(id)!;
     const row = leafRow.get(id) ?? 0;
-    return { id, name: o.name, where: o.where, category: o.category, x: x.get(id)!, y: MARGIN + depth.get(id)! * ROW_H + row * LEAF_ROW_H, w: box.w, h: box.h, nameLines: wrapLabel(o.name, box.chars || 1), whereLines: wrapLabel(o.where, box.chars || 1), leaf: !gearSet.has(id), leafRow: row, blockLeft: blockLeft.get(id) ?? x.get(id)! };
+    return { id, name: o.name, where: o.where, category: o.category, x: x.get(id)!, y: MARGIN + depth.get(id)! * ROW_H + row * LEAF_ROW_H, w: box.w, h: box.h, nameLines: wrapLabel(o.name, box.chars || 1), whereLines: wrapLabel(o.where, box.chars || 1), leaf: !gearSet.has(id), leafRow: row, blockLeft: blockLeft.get(id) ?? x.get(id)!, leafCount: leafCount(id) };
   });
-  const edges: TopoEdge[] = [...pairs].map(([key, links]) => {
+  const visible = new Set(shown);
+  const edges: TopoEdge[] = [...pairs].filter(([key]) => key.split('|').every((id) => visible.has(id))).map(([key, links]) => {
     const [a, b] = key.split('|') as [Id, Id];
     const fibre = links.some((l) => (l.cable && FIBRE_CABLES.has(l.cable)) || [l.a, l.b].some((r) => describeEnd(content, r).port?.media !== 'rj45'));
     const vids = [...new Set(links.flatMap((l) => {
@@ -269,7 +280,7 @@ export function buildTopology(content: PlanContent, { leafCols = DEFAULT_LEAF_CO
     .map((o) => ({ id: o.id, name: o.name, where: o.where }));
   const width = Math.max(...nodes.map((n) => n.x + n.w), 0) + MARGIN;
   const height = Math.max(...nodes.map((n) => n.y + n.h), 0) + MARGIN;
-  return { nodes, edges, width, height, unlinked };
+  return { nodes, edges, width, height, unlinked, collapsed: collapseLeaves };
 }
 
 /** Is this node (or a cable of this edge) in VLAN `vid`? */
@@ -293,11 +304,11 @@ export function shapedTopology(content: PlanContent, viewW: number, viewH: numbe
   return best!.t;
 }
 
-/** The widest leaf wrapping that still fits `maxWidth`, for print; falls back to one column. */
-export function fitTopology(content: PlanContent, maxWidth: number): Topology {
+/** For print: the widest leaf wrapping that fits `maxWidth` × `maxHeight` at full size, or null. */
+export function fitTopology(content: PlanContent, maxWidth: number, maxHeight = Infinity): Topology | null {
   for (const leafCols of [6, 4, 3, 2]) {
     const t = buildTopology(content, { leafCols });
-    if (t.width <= maxWidth) return t;
+    if (t.width <= maxWidth && t.height <= maxHeight) return t;
   }
-  return buildTopology(content, { leafCols: 1 });
+  return null;
 }

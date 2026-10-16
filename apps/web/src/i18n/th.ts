@@ -647,10 +647,12 @@ export const th: Messages = {
     wayDetail: (way, phase, rating) => ` · ช่อง ${way} (${phase}, ${rating} A)`,
     acknowledged: 'ค่าที่ไม่ทราบซึ่งรับทราบแล้ว',
     ackLine: (reason, by) => `: ${reason} — รับทราบโดย ${by} (ยังไม่ยืนยันตัวตน)`,
-    cable: { label: 'ป้าย', fromRack: 'จากแร็ค', fromDevice: 'จากอุปกรณ์', port: 'พอร์ต', toRack: 'ไปแร็ค', toDevice: 'ไปอุปกรณ์', cable: 'ชนิดสาย', vlan: 'VLAN' },
+    cable: { label: 'ป้าย', from: 'จาก', to: 'ไปที่', port: 'พอร์ต', cable: 'ชนิดสาย', vlan: 'VLAN' },
+    topoCollapsed: 'แสดงเฉพาะอุปกรณ์เครือข่าย: เซิร์ฟเวอร์และอุปกรณ์ที่ต่อสายเส้นเดียวนับรวมไว้ที่สวิตช์ และดูรายการได้ในตารางสาย',
     unlabelled: 'ไม่มีป้าย',
   },
   topology: {
+    devicesBelow: (n) => `+${n} เครื่อง`,
     links: (n) => `${n} เส้น`,
     morePorts: (n) => `+อีก ${n}`,
     region: 'เครือข่าย',

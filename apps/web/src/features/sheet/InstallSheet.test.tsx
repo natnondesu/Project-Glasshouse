@@ -136,7 +136,9 @@ it('prints the cable schedule of the approved server room', () => {
   expect(table.querySelector('thead .sheet-title')).not.toBeNull();
   const row = within(table).getByText('C-001').closest('tr')!;
   // The bonded storage server: both ends name their LAG.
-  expect([...row.querySelectorAll('td')].map((td) => td.textContent)).toEqual(['C-001', 'RK-01', 'SRV-01', 'eth0 (bond0)', 'RK-01', 'ACC-01', 'Gi1/0/1 (Po11)', 'Cat 6', '20']);
+  // Seven columns, each end one cell (device over its rack), so a big room still fits A4 portrait.
+  expect([...table.querySelectorAll('thead tr:last-child th')].map((th) => th.textContent)).toEqual(['Label', 'From', 'Port', 'To', 'Port', 'Cable', 'VLAN']);
+  expect([...row.querySelectorAll('td')].map((td) => [...td.childNodes].map((n) => n.textContent).join(' / '))).toEqual(['C-001', 'SRV-01 / RK-01', 'eth0 (bond0)', 'ACC-01 / RK-01', 'Gi1/0/1 (Po11)', 'Cat 6', '20']);
   expect(within(table).getByText('UPL-11').closest('tr')).toHaveTextContent('Fibre OM4');
   expect(within(table).getByText('UPL-11').closest('tr')).toHaveTextContent('Trunk all · native 99');
 });

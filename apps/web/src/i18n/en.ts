@@ -652,10 +652,12 @@ export const en = {
     wayDetail: (way: number, phase: string, rating: number) => ` · way ${way} (${phase}, ${rating} A)`,
     acknowledged: 'Acknowledged unknowns',
     ackLine: (reason: string, by: string) => `: ${reason} — accepted by ${by} (unverified)`,
-    cable: { label: 'Label', fromRack: 'From rack', fromDevice: 'From device', port: 'Port', toRack: 'To rack', toDevice: 'To device', cable: 'Cable', vlan: 'VLAN' },
+    cable: { label: 'Label', from: 'From', to: 'To', port: 'Port', cable: 'Cable', vlan: 'VLAN' },
+    topoCollapsed: 'Network gear only: servers and other devices on one cable are counted on their switch and listed in the cable schedule.',
     unlabelled: 'unlabelled',
   },
   topology: {
+    devicesBelow: (n: number) => `+${n} ${n === 1 ? 'device' : 'devices'}`,
     links: (n: number) => `${n} links`,
     morePorts: (n: number) => `+${n} more`,
     region: 'Network',

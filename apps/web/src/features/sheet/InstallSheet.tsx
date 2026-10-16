@@ -1,5 +1,5 @@
 import { useDocumentTitle } from '../../ui/useDocumentTitle';
-import { bomRowsFor, cableSchedule, equipmentStateOf, currentRevision, latestApproved, racksOf, type Chassis, type Rack } from '@glasshouse/domain';
+import { bomRowsFor, cableSchedule, equipmentStateOf, currentRevision, latestApproved, racksOf, type Chassis, type PlanContent, type Rack } from '@glasshouse/domain';
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
 import { NotFound } from '../../app/NotFound';
@@ -10,10 +10,27 @@ import { RackElevation } from '../elevation/RackElevation';
 import { SheetPlan } from './SheetPlan';
 import { BomTable, CableScheduleTable, SlotMapsTable, VlanTable } from './SheetTables';
 import { TopologyDiagram } from '../network/TopologyDiagram';
-import { fitTopology } from '../network/topology';
+import { buildTopology, fitTopology, type Topology } from '../network/topology';
 
-/** A4 portrait inside 12 mm margins is ~186 mm ≈ 700 px; wrap leaves so the diagram prints near full size. */
-const SHEET_DIAGRAM_W = 700;
+/**
+ * Room for the diagram on A4 inside 12 mm margins, under the title block, in px. Divided by the
+ * 85% floor: the diagram's 13px labels may shrink that far (to 11px) and no further.
+ */
+const DIAGRAM_FLOOR = 0.85;
+const PORTRAIT = { w: 700 / DIAGRAM_FLOOR, h: 820 / DIAGRAM_FLOOR };
+const LANDSCAPE = { w: 1030 / DIAGRAM_FLOOR, h: 560 / DIAGRAM_FLOOR };
+
+/**
+ * The full diagram on portrait, else on landscape; a room too big for either prints its network
+ * gear with device counts (the cable schedule lists every cable).
+ */
+function sheetTopology(content: PlanContent): { topology: Topology; landscape: boolean } {
+  const portrait = fitTopology(content, PORTRAIT.w, PORTRAIT.h);
+  if (portrait) return { topology: portrait, landscape: false };
+  const wide = fitTopology(content, LANDSCAPE.w, LANDSCAPE.h);
+  const topology = wide ?? buildTopology(content, { collapseLeaves: true });
+  return { topology, landscape: topology.width > PORTRAIT.w };
+}
 import '../network/network.css';
 import { SheetTitleBlock } from './SheetTitleBlock';
 import './sheet.css';
@@ -81,6 +98,7 @@ export function InstallSheet() {
   const racks: Rack[] = [...racksOf(revision.content)].sort((a, b) => a.name.localeCompare(b.name));
   const chassis = racks.flatMap((rack) => rack.devices.filter((d): d is Chassis => d.kind === 'chassis').map((c) => ({ rack, chassis: c })));
   const title = (section: string) => <SheetTitleBlock location={location} revision={revision} printedAt={printedAt} section={section} />;
+  const { topology, landscape } = sheetTopology(revision.content);
 
   return (
     <main className="sheet">
@@ -129,11 +147,12 @@ export function InstallSheet() {
       ) : null}
 
       {revision.content.links.length > 0 || revision.content.vlans.length > 0 ? (
-        <section className="sheet-page">
+        <section className={`sheet-page${landscape ? ' sheet-page--landscape' : ''}`}>
           {title(m.sheet.network)}
           {revision.content.links.length > 0 ? (
             <div className="sheet-topo">
-              <TopologyDiagram content={revision.content} topology={fitTopology(revision.content, SHEET_DIAGRAM_W)} stateOf={(id) => equipmentStateOf(location.room.plan, id)} isStatic />
+              <TopologyDiagram content={revision.content} topology={topology} stateOf={(id) => equipmentStateOf(location.room.plan, id)} isStatic />
+              {topology.collapsed ? <p className="sheet-topo__note">{m.sheet.topoCollapsed}</p> : null}
             </div>
           ) : null}
           {revision.content.vlans.length > 0 ? <VlanTable content={revision.content} /> : null}
@@ -146,7 +165,7 @@ export function InstallSheet() {
         </section>
       ) : null}
 
-      <section className="sheet-page sheet-page--flow">
+      <section className="sheet-page sheet-page--flow sheet-page--landscape">
         <BomTable rows={bomRowsFor(location, revision)} revision={revision} titleBlock={title(m.sheet.bom)} />
       </section>
     </main>

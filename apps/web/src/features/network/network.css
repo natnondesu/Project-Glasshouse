@@ -248,6 +248,13 @@
   fill: var(--ink-2);
 }
 
+.topo-node__count {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  fill: var(--acc-deep);
+}
+
 .topo-node__state {
   color: var(--ink-2);
 }
