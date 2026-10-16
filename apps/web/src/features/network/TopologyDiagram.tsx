@@ -70,6 +70,8 @@ function badgeAt(a: TopoNode, b: TopoNode, tree: boolean): [number, number] {
 export function TopologyDiagram({ content, topology, vid = null, scale = 1, selection = null, onSelect, stateOf, isStatic = false }: TopologyDiagramProps) {
   const m = useT();
   const byId = new Map(topology.nodes.map((n) => [n.id, n]));
+  // An uplink's far device isn't in this room: its box knows its name.
+  const endName = (r: { deviceId: Id; port: string }): string => (describeEnd(content, r).port ? describeEnd(content, r).device : (byId.get(r.deviceId)?.name ?? describeEnd(content, r).device));
   const inMaint = (id: Id): boolean => (byId.get(id)?.memberIds ?? [id]).some((x) => stateOf?.(x) === 'maintenance');
   const act = (s: TopoSelection) => (isStatic || !onSelect ? {} : { role: 'button', tabIndex: 0, onClick: () => onSelect(s), onKeyDown: (e: KeyboardEvent) => (e.key === 'Enter' || e.key === ' ') && (e.preventDefault(), onSelect(s)) });
   // A selected device pulls its own cables and neighbours forward; everything else steps back.
@@ -107,12 +109,12 @@ export function TopologyDiagram({ content, topology, vid = null, scale = 1, sele
         return (
           <g
             key={e.key}
-            className={`topo-edge${e.fibre ? ' is-fibre' : ''}${inMaint(e.a) || inMaint(e.b) ? ' is-maint' : ''}${dimEdge(e) ? ' is-dim' : ''}${selected ? ' is-selected' : ''}${touches(e) ? ' is-focus' : ''}`}
+            className={`topo-edge${e.fibre ? ' is-fibre' : ''}${byId.get(e.a)?.remoteRoomId || byId.get(e.b)?.remoteRoomId ? ' is-uplink' : ''}${inMaint(e.a) || inMaint(e.b) ? ' is-maint' : ''}${dimEdge(e) ? ' is-dim' : ''}${selected ? ' is-selected' : ''}${touches(e) ? ' is-focus' : ''}`}
             aria-label={isStatic ? undefined : m.topology.edgeLabel(a.name, b.name, e.links.length)}
             aria-pressed={isStatic ? undefined : selected}
             {...act({ kind: 'edge', key: e.key })}
           >
-            <title>{e.links.map((l) => `${describeEnd(content, l.a).device} ${l.a.port} ↔ ${describeEnd(content, l.b).device} ${l.b.port}${l.label ? ` · ${l.label}` : ''}`).join('\n')}</title>
+            <title>{e.links.map((l) => `${endName(l.a)} ${l.a.port} ↔ ${endName(l.b)} ${l.b.port}${l.label ? ` · ${l.label}` : ''}`).join('\n')}</title>
             <path className="topo-edge__hit" d={edgePath(a, b, e.tree)} />
             <path className="topo-edge__line" d={edgePath(a, b, e.tree)} />
             {e.links.length > 1 ? (

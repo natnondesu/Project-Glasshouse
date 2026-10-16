@@ -1,6 +1,7 @@
-import { type EquipmentState, describeEnd, effectiveVlan, formatURange, stacksOf, findNode, findRackDevice, linkAt, otherEnd, portsOf, vlanLabel, type Id, type PlanContent } from '@glasshouse/domain';
+import { resolveRemote, type EquipmentState, type RemoteEnd, describeEnd, effectiveVlan, formatURange, stacksOf, findNode, findRackDevice, linkAt, otherEnd, portsOf, vlanLabel, type Id, type PlanContent } from '@glasshouse/domain';
 import { Link } from 'react-router';
 import { useT } from '../../i18n';
+import { useWorkspaceStore } from '../../store/workspaceStore';
 import { StateIcon } from '../../ui/StateIcon';
 import type { TopoSelection } from './TopologyDiagram';
 import type { Topology } from './topology';
@@ -20,6 +21,20 @@ export function NetworkDetails({ content, stateOf, roomId, topology, selection, 
   if (!selection) return <p className="net-details__hint">{m.topology.pick}</p>;
   if (selection.kind === 'node') {
     const id = selection.id;
+    const remote = topology.nodes.find((n) => n.id === id && n.remoteRoomId);
+    if (remote) {
+      return (
+        <div className="net-details" aria-label={m.inspector.details(remote.name)}>
+          <h3 className="mono">{remote.name}</h3>
+          <p className="net-details__where">{remote.where}</p>
+          <div className="net-details__actions">
+            <Link className="btn btn--sm" to={`/rooms/${remote.remoteRoomId}/network`}>
+              {m.uplink.openRoom}
+            </Link>
+          </div>
+        </div>
+      );
+    }
     const stack = stacksOf(content).find((x) => x.id === id);
     if (stack) {
       return (
@@ -91,6 +106,11 @@ export function NetworkDetails({ content, stateOf, roomId, topology, selection, 
 /** A device's ports, their VLAN, and where each goes. */
 function PortsTable({ content, id, stateOf }: { content: PlanContent; id: Id; stateOf: (id: Id) => EquipmentState }) {
   const m = useT();
+  const ws = useWorkspaceStore((st) => st.workspace);
+  const uplinkText = (r: RemoteEnd): string => {
+    const far = resolveRemote(ws, r);
+    return m.uplink.row(far.device?.name ?? m.uplink.gone, r.port, far.room?.name ?? m.uplink.gone);
+  };
   return (
     <table className="net-details__ports" aria-label={m.topology.ports}>
       <tbody>
@@ -107,7 +127,7 @@ function PortsTable({ content, id, stateOf }: { content: PlanContent; id: Id; st
                 {vlan ? vlanLabel(vlan.vlan) : ''}
               </td>
               <td>
-                {far ? m.topology.to(describeEnd(content, far).device, far.port) : <span className="net-details__none">{m.topology.notCabled}</span>}
+                {far ? m.topology.to(describeEnd(content, far).device, far.port) : p.remote ? <span className="net-details__uplink">{uplinkText(p.remote)}</span> : <span className="net-details__none">{m.topology.notCabled}</span>}
                 {far && stateOf(far.deviceId) === 'maintenance' ? (
                   <span className="net-details__maint">
                     <StateIcon state="maintenance" />

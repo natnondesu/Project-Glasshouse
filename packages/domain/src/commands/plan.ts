@@ -99,6 +99,7 @@ function applyOne(content: PlanContent, cmd: PlanCommand): Result<PlanContent> {
     case 'port/add':
     case 'port/update':
     case 'port/remove':
+    case 'port/remote':
     case 'port/reset':
     case 'link/add':
     case 'link/update':

@@ -1,5 +1,5 @@
-import { findNode, findRackDevice } from './devices';
-import type { CableType, Id, NetLink, PlanContent, Port, PortGroup, PortMedia, PortRef, PortVlan, Rack, RoomObject } from './model/types';
+import { findNode, findRackDevice, racksOf } from './devices';
+import type { CableType, Id, NetLink, PlanContent, Port, PortGroup, PortMedia, PortRef, PortVlan, Rack, RemoteEnd, RoomObject } from './model/types';
 import { err, ok, type Result } from './result';
 import { vlanLabel } from './vlans';
 
@@ -101,7 +101,9 @@ export type PortCommand =
   | { type: 'port/reset'; deviceId: Id }
   | { type: 'link/add'; link: NetLink }
   | { type: 'link/update'; id: Id; patch: { label?: string; cable?: CableType | null } }
-  | { type: 'link/remove'; id: Id };
+  | { type: 'link/remove'; id: Id }
+  /** Points a port at a port in another room of the site (null clears it). */
+  | { type: 'port/remote'; deviceId: Id; name: string; remote: RemoteEnd | null };
 
 const gone = (): Result<never> => err('not_found', 'That device no longer exists.', []);
 
@@ -151,6 +153,20 @@ export function applyPortCommand(content: PlanContent, cmd: PortCommand): Result
       const rename = (r: PortRef): PortRef => (sameRef(r, from) ? { ...r, port: next.name } : r);
       return ok({ ...updated, links: updated.links.map((l) => ({ ...l, a: rename(l.a), b: rename(l.b) })) });
     }
+    case 'port/remote': {
+      const owner = ownerOf(content, cmd.deviceId);
+      if (!owner) return gone();
+      const port = owner.ports.find((p) => p.name === cmd.name);
+      if (!port) return err('not_found', `${owner.name} has no port ${cmd.name}.`, [owner.id]);
+      if (cmd.remote === null) {
+        const { remote: _drop, ...rest } = port;
+        return ok(withPorts(content, owner.id, owner.ports.map((p) => (p === port ? rest : p))));
+      }
+      if (linkAt(content, { deviceId: owner.id, port: port.name })) return err('invalid_value', `${owner.name} ${port.name} is cabled in this room. Unlink it first.`, [owner.id]);
+      const remote = { roomId: cmd.remote.roomId, deviceId: cmd.remote.deviceId, port: cmd.remote.port.trim() };
+      if (!remote.roomId || !remote.deviceId || !remote.port) return err('invalid_value', 'Choose the room, device and port at the other end.', [owner.id]);
+      return ok(withPorts(content, owner.id, owner.ports.map((p) => (p === port ? { ...p, remote } : p))));
+    }
     case 'port/remove': {
       const owner = ownerOf(content, cmd.deviceId);
       if (!owner) return gone();
@@ -173,6 +189,7 @@ export function applyPortCommand(content: PlanContent, cmd: PortCommand): Result
         const owner = ownerOf(content, end.deviceId);
         if (!owner) return gone();
         if (!owner.ports.some((p) => p.name === end.port)) return err('not_found', `${owner.name} has no port ${end.port}.`, [owner.id]);
+        if (owner.ports.find((p) => p.name === end.port)?.remote) return err('invalid_value', `${owner.name} ${end.port} is an uplink to another room. Unlink that first.`, [owner.id]);
         const taken = linkAt(content, end);
         if (taken) {
           const far = otherEnd(taken, end);
@@ -212,17 +229,28 @@ export interface CableRow {
   vlan: string;
 }
 
-/** The cable schedule for the Install sheet: every link, labelled ones first in label order. */
-export function cableSchedule(content: PlanContent): CableRow[] {
+/**
+ * The cable schedule for the Install sheet: every link, labelled ones first in label order. With
+ * `farEnd`, uplinks to other rooms are listed too, their far end named by the caller (it knows the site).
+ */
+export function cableSchedule(content: PlanContent, farEnd?: (remote: RemoteEnd) => CableEnd): CableRow[] {
   const end = (r: PortRef): CableEnd => {
     const owner = ownerOf(content, r.deviceId);
     const lag = owner?.ports.find((p) => p.name === r.port)?.lag;
     return { rack: owner?.rack.name ?? '', device: owner?.name ?? '', port: lag ? `${r.port} (${lag})` : r.port };
   };
   const key = (row: CableRow): string => `${row.label === '' ? '1' : '0'}${row.label}|${row.from.rack}|${row.from.device}|${row.from.port}`;
-  return content.links
-    .map((l) => ({ id: l.id, from: end(l.a), to: end(l.b), label: l.label, cable: l.cable ? CABLE_LABEL[l.cable] : '', vlan: linkVlan(content, l) }))
-    .sort((x, y) => key(x).localeCompare(key(y), 'en', { numeric: true }));
+  const local = content.links.map((l) => ({ id: l.id, from: end(l.a), to: end(l.b), label: l.label, cable: l.cable ? CABLE_LABEL[l.cable] : '', vlan: linkVlan(content, l) }));
+  const uplinks = farEnd
+    ? racksOf(content).flatMap((rack) =>
+        rack.devices.flatMap((d) =>
+          [d, ...(d.kind === 'chassis' ? d.nodes : [])].flatMap((o) =>
+            (o.ports ?? []).flatMap((p) => (p.remote ? [{ id: `uplink:${o.id}:${p.name}`, from: end({ deviceId: o.id, port: p.name }), to: farEnd(p.remote), label: '', cable: '', vlan: vlanLabel(p.vlan) }] : [])),
+          ),
+        ),
+      )
+    : [];
+  return [...local, ...uplinks].sort((x, y) => key(x).localeCompare(key(y), 'en', { numeric: true }));
 }
 
 /** Name and media of a port end, for checks and lists. */

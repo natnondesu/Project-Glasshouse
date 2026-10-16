@@ -68,6 +68,10 @@
   border-top: 2px dashed var(--acc);
 }
 
+.network__swatch--uplink {
+  border-top: 2px dotted var(--acc);
+}
+
 .network__zoom {
   display: inline-flex;
   align-items: center;
@@ -246,6 +250,25 @@
   font-family: var(--font-mono);
   font-size: var(--text-sm);
   fill: var(--ink-2);
+}
+
+.topo-node--remote .topo-node__body {
+  fill: var(--paper);
+  stroke: var(--acc);
+  stroke-dasharray: 5 3;
+}
+
+.topo-node--remote .topo-node__stripe {
+  fill: var(--acc);
+}
+
+.topo-node--remote .topo-node__where {
+  fill: var(--acc-deep);
+}
+
+.topo-edge.is-uplink .topo-edge__line {
+  stroke: var(--acc);
+  stroke-dasharray: 2 3;
 }
 
 .topo-node__stack-back {
@@ -435,6 +458,10 @@
   margin-top: 2px;
   font-weight: 600;
   color: var(--maint);
+}
+
+.net-details__uplink {
+  color: var(--acc-deep);
 }
 
 .net-details__none {

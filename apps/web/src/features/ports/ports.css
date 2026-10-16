@@ -521,3 +521,34 @@
   align-items: center;
   gap: 10px;
 }
+
+/* Uplink to another room: dashed accent ring on the jack, so it reads apart from a local cable. */
+.port.is-uplink .port__jack {
+  outline: 2px dashed #6aa8ff;
+  outline-offset: 1px;
+  background: rgb(28 100 200 / 0.45);
+}
+
+.port-mgr__remote-open,
+.port-mgr__remote > .btn {
+  align-self: flex-start;
+}
+
+.port-mgr__row--remote {
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.3fr) minmax(0, 0.9fr);
+}
+
+.port-mgr__row-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.port-mgr__remote-status,
+.port-mgr__remote-note {
+  font-size: var(--text-xs);
+  color: var(--warn);
+}
+
+.port-mgr__remote-status.is-ok {
+  color: var(--ok);
+}

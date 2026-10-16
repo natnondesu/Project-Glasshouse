@@ -4,6 +4,8 @@ import { downloadText, slugify } from '../../ui/files';
 import { pad2 } from '../../ui/StatusStamp';
 import './bom.css';
 import { useT } from '../../i18n';
+import { farEndOf } from '../network/uplinks';
+import { useWorkspaceStore } from '../../store/workspaceStore';
 import { bomCell, bomHeader } from './bomText';
 
 const IN_ROOM = BOM_COLUMNS.filter((c) => c.key !== 'project' && c.key !== 'site' && c.key !== 'room');
@@ -21,7 +23,8 @@ export function BomView({ location }: { location: RoomLocation }) {
   const rows = filter === 'all' ? all : all.filter((r) => r.state === EQUIPMENT_STATE_LABEL[filter]);
   const revision = currentRevision(location.room.plan);
 
-  const cables = useMemo(() => cableSchedule(revision.content), [revision]);
+  const ws = useWorkspaceStore((st) => st.workspace);
+  const cables = useMemo(() => cableSchedule(revision.content, farEndOf(ws, m)), [revision, ws, m]);
   const downloadCables = (): void =>
     downloadText(`${slugify(location.room.name)}-R${pad2(revision.number)}-cables.csv`, `\uFEFF${cableCsv(cables)}`, 'text/csv;charset=utf-8');
   const download = (): void =>

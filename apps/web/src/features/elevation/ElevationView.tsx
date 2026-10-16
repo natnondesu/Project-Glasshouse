@@ -40,6 +40,7 @@ import { useRackReorder } from './useRackReorder';
 import { MIN_U_PX, rackHitAt, RackElevation, U_PX } from './RackElevation';
 import { useDeviceDrag } from './deviceDrag';
 import { useT } from '../../i18n';
+import { useRoomIssues } from '../network/uplinks';
 import './elevation.css';
 
 const MESSAGE_MS = 4000;
@@ -125,7 +126,7 @@ export function ElevationView({ location, readOnly = false, viewingPast = false 
   const others = reorder.drag ? racks.filter((r) => r.id !== reorder.drag!.id) : [];
   const tallest = Math.max(1, ...racks.map((r) => r.capacityU));
   const uPx = areaH ? Math.max(MIN_U_PX, Math.min(U_PX, Math.floor((areaH - RACK_CHROME_PX) / tallest))) : U_PX;
-  const issues = useMemo(() => revisionIssues(revision), [revision]);
+  const issues = useRoomIssues(revision, location.room.id);
   const flagged = useMemo(() => flaggedObjectIds(issues), [issues]);
   const names = useMemo(() => entityNames(content), [content]);
   const activeRack = owningRack(content, selectedId) ?? racks[0] ?? null;

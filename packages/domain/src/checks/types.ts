@@ -22,7 +22,10 @@ export type IssueCode =
   | 'vlan_native_mismatch'
   | 'vlan_allowed_mismatch'
   | 'lag_speed_mismatch'
-  | 'lag_far_end';
+  | 'lag_far_end'
+  | 'remote_missing'
+  | 'remote_conflict'
+  | 'remote_unpaired';
 
 export interface Issue {
   key: string;
