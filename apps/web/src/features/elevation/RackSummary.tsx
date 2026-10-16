@@ -1,4 +1,4 @@
-import { formatWatts, lowestFreeBottomU, newId, rackPower, usedU, type Rack } from '@glasshouse/domain';
+import { formatMetres, formatWatts, lowestFreeBottomU, newId, rackPower, usedU, type Rack } from '@glasshouse/domain';
 import { useState } from 'react';
 import { Link } from 'react-router';
 import type { CommitFn } from '../../store/hooks';
@@ -40,6 +40,12 @@ export function RackSummary({ rack, roomId, commit, onSelect }: RackSummaryProps
         <dd className="mono">{`${usedU(rack)} / ${rack.capacityU}U`}</dd>
         <dt>{m.rackSummary.usableDepth}</dt>
         <dd className="mono">{rack.usableDepthMm} mm</dd>
+        {rack.wallBottomM !== undefined ? (
+          <>
+            <dt>{m.inspector.mounting}</dt>
+            <dd className="mono">{m.elevation.wallMounted(formatMetres(rack.wallBottomM))}</dd>
+          </>
+        ) : null}
         <dt>{m.rackSummary.devices}</dt>
         <dd className="mono">{`${formatWatts(power.devices.knownW)}${unknown(power.devices.unknownCount)}`}</dd>
         <dt>{m.rackSummary.reserved}</dt>
