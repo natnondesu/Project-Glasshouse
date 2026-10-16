@@ -11,6 +11,8 @@ import { RackModel } from './RackModel';
 import { labelKindOf, type LabelKind } from './labels';
 import { PickableObject } from './PickableObject';
 import { Column, Floor, Walls } from './RoomModels';
+import { WalkController } from './WalkController';
+import type { WalkCamera } from './walk';
 import type { Rack3D, Scene3D } from './scene';
 import type { PowerPath } from '@glasshouse/domain';
 import { useT } from '../../i18n';
@@ -164,6 +166,16 @@ interface Room3DCanvasProps {
   idle?: boolean;
   /** Draw only when something changes (camera, hover, selection) while not spinning; for a scene without running animations. */
   onDemand?: boolean;
+  /** First person at eye height instead of the orbit camera. */
+  walk?: WalkMode | null;
+}
+
+export interface WalkMode {
+  camera: WalkCamera;
+  onCommit: (c: WalkCamera) => void;
+  glide: { x: number; z: number } | null;
+  onFloor: (x: number, z: number) => void;
+  onExit: () => void;
 }
 
 export interface Focus3D {
@@ -194,7 +206,7 @@ function FocusRing({ focus, color }: { focus: Focus3D; color: string }) {
   );
 }
 
-export function Room3DCanvas({ scene, palette, camera, onCamera, selectedId, onSelect, labelKinds, focus = null, showFeeds = true, path = null, spin = 0, wheel = true, idle = false, onDemand = false }: Room3DCanvasProps) {
+export function Room3DCanvas({ scene, palette, camera, onCamera, selectedId, onSelect, labelKinds, focus = null, showFeeds = true, path = null, spin = 0, wheel = true, idle = false, onDemand = false, walk = null }: Room3DCanvasProps) {
   const m = useT();
   const existing = scene.others.filter((o) => o.type === 'existing_rack');
   const blockClick = (e: ThreeEvent<MouseEvent>): void => {
@@ -217,7 +229,7 @@ export function Room3DCanvas({ scene, palette, camera, onCamera, selectedId, onS
       aria-label={m.room3d.canvas}
       onPointerMissed={(e) => {
         // A click on empty floor clears the highlight; a drag to orbit doesn't.
-        if (e.type === 'click') onSelect(null);
+        if (e.type === 'click' && !walk) onSelect(null);
       }}
     >
       <color attach="background" args={[palette.sky]} />
@@ -233,12 +245,18 @@ export function Room3DCanvas({ scene, palette, camera, onCamera, selectedId, onS
         shadow-camera-top={Math.max(scene.width, scene.length)}
         shadow-camera-bottom={-Math.max(scene.width, scene.length)}
       />
-      <CameraController camera={camera} onChange={onCamera} wheel={wheel} />
-      <Spinner camera={camera} rate={spin} onCommit={commitSpin} />
+      {walk ? (
+        <WalkController scene={scene} walk={walk.camera} onCommit={walk.onCommit} glide={walk.glide} onExit={walk.onExit} />
+      ) : (
+        <>
+          <CameraController camera={camera} onChange={onCamera} wheel={wheel} />
+          <Spinner camera={camera} rate={spin} onCommit={commitSpin} />
+        </>
+      )}
       {focus ? <FocusRing key={focus.n} focus={focus} color={palette.front} /> : null}
       {/* Room geometry takes clicks too, so a wall or column in front of a rack blocks it. */}
       <group onClick={blockClick} onPointerOver={blockHover}>
-        <Floor scene={scene} palette={palette} />
+        <Floor scene={scene} palette={palette} onPick={walk?.onFloor} />
         <Walls scene={scene} palette={palette} />
         {scene.columns.map((c) => (
           <Column key={c.id} column={c} palette={palette} />

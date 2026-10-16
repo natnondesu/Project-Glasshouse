@@ -79,6 +79,7 @@ Colour never works alone. Blocking issues use a solid circle icon, warnings a da
 ## 3D
 
 - Labels are sprites at a fixed screen size; the Labels menu picks which kinds are always labelled, the rest label on hover.
+- Walk puts you in the room at eye height (1.6 m, a wider 65° view), starting inside the door (or in front of the selected rack). Click the floor to glide there; drag to look; W/S or ↑/↓ walk, A/D step aside, ←/→ turn, Shift hurries; two-finger scroll walks too. Walls, racks, other objects and columns stop you, sliding along them. The rack list (and search) stands you in front of a rack's Front, looking at it. Esc or Back to overview returns to the orbit view; clicking a rack still selects it.
 - A highlighted power path glows and carries arrowheads moving from source to load (still under reduced motion); everything else on the power layer fades.
 
 ## Catalog

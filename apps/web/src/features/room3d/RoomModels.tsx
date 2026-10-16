@@ -26,7 +26,11 @@ export function Edges({ size, color, opacity = 0.55 }: { size: [number, number, 
   );
 }
 
-export function Floor({ scene, palette }: { scene: Scene3D; palette: Palette3D }) {
+/** A click this far from where the press began is a drag (looking around), not a pick. */
+const FLOOR_CLICK_SLOP_PX = 4;
+
+/** `onPick` (walk mode) gets the plan point a click lands on. */
+export function Floor({ scene, palette, onPick }: { scene: Scene3D; palette: Palette3D; onPick?: (x: number, z: number) => void }) {
   const geometry = useMemo(() => {
     const shapes = scene.floor.map(([outer, ...holes]) => {
       const shape = new Shape(outer!.map(([x, y]) => new Vector2(x, y)));
@@ -41,7 +45,20 @@ export function Floor({ scene, palette }: { scene: Scene3D; palette: Palette3D }
   useEffect(() => () => grid.dispose(), [grid]);
   return (
     // Plan y maps to world z: rotating the XY shape +90° about X lays it on the floor the right way round.
-    <mesh geometry={geometry} rotation={[Math.PI / 2, 0, 0]} receiveShadow>
+    <mesh
+      geometry={geometry}
+      rotation={[Math.PI / 2, 0, 0]}
+      receiveShadow
+      onClick={
+        onPick
+          ? (e) => {
+              if (e.delta > FLOOR_CLICK_SLOP_PX) return;
+              e.stopPropagation();
+              onPick(e.point.x, e.point.z);
+            }
+          : undefined
+      }
+    >
       <meshStandardMaterial map={grid} side={DoubleSide} roughness={0.9} />
     </mesh>
   );
