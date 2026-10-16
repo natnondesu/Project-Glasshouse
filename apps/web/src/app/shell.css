@@ -322,3 +322,7 @@
 .lang-switch button {
   min-width: 38px;
 }
+
+.title-block__cells[hidden] {
+  display: none;
+}

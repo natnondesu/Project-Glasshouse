@@ -63,7 +63,13 @@ export function TitleBlock({ roomId }: { roomId: string | null }) {
         <GlasshouseMark />
         <span>Glasshouse</span>
       </Link>
-      <dl className="title-block__cells">
+      {location ? null : (
+        <dl className="title-block__cells">
+          <Cell label={m.shell.workspace}>{m.shell.workspaceSummary(workspace.projects.length, workspace.projects.reduce((n, p) => n + p.sites.reduce((k, s) => k + s.rooms.length, 0), 0))}</Cell>
+        </dl>
+      )}
+      {/* Outside a room the cells would all be blank: Home shows the workspace instead. */}
+      <dl className="title-block__cells" hidden={!location}>
         <Cell label={m.shell.project}>
           {location?.project.name ?? '—'}
           {location?.project.isSample ? <span className="stamp">{m.common.sample}</span> : null}

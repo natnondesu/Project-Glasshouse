@@ -41,6 +41,9 @@ export function Shell() {
 
   return (
     <div className="shell">
+      <a href="#main" className="skip-link">
+        {m.shell.skipToMain}
+      </a>
       <HintLayer />
       <TitleBlock roomId={roomId} />
       {readOnly ? (
@@ -50,7 +53,7 @@ export function Shell() {
       ) : null}
       <div className="shell__body">
         {treeOpen ? <ProjectTree activeRoomId={roomId} onCollapse={() => setTreeOpen(false)} /> : <PanelRail label={m.panels.projects} side="left" onExpand={() => setTreeOpen(true)} />}
-        <main className="shell__main">
+        <main id="main" tabIndex={-1} className="shell__main">
           <Outlet />
         </main>
       </div>

@@ -1,6 +1,6 @@
 import { currentRevision, equipmentStateOf, type RoomLocation } from '@glasshouse/domain';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate } from 'react-router';
+import { Link, useNavigate } from 'react-router';
 import { useT } from '../../i18n';
 import { IconPause, IconPlay } from '../../ui/icons';
 import { defaultCamera, type OrbitCamera } from '../room3d/camera';
@@ -29,7 +29,8 @@ function usePrefersReducedMotion(): boolean {
 /**
  * The last room, live in 3D, turning slowly. It stops while the pointer is over it (so a drag looks
  * around from where it is), when paused, under reduced motion, and draws nothing once scrolled away.
- * Clicking a rack opens it in the elevation.
+ * Clicking a rack opens it in the elevation; the rack names under the scene do the same from the keyboard
+ * and light their rack while pointed at.
  */
 export default function HeroScene({ location }: { location: RoomLocation }) {
   const m = useT();
@@ -53,25 +54,45 @@ export default function HeroScene({ location }: { location: RoomLocation }) {
     return () => io.disconnect();
   }, []);
   const spinning = !paused && !hover && !reduced;
+  const [pointed, setPointed] = useState<string | null>(null);
+  const racks = [...scene.racks].sort((a, b) => a.name.localeCompare(b.name));
   const openRack = (id: string | null): void => {
     if (id && scene.racks.some((r) => r.id === id)) void navigate(`/rooms/${location.room.id}/elevation?sel=${id}`);
   };
 
   if (!webgl) return <p className="home-hero__fallback">{m.room3d.noWebgl}</p>;
   return (
-    <div ref={box} className="home-hero__scene" onPointerEnter={() => setHover(true)} onPointerLeave={() => setHover(false)}>
+    <div ref={box} className="home-hero__scene" role="group" aria-label={m.home.scene3d(location.room.name, racks.length)} onPointerEnter={() => setHover(true)} onPointerLeave={() => setHover(false)}>
       <Room3DCanvas
         scene={scene}
         palette={palette}
         camera={camera}
         onCamera={setCamera}
-        selectedId={null}
+        selectedId={pointed}
         onSelect={openRack}
         labelKinds={RACK_LABELS}
         spin={spinning ? SPIN_RAD_PER_S : 0}
         wheel={false}
         idle={!inView}
+        onDemand
       />
+      {racks.length > 0 ? (
+        <nav className="home-hero__racks" aria-label={m.home.racksNav}>
+          {racks.map((r) => (
+            <Link
+              key={r.id}
+              to={`/rooms/${location.room.id}/elevation?sel=${r.id}`}
+              className="mono home-hero__rack"
+              onPointerEnter={() => setPointed(r.id)}
+              onPointerLeave={() => setPointed(null)}
+              onFocus={() => setPointed(r.id)}
+              onBlur={() => setPointed(null)}
+            >
+              {r.name}
+            </Link>
+          ))}
+        </nav>
+      ) : null}
       <p className="home-hero__chip">
         <span className="home-hero__dot" aria-hidden="true" />
         <span className="mono">3D</span>
