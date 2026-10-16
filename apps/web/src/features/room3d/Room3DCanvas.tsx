@@ -40,7 +40,7 @@ interface ControllerProps {
 
 /** Trackpad-first: drag orbits, two-finger scroll pans, pinch or ⌘/Ctrl+scroll zooms at the pointer; Shift- or right-drag also pans. */
 function CameraController({ camera, onChange, wheel }: ControllerProps) {
-  const { camera: three, gl, size, raycaster } = useThree();
+  const { camera: three, gl, size, raycaster, invalidate } = useThree();
   useEffect(() => {
     raycaster.params.Line = { ...raycaster.params.Line, threshold: LINE_PICK_THRESHOLD_M };
   }, [raycaster]);
@@ -50,7 +50,9 @@ function CameraController({ camera, onChange, wheel }: ControllerProps) {
     three.position.set(x, y, z);
     three.lookAt(...camera.target);
     three.updateProjectionMatrix();
-  }, [camera, three]);
+    // When frames are drawn on demand, a moved camera has to ask for one.
+    invalidate();
+  }, [camera, three, invalidate]);
 
   useEffect(() => {
     const el = gl.domElement;
@@ -160,6 +162,8 @@ interface Room3DCanvasProps {
   wheel?: boolean;
   /** Stop drawing frames altogether, e.g. while scrolled out of view. */
   idle?: boolean;
+  /** Draw only when something changes (camera, hover, selection) while not spinning; for a scene without running animations. */
+  onDemand?: boolean;
 }
 
 export interface Focus3D {
@@ -190,7 +194,7 @@ function FocusRing({ focus, color }: { focus: Focus3D; color: string }) {
   );
 }
 
-export function Room3DCanvas({ scene, palette, camera, onCamera, selectedId, onSelect, labelKinds, focus = null, showFeeds = true, path = null, spin = 0, wheel = true, idle = false }: Room3DCanvasProps) {
+export function Room3DCanvas({ scene, palette, camera, onCamera, selectedId, onSelect, labelKinds, focus = null, showFeeds = true, path = null, spin = 0, wheel = true, idle = false, onDemand = false }: Room3DCanvasProps) {
   const m = useT();
   const existing = scene.others.filter((o) => o.type === 'existing_rack');
   const blockClick = (e: ThreeEvent<MouseEvent>): void => {
@@ -208,7 +212,7 @@ export function Room3DCanvas({ scene, palette, camera, onCamera, selectedId, onS
       className="room3d__canvas"
       shadows="percentage"
       dpr={[1, 2]}
-      frameloop={idle ? 'never' : 'always'}
+      frameloop={idle ? 'never' : spin > 0 || !onDemand ? 'always' : 'demand'}
       camera={{ fov: FOV_DEG, near: 0.05, far: 300, position: cameraPosition(camera) }}
       aria-label={m.room3d.canvas}
       onPointerMissed={(e) => {

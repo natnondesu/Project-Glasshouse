@@ -38,7 +38,7 @@ export function Home() {
   };
   return (
     <div className="home-page">
-      {hero ? <HomeHero summary={hero} /> : <h1 className="visually-hidden">{m.home.allRooms}</h1>}
+      {hero ? <HomeHero summary={hero} lastOpened={hero.room.id === lastId} /> : <h1 className="visually-hidden">{m.home.allRooms}</h1>}
       {error ? (
         <p role="alert" className="field__error">
           {error}
@@ -52,7 +52,7 @@ export function Home() {
           </h2>
           <div className="home-rooms__grid">
             {rooms.map((r) => (
-              <RoomCard key={r.room.id} summary={r} />
+              <RoomCard key={r.room.id} summary={r} lastOpened={r.room.id === lastId} />
             ))}
             <button type="button" className="home-add" onClick={() => addRoom(site.id)}>
               <IconPlus className="home-add__icon" />

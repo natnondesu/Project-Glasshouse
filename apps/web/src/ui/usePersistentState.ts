@@ -25,3 +25,12 @@ export function usePersistentState<T>(key: string, fallback: T): [T, (next: T) =
   );
   return [value, set];
 }
+
+/** Set a view preference ahead of navigating, e.g. so the Checks list is open when a link lands on it. */
+export function writePreference<T>(key: string, value: T): void {
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch {
+    // Blocked storage: the view opens with its own default.
+  }
+}
