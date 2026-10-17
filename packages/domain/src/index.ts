@@ -39,6 +39,7 @@ export * from './commands/review';
 export * from './backup';
 export * from './projectFile';
 export * from './sample';
+export { createShowcaseProject, SHOWCASE_PROJECT_NAME } from './sampleShowcase';
 export * from './dimensions';
 export * from './feeds';
 export * from './sources';

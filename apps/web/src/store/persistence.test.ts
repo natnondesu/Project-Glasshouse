@@ -1,4 +1,4 @@
-import { createWorkspace, SAMPLE_PROJECT_NAME } from '@glasshouse/domain';
+import { createWorkspace, SAMPLE_PROJECT_NAME, SHOWCASE_PROJECT_NAME } from '@glasshouse/domain';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createMemoryRepository } from '../storage/memoryRepository';
 import { hydrate, startPersistence, UNLOAD_JOURNAL_KEY } from './persistence';
@@ -16,7 +16,8 @@ describe('persistence', () => {
   it('starts a fresh workspace with the Sample Project when nothing is stored (AC18)', async () => {
     await hydrate(createMemoryRepository());
     expect(store().load).toEqual({ kind: 'ready' });
-    expect(store().workspace.projects).toMatchObject([{ name: SAMPLE_PROJECT_NAME, isSample: true }]);
+    // The small sample to start with, and the showcase of everything.
+    expect(store().workspace.projects).toMatchObject([{ name: SAMPLE_PROJECT_NAME, isSample: true }, { name: SHOWCASE_PROJECT_NAME, isSample: true }]);
   });
 
   it('does not seed a sample in a read-only tab', async () => {

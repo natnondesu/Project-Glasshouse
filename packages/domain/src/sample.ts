@@ -5,40 +5,12 @@ import type { ReviewCommand } from './commands/review';
 import { createWorkspace } from './factories';
 import { newId } from './ids';
 import { currentRevision, findRoom } from './lookup';
-import type { CableType, Id, Port, PortMedia, Project, Rack, RackOwner, SimpleObject, SimpleObjectType, Template, Workspace } from './model/types';
-import { createObject } from './objects';
+import type { CableType, Id, Port, Project, Rack, Template, Workspace } from './model/types';
 import { err, ok, type Result } from './result';
+import { createShowcaseProject } from './sampleShowcase';
+import { existingRack, mcb, portRun, rack, template, thing } from './sampleKit';
 
 export const SAMPLE_PROJECT_NAME = 'Sample · Northgate DC';
-
-const template = (id: string): Template => {
-  const t = seedTemplates().find((x) => x.id === id);
-  if (!t) throw new Error(`Seed template ${id} is missing`);
-  return t;
-};
-
-function rack(name: string, x: number, y: number, owner: RackOwner = 'oxygenai'): Rack {
-  return { ...(createObject('rack', { x, y }, []) as Rack), id: newId(), name, owner };
-}
-
-/** A wall-mounted MCB panel, turned so its back sits on the wall at x = 0 or y = 0. */
-function mcb(name: string, x: number, y: number, onLeftWall: boolean): SimpleObject {
-  return { ...(createObject('mcb', { x, y }, []) as SimpleObject), id: newId(), name, angle: onLeftWall ? 270 : 0 };
-}
-
-function existingRack(name: string, x: number, y: number): SimpleObject {
-  return { ...(createObject('existing_rack', { x, y }, []) as SimpleObject), id: newId(), name };
-}
-
-/** Any other room object; `x, y` is its corner before rotation. */
-function thing(type: SimpleObjectType, name: string, x: number, y: number, extra: Partial<SimpleObject> = {}): SimpleObject {
-  return { ...(createObject(type, { x, y }, []) as SimpleObject), id: newId(), name, ...extra };
-}
-
-/** Ports added one by one, as an engineer would on site: the team catalog's templates carry none. */
-function portRun(prefix: string, from: number, to: number, media: PortMedia, speed: string): Port[] {
-  return Array.from({ length: to - from + 1 }, (_, i) => ({ name: `${prefix}${from + i}`, media, speed }));
-}
 
 /**
  * Builds the FR13 Sample Project by replaying ordinary commands on a scratch workspace,
@@ -251,8 +223,11 @@ export function createSampleProject(at: string): Result<Project> {
   return ok({ ...project, isSample: true });
 }
 
+/** Both sample projects: the small Northgate one to start with, and the Riverside showcase of everything. */
 export function withSample(ws: Workspace, at: string): Result<Workspace> {
   const project = createSampleProject(at);
   if (!project.ok) return project;
-  return ok({ ...ws, projects: [...ws.projects, project.value] });
+  const showcase = createShowcaseProject(at);
+  if (!showcase.ok) return showcase;
+  return ok({ ...ws, projects: [...ws.projects, project.value, showcase.value] });
 }
