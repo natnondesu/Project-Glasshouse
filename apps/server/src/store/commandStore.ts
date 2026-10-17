@@ -19,6 +19,17 @@ export interface LoggedCommand {
   command: WorkspaceCommand;
 }
 
+/** One approval, written with its command and never changed: the room may later be deleted, the record stays. */
+export interface ApprovalRecord {
+  seq: number;
+  roomId: string;
+  revision: number;
+  contentHash: string;
+  approverId: string;
+  approverName: string;
+  approvedAt: string;
+}
+
 /** Raw: a snapshot written by an older version is migrated by parseWorkspace on load. */
 export interface StoredSnapshot {
   seq: number;
@@ -30,7 +41,9 @@ export interface CommandStore {
   latestSnapshot(): Promise<StoredSnapshot | null>;
   commandsAfter(seq: number, limit: number): Promise<LoggedCommand[]>;
   findCommand(clientId: string, commandId: string): Promise<LoggedCommand | null>;
-  append(entry: LoggedCommand): Promise<void>;
+  /** Writes the command and, for an approval, its record — both or neither. */
+  append(entry: LoggedCommand, approval?: ApprovalRecord | null): Promise<void>;
+  listApprovals(): Promise<ApprovalRecord[]>;
   saveSnapshot(seq: number, workspace: Workspace): Promise<void>;
   close(): Promise<void>;
 }

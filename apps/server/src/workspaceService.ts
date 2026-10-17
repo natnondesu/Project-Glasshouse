@@ -1,7 +1,7 @@
-import { apply, createWorkspace, err, parseWorkspace, withSample, type DomainError, type Workspace, type WorkspaceCommand } from '@glasshouse/domain';
+import { apply, approvedRevisionChanges, createWorkspace, currentRevision, err, findRoom, parseWorkspace, withSample, type DomainError, type Workspace, type WorkspaceCommand } from '@glasshouse/domain';
 import { atLeast } from './identity/types';
 import { ROLE_LABEL, requiredRole, stampCommand } from './permissions';
-import type { Actor, CommandStore, LoggedCommand } from './store/commandStore';
+import type { Actor, ApprovalRecord, CommandStore, LoggedCommand } from './store/commandStore';
 
 export const SNAPSHOT_EVERY = 200;
 const REPLAY_PAGE = 1000;
@@ -36,6 +36,15 @@ const isNonEmptyString = (value: unknown): value is string => typeof value === '
 const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null;
 const commandIdOf = (item: unknown): string => (isRecord(item) && typeof item.commandId === 'string' ? item.commandId : '');
 const rejected = (message: string): SubmitOutcome => ({ kind: 'rejected', error: err('invalid_value', message).error });
+
+/** The record for an accepted approval: what was approved, by whom, when, under which seq. */
+function approvalRecord(seq: number, command: WorkspaceCommand, after: Workspace, actor: Actor): ApprovalRecord | null {
+  if (command.type !== 'review' || command.command.type !== 'review/approve') return null;
+  const loc = findRoom(after, command.roomId);
+  const rev = loc ? currentRevision(loc.room.plan) : null;
+  if (!loc || !rev || rev.state !== 'approved' || !rev.approvedHash || !rev.approvedAt) return null;
+  return { seq, roomId: loc.room.id, revision: rev.number, contentHash: rev.approvedHash, approverId: actor.id, approverName: rev.approvedBy?.name ?? actor.name, approvedAt: rev.approvedAt };
+}
 
 /**
  * The one place edits are accepted. Holds the workspace in memory, applies commands strictly one at a time,
@@ -160,8 +169,14 @@ export class WorkspaceService {
     if (!result.ok) return { kind: 'rejected', error: result.error };
     const checked = parseWorkspace(result.value);
     if (!checked.ok) return rejected(`That change would leave the workspace invalid: ${checked.error.message}`);
+    const touched = approvedRevisionChanges(this.current.workspace, result.value);
+    if (touched.length > 0) {
+      const t = touched[0]!;
+      return { kind: 'rejected', error: err('invalid_value', `Revision ${t.revision} of ${t.roomName} is approved, so it can't be changed. Start a new draft, or import the file as a copy.`, [t.roomId]).error };
+    }
+    const approval = approvalRecord(this.current.seq + 1, toApply, result.value, actor);
     const entry: LoggedCommand = { seq: this.current.seq + 1, clientId, commandId, actor, command: toApply };
-    await this.store.append(entry);
+    await this.store.append(entry, approval);
     this.current = { seq: entry.seq, workspace: result.value };
     for (const listener of this.listeners) {
       try {

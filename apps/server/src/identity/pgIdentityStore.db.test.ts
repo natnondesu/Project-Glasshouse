@@ -5,7 +5,7 @@ import { DuplicateUserError, type User } from './types';
 
 let container: StartedPostgreSqlContainer;
 beforeAll(async () => {
-  container = await new PostgreSqlContainer('postgres:17-alpine').start();
+  container = await new PostgreSqlContainer('postgres:18-alpine').start();
 });
 afterAll(async () => {
   await container?.stop();

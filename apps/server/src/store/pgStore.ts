@@ -1,6 +1,6 @@
 import type { Workspace, WorkspaceCommand } from '@glasshouse/domain';
 import pg from 'pg';
-import type { CommandStore, LoggedCommand, StoredSnapshot } from './commandStore';
+import type { ApprovalRecord, CommandStore, LoggedCommand, StoredSnapshot } from './commandStore';
 import { migrate } from './migrations';
 
 const SNAPSHOTS_KEPT = 3;
@@ -50,10 +50,34 @@ export class PgCommandStore implements CommandStore {
     return r.rows[0] ? toLogged(r.rows[0]) : null;
   }
 
-  async append(e: LoggedCommand): Promise<void> {
-    await this.pool.query(`insert into commands (${COLUMNS}) values ($1, $2, $3, $4, $5, $6)`, [
-      e.seq, e.clientId, e.commandId, e.actor.id, e.actor.name, JSON.stringify(e.command),
-    ]);
+  async append(e: LoggedCommand, approval: ApprovalRecord | null = null): Promise<void> {
+    const client = await this.pool.connect();
+    try {
+      await client.query('begin');
+      await client.query(`insert into commands (${COLUMNS}) values ($1, $2, $3, $4, $5, $6)`, [
+        e.seq, e.clientId, e.commandId, e.actor.id, e.actor.name, JSON.stringify(e.command),
+      ]);
+      if (approval) {
+        await client.query(
+          'insert into approvals (seq, room_id, revision, content_hash, approver_id, approver_name, approved_at) values ($1, $2, $3, $4, $5, $6, $7)',
+          [approval.seq, approval.roomId, approval.revision, approval.contentHash, approval.approverId, approval.approverName, approval.approvedAt],
+        );
+      }
+      await client.query('commit');
+    } catch (err) {
+      // The original error is the one to report; a failed rollback on a broken connection is discarded by release().
+      await client.query('rollback').catch(() => undefined);
+      throw err;
+    } finally {
+      client.release();
+    }
+  }
+
+  async listApprovals(): Promise<ApprovalRecord[]> {
+    const r = await this.pool.query<{ seq: string; room_id: string; revision: number; content_hash: string; approver_id: string; approver_name: string; approved_at: string }>(
+      'select seq, room_id, revision, content_hash, approver_id, approver_name, approved_at from approvals order by seq',
+    );
+    return r.rows.map((x) => ({ seq: Number(x.seq), roomId: x.room_id, revision: x.revision, contentHash: x.content_hash, approverId: x.approver_id, approverName: x.approver_name, approvedAt: x.approved_at }));
   }
 
   async saveSnapshot(seq: number, workspace: Workspace): Promise<void> {

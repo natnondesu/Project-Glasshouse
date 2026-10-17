@@ -48,6 +48,29 @@ export const MIGRATIONS: { name: string; sql: string }[] = [
       );
       create index sessions_user on sessions (user_id);`,
   },
+  {
+    name: '003_approvals',
+    sql: `
+      create table approvals (
+        seq bigint primary key references commands(seq),
+        room_id text not null,
+        revision integer not null,
+        content_hash text not null,
+        approver_id text not null,
+        approver_name text not null,
+        -- text, as recorded on the revision: in dev mode the time comes from the browser and must not fail an insert
+        approved_at text not null
+      );
+      create index approvals_room on approvals (room_id, revision);
+      create function glasshouse_append_only() returns trigger language plpgsql as $$
+      begin
+        raise exception 'The % table is append-only (P1 design: the audit log is kept forever)', tg_table_name;
+      end $$;
+      create trigger commands_append_only before update or delete on commands for each row execute function glasshouse_append_only();
+      create trigger commands_no_truncate before truncate on commands for each statement execute function glasshouse_append_only();
+      create trigger approvals_append_only before update or delete on approvals for each row execute function glasshouse_append_only();
+      create trigger approvals_no_truncate before truncate on approvals for each statement execute function glasshouse_append_only();`,
+  },
 ];
 
 const LOCK_KEY = 727274;

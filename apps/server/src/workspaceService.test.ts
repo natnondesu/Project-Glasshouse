@@ -1,4 +1,4 @@
-import { createObject, createWorkspace, type Rack, type Template, type WorkspaceCommand } from '@glasshouse/domain';
+import { createCopyIds, createObject, createWorkspace, exportProjectFile, type Rack, type Template, type WorkspaceCommand } from '@glasshouse/domain';
 import { describe, expect, it, vi } from 'vitest';
 import type { LoggedCommand } from './store/commandStore';
 import { MemoryCommandStore } from './store/memoryStore';
@@ -230,5 +230,54 @@ describe('roles and stamped names', () => {
     expect(outcome.skipped).toEqual(['3']);
     const nullCmd = await svc.submit({ clientId: 'c', commandId: '4', command: { type: 'review', roomId: 'r', command: null } as unknown as WorkspaceCommand }, editor);
     expect(nullCmd).toMatchObject({ kind: 'rejected' });
+  });
+});
+
+describe('approved revisions', () => {
+  const NOW = '2026-10-18T09:00:00.000Z';
+  const editor = { id: 'u-e', name: 'Eddie', role: 'editor' as const, verified: true };
+  const reviewer = { id: 'u-r', name: 'Rae', role: 'reviewer' as const, verified: true };
+  type A = typeof editor | typeof reviewer;
+  const go = (svc: WorkspaceService, actor: A, id: string, command: WorkspaceCommand) => svc.submit({ clientId: actor.id, commandId: id, command }, actor);
+
+  async function approved(store = new MemoryCommandStore()) {
+    const svc = await WorkspaceService.open(store, { now: () => NOW });
+    for (const [i, c] of readyRoomCommands().entries()) await go(svc, editor, `s${i}`, c);
+    await go(svc, editor, 'sub', { type: 'review', roomId: 'r', command: { type: 'review/submit', designedBy: '', at: 'x' } });
+    expect(await go(svc, reviewer, 'app', { type: 'review', roomId: 'r', command: { type: 'review/approve', reviewer: '', at: 'x' } })).toMatchObject({ kind: 'accepted' });
+    return { svc, store };
+  }
+
+  it('records the approval with its fingerprint, approver and seq', async () => {
+    const { svc, store } = await approved();
+    const rev = svc.state.workspace.projects[0]!.sites[0]!.rooms[0]!.plan.revisions[0]!;
+    expect(await store.listApprovals()).toEqual([
+      { seq: svc.state.seq, roomId: 'r', revision: 1, contentHash: rev.approvedHash, approverId: 'u-r', approverName: 'Rae', approvedAt: NOW },
+    ]);
+  });
+
+  it('refuses a take-incoming import over an approved revision, naming the room and revision', async () => {
+    const { svc } = await approved();
+    const file = exportProjectFile(svc.state.workspace, 'p', NOW);
+    if (!file.ok) throw new Error(file.error.message);
+    // The exported file shares frozen state with the workspace, so edit a copy.
+    const edited = structuredClone(file.value);
+    edited.project.sites[0]!.rooms[0]!.plan.revisions[0]!.content.vlans.push({ vid: 7, name: 'edited' });
+    const outcome = await go(svc, editor, 'imp', { type: 'project/import', file: edited, resolution: { mode: 'merge', takeIncoming: ['r'] } } as WorkspaceCommand);
+    expect(outcome).toMatchObject({ kind: 'rejected', error: { code: 'invalid_value', message: expect.stringMatching(/Revision 1 of MDF-1 is approved/), targets: ['r'] } });
+  });
+
+  it('still lets the same file in as a copy', async () => {
+    const { svc } = await approved();
+    const file = exportProjectFile(svc.state.workspace, 'p', NOW);
+    if (!file.ok) throw new Error(file.error.message);
+    const outcome = await go(svc, editor, 'imp', { type: 'project/import', file: file.value, resolution: { mode: 'copy', ids: createCopyIds(file.value) } } as WorkspaceCommand);
+    expect(outcome).toMatchObject({ kind: 'accepted' });
+  });
+
+  it('keeps the approval record after the room is deleted', async () => {
+    const { svc, store } = await approved();
+    expect(await go(svc, editor, 'del', { type: 'room/delete', roomId: 'r' })).toMatchObject({ kind: 'accepted' });
+    expect(await store.listApprovals()).toHaveLength(1);
   });
 });
