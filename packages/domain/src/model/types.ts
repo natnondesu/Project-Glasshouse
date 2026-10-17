@@ -224,9 +224,11 @@ export interface SimpleObject extends ObjectBase {
 export type RoomObject = Rack | SimpleObject;
 export type RoomObjectType = RoomObject['type'];
 
+/** A person on a revision. Typed (unverified) in local mode; with the signed-in user's id on the shared server. */
 export interface UnverifiedName {
   name: string;
   at: string;
+  userId?: string;
 }
 
 export interface AcknowledgedUnknown {
@@ -308,6 +310,7 @@ export interface ReviewNote {
   createdAt: string;
   /** Who wrote it, as they typed it (unverified); absent when they left it blank. */
   by?: string;
+  byId?: string;
 }
 
 export type HistoryCode = 'submitted' | 'approved' | 'new_draft' | 'draft_discarded' | 'acknowledged' | 'unacknowledged' | 'note_added';
