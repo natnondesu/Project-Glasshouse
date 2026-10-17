@@ -1,7 +1,8 @@
 import { createWorkspace, type Workspace, type WorkspaceCommand } from '@glasshouse/domain';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { NetworkError, SyncClient, type BatchOutcome, type EventHandlers, type Transport } from './syncClient';
+import { NetworkError, SyncClient, WATCHDOG_MS, type BatchOutcome, type EventHandlers, type Transport } from './syncClient';
 
+const RETRY_MIN_MS = 500;
 const create = (id: string, name = id): WorkspaceCommand => ({ type: 'project/create', id, name });
 
 /** A fake server: orders commands, remembers IDs (idempotent), pushes events to the open stream. */
@@ -69,7 +70,7 @@ describe('SyncClient', () => {
     server.failOnce();
     client.dispatch(create('p', 'Riverside'));
     const done = client.flush();
-    await vi.runAllTimersAsync();
+    await vi.advanceTimersByTimeAsync(5_000);
     await done;
     expect(server.posts).toEqual([['1'], ['1']]);
     expect(server.seq).toBe(1);
@@ -99,7 +100,7 @@ describe('SyncClient', () => {
     client.start();
     const handlers = (server.transport.openEvents as ReturnType<typeof vi.fn>).mock.calls[0]![1] as EventHandlers;
     handlers.onResync();
-    await vi.runAllTimersAsync();
+    await vi.advanceTimersByTimeAsync(5_000);
     expect(server.transport.fetchWorkspace).toHaveBeenCalled();
     expect(server.transport.openEvents).toHaveBeenCalledTimes(2);
   });
@@ -155,5 +156,49 @@ describe('SyncClient', () => {
     expect(server.posts).toEqual([['1']]);
     expect(cb.onDropped).not.toHaveBeenCalled();
     expect(client.workspace.projects.map((p) => p.name)).toEqual(['Riverside']);
+  });
+
+  describe('watchdog', () => {
+    const setup = () => {
+      const server = fakeServer();
+      const client = new SyncClient(server.transport, { seq: 0, workspace: createWorkspace() }, callbacks(), { clientId: 'me' });
+      client.start();
+      const handlers = (server.transport.openEvents as ReturnType<typeof vi.fn>).mock.calls[0]![1] as EventHandlers;
+      return { server, client, handlers };
+    };
+
+    it('treats a stream that goes silent for WATCHDOG_MS as closed and resyncs', async () => {
+      const { server } = setup();
+      await vi.advanceTimersByTimeAsync(WATCHDOG_MS + 1);
+      await vi.advanceTimersByTimeAsync(RETRY_MIN_MS + 1);
+      expect(server.transport.fetchWorkspace).toHaveBeenCalled();
+      expect(server.transport.openEvents).toHaveBeenCalledTimes(2);
+    });
+
+    it('stays connected while heartbeats keep arriving', async () => {
+      const { server, handlers } = setup();
+      for (let t = 0; t < 60_000; t += 15_000) {
+        await vi.advanceTimersByTimeAsync(15_000);
+        handlers.onHeartbeat();
+      }
+      expect(server.transport.fetchWorkspace).not.toHaveBeenCalled();
+      expect(server.transport.openEvents).toHaveBeenCalledTimes(1);
+    });
+
+    it('reports offline when the watchdog fires', async () => {
+      const server = fakeServer();
+      const cb = callbacks();
+      new SyncClient(server.transport, { seq: 0, workspace: createWorkspace() }, cb, { clientId: 'me' }).start();
+      await vi.advanceTimersByTimeAsync(WATCHDOG_MS + 1);
+      expect(cb.onConnection).toHaveBeenCalledWith('offline');
+    });
+
+    it('stop() clears the watchdog', async () => {
+      const { server, client } = setup();
+      client.stop();
+      await vi.advanceTimersByTimeAsync(WATCHDOG_MS * 2);
+      expect(server.transport.fetchWorkspace).not.toHaveBeenCalled();
+      expect(server.transport.openEvents).toHaveBeenCalledTimes(1);
+    });
   });
 });

@@ -3,12 +3,13 @@ import type { LoggedCommand } from '../store/commandStore';
 import type { WorkspaceService } from '../workspaceService';
 
 export const MAX_CATCH_UP = 1000;
-const HEARTBEAT_MS = 20_000;
+/** A real event (not a comment) so the browser's EventSource hands it to the page, which uses it to spot a dead connection. */
+export const HEARTBEAT_MS = 15_000;
 
 const frame = (e: LoggedCommand): string =>
   `id: ${e.seq}\nevent: command\ndata: ${JSON.stringify({ seq: e.seq, clientId: e.clientId, commandId: e.commandId, command: e.command })}\n\n`;
 
-export function registerEvents(app: FastifyInstance, service: WorkspaceService): void {
+export function registerEvents(app: FastifyInstance, service: WorkspaceService, { heartbeatMs = HEARTBEAT_MS }: { heartbeatMs?: number } = {}): void {
   app.get('/api/events', async (request, reply) => {
     const header = request.headers['last-event-id'];
     const query = (request.query as { after?: string }).after;
@@ -19,6 +20,8 @@ export function registerEvents(app: FastifyInstance, service: WorkspaceService):
     reply.hijack();
     const raw = reply.raw;
     raw.writeHead(200, { 'content-type': 'text/event-stream', 'cache-control': 'no-cache, no-transform', connection: 'keep-alive', 'x-accel-buffering': 'no' });
+    // Node holds headers until the first write; without this the browser's `open` waits for the first frame.
+    raw.flushHeaders();
 
     // Subscribe before reading the backlog and buffer live events until it is written, so nothing falls in between.
     let last = after;
@@ -30,7 +33,7 @@ export function registerEvents(app: FastifyInstance, service: WorkspaceService):
       last = e.seq;
     };
     const unsubscribe = service.subscribe((e) => (live ? send(e) : buffered.push(e)));
-    const heartbeat = setInterval(() => raw.write(': ping\n\n'), HEARTBEAT_MS);
+    const heartbeat = setInterval(() => raw.write('event: ping\ndata: {}\n\n'), heartbeatMs);
     const cleanup = (): void => {
       clearInterval(heartbeat);
       unsubscribe();

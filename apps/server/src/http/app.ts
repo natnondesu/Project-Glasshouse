@@ -20,9 +20,10 @@ export interface AppDeps {
   authenticate: Authenticate;
   webDir?: string | null;
   logger?: boolean;
+  heartbeatMs?: number;
 }
 
-export async function buildApp({ service, authenticate, webDir = null, logger = false }: AppDeps): Promise<FastifyInstance> {
+export async function buildApp({ service, authenticate, webDir = null, logger = false, heartbeatMs }: AppDeps): Promise<FastifyInstance> {
   // Force-close: open event streams would otherwise keep shutdown waiting forever.
   const app = Fastify({ logger, bodyLimit: BODY_LIMIT, forceCloseConnections: true });
   app.decorateRequest('actor', null);
@@ -37,7 +38,7 @@ export async function buildApp({ service, authenticate, webDir = null, logger = 
     });
     api.get('/api/workspace', async () => service.state);
     registerCommands(api, service);
-    registerEvents(api, service);
+    registerEvents(api, service, { heartbeatMs });
   });
   if (webDir) {
     await app.register(fastifyStatic, { root: webDir, wildcard: false });

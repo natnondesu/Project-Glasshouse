@@ -12,6 +12,8 @@ export interface EventHandlers {
   onOpen(): void;
   onCommand(event: ServerEvent): void;
   onResync(): void;
+  /** The server's periodic `ping` event: proof the stream is alive even when no edits flow. */
+  onHeartbeat(): void;
   /** `closed`: the browser gave up on the stream (it won't retry by itself). */
   onError(closed: boolean): void;
 }
@@ -36,6 +38,8 @@ export interface SyncCallbacks {
 
 const RETRY_MIN_MS = 500;
 const RETRY_MAX_MS = 15_000;
+/** Two missed 15 s server heartbeats plus slack: past this, the stream is treated as dead. */
+export const WATCHDOG_MS = 35_000;
 const delay = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 const describe = (e: unknown): string => (e instanceof Error ? e.message : String(e));
 
@@ -52,6 +56,7 @@ export class SyncClient {
   private reconnectMs = RETRY_MIN_MS;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private stopped = false;
+  private watchdog: ReturnType<typeof setTimeout> | null = null;
 
   constructor(
     private readonly transport: Transport,
@@ -76,6 +81,7 @@ export class SyncClient {
     this.stopped = true;
     if (this.reconnectTimer) clearTimeout(this.reconnectTimer);
     this.reconnectTimer = null;
+    this.clearWatchdog();
     this.closeEvents?.();
     this.closeEvents = null;
   }
@@ -131,12 +137,15 @@ export class SyncClient {
   private connect(): void {
     if (this.stopped) return;
     this.callbacks.onConnection('connecting');
+    this.resetWatchdog();
     this.closeEvents = this.transport.openEvents(this.engine.seq, {
       onOpen: () => {
+        this.resetWatchdog();
         this.reconnectMs = RETRY_MIN_MS;
         this.callbacks.onConnection('live');
       },
       onCommand: (event) => {
+        this.resetWatchdog();
         const result = this.engine.remote(event);
         if (result.kind === 'resync') void this.resync();
         else if (result.kind === 'applied') {
@@ -145,6 +154,7 @@ export class SyncClient {
         }
       },
       onResync: () => void this.resync(),
+      onHeartbeat: () => this.resetWatchdog(),
       onError: (closed) => {
         this.callbacks.onConnection('offline');
         // Otherwise EventSource reconnects by itself and sends Last-Event-ID, so the server sends what we missed.
@@ -153,8 +163,25 @@ export class SyncClient {
     });
   }
 
+  /** Half-open connections raise no error event; silence is the only sign, so silence past WATCHDOG_MS counts as a closed stream. */
+  private resetWatchdog(): void {
+    this.clearWatchdog();
+    if (this.stopped) return;
+    this.watchdog = setTimeout(() => {
+      this.watchdog = null;
+      this.callbacks.onConnection('offline');
+      this.scheduleResync();
+    }, WATCHDOG_MS);
+  }
+
+  private clearWatchdog(): void {
+    if (this.watchdog) clearTimeout(this.watchdog);
+    this.watchdog = null;
+  }
+
   private scheduleResync(): void {
     if (this.reconnectTimer || this.stopped) return;
+    this.clearWatchdog();
     this.closeEvents?.();
     this.closeEvents = null;
     const wait = this.reconnectMs;
@@ -169,6 +196,7 @@ export class SyncClient {
     if (this.resyncing || this.stopped) return;
     this.resyncing = true;
     this.resyncCount += 1;
+    this.clearWatchdog();
     this.closeEvents?.();
     this.closeEvents = null;
     this.callbacks.onConnection('connecting');

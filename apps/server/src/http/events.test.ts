@@ -14,8 +14,8 @@ afterEach(async () => {
 
 const actor = { id: 'dev:t', name: 't' };
 
-async function start(service: WorkspaceService): Promise<string> {
-  app = await buildApp({ service, authenticate: devAuthenticate });
+async function start(service: WorkspaceService, heartbeatMs?: number): Promise<string> {
+  app = await buildApp({ service, authenticate: devAuthenticate, heartbeatMs });
   await app.listen({ port: 0, host: '127.0.0.1' });
   const address = app.server.address();
   if (address === null || typeof address === 'string') throw new Error('no port');
@@ -91,4 +91,24 @@ it('tells the client to resync, and ends the stream, when the backlog cannot be 
   const res = await fetch(`${base}/api/events?after=0`);
   const text = await res.text();
   expect(text).toContain('event: resync');
+});
+
+it('sends the response headers at once, before any command', async () => {
+  const service = await WorkspaceService.open(new MemoryCommandStore());
+  const base = await start(service);
+  const controller = new AbortController();
+  const res = await Promise.race([
+    fetch(`${base}/api/events?after=0`, { signal: controller.signal }),
+    new Promise<never>((_, reject) => setTimeout(() => reject(new Error('headers not sent within 1 s')), 1000)),
+  ]);
+  controller.abort();
+  expect(res.status).toBe(200);
+  expect(res.headers.get('content-type')).toContain('text/event-stream');
+});
+
+it('sends ping events as a heartbeat the browser can see', async () => {
+  const service = await WorkspaceService.open(new MemoryCommandStore());
+  const base = await start(service, 50);
+  const text = await readEvents(`${base}/api/events?after=0`, (t) => (t.match(/event: ping\ndata: \{\}\n\n/g) ?? []).length >= 2);
+  expect(text).toContain('event: ping\ndata: {}\n\n');
 });
