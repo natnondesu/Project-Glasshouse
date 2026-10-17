@@ -12,7 +12,8 @@ export interface EventHandlers {
   onOpen(): void;
   onCommand(event: ServerEvent): void;
   onResync(): void;
-  onError(): void;
+  /** `closed`: the browser gave up on the stream (it won't retry by itself). */
+  onError(closed: boolean): void;
 }
 
 export interface Transport {
@@ -46,6 +47,10 @@ export class SyncClient {
   private flushing: Promise<void> | null = null;
   private closeEvents: (() => void) | null = null;
   private resyncing = false;
+  private paused = false;
+  private resyncCount = 0;
+  private reconnectMs = RETRY_MIN_MS;
+  private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private stopped = false;
 
   constructor(
@@ -69,6 +74,8 @@ export class SyncClient {
 
   stop(): void {
     this.stopped = true;
+    if (this.reconnectTimer) clearTimeout(this.reconnectTimer);
+    this.reconnectTimer = null;
     this.closeEvents?.();
     this.closeEvents = null;
   }
@@ -78,7 +85,7 @@ export class SyncClient {
     const error = this.engine.local(this.newId(), command);
     if (error) return { ok: false, error };
     this.callbacks.onSave({ kind: 'saving' });
-    void this.flush();
+    if (!this.paused) void this.flush();
     return { ok: true, value: this.engine.workspace };
   }
 
@@ -92,7 +99,7 @@ export class SyncClient {
 
   private async sendAll(): Promise<void> {
     let retryMs = RETRY_MIN_MS;
-    while (!this.stopped) {
+    while (!this.stopped && !this.paused) {
       const batch = this.engine.takeUnsent();
       if (batch.length === 0) break;
       let outcome: BatchOutcome;
@@ -113,7 +120,7 @@ export class SyncClient {
       }
       this.engine.markUnsent(outcome.skipped);
     }
-    if (!this.stopped) this.callbacks.onSave({ kind: 'saved', at: new Date() });
+    if (!this.stopped && !this.paused) this.callbacks.onSave({ kind: 'saved', at: new Date() });
   }
 
   private report(dropped: Dropped[]): void {
@@ -125,41 +132,76 @@ export class SyncClient {
     if (this.stopped) return;
     this.callbacks.onConnection('connecting');
     this.closeEvents = this.transport.openEvents(this.engine.seq, {
-      onOpen: () => this.callbacks.onConnection('live'),
+      onOpen: () => {
+        this.reconnectMs = RETRY_MIN_MS;
+        this.callbacks.onConnection('live');
+      },
       onCommand: (event) => {
         const result = this.engine.remote(event);
         if (result.kind === 'resync') void this.resync();
-        else if (result.kind === 'applied') this.report(result.dropped);
+        else if (result.kind === 'applied') {
+          this.resyncCount = 0;
+          this.report(result.dropped);
+        }
       },
       onResync: () => void this.resync(),
-      // EventSource reconnects by itself and sends Last-Event-ID, so the server sends what we missed.
-      onError: () => this.callbacks.onConnection('offline'),
+      onError: (closed) => {
+        this.callbacks.onConnection('offline');
+        // Otherwise EventSource reconnects by itself and sends Last-Event-ID, so the server sends what we missed.
+        if (closed) this.scheduleResync();
+      },
     });
+  }
+
+  private scheduleResync(): void {
+    if (this.reconnectTimer || this.stopped) return;
+    this.closeEvents?.();
+    this.closeEvents = null;
+    const wait = this.reconnectMs;
+    this.reconnectMs = Math.min(wait * 2, RETRY_MAX_MS);
+    this.reconnectTimer = setTimeout(() => {
+      this.reconnectTimer = null;
+      void this.resync();
+    }, wait);
   }
 
   private async resync(): Promise<void> {
     if (this.resyncing || this.stopped) return;
     this.resyncing = true;
+    this.resyncCount += 1;
     this.closeEvents?.();
     this.closeEvents = null;
     this.callbacks.onConnection('connecting');
     for (;;) {
       try {
         // Every sent edit gets its verdict first, so the fresh state tells us exactly which are already in.
-        await this.flush();
+        do await this.flush();
+        while (this.flushing);
+        // Nothing may be posted while the snapshot loads, or it could contain an edit we'd then replay on top.
+        this.paused = true;
         const snapshot = await this.transport.fetchWorkspace();
         const parsed = parseWorkspace(snapshot.workspace);
         if (!parsed.ok) throw new Error(parsed.error.message);
         this.report(this.engine.reset({ seq: snapshot.seq, workspace: parsed.value }));
+        this.paused = false;
         break;
       } catch (e) {
+        this.paused = false;
+        void this.flush();
         this.callbacks.onConnection('offline');
         this.callbacks.onSave({ kind: 'failed', reason: `Couldn't reload from the server: ${describe(e)}. Retrying…` });
         await delay(RETRY_MAX_MS);
         if (this.stopped) return;
       }
     }
+    // Repeated resyncs mean events keep failing to apply here (e.g. a version mismatch): slow down and say so.
+    if (this.resyncCount >= 2) await delay(Math.min(RETRY_MIN_MS * 2 ** (this.resyncCount - 2), RETRY_MAX_MS));
+    if (this.resyncCount >= 3) {
+      this.callbacks.onSave({ kind: 'failed', reason: 'This page is out of step with the server. Reload to continue.' });
+    }
     this.resyncing = false;
+    if (this.stopped) return;
+    void this.flush();
     this.connect();
   }
 }

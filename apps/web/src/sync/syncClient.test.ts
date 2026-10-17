@@ -103,4 +103,57 @@ describe('SyncClient', () => {
     expect(server.transport.fetchWorkspace).toHaveBeenCalled();
     expect(server.transport.openEvents).toHaveBeenCalledTimes(2);
   });
+  it('reconnects through a resync when the browser gives up on the stream', async () => {
+    const server = fakeServer();
+    const client = new SyncClient(server.transport, { seq: 0, workspace: createWorkspace() }, callbacks(), { clientId: 'me' });
+    client.start();
+    const handlers = (server.transport.openEvents as ReturnType<typeof vi.fn>).mock.calls[0]![1] as EventHandlers;
+    handlers.onError(true);
+    await vi.advanceTimersByTimeAsync(1_000);
+    expect(server.transport.fetchWorkspace).toHaveBeenCalled();
+    expect(server.transport.openEvents).toHaveBeenCalledTimes(2);
+  });
+
+  it('backs off and tells the user when every event fails to apply', async () => {
+    const server = fakeServer();
+    let n = 0;
+    (server.transport.openEvents as ReturnType<typeof vi.fn>).mockImplementation((after: number, h: EventHandlers) => {
+      n += 1;
+      h.onOpen();
+      h.onCommand({ seq: after + 1, clientId: 'o', commandId: `e${n}`, command: { type: 'site/create', projectId: 'nope', id: 's', name: 'S' } as WorkspaceCommand });
+      return () => {};
+    });
+    const cb = callbacks();
+    const client = new SyncClient(server.transport, { seq: 0, workspace: createWorkspace() }, cb, { clientId: 'me' });
+    client.start();
+    await vi.advanceTimersByTimeAsync(60_000);
+    expect(cb.onSave).toHaveBeenCalledWith({ kind: 'failed', reason: 'This page is out of step with the server. Reload to continue.' });
+    expect(n).toBeGreaterThanOrEqual(4);
+    expect(n).toBeLessThan(15);
+    client.stop();
+  });
+
+  it('holds edits back while the snapshot loads, so none is applied twice', async () => {
+    const server = fakeServer();
+    let release!: (v: { seq: number; workspace: unknown }) => void;
+    (server.transport.fetchWorkspace as ReturnType<typeof vi.fn>).mockImplementationOnce(
+      () => new Promise((resolve) => (release = resolve)),
+    );
+    const cb = callbacks();
+    let n = 0;
+    const client = new SyncClient(server.transport, { seq: 0, workspace: createWorkspace() }, cb, { clientId: 'me', newId: () => String(++n) });
+    client.start();
+    const handlers = (server.transport.openEvents as ReturnType<typeof vi.fn>).mock.calls[0]![1] as EventHandlers;
+    handlers.onResync();
+    await vi.advanceTimersByTimeAsync(0);
+    client.dispatch(create('p', 'Riverside'));
+    await vi.advanceTimersByTimeAsync(0);
+    expect(server.transport.postCommands).not.toHaveBeenCalled();
+    release({ seq: 0, workspace: createWorkspace() });
+    await vi.advanceTimersByTimeAsync(0);
+    await client.flush();
+    expect(server.posts).toEqual([['1']]);
+    expect(cb.onDropped).not.toHaveBeenCalled();
+    expect(client.workspace.projects.map((p) => p.name)).toEqual(['Riverside']);
+  });
 });

@@ -41,7 +41,7 @@ export function httpTransport(base = ''): Transport {
       source.addEventListener('open', () => handlers.onOpen());
       source.addEventListener('command', (e) => handlers.onCommand(JSON.parse((e as MessageEvent<string>).data) as ServerEvent));
       source.addEventListener('resync', () => handlers.onResync());
-      source.addEventListener('error', () => handlers.onError());
+      source.addEventListener('error', () => handlers.onError(source.readyState === EventSource.CLOSED));
       return () => source.close();
     },
   };
