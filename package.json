@@ -10,7 +10,9 @@
     "build": "pnpm -r build",
     "test": "pnpm -r test",
     "typecheck": "pnpm -r typecheck",
-    "e2e": "pnpm --filter @glasshouse/web e2e"
+    "e2e": "pnpm --filter @glasshouse/web e2e",
+    "dev:server": "pnpm --filter @glasshouse/server dev",
+    "test:db": "pnpm --filter @glasshouse/server test:db"
   },
   "devDependencies": {
     "typescript": "^7.0.2"
