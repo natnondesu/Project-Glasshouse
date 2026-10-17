@@ -52,6 +52,7 @@ export class PgCommandStore implements CommandStore {
 
   async append(e: LoggedCommand, approval: ApprovalRecord | null = null): Promise<void> {
     const client = await this.pool.connect();
+    let discard: Error | undefined;
     try {
       await client.query('begin');
       await client.query(`insert into commands (${COLUMNS}) values ($1, $2, $3, $4, $5, $6)`, [
@@ -65,11 +66,13 @@ export class PgCommandStore implements CommandStore {
       }
       await client.query('commit');
     } catch (err) {
-      // The original error is the one to report; a failed rollback on a broken connection is discarded by release().
-      await client.query('rollback').catch(() => undefined);
+      // The original error is the one to report. If the rollback fails too, the connection is broken: release(error) drops it from the pool.
+      await client.query('rollback').catch((rollbackError: unknown) => {
+        discard = rollbackError instanceof Error ? rollbackError : new Error(String(rollbackError));
+      });
       throw err;
     } finally {
-      client.release();
+      client.release(discard);
     }
   }
 

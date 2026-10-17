@@ -264,15 +264,17 @@ describe('approved revisions', () => {
     const edited = structuredClone(file.value);
     edited.project.sites[0]!.rooms[0]!.plan.revisions[0]!.content.vlans.push({ vid: 7, name: 'edited' });
     const outcome = await go(svc, editor, 'imp', { type: 'project/import', file: edited, resolution: { mode: 'merge', takeIncoming: ['r'] } } as WorkspaceCommand);
-    expect(outcome).toMatchObject({ kind: 'rejected', error: { code: 'invalid_value', message: expect.stringMatching(/Revision 1 of MDF-1 is approved/), targets: ['r'] } });
+    expect(outcome).toMatchObject({ kind: 'rejected', error: { code: 'invalid_value', message: expect.stringMatching(/Revision 1 of MDF-1 is approved, so it can't be changed\. Import the file as a copy instead\.$/), targets: ['r'] } });
   });
 
   it('still lets the same file in as a copy', async () => {
-    const { svc } = await approved();
+    const { svc, store } = await approved();
     const file = exportProjectFile(svc.state.workspace, 'p', NOW);
     if (!file.ok) throw new Error(file.error.message);
     const outcome = await go(svc, editor, 'imp', { type: 'project/import', file: file.value, resolution: { mode: 'copy', ids: createCopyIds(file.value) } } as WorkspaceCommand);
     expect(outcome).toMatchObject({ kind: 'accepted' });
+    // Imported approvals are history, not new approvals: only the original approval has a record.
+    expect(await store.listApprovals()).toHaveLength(1);
   });
 
   it('keeps the approval record after the room is deleted', async () => {

@@ -25,8 +25,11 @@ export class MemoryCommandStore implements CommandStore {
     if (this.log.some((c) => c.clientId === entry.clientId && c.commandId === entry.commandId)) {
       throw new Error(`Command ${entry.commandId} from ${entry.clientId} is already logged.`);
     }
-    this.log.push(structuredClone(entry));
-    if (approval) this.approvals.push(structuredClone(approval));
+    // Clone both before pushing either, so a failing clone leaves nothing written.
+    const storedEntry = structuredClone(entry);
+    const storedApproval = approval ? structuredClone(approval) : null;
+    this.log.push(storedEntry);
+    if (storedApproval) this.approvals.push(storedApproval);
   }
 
   async listApprovals(): Promise<ApprovalRecord[]> {

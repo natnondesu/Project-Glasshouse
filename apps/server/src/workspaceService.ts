@@ -37,13 +37,18 @@ const isRecord = (value: unknown): value is Record<string, unknown> => typeof va
 const commandIdOf = (item: unknown): string => (isRecord(item) && typeof item.commandId === 'string' ? item.commandId : '');
 const rejected = (message: string): SubmitOutcome => ({ kind: 'rejected', error: err('invalid_value', message).error });
 
-/** The record for an accepted approval: what was approved, by whom, when, under which seq. */
-function approvalRecord(seq: number, command: WorkspaceCommand, after: Workspace, actor: Actor): ApprovalRecord | null {
-  if (command.type !== 'review' || command.command.type !== 'review/approve') return null;
+type ApprovalOutcome = { ok: true; record: ApprovalRecord | null } | { ok: false; roomId: string };
+
+/** The record for an approval: what was approved, by whom, when, under which seq. Null only for commands that are not approvals. */
+function approvalRecord(seq: number, command: WorkspaceCommand, after: Workspace, actor: Actor): ApprovalOutcome {
+  if (command.type !== 'review' || command.command.type !== 'review/approve') return { ok: true, record: null };
   const loc = findRoom(after, command.roomId);
   const rev = loc ? currentRevision(loc.room.plan) : null;
-  if (!loc || !rev || rev.state !== 'approved' || !rev.approvedHash || !rev.approvedAt) return null;
-  return { seq, roomId: loc.room.id, revision: rev.number, contentHash: rev.approvedHash, approverId: actor.id, approverName: rev.approvedBy?.name ?? actor.name, approvedAt: rev.approvedAt };
+  if (!loc || !rev || rev.state !== 'approved' || !rev.approvedHash || !rev.approvedAt) return { ok: false, roomId: command.roomId };
+  return {
+    ok: true,
+    record: { seq, roomId: loc.room.id, revision: rev.number, contentHash: rev.approvedHash, approverId: actor.id, approverName: rev.approvedBy?.name ?? actor.name, approvedAt: rev.approvedAt },
+  };
 }
 
 /**
@@ -172,11 +177,16 @@ export class WorkspaceService {
     const touched = approvedRevisionChanges(this.current.workspace, result.value);
     if (touched.length > 0) {
       const t = touched[0]!;
-      return { kind: 'rejected', error: err('invalid_value', `Revision ${t.revision} of ${t.roomName} is approved, so it can't be changed. Start a new draft, or import the file as a copy.`, [t.roomId]).error };
+      const advice = toApply.type === 'project/import' ? 'Import the file as a copy instead.' : 'Start a new draft.';
+      return { kind: 'rejected', error: err('invalid_value', `Revision ${t.revision} of ${t.roomName} is approved, so it can't be changed. ${advice}`, [t.roomId]).error };
     }
     const approval = approvalRecord(this.current.seq + 1, toApply, result.value, actor);
+    if (!approval.ok) {
+      this.onError(`Approval at seq ${this.current.seq + 1} has no approved revision with a fingerprint and time`, toApply);
+      return { kind: 'rejected', error: err('invalid_value', "The approval couldn't be recorded, so it wasn't saved. Try again; if it keeps failing, tell an admin.", [approval.roomId]).error };
+    }
     const entry: LoggedCommand = { seq: this.current.seq + 1, clientId, commandId, actor, command: toApply };
-    await this.store.append(entry, approval);
+    await this.store.append(entry, approval.record);
     this.current = { seq: entry.seq, workspace: result.value };
     for (const listener of this.listeners) {
       try {
