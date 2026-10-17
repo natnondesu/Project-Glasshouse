@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import { z } from './zod';
 import { migrate } from './migrations';
 import { CURRENT_SCHEMA_VERSION, LIMITS } from './model/defaults';
 import type { Workspace } from './model/types';

@@ -1,6 +1,5 @@
 import { OAuth2Server } from 'oauth2-mock-server';
 import type { FastifyInstance } from 'fastify';
-import { createServer } from 'node:net';
 import { Writable } from 'node:stream';
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import type { AuthConfig } from '../../config';
@@ -10,6 +9,7 @@ import { WorkspaceService } from '../../workspaceService';
 import { buildApp } from '../app';
 import { registerAuthRoutes } from './authRoutes';
 import { LoginThrottle } from './loginThrottle';
+import { closedPort } from './closedPort.testutil';
 import { createOidcLogin, OidcError, safeReturnTo } from './oidc';
 import { createSessionAuth, SESSION_COOKIE } from './sessionAuth';
 
@@ -185,16 +185,6 @@ it('keeps the one-time code and state out of the request log', async () => {
 });
 
 describe('an identity provider that is not reachable', () => {
-  const closedPort = (): Promise<number> =>
-    new Promise((resolve, reject) => {
-      const probe = createServer();
-      probe.once('error', reject);
-      probe.listen(0, '127.0.0.1', () => {
-        const { port } = probe.address() as { port: number };
-        probe.close(() => resolve(port));
-      });
-    });
-
   it('does not stop createOidcLogin; start fails as unavailable and says so in the log', async () => {
     const warnings: string[] = [];
     const port = await closedPort();

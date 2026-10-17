@@ -9,12 +9,7 @@ test('the app runs under its content security policy', async ({ page }) => {
     if (msg.type() === 'error' && /Content Security Policy|Refused to/.test(msg.text())) violations.push(msg.text());
   });
   await page.addInitScript(() => {
-    document.addEventListener('securitypolicyviolation', (e) => {
-      // zod asks `Function('')` once at start-up to learn whether it may compile parsers, and falls back to plain
-      // parsing when refused. That probe has an empty sample; real eval()/new Function(code) calls carry their code.
-      if (e.blockedURI === 'eval' && e.sample === '') return;
-      console.error(`Refused to load ${e.blockedURI} (${e.violatedDirective}) ${e.sourceFile}:${e.lineNumber} ${e.sample}`);
-    });
+    document.addEventListener('securitypolicyviolation', (e) => console.error(`Refused to load ${e.blockedURI} (${e.violatedDirective}) ${e.sourceFile}:${e.lineNumber} ${e.sample}`));
   });
 
   const response = await page.goto('/');

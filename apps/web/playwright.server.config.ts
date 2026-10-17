@@ -8,6 +8,8 @@ const WEB_DIR = fileURLToPath(new URL('./dist-server', import.meta.url));
 export default defineConfig({
   testDir: './e2e-server',
   reporter: 'list',
+  // One server holds every spec's data; a room made by one spec shows up on the home screen of another.
+  workers: 1,
   // The server refuses changes without this header; the app sends it itself, the specs' direct API calls get it here.
   use: { baseURL: `http://127.0.0.1:${PORT}`, trace: 'retain-on-failure', extraHTTPHeaders: { 'x-glasshouse': '1' } },
   webServer: {

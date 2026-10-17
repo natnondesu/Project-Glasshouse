@@ -11,6 +11,7 @@ import type { AuthConfig } from '../../config';
 import { createSessionAuth, SESSION_COOKIE, SESSION_IDLE_MS } from './sessionAuth';
 import { LoginThrottle, MAX_FAILURES, MAX_FAILURES_PER_IP } from './loginThrottle';
 import { registerAuthRoutes } from './authRoutes';
+import { closedPort } from './closedPort.testutil';
 import { createOidcLogin, type OidcLogin } from './oidc';
 
 vi.mock('../../identity/passwords', async (importOriginal) => {
@@ -165,10 +166,9 @@ describe('local sign-in', () => {
 });
 
 describe('company sign-in trouble does not take local sign-in down or end in an error page', () => {
-  // Port 9 (discard) is closed on any normal machine and, unlike 1, not blocked by fetch.
-  const oidcConfig: AuthConfig = { ...config, oidc: { issuer: 'http://127.0.0.1:9', clientId: 'glasshouse', clientSecret: 's' } };
+  const oidcConfigFor = (port: number): AuthConfig => ({ ...config, oidc: { issuer: `http://127.0.0.1:${port}`, clientId: 'glasshouse', clientSecret: 's' } });
 
-  async function withOidc(oidc: OidcLogin, store = new MemoryIdentityStore()) {
+  async function withOidc(oidc: OidcLogin, store = new MemoryIdentityStore(), oidcConfig = oidcConfigFor(0)) {
     await store.createUser({
       id: 'u0', email: 'user0@company.test', displayName: 'User 0', role: 'editor', source: 'local', oidcSubject: null,
       passwordHash: await hashPassword('password-123456'), mustChangePassword: false, nameLocked: false, active: true, createdAt: '2026-10-18T09:00:00.000Z', lastLoginAt: null,
@@ -184,8 +184,9 @@ describe('company sign-in trouble does not take local sign-in down or end in an 
   }
 
   it('sends the browser back with "unavailable" while the provider is away, and password sign-in still works', async () => {
-    const oidc = createOidcLogin({ ...oidcConfig.oidc!, redirectUri: `${PUBLIC}/auth/oidc/callback`, warn: () => undefined });
-    const app = await withOidc(oidc);
+    const unreachable = oidcConfigFor(await closedPort());
+    const oidc = createOidcLogin({ ...unreachable.oidc!, redirectUri: `${PUBLIC}/auth/oidc/callback`, warn: () => undefined });
+    const app = await withOidc(oidc, new MemoryIdentityStore(), unreachable);
     const start = await app.inject({ url: '/auth/oidc/start' });
     expect(start.statusCode).toBe(302);
     expect(start.headers.location).toBe('/?signin_error=unavailable');

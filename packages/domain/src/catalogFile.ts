@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import { z } from './zod';
 import { validateTemplate } from './catalog';
 import type { Template } from './model/types';
 import { CURRENT_SCHEMA_VERSION } from './model/defaults';
