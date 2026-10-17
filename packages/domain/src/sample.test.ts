@@ -49,7 +49,7 @@ describe('Sample Project', () => {
     expect(chassis[0]!.nodes).toHaveLength(5);
     const blocking = checkPlan(content).filter((i) => i.severity === 'block');
     expect(blocking.map((i) => i.code)).toEqual(['clearance_obstructed']);
-    expect(mdf.plan.notes.filter((n) => !n.resolved)).toHaveLength(1);
+    expect(mdf.plan.notes).toHaveLength(1);
     expect(content.templatesUsed.every((t) => t.illustrative)).toBe(true);
   });
 

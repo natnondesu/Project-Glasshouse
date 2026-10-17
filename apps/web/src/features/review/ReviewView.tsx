@@ -15,7 +15,7 @@ export function ReviewView({ location }: { location: RoomLocation }) {
         <UnknownsPanel roomId={roomId} revision={revision} />
       </div>
       <div className="review__col">
-        <NotesPanel roomId={roomId} plan={plan} frozen={revision.state === 'approved'} />
+        <NotesPanel roomId={roomId} plan={plan} />
         <HistoryPanel plan={plan} roomId={roomId} />
       </div>
     </div>

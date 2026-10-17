@@ -1,5 +1,5 @@
 import { currentRevision, equipmentStateOf, powerPath, racksOf, rackPower, type RoomLocation } from '@glasshouse/domain';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { SearchBox } from '../search/SearchBox';
 import type { SearchHit } from '../search/search';
@@ -12,7 +12,7 @@ import { initialLabelKinds, type LabelKind } from './labels';
 import { LabelMenu } from './LabelMenu';
 import { ObjectCard } from './ObjectCard';
 import { PowerPathToggle } from './PowerPathToggle';
-import { entrance, standAt, type WalkCamera } from './walk';
+import { entrance, standAt, standHere, type WalkCamera } from './walk';
 import { IconClose } from '../../ui/icons';
 import { PanelManager } from '../plan/PanelManager';
 import { usePlanCommit } from '../../store/hooks';
@@ -63,10 +63,29 @@ export default function Room3DView({ location, readOnly = false }: { location: R
     const target = scene.racks.find((r) => r.id === id) ?? scene.others.find((o) => o.id === id);
     if (target) setWalkCam(standAt(scene, target));
   };
-  const startWalk = (): void => {
-    const rack = scene.racks.find((r) => r.id === selectedId);
-    setWalkCam(rack ? standAt(scene, rack) : entrance(scene));
+  // Walk starts like Street View: first choose where to stand (or the door), then you're in.
+  const [placing, setPlacing] = useState(false);
+  const [placeError, setPlaceError] = useState(false);
+  const dropAt = (x: number, z: number): void => {
+    const spot = standHere(scene, x, z);
+    if (!spot) return setPlaceError(true);
+    setPlaceError(false);
+    setPlacing(false);
+    setWalkCam(spot);
   };
+  const startAtDoor = (): void => {
+    setPlacing(false);
+    setPlaceError(false);
+    setWalkCam(entrance(scene));
+  };
+  useEffect(() => {
+    if (!placing) return;
+    const onKey = (e: KeyboardEvent): void => {
+      if (e.key === 'Escape') setPlacing(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [placing]);
   const pickHit = (hit: SearchHit): void => {
     const target = scene.racks.find((r) => r.id === hit.objectId) ?? scene.others.find((o) => o.id === hit.objectId);
     if (!target) return;
@@ -98,6 +117,7 @@ export default function Room3DView({ location, readOnly = false }: { location: R
           showFeeds={showFeeds}
           path={path}
           walk={walkCam ? { camera: walkCam, onCommit: setWalkCam, glide, onFloor: (x, z) => setGlide({ x, z }), onExit: () => setWalkCam(null) } : null}
+          placing={placing && !walkCam ? { onPick: dropAt } : null}
         />
       ) : (
         <p className="room3d__fallback" role="status">
@@ -171,9 +191,20 @@ export default function Room3DView({ location, readOnly = false }: { location: R
       </aside>
       {managed ? <PanelManager panel={managed} content={content} commit={commit} onClose={() => setManagedId(null)} readOnly={readOnly} /> : null}
       <div className="room3d__controls glass">
-        <button type="button" className="btn btn--sm room3d__walk" aria-pressed={walkCam !== null} onClick={() => (walkCam ? setWalkCam(null) : startWalk())}>
-          {walkCam ? m.room3d.walkExit : m.room3d.walk}
-        </button>
+        {placing ? (
+          <>
+            <button type="button" className="btn btn--sm btn--ink" onClick={startAtDoor}>
+              {m.room3d.startAtDoor}
+            </button>
+            <button type="button" className="btn btn--sm btn--quiet" onClick={() => setPlacing(false)}>
+              {m.common.cancel}
+            </button>
+          </>
+        ) : (
+          <button type="button" className="btn btn--sm room3d__walk" aria-pressed={walkCam !== null} onClick={() => (walkCam ? setWalkCam(null) : setPlacing(true))}>
+            {walkCam ? m.room3d.walkExit : m.room3d.walk}
+          </button>
+        )}
         {walkCam ? (
           <span className="mono room3d__zoom">{m.room3d.eyeHeight}</span>
         ) : (
@@ -196,7 +227,9 @@ export default function Room3DView({ location, readOnly = false }: { location: R
         <button type="button" className="btn btn--sm room3d__feeds" aria-pressed={showFeeds} onClick={() => setShowFeeds(!showFeeds)}>
           {showFeeds ? m.room3d.hideFeeds : m.room3d.showFeeds}
         </button>
-        <span className="room3d__hint">{walkCam ? m.room3d.walkHint : m.room3d.hint}</span>
+        <span className="room3d__hint" role={placing ? 'status' : undefined}>
+          {placing ? (placeError ? m.room3d.placeNoRoom : m.room3d.placeHint) : walkCam ? m.room3d.walkHint : m.room3d.hint}
+        </span>
       </div>
     </section>
   );

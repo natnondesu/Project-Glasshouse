@@ -299,14 +299,18 @@ export interface Revision {
   acknowledgements: AcknowledgedUnknown[];
 }
 
+/** A note on a revision: anyone opening that revision can read it. It never holds approval. */
 export interface ReviewNote {
   id: Id;
   text: string;
-  resolved: boolean;
+  /** The revision it was written on. */
+  revision: number;
   createdAt: string;
+  /** Who wrote it, as they typed it (unverified); absent when they left it blank. */
+  by?: string;
 }
 
-export type HistoryCode = 'submitted' | 'approved' | 'new_draft' | 'draft_discarded' | 'acknowledged' | 'unacknowledged' | 'note_added' | 'note_resolved' | 'note_reopened';
+export type HistoryCode = 'submitted' | 'approved' | 'new_draft' | 'draft_discarded' | 'acknowledged' | 'unacknowledged' | 'note_added';
 
 export interface HistoryEvent {
   revision: number;

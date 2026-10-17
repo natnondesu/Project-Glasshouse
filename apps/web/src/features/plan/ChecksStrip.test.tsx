@@ -2,6 +2,7 @@ import type { Issue } from '@glasshouse/domain';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { expect, it, vi } from 'vitest';
+import { MemoryRouter } from 'react-router';
 import { ChecksStrip } from './ChecksStrip';
 
 const issue = (over: Partial<Issue>): Issue => ({
@@ -49,17 +50,19 @@ it('folds to its heading and counts, and remembers it', async () => {
   expect(screen.getByRole('button', { name: 'Show checks' })).toBeInTheDocument();
 });
 
-it('counts what holds approval the way the Review badge does: blocks, acknowledgements, open notes', () => {
+it('counts what holds approval the way the Review badge does, and points to notes without counting them', () => {
   render(
-    <ChecksStrip
-      issues={[issue({ key: 'a' }), issue({ key: 'b', severity: 'needs_ack', code: 'unknown_demand' as Issue['code'] }), issue({ key: 'c', severity: 'warn', code: 'clearance_door' })]}
-      objects={[{ id: 'x', name: 'EX-01' }]}
-      onSelect={vi.fn()}
-      openNotes={1}
-    />,
+    <MemoryRouter>
+      <ChecksStrip
+        issues={[issue({ key: 'a' }), issue({ key: 'b', severity: 'needs_ack', code: 'unknown_demand' as Issue['code'] }), issue({ key: 'c', severity: 'warn', code: 'clearance_door' })]}
+        objects={[{ id: 'x', name: 'EX-01' }]}
+        onSelect={vi.fn()}
+        notes={{ count: 2, href: '/rooms/r/review' }}
+      />
+    </MemoryRouter>,
   );
   expect(screen.getByText('1 blocks approval')).toBeInTheDocument();
   expect(screen.getByText('1 to acknowledge')).toBeInTheDocument();
-  expect(screen.getByText('1 open note')).toBeInTheDocument();
   expect(screen.getByText('1 warning')).toBeInTheDocument();
+  expect(screen.getByRole('link', { name: '2 notes' })).toHaveAttribute('href', '/rooms/r/review');
 });

@@ -116,13 +116,13 @@ const revision = z.object({
 });
 const plan = z.object({
   revisions: z.array(revision).min(1),
-  notes: z.array(z.object({ id, text: z.string(), resolved: z.boolean(), createdAt: z.string() })),
+  notes: z.array(z.object({ id, text: z.string(), revision: int, createdAt: z.string(), by: z.string().optional() })),
   history: z.array(
     z.object({
       revision: int,
       action: z.string(),
       at: z.string(),
-      code: z.enum(['submitted', 'approved', 'new_draft', 'draft_discarded', 'acknowledged', 'unacknowledged', 'note_added', 'note_resolved', 'note_reopened']).optional(),
+      code: z.enum(['submitted', 'approved', 'new_draft', 'draft_discarded', 'acknowledged', 'unacknowledged', 'note_added']).optional(),
       params: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
     }),
   ),

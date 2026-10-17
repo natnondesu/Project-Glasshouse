@@ -1,5 +1,5 @@
 import { Canvas, useFrame, useThree, type ThreeEvent } from '@react-three/fiber';
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { MeshBasicMaterial, Plane, Raycaster, Vector2, Vector3 } from 'three';
 import { wheelZoomFactor } from '../../viewport/math';
 import { cameraPosition, dollyToward, orbit, panGround, type OrbitCamera } from './camera';
@@ -12,7 +12,7 @@ import { labelKindOf, type LabelKind } from './labels';
 import { PickableObject } from './PickableObject';
 import { Column, Floor, Walls } from './RoomModels';
 import { WalkController } from './WalkController';
-import type { WalkCamera } from './walk';
+import { EYE_M, walkable, type WalkCamera } from './walk';
 import type { Rack3D, Scene3D } from './scene';
 import type { PowerPath } from '@glasshouse/domain';
 import { useT } from '../../i18n';
@@ -168,6 +168,8 @@ interface Room3DCanvasProps {
   onDemand?: boolean;
   /** First person at eye height instead of the orbit camera. */
   walk?: WalkMode | null;
+  /** Choosing where a walk starts: a pin follows the pointer on the floor; a click picks the spot. */
+  placing?: { onPick: (x: number, z: number) => void } | null;
 }
 
 export interface WalkMode {
@@ -176,6 +178,30 @@ export interface WalkMode {
   glide: { x: number; z: number } | null;
   onFloor: (x: number, z: number) => void;
   onExit: () => void;
+}
+
+const PIN_OK = '#0b6449';
+const PIN_NO = '#b8322a';
+
+/** Where a walk would start: a ring on the floor and a post at eye height, red where no one can stand. */
+function StandPin({ at, ok }: { at: [number, number]; ok: boolean }) {
+  const color = ok ? PIN_OK : PIN_NO;
+  return (
+    <group position={[at[0], 0, at[1]]} raycast={NO_PICK}>
+      <mesh position={[0, 0.006, 0]} rotation={[-Math.PI / 2, 0, 0]} raycast={NO_PICK}>
+        <ringGeometry args={[0.18, 0.25, 32]} />
+        <meshBasicMaterial color={color} transparent opacity={0.9} depthWrite={false} />
+      </mesh>
+      <mesh position={[0, EYE_M / 2, 0]} raycast={NO_PICK}>
+        <cylinderGeometry args={[0.015, 0.015, EYE_M, 8]} />
+        <meshBasicMaterial color={color} />
+      </mesh>
+      <mesh position={[0, EYE_M, 0]} raycast={NO_PICK}>
+        <sphereGeometry args={[0.07, 16, 12]} />
+        <meshBasicMaterial color={color} />
+      </mesh>
+    </group>
+  );
 }
 
 export interface Focus3D {
@@ -206,7 +232,8 @@ function FocusRing({ focus, color }: { focus: Focus3D; color: string }) {
   );
 }
 
-export function Room3DCanvas({ scene, palette, camera, onCamera, selectedId, onSelect, labelKinds, focus = null, showFeeds = true, path = null, spin = 0, wheel = true, idle = false, onDemand = false, walk = null }: Room3DCanvasProps) {
+export function Room3DCanvas({ scene, palette, camera, onCamera, selectedId, onSelect, labelKinds, focus = null, showFeeds = true, path = null, spin = 0, wheel = true, idle = false, onDemand = false, walk = null, placing = null }: Room3DCanvasProps) {
+  const [pin, setPin] = useState<[number, number] | null>(null);
   const m = useT();
   const existing = scene.others.filter((o) => o.type === 'existing_rack');
   const blockClick = (e: ThreeEvent<MouseEvent>): void => {
@@ -254,9 +281,10 @@ export function Room3DCanvas({ scene, palette, camera, onCamera, selectedId, onS
         </>
       )}
       {focus ? <FocusRing key={focus.n} focus={focus} color={palette.front} /> : null}
+      {placing && pin ? <StandPin at={pin} ok={walkable(scene, pin[0], pin[1])} /> : null}
       {/* Room geometry takes clicks too, so a wall or column in front of a rack blocks it. */}
       <group onClick={blockClick} onPointerOver={blockHover}>
-        <Floor scene={scene} palette={palette} onPick={walk?.onFloor} />
+        <Floor scene={scene} palette={palette} onPick={walk?.onFloor ?? placing?.onPick} onHover={placing ? setPin : undefined} />
         <Walls scene={scene} palette={palette} />
         {scene.columns.map((c) => (
           <Column key={c.id} column={c} palette={palette} />

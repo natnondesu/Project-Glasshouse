@@ -45,6 +45,25 @@ const MIGRATIONS: Record<number, (raw: RawWorkspace) => RawWorkspace> = {
       return { ...rev, content: { ...content, objects, templatesUsed } };
     }),
   }),
+  // 2026-10: review notes became notes on a revision: no resolving, so they stop holding approval.
+  // Each note moves to the revision it was added on (its history entry says), and the resolve and
+  // reopen lines leave the history.
+  8: (raw) => ({
+    ...raw,
+    schemaVersion: 9,
+    projects: mapPlans(raw.projects, (plan) => {
+      const history = asArray(plan.history).map(asRecord);
+      const revisions = asArray(plan.revisions).map(asRecord);
+      const latest = Number(revisions[revisions.length - 1]?.number ?? 1);
+      const notes = asArray(plan.notes).map((n) => {
+        const { resolved: _resolved, ...note } = asRecord(n);
+        const added = history.find((e) => e.code === 'note_added' && e.at === note.createdAt);
+        return { ...note, revision: typeof added?.revision === 'number' ? added.revision : latest };
+      });
+      const kept = history.filter((e) => e.code !== 'note_resolved' && e.code !== 'note_reopened' && e.action !== 'Resolved a review note' && e.action !== 'Reopened a review note');
+      return { ...plan, notes, history: kept };
+    }),
+  }),
 };
 
 /** Schema 8 merged Compute and Storage into Server; anything else (including a Chassis, which has no category) is left as it is. */

@@ -1,12 +1,12 @@
 import { currentRevision, exportProjectFile } from '@glasshouse/domain';
 import { useState, type ReactNode } from 'react';
-import { Link } from 'react-router';
+import { NavLink, Link } from 'react-router';
 import { LanguageSwitch } from '../i18n/LanguageSwitch';
 import { useT } from '../i18n';
 import { useRoomLocation, useViewedRevisionNumber } from '../store/hooks';
 import { useWorkspaceStore, type SaveState } from '../store/workspaceStore';
 import { downloadJson, slugify } from '../ui/files';
-import { GlasshouseMark, IconDownload } from '../ui/icons';
+import { GlasshouseMark, IconCatalog, IconDownload } from '../ui/icons';
 import { pad2, StatusStamp } from '../ui/StatusStamp';
 
 function Cell({ label, children, mono = false }: { label: string; children: ReactNode; mono?: boolean }) {
@@ -47,6 +47,7 @@ export function TitleBlock({ roomId }: { roomId: string | null }) {
   const workspace = useWorkspaceStore((s) => s.workspace);
   const [exportError, setExportError] = useState<string | null>(null);
   const m = useT();
+  const templateCount = useWorkspaceStore((st) => st.workspace.catalog.length);
   const exportProject = (): void => {
     if (!location) return;
     const file = exportProjectFile(workspace, location.project.id, new Date().toISOString());
@@ -95,6 +96,13 @@ export function TitleBlock({ roomId }: { roomId: string | null }) {
         ) : null}
         <SaveStatus save={save} />
         <LanguageSwitch />
+        {/* The workspace's own tools sit at the far right; user settings join them here later. */}
+        <span className="title-block__tools">
+          <NavLink to="/catalog" className={({ isActive }) => `btn btn--sm title-block__catalog${isActive ? ' is-active' : ''}`} title={m.tree.catalog(templateCount)} aria-label={m.shell.catalog}>
+            <IconCatalog />
+            <span className="title-block__catalog-label">{m.shell.catalog}</span>
+          </NavLink>
+        </span>
       </div>
     </header>
   );

@@ -61,7 +61,7 @@ test('AC09/AC10: template edits leave placed devices alone; a too-deep device bl
   await page.getByRole('button', { name: 'Add Compute Server 4U to RK-01' }).click();
   await expect(page.getByLabel('Demand in watts')).toHaveValue('500');
 
-  await page.getByRole('link', { name: /Device catalog/ }).click();
+  await page.getByRole('banner').getByRole('link', { name: 'Catalog' }).click();
   await page.getByRole('button', { name: /^Compute Server 4U/ }).click();
   await page.getByLabel('Demand in watts').fill('999');
   await page.getByRole('button', { name: 'Save template' }).click();

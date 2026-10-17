@@ -104,14 +104,23 @@ describe('discarding a draft', () => {
 });
 
 describe('approval blockers', () => {
-  it('needs a device, no blocking issues and no open notes', () => {
+  it('needs a device and no blocking issues; a note never holds approval', () => {
     expect(approvalBlockers(plan(ready(false)))).toEqual(['Add at least one Device before approval.']);
     let ws = run(ready(), { type: 'plan', roomId: 'r', command: { type: 'device/update', id: 'srv', patch: { demand: unknownDemand() } } });
     expect(approvalBlockers(plan(ws))).toEqual(['SRV-01 has unknown demand.']);
     ws = run(ws, { type: 'plan', roomId: 'r', command: { type: 'device/update', id: 'srv', patch: { demand: known(450) } } }, review({ type: 'note/add', id: 'n1', text: 'Confirm the PDU model', at: AT }));
-    expect(approvalBlockers(plan(ws))).toEqual(['1 review note is unresolved.']);
-    ws = run(ws, review({ type: 'note/resolve', id: 'n1', resolved: true, at: AT }), review({ type: 'review/submit', designedBy: '', at: AT }));
     expect(approvalBlockers(plan(ws))).toEqual([]);
+  });
+
+  it('notes belong to a revision, can be added to an approved one, and keep who wrote them', () => {
+    const approved = run(ready(), review({ type: 'review/submit', designedBy: '', at: AT }), review({ type: 'review/approve', reviewer: 'S', at: AT }));
+    const ws = run(approved, review({ type: 'note/add', id: 'n', text: 'Cable tray moved 20 cm', by: ' Nok ', at: AT }), review({ type: 'review/new-draft', at: AT }), review({ type: 'note/add', id: 'm', text: 'Second thoughts', at: AT, revision: 1 }));
+    expect(plan(ws).notes).toEqual([
+      { id: 'n', text: 'Cable tray moved 20 cm', revision: 1, createdAt: AT, by: 'Nok' },
+      { id: 'm', text: 'Second thoughts', revision: 1, createdAt: AT },
+    ]);
+    expect(plan(ws).history.filter((e) => e.code === 'note_added').map((e) => e.action)).toEqual(['Nok (unverified) added a note', 'Added a note']);
+    expect(fail(ws, review({ type: 'note/add', id: 'x', text: 'nowhere', at: AT, revision: 9 }))).toBe('There is no revision 9.');
   });
 
   it('re-checks current content when approving', () => {
@@ -139,8 +148,7 @@ describe('approval blockers', () => {
     expect(fail(ws, review({ type: 'review/acknowledge', reservedRangeId: 'rsv', reason: 'x', by: 'S', at: AT }))).toBe('Only unknown demand needs an acknowledgement.');
     expect(fail(ws, review({ type: 'review/acknowledge', reservedRangeId: 'nope', reason: 'x', by: 'S', at: AT }))).toBe('That reserved range no longer exists.');
     const approved = run(ws, review({ type: 'review/submit', designedBy: '', at: AT }), review({ type: 'review/approve', reviewer: 'S', at: AT }));
-    expect(fail(approved, review({ type: 'note/add', id: 'n', text: 'late', at: AT }))).toBe('Revision 1 is approved. Start a new draft to change it.');
+    expect(fail(approved, review({ type: 'review/acknowledge', reservedRangeId: 'rsv', reason: 'x', by: 'S', at: AT }))).toBe('Revision 1 is approved. Start a new draft to change it.');
     expect(fail(ws, review({ type: 'note/add', id: 'n', text: '  ', at: AT }))).toBe('Write the note first.');
-    expect(fail(ws, review({ type: 'note/resolve', id: 'nope', resolved: true, at: AT }))).toBe('That note no longer exists.');
   });
 });

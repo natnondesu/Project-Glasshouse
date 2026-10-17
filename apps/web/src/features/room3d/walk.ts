@@ -99,3 +99,20 @@ export function entrance(scene: Scene3D): WalkCamera {
   }
   return { x: cx, z: cz, heading: Math.PI, pitch: 0 };
 }
+
+/**
+ * Dropped at a spot on the floor, facing the middle of the room; a spot too close to a rack or wall
+ * moves to the nearest place someone can stand (null when there's none within a metre).
+ */
+export function standHere(scene: Scene3D, x: number, z: number): WalkCamera | null {
+  const face = (px: number, pz: number): WalkCamera => ({ x: px, z: pz, heading: Math.atan2(scene.width / 2 - px, scene.length / 2 - pz), pitch: 0 });
+  if (walkable(scene, x, z)) return face(x, z);
+  for (let r = 0.1; r <= 1; r += 0.1) {
+    for (let a = 0; a < Math.PI * 2; a += Math.PI / 12) {
+      const px = x + Math.cos(a) * r;
+      const pz = z + Math.sin(a) * r;
+      if (walkable(scene, px, pz)) return face(px, pz);
+    }
+  }
+  return null;
+}

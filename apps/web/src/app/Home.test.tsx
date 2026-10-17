@@ -29,14 +29,15 @@ it('leads with the last room opened, and lists every room with what holds its ap
   expect(screen.getByRole('heading', { level: 1, name: 'MDF-1' })).toBeInTheDocument();
   const cards = screen.getByRole('region', { name: /Bangna campus/ });
   const mdfCard = within(cards).getByRole('link', { name: 'MDF-1' }).closest('article')!;
-  expect(mdfCard).toHaveTextContent('3 before approval');
+  // A note is for reading, not a hold.
+  expect(mdfCard).toHaveTextContent('2 before approval');
   expect(mdfCard).toHaveTextContent('Last opened');
   // Each hold leads to where it is resolved.
   expect(within(mdfCard).getByRole('link', { name: '1 blocking' })).toHaveAttribute('href', `/rooms/${mdf.id}/plan`);
-  expect(within(mdfCard).getByRole('link', { name: '1 open note' })).toHaveAttribute('href', `/rooms/${mdf.id}/review`);
+  expect(within(mdfCard).queryByRole('link', { name: /note/ })).toBeNull();
   expect(within(cards).getByRole('link', { name: 'Server room A' }).closest('article')).toHaveTextContent('No issues · install sheet ready');
   // A room with holds leads with the way to them.
-  expect(screen.getByRole('link', { name: /^Resolve 3 items/ })).toHaveAttribute('href', `/rooms/${mdf.id}/review`);
+  expect(screen.getByRole('link', { name: /^Resolve 2 items/ })).toHaveAttribute('href', `/rooms/${mdf.id}/review`);
 });
 
 it('adds a room to a site from Home and opens it', async () => {
