@@ -60,7 +60,11 @@ The spec's "Onsite editor / IT editor" split is merged into Editor until there i
 ## Approvals, import, operations (Plan C)
 
 - **Immutable approvals**: on `review/approve` the server stores `(room, revision, sha256 of canonical content, approver, at)` in an `approvals` table; the Install sheet shows the short hash. The command log is append-only (no UPDATE/DELETE grants for the app role).
-- **Import**: the Vercel demo and the company server are different origins, so browser storage cannot be read across. People export a Project file or Workspace backup from the demo and upload it; a workspace backup imports project by project through the existing `project/import` conflict resolution.
+- **Migration from the Vercel version** (decided with the product owner 2026-10-17): until go-live the team keeps using Vercel, and the product owner's browser is the single master copy. Teammates send Project files to the product owner, who merges them with the existing keep / take / copy choice; the product owner's Catalog is canonical. At go-live only the projects that are live are exported as Project files (plus a Catalog file for unused Templates) and imported into the server with the existing *Import project file* action, which in server mode is an ordinary `project/import` command. Sample projects are not imported; imported approvals keep their unverified names as historical records.
+  - Until then: a Workspace backup at least weekly, stored off the laptop (the master copy lives in one browser).
+  - Version rule: on import day the server runs the same or newer code than the Vercel build (both deploy from `main`), because migrations only run forward.
+  - Rehearsal: import the real Project files into a staging server first and compare a few rooms.
+  - Cut-over: stop editing on Vercel, export, import, switch the team over.
 - **Deployment**: one Docker image (built web app + bundled server, non-root), Postgres alongside, TLS at the company reverse proxy. Config by environment variables. `/api/health` (liveness) and `/api/ready` (database reachable, workspace loaded).
 - **Security headers** with `@fastify/helmet` and a CSP matching the app's actual origins; request body limit 25 MB (project files).
 - **Logs** as JSON (pino) to stdout; every accepted command already lands in the audit log with actor and time.
