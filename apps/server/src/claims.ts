@@ -23,7 +23,10 @@ export class ClaimRegistry {
   private readonly claims = new Map<string, Claim>();
   private readonly listeners = new Set<Listener>();
 
-  constructor(private readonly now: () => Date = () => new Date()) {}
+  constructor(
+    private readonly now: () => Date = () => new Date(),
+    private readonly onError: (message: string, error: unknown) => void = (message, error) => console.error(message, error),
+  ) {}
 
   list(): Claim[] {
     return [...this.claims.values()];
@@ -82,6 +85,13 @@ export class ClaimRegistry {
 
   private changed(): void {
     const snapshot = this.list();
-    for (const listener of this.listeners) listener(snapshot);
+    for (const listener of this.listeners) {
+      // A broken stream must not fail the edit that changed the claim.
+      try {
+        listener(snapshot);
+      } catch (e) {
+        this.onError('A claims listener failed', e);
+      }
+    }
   }
 }

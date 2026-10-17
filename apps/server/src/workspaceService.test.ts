@@ -1,4 +1,4 @@
-import { createCopyIds, createObject, createWorkspace, exportProjectFile, type Rack, type Template, type WorkspaceCommand } from '@glasshouse/domain';
+import { createCopyIds, createObject, createWorkspace, currentRevision, exportProjectFile, findRoom, type Rack, type Template, type WorkspaceCommand } from '@glasshouse/domain';
 import { describe, expect, it, vi } from 'vitest';
 import { ClaimRegistry } from './claims';
 import type { ApprovalRecord, LoggedCommand } from './store/commandStore';
@@ -409,6 +409,8 @@ describe('room claims', () => {
   const go = (svc: WorkspaceService, actor: typeof ploy | typeof dev, id: string, command: WorkspaceCommand) => svc.submit({ clientId: actor.id, commandId: id, command }, actor);
   const vlan = (vid: number): WorkspaceCommand => ({ type: 'plan', roomId: 'r', command: { type: 'vlan/add', vlan: { vid, name: `V${vid}` } } });
 
+  const vlanCount = (svc: WorkspaceService) => currentRevision(findRoom(svc.state.workspace, 'r')!.room.plan).content.vlans.length;
+
   async function room() {
     const claims = new ClaimRegistry(() => new Date(NOW));
     const svc = await WorkspaceService.open(new MemoryCommandStore(), { now: () => NOW, claims });
@@ -454,13 +456,67 @@ describe('room claims', () => {
     expect(claims.holder('r')).toMatchObject({ userId: 'u-p' });
   });
 
-  it('a replayed (recovered) command does not touch claims', async () => {
+  it('replaying the log at startup does not create claims', async () => {
     const store = new MemoryCommandStore();
-    const claims = new ClaimRegistry(() => new Date(NOW));
-    const svc = await WorkspaceService.open(store, { now: () => NOW, claims });
+    const svc = await WorkspaceService.open(store, { now: () => NOW, claims: new ClaimRegistry(() => new Date(NOW)) });
     for (const [i, c] of readyRoomCommands().slice(0, 3).entries()) await go(svc, ploy, `s${i}`, c);
+    expect(await go(svc, ploy, 'e1', vlan(10))).toMatchObject({ kind: 'accepted' });
+    const claims = new ClaimRegistry(() => new Date(NOW));
     const reopened = await WorkspaceService.open(store, { now: () => NOW, claims });
-    expect(reopened.state.seq).toBe(3);
+    expect(vlanCount(reopened)).toBe(1);
     expect(claims.list()).toEqual([]);
+  });
+
+  it('a draft edit recovered after an ambiguous append does not create a claim', async () => {
+    class AmbiguousOnce extends MemoryCommandStore {
+      failNext = false;
+      override async append(entry: LoggedCommand, approval?: ApprovalRecord | null): Promise<void> {
+        await super.append(entry, approval);
+        if (this.failNext) {
+          this.failNext = false;
+          throw new Error('connection reset after commit');
+        }
+      }
+    }
+    const store = new AmbiguousOnce();
+    const claims = new ClaimRegistry(() => new Date(NOW));
+    const svc = await WorkspaceService.open(store, { now: () => NOW, claims, onError: () => {} });
+    for (const [i, c] of readyRoomCommands().slice(0, 3).entries()) await go(svc, ploy, `s${i}`, c);
+    store.failNext = true;
+    await expect(go(svc, ploy, 'e1', vlan(10))).rejects.toThrow('connection reset');
+    // A non-draft change makes the service recover the landed edit first.
+    expect(await go(svc, eddie, 'n1', { type: 'room/rename', roomId: 'r', name: 'MDF-9' })).toMatchObject({ kind: 'accepted' });
+    expect(vlanCount(svc)).toBe(1);
+    expect(claims.list()).toEqual([]);
+  });
+
+  it('a holder who was taken over is refused with the new holder’s name', async () => {
+    const { svc, claims } = await room();
+    await go(svc, ploy, 'e1', vlan(10));
+    expect(claims.claim('r', eddie, { admin: true })).toMatchObject({ ok: true });
+    expect(await go(svc, ploy, 'e2', vlan(11))).toMatchObject({ kind: 'rejected', error: { code: 'claimed', message: expect.stringMatching(/Eddie is editing/), targets: ['r'] } });
+    expect(await go(svc, eddie, 'e3', vlan(12))).toMatchObject({ kind: 'accepted' });
+  });
+
+  it('an admin who has not claimed the room is refused like anyone else', async () => {
+    const { svc } = await room();
+    const ada = { id: 'u-a', name: 'Ada', role: 'admin' as const, verified: true };
+    await go(svc, ploy, 'e1', vlan(10));
+    expect(await go(svc, ada, 'a1', vlan(11))).toMatchObject({ kind: 'rejected', error: { code: 'claimed', targets: ['r'] } });
+  });
+
+  it('a failing claims subscriber does not undo or hide an accepted edit', async () => {
+    const onError = vi.fn();
+    const claims = new ClaimRegistry(() => new Date(NOW), onError);
+    const svc = await WorkspaceService.open(new MemoryCommandStore(), { now: () => NOW, claims });
+    for (const [i, c] of readyRoomCommands().slice(0, 3).entries()) await go(svc, ploy, `s${i}`, c);
+    claims.subscribe(() => {
+      throw new Error('stream write failed');
+    });
+    const seen: number[] = [];
+    svc.subscribe((e) => seen.push(e.seq));
+    expect(await go(svc, ploy, 'e1', vlan(10))).toEqual({ kind: 'accepted', seq: 4, duplicate: false });
+    expect(seen).toEqual([4]);
+    expect(onError).toHaveBeenCalledWith(expect.stringContaining('claims'), expect.any(Error));
   });
 });
