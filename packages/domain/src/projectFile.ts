@@ -3,7 +3,7 @@ import { newId } from './ids';
 import { currentRevision, findProject, findRoom, findSite } from './lookup';
 import { migrate } from './migrations';
 import { CURRENT_SCHEMA_VERSION, LIMITS } from './model/defaults';
-import type { Id, Project, RevisionState, Template, Workspace } from './model/types';
+import type { HistoryEvent, Id, Project, RevisionState, Template, UnverifiedName, Workspace } from './model/types';
 import { err, ok, type Result } from './result';
 import { workspaceSchema } from './schema';
 
@@ -189,7 +189,46 @@ function copyProject(ws: Workspace, p: Project, ids: CopyIds | undefined): Resul
   });
 }
 
-export function applyImport(ws: Workspace, file: ProjectFile, resolution: ImportResolution): Result<Workspace> {
+const withoutUserId = (p: UnverifiedName): UnverifiedName => ({ name: p.name, at: p.at });
+
+function withoutVerified(params: HistoryEvent['params']): HistoryEvent['params'] {
+  if (!params) return params;
+  return Object.fromEntries(Object.entries(params).filter(([key]) => key !== 'verified'));
+}
+
+/**
+ * A file is typed by whoever holds it, so nothing in it can vouch for a signed-in person: user ids, note author ids and
+ * "verified" history marks are dropped and imported people read as "(unverified)".
+ */
+function stripIdentity(p: Project): Project {
+  return {
+    ...p,
+    sites: p.sites.map((site) => ({
+      ...site,
+      rooms: site.rooms.map((room) => ({
+        ...room,
+        plan: {
+          ...room.plan,
+          revisions: room.plan.revisions.map((r) => ({
+            ...r,
+            designedBy: r.designedBy && withoutUserId(r.designedBy),
+            approvedBy: r.approvedBy && withoutUserId(r.approvedBy),
+            acknowledgements: r.acknowledgements.map((a) => ({ ...a, by: withoutUserId(a.by) })),
+          })),
+          notes: room.plan.notes.map(({ byId: _byId, ...note }) => note),
+          history: room.plan.history.map((e) => {
+            const params = withoutVerified(e.params);
+            const { params: _params, ...rest } = e;
+            return params ? { ...rest, params } : rest;
+          }),
+        },
+      })),
+    })),
+  };
+}
+
+export function applyImport(ws: Workspace, incoming: ProjectFile, resolution: ImportResolution): Result<Workspace> {
+  const file: ProjectFile = { ...incoming, project: stripIdentity(incoming.project) };
   const additions = latestTemplates(file.templates).filter((t) => !ws.catalog.some((c) => c.id === t.id));
   if (resolution.mode === 'copy') {
     const copy = copyProject(ws, file.project, resolution.ids);
