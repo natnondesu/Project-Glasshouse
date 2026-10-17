@@ -29,6 +29,9 @@ it('lists people, changes a role, and shows a new user’s one-time password', a
   render(<MemoryRouter><UsersScreen /></MemoryRouter>);
   const row = (await screen.findByRole('row', { name: /Ploy/ }));
   expect(within(row).getByText('Local')).toBeInTheDocument();
+  expect(within(row).getByRole('button', { name: 'Reset password for Ploy' })).toBeInTheDocument();
+  expect(within(row).getByRole('button', { name: 'Switch off Ploy' })).toHaveTextContent('Active');
+  expect(within(screen.getByRole('row', { name: /Few/ })).queryByRole('button', { name: /Reset password/ })).not.toBeInTheDocument();
   await userEvent.selectOptions(within(row).getByRole('combobox', { name: 'Role for Ploy' }), 'editor');
   expect(fetchSpy).toHaveBeenCalledWith('/api/admin/users/b', expect.objectContaining({ method: 'PATCH' }));
   await userEvent.type(screen.getByLabelText('Email'), 'new@company.test');
@@ -52,4 +55,18 @@ it('turns non-admins away', () => {
   useAuthStore.setState({ status: 'signed-in', user: { id: 'b', name: 'Ploy', email: 'p@x', role: 'editor', mustChangePassword: false } });
   render(<MemoryRouter><UsersScreen /></MemoryRouter>);
   expect(screen.getByText('Only admins can manage users.')).toBeInTheDocument();
+});
+
+it('shows a localized fallback when the server gives no message or cannot be reached', async () => {
+  const spy = vi.spyOn(globalThis, 'fetch').mockImplementation(async (_input, init) => (init?.method === 'PATCH' ? new Response('', { status: 500 }) : json(users)));
+  render(<MemoryRouter><UsersScreen /></MemoryRouter>);
+  const row = await screen.findByRole('row', { name: /Ploy/ });
+  await userEvent.selectOptions(within(row).getByRole('combobox', { name: 'Role for Ploy' }), 'editor');
+  expect(await screen.findByRole('alert')).toHaveTextContent('The server answered 500.');
+  spy.mockImplementation(async (_input, init) => {
+    if (init?.method === 'PATCH') throw new TypeError('Failed to fetch');
+    return json(users);
+  });
+  await userEvent.click(within(row).getByRole('button', { name: 'Switch off Ploy' }));
+  expect(await screen.findByRole('alert')).toHaveTextContent('Could not reach the Glasshouse server');
 });

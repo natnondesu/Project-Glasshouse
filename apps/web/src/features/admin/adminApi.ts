@@ -1,4 +1,5 @@
 import type { Role } from '../../auth/authApi';
+import { messagesFor, useLangStore } from '../../i18n';
 
 export interface AdminUser {
   id: string;
@@ -15,10 +16,16 @@ export interface AdminUser {
 const HEADERS = { 'content-type': 'application/json', 'x-glasshouse': '1' };
 
 async function call<T>(url: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(url, init);
+  const text = messagesFor(useLangStore.getState().lang).users;
+  let res: Response;
+  try {
+    res = await fetch(url, init);
+  } catch {
+    throw new Error(text.unreachable);
+  }
   if (!res.ok) {
     const body = (await res.json().catch(() => null)) as { error?: { message?: string } } | null;
-    throw new Error(body?.error?.message ?? `The server answered ${res.status}.`);
+    throw new Error(body?.error?.message ?? text.requestFailed(res.status));
   }
   return (await res.json()) as T;
 }

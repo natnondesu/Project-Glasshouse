@@ -85,14 +85,14 @@ export function UsersScreen() {
                 </td>
                 <td>{u.source === 'oidc' ? m.users.sso : m.users.local}</td>
                 <td>
-                  <button type="button" className="btn btn--sm btn--quiet users__status" aria-pressed={u.active} onClick={() => void run(async () => replace(await updateUser(u.id, { active: !u.active })))}>
+                  <button type="button" className={`btn btn--sm btn--quiet users__status users__status--${u.active ? 'on' : 'off'}`} aria-label={m.users.toggleFor(u.displayName, u.active)} onClick={() => void run(async () => replace(await updateUser(u.id, { active: !u.active })))}>
                     {u.active ? m.users.active : m.users.off}
                   </button>
                 </td>
                 <td className="mono">{u.lastLoginAt ? formatTime(u.lastLoginAt) : m.common.none}</td>
                 <td>
                   {u.source === 'local' ? (
-                    <button type="button" className="btn btn--sm btn--quiet" onClick={() => void run(async () => setSecret({ who: u.email, password: (await resetPassword(u.id)).temporaryPassword }))}>
+                    <button type="button" className="btn btn--sm btn--quiet" aria-label={m.users.resetFor(u.displayName)} onClick={() => void run(async () => setSecret({ who: u.email, password: (await resetPassword(u.id)).temporaryPassword }))}>
                       {m.users.reset}
                     </button>
                   ) : null}

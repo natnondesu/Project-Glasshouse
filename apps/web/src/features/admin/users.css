@@ -85,11 +85,11 @@
   box-shadow: var(--focus-ring);
 }
 
-.users__status[aria-pressed='true'] {
+.users__status.users__status--on {
   color: var(--ok);
 }
 
-.users__status[aria-pressed='false'] {
+.users__status.users__status--off {
   color: var(--ink-3);
 }
 
