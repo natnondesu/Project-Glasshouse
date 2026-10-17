@@ -249,7 +249,7 @@
 }
 
 .approval-stamp__word {
-  grid-row: span 3;
+  grid-row: span 4;
   align-self: center;
   font-family: var(--font-mono);
   font-size: 26px;
@@ -263,7 +263,8 @@
 }
 
 .approval-stamp__when,
-.approval-stamp__by {
+.approval-stamp__by,
+.approval-stamp__hash {
   font-size: var(--text-xs);
   color: var(--ink-2);
 }

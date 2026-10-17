@@ -52,3 +52,6 @@ export * from './checks/links';
 export * from './vlans';
 export * from './checks/vlans';
 export { roomExtensionFor, type RoomExtension } from './commands/extend';
+export * from './fingerprint';
+export * from './approvals';
+export * from './draftEdit';

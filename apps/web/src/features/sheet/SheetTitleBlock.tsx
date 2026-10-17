@@ -1,4 +1,4 @@
-import type { Revision, RoomLocation } from '@glasshouse/domain';
+import { shortFingerprint, type Revision, type RoomLocation } from '@glasshouse/domain';
 import { pad2 } from '../../ui/StatusStamp';
 import { useT } from '../../i18n';
 import { personLabel } from '../../ui/person';
@@ -34,6 +34,12 @@ export function SheetTitleBlock({ location, revision, printedAt, section }: Shee
           <dt>{m.sheet.approved}</dt>
           <dd>{formatTime(revision.approvedAt)}</dd>
         </div>
+        {revision.approvedHash ? (
+          <div>
+            <dt>{m.sheet.fingerprint}</dt>
+            <dd className="mono">{shortFingerprint(revision.approvedHash)}</dd>
+          </div>
+        ) : null}
         <div>
           <dt>{m.sheet.printed}</dt>
           <dd className="sheet-title__printed">{formatTime(printedAt)}</dd>

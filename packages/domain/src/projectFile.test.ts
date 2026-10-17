@@ -102,6 +102,22 @@ describe('project file', () => {
     const r = applyImport(other, clashing, { mode: 'merge', takeIncoming: [] });
     expect(r).toMatchObject({ ok: false, error: { message: 'Some sites or rooms in this file already belong to another project here. Import it as a copy instead.' } });
   });
+
+  it('refuses a merge that would put the same room in two sites', () => {
+    const local = run(source(), { type: 'site/create', projectId: 'p', id: 'sb', name: 'Site B' });
+    const file = fileOf(local);
+    const [siteA, siteB] = file.project.sites;
+    const moved = siteA!.rooms.find((r) => r.id === 'r1')!;
+    const movedFile: ProjectFile = {
+      ...file,
+      project: {
+        ...file.project,
+        sites: [{ ...siteA!, rooms: siteA!.rooms.filter((r) => r.id !== 'r1') }, { ...siteB!, rooms: [moved] }],
+      },
+    };
+    const result = applyImport(local, movedFile, { mode: 'merge', takeIncoming: [] });
+    expect(result).toMatchObject({ ok: false, error: { code: 'invalid_value', targets: ['r1'] } });
+  });
 });
 
 describe('template versions on import', () => {

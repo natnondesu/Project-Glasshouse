@@ -298,6 +298,8 @@ export interface Revision {
   approvedBy: UnverifiedName | null;
   submittedAt: string | null;
   approvedAt: string | null;
+  /** sha256 of the content at approval (see contentFingerprint); absent on revisions approved before 2026-10. */
+  approvedHash?: string;
   acknowledgements: AcknowledgedUnknown[];
 }
 

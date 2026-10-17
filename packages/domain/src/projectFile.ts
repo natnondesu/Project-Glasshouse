@@ -227,6 +227,20 @@ function stripIdentity(p: Project): Project {
   };
 }
 
+/** A hand-edited file can move a room to another site; merging would then keep both copies under one ID. */
+function duplicateId(p: Project): { id: Id; name: string } | null {
+  const seen = new Set<Id>();
+  for (const s of p.sites) {
+    if (seen.has(s.id)) return { id: s.id, name: s.name };
+    seen.add(s.id);
+    for (const r of s.rooms) {
+      if (seen.has(r.id)) return { id: r.id, name: r.name };
+      seen.add(r.id);
+    }
+  }
+  return null;
+}
+
 export function applyImport(ws: Workspace, incoming: ProjectFile, resolution: ImportResolution): Result<Workspace> {
   const file: ProjectFile = { ...incoming, project: stripIdentity(incoming.project) };
   const additions = latestTemplates(file.templates).filter((t) => !ws.catalog.some((c) => c.id === t.id));
@@ -245,6 +259,8 @@ export function applyImport(ws: Workspace, incoming: ProjectFile, resolution: Im
   }
   const local = findProject(ws, file.project.id);
   const merged = local ? mergeProject(local, file.project, new Set(resolution.takeIncoming)) : file.project;
+  const dup = duplicateId(merged);
+  if (dup) return err('invalid_value', `"${dup.name}" appears more than once in this project after the merge (the file moves it to another site). Import the file as a copy instead.`, [dup.id]);
   return ok(
     produce(ws, (d) => {
       const i = d.projects.findIndex((p) => p.id === merged.id);

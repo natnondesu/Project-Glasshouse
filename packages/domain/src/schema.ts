@@ -114,6 +114,7 @@ const revision = z.object({
   approvedBy: unverifiedName.nullable(),
   submittedAt: text.nullable(),
   approvedAt: text.nullable(),
+  approvedHash: z.string().regex(/^[0-9a-f]{64}$/).optional(),
   acknowledgements: z.array(z.object({ reservedRangeId: id, reason: text, by: unverifiedName })),
 });
 const plan = z.object({

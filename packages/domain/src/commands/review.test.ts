@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { known, unknownDemand } from '../demand';
 import { findReserved } from '../devices';
 import { createWorkspace } from '../factories';
+import { contentFingerprint } from '../fingerprint';
 import { currentRevision, findRoom } from '../lookup';
 import type { Rack, Template, Workspace } from '../model/types';
 import { createObject } from '../objects';
@@ -72,6 +73,14 @@ describe('lifecycle', () => {
     expect(fail(submitted, review({ type: 'review/submit', designedBy: '', at: AT }))).toBe('Revision 1 is already In review.');
     expect(fail(submitted, review({ type: 'review/approve', reviewer: ' ', at: AT }))).toBe("Reviewer's name can't be empty.");
     expect(run(submitted, review({ type: 'review/new-draft', at: AT })).projects[0]!.sites[0]!.rooms[0]!.plan.revisions).toHaveLength(2);
+  });
+
+  it('stores the content fingerprint on approval', () => {
+    const ws = run(ready(), review({ type: 'review/submit', designedBy: 'Ploy', at: AT }), review({ type: 'review/approve', reviewer: 'Somchai', at: AT }));
+    const rev = currentRevision(plan(ws));
+    expect(rev.approvedHash).toBe(contentFingerprint(rev.content));
+    const reloaded = parseWorkspace(JSON.parse(JSON.stringify(ws)));
+    expect(reloaded.ok && currentRevision(plan(reloaded.value)).approvedHash).toBe(rev.approvedHash);
   });
 
   it('AC16: self-approval is allowed and flagged', () => {

@@ -1,4 +1,4 @@
-import { approvalBlockerItems, currentRevision, isSelfApproved, type Plan } from '@glasshouse/domain';
+import { approvalBlockerItems, currentRevision, isSelfApproved, shortFingerprint, type Plan } from '@glasshouse/domain';
 import { useState, type FormEvent } from 'react';
 import { Link } from 'react-router';
 import { useCan } from '../../auth/useCan';
@@ -61,6 +61,7 @@ export function ApprovalPanel({ roomId, plan }: { roomId: string; plan: Plan }) 
           <span className="approval-stamp__rev mono">{m.review.stampRev(rev)}</span>
           <span className="approval-stamp__when mono">{formatTime(revision.approvedAt)}</span>
           {revision.approvedBy ? <span className="approval-stamp__by">{m.review.stampBy(personLabel(m, revision.approvedBy))}</span> : null}
+          {revision.approvedHash ? <span className="approval-stamp__hash mono">{m.review.fingerprint(shortFingerprint(revision.approvedHash))}</span> : null}
           {isSelfApproved(revision) ? <span className="stamp stamp--warn">{m.review.selfApproved}</span> : null}
         </div>
         <dl className="review-facts">

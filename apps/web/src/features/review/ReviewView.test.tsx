@@ -61,6 +61,37 @@ it('AC13/AC16: submits and approves after confirming, flags self-approval, and s
   expect(revision()).toMatchObject({ number: 2, state: 'draft' });
 });
 
+describe('approval fingerprint', () => {
+  const approveWith = (approvedHash: string | undefined): void => {
+    review({ type: 'review/submit', designedBy: 'Ploy', at: AT });
+    review({ type: 'review/approve', reviewer: 'Nok', at: AT });
+    const { workspace, replace } = useWorkspaceStore.getState();
+    replace({
+      ...workspace,
+      projects: workspace.projects.map((p) => ({
+        ...p,
+        sites: p.sites.map((s) => ({
+          ...s,
+          rooms: s.rooms.map((r) => ({ ...r, plan: { ...r.plan, revisions: r.plan.revisions.map(({ approvedHash: _dropped, ...rev }) => (approvedHash ? { ...rev, approvedHash } : rev)) } })),
+        })),
+      })),
+    });
+  };
+
+  it('shows the short fingerprint on an approved revision', () => {
+    approveWith('ab'.repeat(32));
+    open();
+    expect(screen.getByRole('status')).toHaveTextContent('Fingerprint abababababab');
+  });
+
+  it('shows no fingerprint for a revision approved before fingerprints existed', () => {
+    approveWith(undefined);
+    open();
+    expect(screen.getByRole('status')).toHaveTextContent('APPROVED');
+    expect(screen.queryByText(/Fingerprint/)).toBeNull();
+  });
+});
+
 it('cancels a submit without changing anything', async () => {
   const user = userEvent.setup();
   open();
