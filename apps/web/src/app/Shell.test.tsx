@@ -37,3 +37,19 @@ it('still shows the other-tab banner for a read-only local tab', () => {
   render(<RouterProvider router={createMemoryRouter(routes, { initialEntries: ['/rooms/r/plan'] })} />);
   expect(bannerText()).toMatch(/another tab/);
 });
+
+it('says the workspace is view-only for a viewer, and not that another tab is open', () => {
+  const s = useWorkspaceStore.getState();
+  s.setConnection('live');
+  s.setReadOnly(true, 'view-only');
+  render(<RouterProvider router={createMemoryRouter(routes, { initialEntries: ['/rooms/r/plan'] })} />);
+  expect(bannerText()).toBe('You can view this workspace. Ask an admin for edit access.');
+});
+
+it('lets a lost connection outrank the view-only banner', () => {
+  const s = useWorkspaceStore.getState();
+  s.setConnection('offline');
+  s.setReadOnly(true, 'view-only');
+  render(<RouterProvider router={createMemoryRouter(routes, { initialEntries: ['/rooms/r/plan'] })} />);
+  expect(bannerText()).toMatch(/Lost the connection/);
+});

@@ -68,6 +68,7 @@ export async function startServerSync(transport: Transport = httpTransport(), is
     store.setLoad({ kind: 'failed', reason: parsed.error.message, raw: snapshot.workspace });
     return () => {};
   }
+  const viewOnly = me?.role === 'viewer';
   let offlineTimer: ReturnType<typeof setTimeout> | null = null;
   const unloadGuard = createUnloadGuard(window);
   const client = new SyncClient(transport, { seq: snapshot.seq, workspace: parsed.value }, {
@@ -86,7 +87,8 @@ export async function startServerSync(transport: Transport = httpTransport(), is
         if (offlineTimer !== null) clearTimeout(offlineTimer);
         offlineTimer = null;
         s.setConnection('live');
-        s.setReadOnly(false);
+        if (viewOnly) s.setReadOnly(true, 'view-only');
+        else s.setReadOnly(false);
         return;
       }
       if (status === 'connecting') {
@@ -96,7 +98,7 @@ export async function startServerSync(transport: Transport = httpTransport(), is
       offlineTimer ??= setTimeout(() => {
         offlineTimer = null;
         useWorkspaceStore.getState().setConnection('offline');
-        useWorkspaceStore.getState().setReadOnly(true);
+        useWorkspaceStore.getState().setReadOnly(true, 'offline');
       }, OFFLINE_GRACE_MS);
     },
   });
@@ -104,6 +106,7 @@ export async function startServerSync(transport: Transport = httpTransport(), is
   setCommit((_ws, command) => client.dispatch(command));
   store.replace(parsed.value);
   store.setLoad({ kind: 'ready' });
+  if (viewOnly) store.setReadOnly(true, 'view-only');
   client.start();
   return () => {
     if (offlineTimer !== null) clearTimeout(offlineTimer);

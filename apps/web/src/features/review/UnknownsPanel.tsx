@@ -1,17 +1,20 @@
 import { formatURange, racksOf, type Rack, type ReservedRange, type Revision } from '@glasshouse/domain';
 import { useState, type FormEvent } from 'react';
 import { useReviewCommit } from '../../store/hooks';
+import { useCan } from '../../auth/useCan';
 import { useT } from '../../i18n';
+import { personLabel } from '../../ui/person';
 
 function AcknowledgeForm({ roomId, range, disabled }: { roomId: string; range: ReservedRange; disabled: boolean }) {
   const review = useReviewCommit(roomId);
   const m = useT();
+  const can = useCan();
   const [reason, setReason] = useState('');
   const [by, setBy] = useState('');
   const [error, setError] = useState<string | null>(null);
   const submit = (e: FormEvent): void => {
     e.preventDefault();
-    setError(review({ type: 'review/acknowledge', reservedRangeId: range.id, reason, by, at: new Date().toISOString() }));
+    setError(review({ type: 'review/acknowledge', reservedRangeId: range.id, reason, by: can.me?.name ?? by, ...(can.me ? { byId: can.me.id } : {}), at: new Date().toISOString() }));
   };
   return (
     <form className="ack-form" onSubmit={submit}>
@@ -25,14 +28,16 @@ function AcknowledgeForm({ roomId, range, disabled }: { roomId: string; range: R
           </div>
         </div>
         <div className="ack-form__row">
-          <div className="field">
-            <label htmlFor={`${range.id}-by`} className="field__label">
-              {m.review.yourName}
-            </label>
-            <div className="field__box">
-              <input id={`${range.id}-by`} className="field__input" value={by} onChange={(e) => setBy(e.target.value)} />
+          {can.verifiedNames ? null : (
+            <div className="field">
+              <label htmlFor={`${range.id}-by`} className="field__label">
+                {m.review.yourName}
+              </label>
+              <div className="field__box">
+                <input id={`${range.id}-by`} className="field__input" value={by} onChange={(e) => setBy(e.target.value)} />
+              </div>
             </div>
-          </div>
+          )}
           <button type="submit" className="btn">
             {m.review.acknowledge}
           </button>
@@ -50,6 +55,7 @@ function AcknowledgeForm({ roomId, range, disabled }: { roomId: string; range: R
 export function UnknownsPanel({ roomId, revision }: { roomId: string; revision: Revision }) {
   const review = useReviewCommit(roomId);
   const m = useT();
+  const can = useCan();
   const [withdrawError, setWithdrawError] = useState<string | null>(null);
   const frozen = revision.state === 'approved';
   const items: { rack: Rack; range: ReservedRange }[] = racksOf(revision.content).flatMap((rack) =>
@@ -70,18 +76,20 @@ export function UnknownsPanel({ roomId, revision }: { roomId: string; revision: 
               </p>
               {ack ? (
                 <div className="unknowns__ack">
-                  <p>{m.review.acceptedBy(ack.by.name, ack.reason)}</p>
+                  <p>{m.review.acceptedBy(personLabel(m, ack.by), ack.reason)}</p>
                   <button
                     type="button"
                     className="btn btn--sm btn--quiet"
-                    disabled={frozen}
+                    disabled={frozen || !can.review}
                     onClick={() => setWithdrawError(review({ type: 'review/unacknowledge', reservedRangeId: range.id, at: new Date().toISOString() }))}
                   >
                     {m.review.withdraw}
                   </button>
                 </div>
-              ) : (
+              ) : can.review ? (
                 <AcknowledgeForm roomId={roomId} range={range} disabled={frozen} />
+              ) : (
+                <p className="review-note">{m.review.reviewersOnlyUnknowns}</p>
               )}
             </li>
           );

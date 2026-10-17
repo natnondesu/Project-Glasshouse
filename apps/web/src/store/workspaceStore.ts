@@ -44,11 +44,14 @@ export function setCommit(next: Commit): void {
   commit = next;
 }
 
+export type ReadOnlyReason = 'other-tab' | 'offline' | 'view-only';
+
 interface Data {
   workspace: Workspace;
   load: LoadState;
   save: SaveState;
   readOnly: boolean;
+  readOnlyReason: ReadOnlyReason | null;
   history: Record<Id, RoomHistory>;
   lastEdit: { key: string; roomId: Id; at: number } | null;
   connection: 'local' | ConnectionStatus;
@@ -62,7 +65,7 @@ interface WorkspaceState extends Data {
   replace: (workspace: Workspace) => void;
   setLoad: (load: LoadState) => void;
   setSave: (save: SaveState) => void;
-  setReadOnly: (readOnly: boolean) => void;
+  setReadOnly: (readOnly: boolean, reason?: ReadOnlyReason) => void;
   adopt: (workspace: Workspace) => void;
   setConnection: (c: Data['connection']) => void;
   setNotice: (n: string | null) => void;
@@ -73,6 +76,7 @@ const initialData = (): Data => ({
   load: { kind: 'loading' },
   save: { kind: 'idle' },
   readOnly: false,
+  readOnlyReason: null,
   history: {},
   lastEdit: null,
   connection: 'local',
@@ -164,7 +168,7 @@ export const useWorkspaceStore = create<WorkspaceState>()((set, get) => ({
   replace: (workspace) => set({ workspace, history: {}, lastEdit: null }),
   setLoad: (load) => set({ load }),
   setSave: (save) => set({ save }),
-  setReadOnly: (readOnly) => set({ readOnly }),
+  setReadOnly: (readOnly, reason) => set((s) => ({ readOnly, readOnlyReason: readOnly ? (reason ?? s.readOnlyReason ?? 'other-tab') : null })),
 }));
 
 export const resetWorkspaceStore = (): void => {

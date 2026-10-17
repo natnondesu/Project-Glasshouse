@@ -4,6 +4,7 @@ import { useCallback, useState } from 'react';
 import { useBlocker } from 'react-router';
 import { CatalogFileActions } from './CatalogFileActions';
 import { useSearchParamState } from '../../store/hooks';
+import { useCan } from '../../auth/useCan';
 import { useWorkspaceStore } from '../../store/workspaceStore';
 import { blankTemplate, TemplateEditor } from './TemplateEditor';
 import { filterTemplates } from './templateFilter';
@@ -15,6 +16,7 @@ import { useT } from '../../i18n';
 export function CatalogScreen() {
   const catalog = useWorkspaceStore((s) => s.workspace.catalog);
   const dispatch = useWorkspaceStore((s) => s.dispatch);
+  const can = useCan();
   const [selectedId, select] = useSearchParamState('tpl');
   const [draft, setDraft] = useState<Template | null>(null);
   const selected = catalog.find((t) => t.id === selectedId) ?? null;
@@ -56,6 +58,7 @@ export function CatalogScreen() {
           <button
             type="button"
             className="btn btn--sm btn--ink"
+            disabled={!can.admin}
             onClick={() =>
               guard(() => {
                 select(null);
@@ -67,9 +70,10 @@ export function CatalogScreen() {
           </button>
         </header>
         <p className="catalog__note">{m.catalog.note}</p>
-        <CatalogFileActions guard={guard} />
+        {can.admin ? null : <p className="review-note">{m.catalog.adminsOnly}</p>}
+        <CatalogFileActions guard={guard} canChange={can.admin} />
         {missing > 0 ? (
-          <button type="button" className="btn btn--sm" onClick={() => dispatch({ type: 'catalog/seed' })}>
+          <button type="button" className="btn btn--sm" disabled={!can.admin} onClick={() => dispatch({ type: 'catalog/seed' })}>
             {m.catalog.addDefaults(missing)}
           </button>
         ) : null}
@@ -121,34 +125,37 @@ export function CatalogScreen() {
             </div>
           </div>
         ) : null}
-        {draft ? (
-          <TemplateEditor
-            key={draft.id}
-            mode="create"
-            initial={draft}
-            onDirtyChange={setDirty}
-            onDone={(id) => {
-              setDraft(null);
-              if (id) select(id);
-            }}
-          />
-        ) : selected ? (
-          <TemplateEditor
-            key={`${selected.id}:${selected.version}`}
-            mode="edit"
-            initial={selected}
-            onDone={(id) => select(id)}
-            onDirtyChange={setDirty}
-            onDuplicate={(t) =>
-              guard(() => {
-                select(null);
-                setDraft({ ...t, id: newId(), version: 0, label: m.catalog.copyOf(t.label), illustrative: false });
-              })
-            }
-          />
-        ) : (
-          <p className="catalog__empty">{m.catalog.pick}</p>
-        )}
+        {/* A disabled fieldset covers every field and button in the editor: browsing stays, saving can't happen. */}
+        <fieldset disabled={!can.admin} className="inspector__lock">
+          {draft ? (
+            <TemplateEditor
+              key={draft.id}
+              mode="create"
+              initial={draft}
+              onDirtyChange={setDirty}
+              onDone={(id) => {
+                setDraft(null);
+                if (id) select(id);
+              }}
+            />
+          ) : selected ? (
+            <TemplateEditor
+              key={`${selected.id}:${selected.version}`}
+              mode="edit"
+              initial={selected}
+              onDone={(id) => select(id)}
+              onDirtyChange={setDirty}
+              onDuplicate={(t) =>
+                guard(() => {
+                  select(null);
+                  setDraft({ ...t, id: newId(), version: 0, label: m.catalog.copyOf(t.label), illustrative: false });
+                })
+              }
+            />
+          ) : (
+            <p className="catalog__empty">{m.catalog.pick}</p>
+          )}
+        </fieldset>
       </section>
     </div>
   );

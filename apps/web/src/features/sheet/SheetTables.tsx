@@ -1,6 +1,7 @@
 import { BOM_COLUMNS, formatDemand, formatURange, panelOf, racksOf, wayPhase, type BomRow, type Chassis, type Rack, type Revision, type CableRow, type PlanContent } from '@glasshouse/domain';
 import type { ReactNode } from 'react';
 import { useT } from '../../i18n';
+import { personLabel } from '../../ui/person';
 import { bomCell, bomHeader } from '../bom/bomText';
 import { vlanUsage } from '../network/vlanUsage';
 
@@ -139,7 +140,7 @@ export function BomTable({ rows, revision, titleBlock }: { rows: BomRow[]; revis
             <tr key={range.id}>
               <td colSpan={SHEET_COLUMNS.length}>
                 <strong>{`${range.label} · ${formatURange(range)} · ${rack.name}`}</strong>
-                {m.sheet.ackLine(ack.reason, ack.by.name)}
+                {m.sheet.ackLine(ack.reason, personLabel(m, ack.by))}
               </td>
             </tr>
           ))}

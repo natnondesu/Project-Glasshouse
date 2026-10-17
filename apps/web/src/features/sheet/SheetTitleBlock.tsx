@@ -1,6 +1,7 @@
 import type { Revision, RoomLocation } from '@glasshouse/domain';
 import { pad2 } from '../../ui/StatusStamp';
 import { useT } from '../../i18n';
+import { personLabel } from '../../ui/person';
 import { formatTime } from '../../ui/time';
 
 interface SheetTitleBlockProps {
@@ -12,7 +13,7 @@ interface SheetTitleBlockProps {
 
 export function SheetTitleBlock({ location, revision, printedAt, section }: SheetTitleBlockProps) {
   const m = useT();
-  const unverified = (n: { name: string } | null): string => (n ? m.sheet.unverified(n.name) : m.sheet.notRecorded);
+  const unverified = (n: { name: string; userId?: string } | null): string => (n ? personLabel(m, n) : m.sheet.notRecorded);
   return (
     <header className="sheet-title">
       <h2 className="sheet-title__main">

@@ -4,6 +4,8 @@ import type { Messages } from './en';
  * Thai messages. Drafted by Claude; the team reviews wording. Technical terms engineers use
  * as-is on site (Rack, U, MCB, UPS, PDU, BOM, port names) stay in English.
  */
+/** The domain marks a signed-in person's history line with `verified`; typed names keep the caveat. */
+const tail = (p: Record<string, string | number>, text = ' (ยังไม่ยืนยันตัวตน)'): string => (p.verified ? '' : text);
 const side = (s: string | number | undefined): string => (s === 'rear' ? 'ด้านหลัง' : 'ด้านหน้า');
 
 export const th: Messages = {
@@ -43,6 +45,7 @@ export const th: Messages = {
     equipmentDetails: 'รายละเอียดอุปกรณ์',
     serverIdle: 'เชื่อมต่อเซิร์ฟเวอร์ Glasshouse แล้ว',
     savedServer: (time) => `บันทึกไปยังเซิร์ฟเวอร์แล้ว · ${time}`,
+    viewOnly: 'คุณดูพื้นที่ทำงานนี้ได้อย่างเดียว ขอสิทธิ์แก้ไขจากผู้ดูแล',
     offline: 'ขาดการเชื่อมต่อกับเซิร์ฟเวอร์ Glasshouse กำลังเชื่อมต่อใหม่… การแก้ไขที่ทำไว้จะถูกเก็บและส่งให้ภายหลัง',
     notApplied: (reason) => `การแก้ไขหนึ่งรายการไม่สำเร็จ: ${reason}`,
     serverUnreachable: (reason) => `Glasshouse เชื่อมต่อเซิร์ฟเวอร์ไม่ได้ ${reason}`,
@@ -710,7 +713,6 @@ export const th: Messages = {
     people: 'ผู้รับผิดชอบ',
     approved: 'อนุมัติเมื่อ',
     printed: 'พิมพ์เมื่อ',
-    unverified: (name) => `${name} (ยังไม่ยืนยันตัวตน)`,
     notRecorded: 'ไม่ได้บันทึก',
     peopleLine: (designer, approver) => `ออกแบบโดย ${designer} · อนุมัติโดย ${approver}`,
     slot: 'สล็อต',
@@ -723,7 +725,7 @@ export const th: Messages = {
     powerFeeds: 'สายจ่ายไฟ',
     wayDetail: (way, phase, rating) => ` · ช่อง ${way} (${phase}, ${rating} A)`,
     acknowledged: 'ค่าที่ไม่ทราบซึ่งรับทราบแล้ว',
-    ackLine: (reason, by) => `: ${reason} — รับทราบโดย ${by} (ยังไม่ยืนยันตัวตน)`,
+    ackLine: (reason, by) => `: ${reason} — รับทราบโดย ${by}`,
     cable: { label: 'ป้าย', from: 'จาก', to: 'ไปที่', port: 'พอร์ต', cable: 'ชนิดสาย', vlan: 'VLAN' },
     topoCollapsed: 'แสดงเฉพาะอุปกรณ์เครือข่าย: เซิร์ฟเวอร์และอุปกรณ์ที่ต่อสายเส้นเดียวนับรวมไว้ที่สวิตช์ และดูรายการได้ในตารางสาย',
     unlabelled: 'ไม่มีป้าย',
@@ -877,13 +879,13 @@ export const th: Messages = {
     no_devices: () => 'เพิ่มอุปกรณ์อย่างน้อยหนึ่งชิ้นก่อนอนุมัติ',
   },
   history: {
-    submitted: (p) => (p.by ? `ส่งตรวจโดย ${p.by} (ยังไม่ยืนยันตัวตน)` : 'ส่งตรวจ'),
-    approved: (p) => `อนุมัติโดย ${p.by} (ยังไม่ยืนยันตัวตน)`,
+    submitted: (p) => (p.by ? `ส่งตรวจโดย ${p.by}${tail(p)}` : 'ส่งตรวจ'),
+    approved: (p) => `อนุมัติโดย ${p.by}${tail(p)}`,
     new_draft: (p) => `เริ่มฉบับร่าง ${p.to} จากฉบับ ${p.from}`,
     draft_discarded: (p) => `ทิ้งฉบับร่าง ${p.draft} กลับไปใช้ฉบับ ${p.back}`,
-    acknowledged: (p) => `${p.by} (ยังไม่ยืนยันตัวตน) รับทราบค่าไฟที่ไม่ทราบของ ${p.range}`,
+    acknowledged: (p) => `${p.by}${tail(p)} รับทราบค่าไฟที่ไม่ทราบของ ${p.range}`,
     unacknowledged: () => 'ถอนการรับทราบ',
-    note_added: (p) => (p.by ? `${p.by} (ไม่ได้ยืนยัน) เพิ่มบันทึก` : 'เพิ่มบันทึก'),
+    note_added: (p) => (p.by ? `${p.by}${tail(p, ' (ไม่ได้ยืนยัน)')} เพิ่มบันทึก` : 'เพิ่มบันทึก'),
   },
   review: {
     revision: (rev) => `ฉบับ ${rev}`,
@@ -917,11 +919,12 @@ export const th: Messages = {
     notesNote: 'สำหรับทุกคนที่เปิดฉบับนี้ภายหลัง บันทึกไม่ขวางการอนุมัติ และเพิ่มได้แม้อนุมัติแล้ว',
     noteName: 'ชื่อของคุณ (ไม่บังคับ, ไม่ได้ยืนยัน)',
     noteBy: (by, time) => `${by} (ไม่ได้ยืนยัน) · ${time}`,
+    noteByVerified: (by, time) => `${by} · ${time}`,
     notesEarlier: (rev, n) => `บันทึกของ R${rev} (${n})`,
     unknowns: 'ช่วงที่จองไว้ซึ่งไม่ทราบค่าไฟ',
     noUnknowns: 'ไม่มีช่วงที่จองไว้ที่ไม่ทราบค่าไฟ',
     unknownIssue: 'ไม่ทราบค่าไฟ รับทราบเพื่อปลดล็อกการอนุมัติ',
-    acceptedBy: (by, reason) => `รับทราบโดย ${by} (ยังไม่ยืนยันตัวตน): ${reason}`,
+    acceptedBy: (by, reason) => `รับทราบโดย ${by}: ${reason}`,
     withdraw: 'ถอน',
     why: 'ทำไมจึงยอมรับได้?',
     yourName: 'ชื่อของคุณ (ยังไม่ยืนยันตัวตน)',
@@ -947,7 +950,10 @@ export const th: Messages = {
     confirmApprove: 'ยืนยันการอนุมัติ',
     approveBlocked: (n) => `การอนุมัติรอ ${n} รายการด้านล่าง`,
     stamp: 'อนุมัติแล้ว',
-    stampBy: (by) => `โดย ${by} (ยังไม่ยืนยันตัวตน)`,
+    stampBy: (by) => `โดย ${by}`,
+    reviewersOnly: 'เฉพาะผู้ตรวจเท่านั้นที่อนุมัติได้',
+    ownSubmission: 'คุณเป็นผู้ส่งฉบับนี้ ต้องให้ผู้ตรวจคนอื่นอนุมัติ',
+    reviewersOnlyUnknowns: 'เฉพาะผู้ตรวจเท่านั้นที่ยอมรับค่ากำลังไฟที่ไม่ทราบได้',
     stampRev: (rev) => `ฉบับ R${rev}`,
   },
   room3d: {
@@ -994,6 +1000,7 @@ export const th: Messages = {
     customerU: (u) => `ลูกค้า · ${u}U`,
   },
   catalog: {
+    adminsOnly: 'เฉพาะผู้ดูแลเท่านั้นที่แก้ไขแคตตาล็อกได้',
     frontPanel: 'หน้าเครื่อง',
     frontPanelEmpty: 'เพิ่มกลุ่มพอร์ตด้านล่าง แล้วหน้าเครื่องจะแสดงตามที่อุปกรณ์จะเห็น',
     duplicate: 'ทำสำเนา',

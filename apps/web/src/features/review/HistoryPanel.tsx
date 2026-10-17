@@ -33,7 +33,7 @@ export function HistoryPanel({ plan, roomId }: { plan: Plan; roomId: string }) {
             <span className="revisions__who">
               {r.designedBy ? m.review.designedByName(r.designedBy.name) : m.review.designerNotRecorded}
               {r.approvedBy ? m.review.approvedByName(r.approvedBy.name, formatTime(r.approvedAt)) : ''}
-              {r.designedBy || r.approvedBy ? m.review.unverifiedTail : ''}
+              {[r.designedBy, r.approvedBy].some((p) => p && !p.userId) ? m.review.unverifiedTail : ''}
               {isSelfApproved(r) ? m.review.selfApprovedTail : ''}
             </span>
             {r.number !== currentNumber ? (

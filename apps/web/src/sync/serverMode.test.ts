@@ -53,6 +53,22 @@ it('goes read-only when the stream stays down, and back when it returns', async 
   vi.useRealTimers();
 });
 
+it('keeps a viewer read-only, with its own reason, through an outage and back', async () => {
+  vi.useFakeTimers();
+  let handlers: EventHandlers | null = null;
+  const viewer = { id: 'v1', name: 'Vi', email: 'v@x', role: 'viewer' as const, mustChangePassword: false };
+  const stop = await startServerSync(transport({ openEvents: vi.fn((_a: number, h: EventHandlers) => ((handlers = h), h.onOpen(), () => {})) }), () => false, viewer);
+  expect(useWorkspaceStore.getState()).toMatchObject({ readOnly: true, readOnlyReason: 'view-only' });
+  handlers!.onError(false);
+  await vi.advanceTimersByTimeAsync(3100);
+  expect(useWorkspaceStore.getState()).toMatchObject({ readOnly: true, readOnlyReason: 'offline' });
+  handlers!.onOpen();
+  expect(useWorkspaceStore.getState()).toMatchObject({ readOnly: true, readOnlyReason: 'view-only', connection: 'live' });
+  stop();
+  expect(useWorkspaceStore.getState()).toMatchObject({ readOnly: false, readOnlyReason: null });
+  vi.useRealTimers();
+});
+
 it('a cancelled start never wires the store, even when its fetch resolves last', async () => {
   let release!: () => void;
   const gate = new Promise<void>((r) => (release = r));

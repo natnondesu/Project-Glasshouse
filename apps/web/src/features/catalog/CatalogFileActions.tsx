@@ -7,7 +7,7 @@ import { useT } from '../../i18n';
 const list = (names: string[]): string => (names.length ? ` (${names.join(', ')})` : '');
 
 /** Share a catalog as a file, and build the default catalog that ships with the app. */
-export function CatalogFileActions({ guard }: { guard: (go: () => void) => void }) {
+export function CatalogFileActions({ guard, canChange }: { guard: (go: () => void) => void; canChange: boolean }) {
   const catalog = useWorkspaceStore((s) => s.workspace.catalog);
   const dispatch = useWorkspaceStore((s) => s.dispatch);
   const m = useT();
@@ -32,7 +32,7 @@ export function CatalogFileActions({ guard }: { guard: (go: () => void) => void 
         <button type="button" className="btn btn--sm" onClick={() => downloadJson(`glasshouse-catalog-${new Date().toISOString().slice(0, 10)}.json`, exportCatalog(catalog, new Date().toISOString()))}>
           {m.catalog.export}
         </button>
-        <button type="button" className="btn btn--sm btn--quiet" onClick={() => guard(() => input.current?.click())}>
+        <button type="button" className="btn btn--sm btn--quiet" disabled={!canChange} onClick={() => guard(() => input.current?.click())}>
           {m.catalog.import}
         </button>
         <input
@@ -55,6 +55,7 @@ export function CatalogFileActions({ guard }: { guard: (go: () => void) => void 
             <button
               type="button"
               className="btn btn--sm btn--ink"
+              disabled={!canChange}
               onClick={() => {
                 const problem = dispatch({ type: 'catalog/import', templates: pending });
                 setError(problem?.message ?? null);
