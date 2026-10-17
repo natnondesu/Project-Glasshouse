@@ -1,6 +1,7 @@
 import type { ProjectFile } from '@glasshouse/domain';
 import { create } from 'zustand';
 import { useAuthStore } from '../auth/authStore';
+import { createUnloadGuard } from '../sync/unloadGuard';
 
 /** Same as the server's CLAIM_IDLE_MS: after this long without an edit anyone may take over. */
 export const CLAIM_IDLE_MS = 15 * 60 * 1000;
@@ -23,17 +24,24 @@ export interface ClaimLost {
 
 interface ClaimsState {
   byRoom: Record<string, Claim>;
-  lost: ClaimLost | null;
+  /** Versions waiting to be kept or discarded; the dialog shows the first. */
+  lost: ClaimLost[];
   setClaims: (list: Claim[]) => void;
-  setLost: (lost: ClaimLost | null) => void;
+  pushLost: (lost: ClaimLost) => void;
+  shiftLost: () => void;
 }
 
 export const useClaimsStore = create<ClaimsState>()((set) => ({
   byRoom: {},
-  lost: null,
+  lost: [],
   setClaims: (list) => set({ byRoom: Object.fromEntries(list.map((c) => [c.roomId, c])) }),
-  setLost: (lost) => set({ lost }),
+  pushLost: (lost) => set((s) => ({ lost: [...s.lost, lost] })),
+  shiftLost: () => set((s) => ({ lost: s.lost.slice(1) })),
 }));
+
+// A copy nobody has kept yet is the only one: leaving the page would lose it.
+const lostGuard = createUnloadGuard(window);
+useClaimsStore.subscribe((s) => lostGuard.set(s.lost.length > 0));
 
 const otherHolder = (claim: Claim | undefined, me: string | undefined): Claim | null => (claim && me && claim.userId !== me ? claim : null);
 
@@ -54,4 +62,7 @@ export function useMyClaim(roomId: string): Claim | null {
 
 export const isIdle = (claim: Claim, now: number): boolean => now - Date.parse(claim.lastEditAt) >= CLAIM_IDLE_MS;
 
-export const resetClaimsStore = (): void => useClaimsStore.setState({ byRoom: {}, lost: null });
+/** When the sync stops: who holds what is unknown, but a lost version is still the person's to keep. */
+export const resetClaimsStore = (): void => useClaimsStore.setState({ byRoom: {} });
+
+export const clearClaimsStore = (): void => useClaimsStore.setState({ byRoom: {}, lost: [] });

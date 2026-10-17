@@ -91,7 +91,7 @@ export async function startServerSync(transport: Transport = httpTransport(), is
         useWorkspaceStore.getState().setNotice(messagesFor(useLangStore.getState().lang).claims.lostNoCopy);
         return;
       }
-      useClaimsStore.getState().setLost({ roomId, roomName: loc.room.name, holderName: useClaimsStore.getState().byRoom[roomId]?.name ?? null, changes, file: file.value });
+      useClaimsStore.getState().pushLost({ roomId, roomName: loc.room.name, holderName: useClaimsStore.getState().byRoom[roomId]?.name ?? null, changes, file: file.value });
     },
     onDropped: (dropped) => useWorkspaceStore.getState().setNotice(dropped.map((d) => d.error.message).join(' ')),
     onConnection: (status) => {

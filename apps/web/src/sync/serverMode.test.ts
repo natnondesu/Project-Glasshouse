@@ -1,9 +1,9 @@
-import { apply, createWorkspace, type WorkspaceCommand } from '@glasshouse/domain';
+import { apply, createWorkspace, parseProjectFile, type WorkspaceCommand } from '@glasshouse/domain';
 import { beforeEach, expect, it, vi } from 'vitest';
 import { resetWorkspaceStore, useWorkspaceStore } from '../store/workspaceStore';
 import type { EventHandlers, Transport } from './syncClient';
 import { AuthError } from '../auth/authApi';
-import { resetClaimsStore, useClaimsStore } from '../claims/claimsStore';
+import { clearClaimsStore, useClaimsStore } from '../claims/claimsStore';
 import { resetAuthStore, useAuthStore } from '../auth/authStore';
 import { saveStash, takeStash } from './pendingStash';
 import { startServerSync } from './serverMode';
@@ -11,7 +11,7 @@ import { startServerSync } from './serverMode';
 beforeEach(() => {
   resetWorkspaceStore();
   resetAuthStore();
-  resetClaimsStore();
+  clearClaimsStore();
   sessionStorage.clear();
 });
 
@@ -216,9 +216,16 @@ it('offers the person their own version when their edits to a room were refused'
   });
   const stop = await startServerSync(t);
   // The tab doesn't know yet (it is not signed in here), so the edit goes out and the server refuses it.
-  useWorkspaceStore.getState().dispatch({ type: 'plan', roomId: 'r', command: { type: 'survey/update', patch: { width: 9 } } });
-  await vi.waitFor(() => expect(useClaimsStore.getState().lost).not.toBeNull());
-  expect(useClaimsStore.getState().lost).toMatchObject({ roomId: 'r', roomName: 'MDF-1', holderName: 'Ada', changes: 1 });
-  expect(useClaimsStore.getState().lost!.file.format).toBe('glasshouse.project');
+  useWorkspaceStore.getState().dispatch({ type: 'plan', roomId: 'r', command: { type: 'survey/update', patch: { width: 9.4 } } });
+  await vi.waitFor(() => expect(useClaimsStore.getState().lost).toHaveLength(1));
+  const [lost] = useClaimsStore.getState().lost;
+  expect(lost).toMatchObject({ roomId: 'r', roomName: 'MDF-1', holderName: 'Ada', changes: 1 });
+  expect(lost!.file.format).toBe('glasshouse.project');
+  // The file is this tab's version: it holds the edit the server refused.
+  const room = lost!.file.project.sites[0]!.rooms[0]!;
+  expect(room.plan.revisions.map((r) => r.content.survey.width)).toContain(9.4);
+  expect(parseProjectFile(JSON.parse(JSON.stringify(lost!.file))).ok).toBe(true);
   stop();
+  // The copy outlives the sync: only who-holds-what is forgotten.
+  expect(useClaimsStore.getState().lost).toHaveLength(1);
 });
