@@ -6,8 +6,8 @@ const pkg = JSON.parse(await readFile(new URL('./package.json', import.meta.url)
 const external = Object.keys(pkg.dependencies ?? {}).filter((name) => !name.startsWith('@glasshouse/'));
 
 await build({
-  entryPoints: ['src/main.ts'],
-  outfile: 'dist/main.js',
+  entryPoints: ['src/main.ts', 'src/cli.ts'],
+  outdir: 'dist',
   bundle: true,
   platform: 'node',
   format: 'esm',

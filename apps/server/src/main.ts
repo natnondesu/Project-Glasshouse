@@ -3,6 +3,7 @@ import { registerAuthRoutes } from './http/auth/authRoutes';
 import { LoginThrottle } from './http/auth/loginThrottle';
 import { createOidcLogin } from './http/auth/oidc';
 import { createSessionAuth } from './http/auth/sessionAuth';
+import { registerAdmin } from './http/admin';
 import { buildApp } from './http/app';
 import { devAuthenticate, registerDevAuthRoutes } from './http/devAuth';
 import { MemoryIdentityStore } from './identity/memoryIdentityStore';
@@ -35,6 +36,7 @@ if (config.auth.mode === 'dev-insecure') {
   const oidc = auth.oidc ? await createOidcLogin({ ...auth.oidc, redirectUri: new URL('/auth/oidc/callback', auth.publicUrl).href }) : null;
   const built = await buildApp({
     service, authenticate: sessions.authenticate, publicOrigin: auth.publicUrl.origin, trustProxy: config.trustProxy, webDir: config.webDir, logger: true,
+    admin: (api) => registerAdmin(api, { store: idStore, localLogin: auth.localLogin, now: () => new Date() }),
     authRoutes: (a) => registerAuthRoutes(a, { store: idStore, sessions, config: auth, oidc, throttle, now: () => new Date() }),
   });
   app = built;
