@@ -81,4 +81,14 @@ describe('admin users API', () => {
     expect((await store.findUserById('ed'))?.mustChangePassword).toBe(true);
     expect((await call('POST', '/api/admin/users/sso/reset-password')).statusCode).toBe(400);
   });
+
+  it('resets with no content-type and no body, as the web app sends it; a JSON content-type with no body is refused by Fastify', async () => {
+    const { app } = await setup(user('ad', 'admin'), [user('ed', 'editor')]);
+    const bodiless = await app.inject({ method: 'POST', url: '/api/admin/users/ed/reset-password', headers: { 'x-glasshouse': '1' } });
+    expect(bodiless.statusCode).toBe(200);
+    expect(bodiless.json()).toEqual({ temporaryPassword: expect.any(String) });
+    const withType = await app.inject({ method: 'POST', url: '/api/admin/users/ed/reset-password', headers: { 'x-glasshouse': '1', 'content-type': 'application/json' } });
+    expect(withType.statusCode).toBe(400);
+    expect(withType.json()).toMatchObject({ code: 'FST_ERR_CTP_EMPTY_JSON_BODY' });
+  });
 });
