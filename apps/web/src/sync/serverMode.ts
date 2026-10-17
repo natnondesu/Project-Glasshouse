@@ -62,5 +62,6 @@ export async function startServerSync(transport: Transport = httpTransport(), is
     client.stop();
     setCommit(apply);
     useWorkspaceStore.getState().setConnection('local');
+    useWorkspaceStore.getState().setReadOnly(false);
   };
 }

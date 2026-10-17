@@ -70,6 +70,19 @@ it('after stop, edits apply locally again', async () => {
   expect(useWorkspaceStore.getState().connection).toBe('local');
   expect(useWorkspaceStore.getState().dispatch({ type: 'project/create', id: 'q', name: 'Local' })).toBeNull();
   expect(useWorkspaceStore.getState().workspace.projects.some((p) => p.id === 'q')).toBe(true);
-  await new Promise((r) => setTimeout(r, 50));
+  await Promise.resolve();
   expect(t.postCommands).not.toHaveBeenCalled();
+});
+
+it('after stop while offline, edits apply locally', async () => {
+  vi.useFakeTimers();
+  let handlers: EventHandlers | null = null;
+  const stop = await startServerSync(transport({ openEvents: vi.fn((_a: number, h: EventHandlers) => ((handlers = h), h.onOpen(), () => {})) }));
+  handlers!.onError(false);
+  await vi.advanceTimersByTimeAsync(3100);
+  expect(useWorkspaceStore.getState().readOnly).toBe(true);
+  stop();
+  expect(useWorkspaceStore.getState().dispatch({ type: 'project/create', id: 'q', name: 'Local' })).toBeNull();
+  expect(useWorkspaceStore.getState().workspace.projects.some((p) => p.id === 'q')).toBe(true);
+  vi.useRealTimers();
 });
