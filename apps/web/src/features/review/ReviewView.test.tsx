@@ -5,6 +5,7 @@ import { createMemoryRouter, RouterProvider } from 'react-router';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { routes } from '../../app/routes';
 import { resetAuthStore, useAuthStore } from '../../auth/authStore';
+import { resetPeopleStore, usePeopleStore } from '../../people/peopleStore';
 import { resetWorkspaceStore, useWorkspaceStore } from '../../store/workspaceStore';
 
 const revision = () => currentRevision(findRoom(useWorkspaceStore.getState().workspace, 'r')!.room.plan);
@@ -35,6 +36,7 @@ const review = (command: ReviewCommand): void => {
 
 beforeEach(() => {
   resetAuthStore();
+  resetPeopleStore();
   seed();
 });
 
@@ -266,6 +268,15 @@ describe('signed in on the shared server', () => {
     const history = screen.getByRole('region', { name: 'Revisions and history' });
     expect(history).toHaveTextContent('Approved by Nok R.');
     expect(history).not.toHaveTextContent('unverified');
+  });
+
+  it('shows the approver as the directory has them, with their email, on the stamp', () => {
+    review({ type: 'review/submit', designedBy: 'Ploy S.', byId: 'other', at: AT });
+    review({ type: 'review/approve', reviewer: 'Nok', byId: 'me', at: AT });
+    usePeopleStore.setState({ byId: { me: { name: 'Nok Rattana', email: 'nok@x.test' } } });
+    signInAs('viewer');
+    open();
+    expect(screen.getByRole('status')).toHaveTextContent('by Nok Rattana (nok@x.test)');
   });
 
   it('labels each person on the revision list on their own', () => {

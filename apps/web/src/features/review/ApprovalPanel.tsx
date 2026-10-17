@@ -4,6 +4,7 @@ import { Link } from 'react-router';
 import { useCan } from '../../auth/useCan';
 import { useT } from '../../i18n';
 import { useReviewCommit } from '../../store/hooks';
+import { usePeople } from '../../people/peopleStore';
 import { personLabel } from '../../ui/person';
 import { pad2, StatusStamp } from '../../ui/StatusStamp';
 import { formatTime } from '../../ui/time';
@@ -17,6 +18,7 @@ export function ApprovalPanel({ roomId, plan }: { roomId: string; plan: Plan }) 
   const review = useReviewCommit(roomId);
   const blockers = approvalBlockerItems(plan);
   const m = useT();
+  const people = usePeople();
   const can = useCan();
   const [name, setName] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -60,13 +62,13 @@ export function ApprovalPanel({ roomId, plan }: { roomId: string; plan: Plan }) 
           <span className="approval-stamp__word">{m.review.stamp}</span>
           <span className="approval-stamp__rev mono">{m.review.stampRev(rev)}</span>
           <span className="approval-stamp__when mono">{formatTime(revision.approvedAt)}</span>
-          {revision.approvedBy ? <span className="approval-stamp__by">{m.review.stampBy(personLabel(m, revision.approvedBy))}</span> : null}
+          {revision.approvedBy ? <span className="approval-stamp__by">{m.review.stampBy(personLabel(m, revision.approvedBy, people))}</span> : null}
           {revision.approvedHash ? <span className="approval-stamp__hash mono">{m.review.fingerprint(shortFingerprint(revision.approvedHash))}</span> : null}
           {isSelfApproved(revision) ? <span className="stamp stamp--warn">{m.review.selfApproved}</span> : null}
         </div>
         <dl className="review-facts">
           <dt>{m.review.designedBy}</dt>
-          <dd>{revision.designedBy ? personLabel(m, revision.designedBy) : '—'}</dd>
+          <dd>{revision.designedBy ? personLabel(m, revision.designedBy, people) : '—'}</dd>
           <dt>{m.review.submitted}</dt>
           <dd>{formatTime(revision.submittedAt)}</dd>
         </dl>
@@ -98,7 +100,7 @@ export function ApprovalPanel({ roomId, plan }: { roomId: string; plan: Plan }) 
       </header>
       <dl className="review-facts">
         <dt>{m.review.designedBy}</dt>
-        <dd>{revision.designedBy ? personLabel(m, revision.designedBy) : '—'}</dd>
+        <dd>{revision.designedBy ? personLabel(m, revision.designedBy, people) : '—'}</dd>
         <dt>{m.review.submitted}</dt>
         <dd>{formatTime(revision.submittedAt)}</dd>
       </dl>

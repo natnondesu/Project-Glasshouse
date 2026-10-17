@@ -1,6 +1,7 @@
 import { shortFingerprint, type Revision, type RoomLocation } from '@glasshouse/domain';
 import { pad2 } from '../../ui/StatusStamp';
 import { useT } from '../../i18n';
+import { usePeople } from '../../people/peopleStore';
 import { personLabel } from '../../ui/person';
 import { formatTime } from '../../ui/time';
 
@@ -13,7 +14,8 @@ interface SheetTitleBlockProps {
 
 export function SheetTitleBlock({ location, revision, printedAt, section }: SheetTitleBlockProps) {
   const m = useT();
-  const unverified = (n: { name: string; userId?: string } | null): string => (n ? personLabel(m, n) : m.sheet.notRecorded);
+  const people = usePeople();
+  const unverified = (n: { name: string; userId?: string } | null): string => (n ? personLabel(m, n, people) : m.sheet.notRecorded);
   return (
     <header className="sheet-title">
       <h2 className="sheet-title__main">

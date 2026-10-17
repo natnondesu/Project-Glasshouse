@@ -6,6 +6,7 @@ import { lastRoomId } from '../features/home/lastRoom';
 import { RoomCard } from '../features/home/RoomCard';
 import { heroRoom, roomGroups } from '../features/home/rooms';
 import '../features/home/home.css';
+import { useCan } from '../auth/useCan';
 import { useT } from '../i18n';
 import { useWorkspaceStore } from '../store/workspaceStore';
 import { IconPlus } from '../ui/icons';
@@ -16,6 +17,7 @@ export function Home() {
   const dispatch = useWorkspaceStore((s) => s.dispatch);
   const navigate = useNavigate();
   const m = useT();
+  const can = useCan();
   useDocumentTitle(null);
   const [error, setError] = useState<string | null>(null);
   const [lastId] = useState(lastRoomId);
@@ -54,11 +56,13 @@ export function Home() {
             {rooms.map((r) => (
               <RoomCard key={r.room.id} summary={r} lastOpened={r.room.id === lastId} />
             ))}
-            <button type="button" className="home-add" onClick={() => addRoom(site.id)}>
-              <IconPlus className="home-add__icon" />
-              <span className="home-add__title">{m.home.newRoomIn(site.name)}</span>
-              <span className="home-add__body">{m.home.addRoomBody}</span>
-            </button>
+            {can.edit ? (
+              <button type="button" className="home-add" onClick={() => addRoom(site.id)}>
+                <IconPlus className="home-add__icon" />
+                <span className="home-add__title">{m.home.newRoomIn(site.name)}</span>
+                <span className="home-add__body">{m.home.addRoomBody}</span>
+              </button>
+            ) : null}
           </div>
         </section>
       ))}

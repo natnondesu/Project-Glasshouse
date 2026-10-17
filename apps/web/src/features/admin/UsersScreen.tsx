@@ -3,6 +3,7 @@ import { Link } from 'react-router';
 import type { Role } from '../../auth/authApi';
 import { useCan } from '../../auth/useCan';
 import { useT } from '../../i18n';
+import { usePeopleStore } from '../../people/peopleStore';
 import { formatTime } from '../../ui/time';
 import { createUser, listUsers, resetPassword, updateUser, type AdminUser } from './adminApi';
 import '../../ui/fields.css';
@@ -10,6 +11,7 @@ import '../review/review.css';
 import './users.css';
 
 const ROLES: Role[] = ['viewer', 'editor', 'reviewer', 'admin'];
+const NAME_MAX = 80;
 
 export function UsersScreen() {
   const m = useT();
@@ -20,6 +22,7 @@ export function UsersScreen() {
   const [email, setEmail] = useState('');
   const [name, setName] = useState('');
   const [role, setRole] = useState<Role>('editor');
+  const [renaming, setRenaming] = useState<{ id: string; draft: string } | null>(null);
 
   useEffect(() => {
     if (!can.admin) return;
@@ -44,6 +47,17 @@ export function UsersScreen() {
     }
   };
   const replace = (u: AdminUser): void => setUsers((list) => (list ?? []).map((x) => (x.id === u.id ? u : x)));
+  const saveName = (u: AdminUser): void => {
+    const draft = renaming?.draft.trim() ?? '';
+    setRenaming(null);
+    // Any name sent locks it against company sign-in, so an unchanged name is not sent.
+    if (draft === '' || draft === u.displayName) return;
+    void run(async () => {
+      replace(await updateUser(u.id, { displayName: draft }));
+      // Labels elsewhere read the directory; a failed refresh must not hide that the rename worked.
+      usePeopleStore.getState().load().catch((e: unknown) => console.warn('Could not refresh the people list after a rename.', e));
+    });
+  };
   const add = (e: FormEvent): void => {
     e.preventDefault();
     void run(async () => {
@@ -76,7 +90,32 @@ export function UsersScreen() {
           <tbody>
             {(users ?? []).map((u) => (
               <tr key={u.id} aria-label={u.displayName}>
-                <td>{u.displayName}{u.mustChangePassword ? <span className="users__flag">{m.users.mustChange}</span> : null}</td>
+                <td>
+                  {renaming?.id === u.id ? (
+                    <form className="users__rename" onSubmit={(e) => (e.preventDefault(), saveName(u))}>
+                      <span className="field__box users__rename-box">
+                        <input
+                          className="field__input"
+                          aria-label={m.users.nameFor(u.displayName)}
+                          maxLength={NAME_MAX}
+                          value={renaming.draft}
+                          autoFocus
+                          onChange={(e) => setRenaming({ id: u.id, draft: e.target.value })}
+                          onKeyDown={(e) => e.key === 'Escape' && setRenaming(null)}
+                        />
+                      </span>
+                      <button type="submit" className="btn btn--sm btn--ink" disabled={renaming.draft.trim() === ''}>{m.users.save}</button>
+                      <button type="button" className="btn btn--sm btn--quiet" onClick={() => setRenaming(null)}>{m.users.cancel}</button>
+                    </form>
+                  ) : (
+                    <>
+                      <span className="users__name">{u.displayName}</span>
+                      {u.mustChangePassword ? <span className="users__flag">{m.users.mustChange}</span> : null}
+                      <button type="button" className="btn btn--sm btn--quiet users__rename-btn" aria-label={m.users.renameFor(u.displayName)} onClick={() => setRenaming({ id: u.id, draft: u.displayName })}>{m.users.rename}</button>
+                      {u.source === 'oidc' && u.nameLocked ? <small className="users__note">{m.users.nameSetByAdmin}</small> : null}
+                    </>
+                  )}
+                </td>
                 <td>{u.email}</td>
                 <td>
                   <select className="users__select" aria-label={m.users.roleFor(u.displayName)} value={u.role} onChange={(e) => void run(async () => replace(await updateUser(u.id, { role: e.target.value as Role })))}>

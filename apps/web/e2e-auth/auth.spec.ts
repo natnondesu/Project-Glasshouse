@@ -76,7 +76,7 @@ test('a reviewer who submitted can’t approve; another reviewer can, and names 
   await ada.goto('/rooms/r-e2e/review');
   await ada.getByRole('button', { name: 'Approve revision' }).click();
   await ada.getByRole('button', { name: 'Confirm approval' }).click();
-  await expect(ada.getByText('by Ada Admin', { exact: true })).toBeVisible();
-  await expect(ada.getByText('Rae Reviewer', { exact: true })).toBeVisible();
+  await expect(ada.getByText('by Ada Admin (admin@company.test)', { exact: true })).toBeVisible();
+  await expect(ada.getByText('Rae Reviewer (rev@company.test)', { exact: true })).toBeVisible();
   await expect(ada.getByText(/\(unverified\)/)).toHaveCount(0);
 });

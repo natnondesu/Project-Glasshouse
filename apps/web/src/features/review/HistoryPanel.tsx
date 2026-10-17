@@ -4,6 +4,7 @@ import { isSelfApproved, type Plan } from '@glasshouse/domain';
 import { pad2, StatusStamp } from '../../ui/StatusStamp';
 import { formatTime } from '../../ui/time';
 import { useT } from '../../i18n';
+import { usePeople } from '../../people/peopleStore';
 import { personLabel } from '../../ui/person';
 import { historyText } from '../plan/issueText';
 
@@ -14,6 +15,7 @@ const RECENT_REVISIONS = 5;
 
 export function HistoryPanel({ plan, roomId }: { plan: Plan; roomId: string }) {
   const m = useT();
+  const people = usePeople();
   const currentNumber = plan.revisions[plan.revisions.length - 1]?.number;
   const [allRevisions, setAllRevisions] = useState(false);
   const [page, setPage] = useState(0);
@@ -32,8 +34,8 @@ export function HistoryPanel({ plan, roomId }: { plan: Plan; roomId: string }) {
             <span className="mono revisions__n">{`R${pad2(r.number)}`}</span>
             <StatusStamp state={r.state} />
             <span className="revisions__who">
-              {r.designedBy ? m.review.designedByName(personLabel(m, r.designedBy)) : m.review.designerNotRecorded}
-              {r.approvedBy ? m.review.approvedByName(personLabel(m, r.approvedBy), formatTime(r.approvedAt)) : ''}
+              {r.designedBy ? m.review.designedByName(personLabel(m, r.designedBy, people)) : m.review.designerNotRecorded}
+              {r.approvedBy ? m.review.approvedByName(personLabel(m, r.approvedBy, people), formatTime(r.approvedAt)) : ''}
               {isSelfApproved(r) ? m.review.selfApprovedTail : ''}
             </span>
             {r.number !== currentNumber ? (

@@ -1,6 +1,7 @@
 import { BOM_COLUMNS, formatDemand, formatURange, panelOf, racksOf, wayPhase, type BomRow, type Chassis, type Rack, type Revision, type CableRow, type PlanContent } from '@glasshouse/domain';
 import type { ReactNode } from 'react';
 import { useT } from '../../i18n';
+import { usePeople } from '../../people/peopleStore';
 import { personLabel } from '../../ui/person';
 import { bomCell, bomHeader } from '../bom/bomText';
 import { vlanUsage } from '../network/vlanUsage';
@@ -77,6 +78,7 @@ function acknowledged(revision: Revision) {
 /** Acknowledged unknowns live in the BOM table too, so they can never land on a page without a title block. */
 export function BomTable({ rows, revision, titleBlock }: { rows: BomRow[]; revision: Revision; titleBlock: ReactNode }) {
   const m = useT();
+  const people = usePeople();
   const acks = acknowledged(revision);
   return (
     <table className="sheet-table sheet-table--bom sheet-table--fixed" aria-label={m.sheet.bom}>
@@ -140,7 +142,7 @@ export function BomTable({ rows, revision, titleBlock }: { rows: BomRow[]; revis
             <tr key={range.id}>
               <td colSpan={SHEET_COLUMNS.length}>
                 <strong>{`${range.label} · ${formatURange(range)} · ${rack.name}`}</strong>
-                {m.sheet.ackLine(ack.reason, personLabel(m, ack.by))}
+                {m.sheet.ackLine(ack.reason, personLabel(m, ack.by, people))}
               </td>
             </tr>
           ))}

@@ -3,11 +3,16 @@ import { Link } from 'react-router';
 import { useT } from '../i18n';
 import { getActiveSync } from '../sync/serverMode';
 import { saveStash } from '../sync/pendingStash';
+import { useWorkspaceStore } from '../store/workspaceStore';
+import { downloadJson } from '../ui/files';
 import { logout } from './authApi';
 import { useAuthStore } from './authStore';
 import './auth.css';
 
 const SIGN_OUT_FLUSH_MS = 5000;
+const BACKUP_FALLBACK_NAME = 'glasshouse-backup.json';
+
+const filenameOf = (res: Response): string => /filename="?([^";]+)"?/.exec(res.headers.get('content-disposition') ?? '')?.[1] ?? BACKUP_FALLBACK_NAME;
 
 /** Gives unsent edits a short chance to reach the server; whatever is still pending is kept for the next sign-in. */
 async function keepUnsentEdits(userId: string): Promise<void> {
@@ -44,6 +49,17 @@ export function UserMenu() {
       setError(e instanceof Error ? e.message : String(e));
     }
   };
+  const downloadBackup = async (): Promise<void> => {
+    setOpen(false);
+    const notify = useWorkspaceStore.getState().setNotice;
+    try {
+      const res = await fetch('/api/admin/backup');
+      if (!res.ok) return notify(m.auth.backupFailed(res.status));
+      downloadJson(filenameOf(res), await res.json());
+    } catch (e) {
+      notify(e instanceof Error ? e.message : String(e));
+    }
+  };
   return (
     <span className="user-menu">
       <button type="button" className="btn btn--sm" aria-label={m.auth.menu(user.name)} aria-expanded={open} aria-haspopup="menu" onClick={() => setOpen(!open)}>
@@ -54,6 +70,7 @@ export function UserMenu() {
           <span className="user-menu__who">{user.email}</span>
           <span className="user-menu__role">{m.auth.role[user.role]}</span>
           {user.role === 'admin' ? <Link role="menuitem" to="/admin/users" className="btn btn--sm btn--quiet" onClick={() => setOpen(false)}>{m.auth.users}</Link> : null}
+          {user.role === 'admin' ? <button type="button" role="menuitem" className="btn btn--sm btn--quiet" onClick={() => void downloadBackup()}>{m.auth.backup}</button> : null}
           <button type="button" role="menuitem" className="btn btn--sm btn--quiet" onClick={() => void signOut()}>{m.auth.signOut}</button>
           {error ? <span role="alert" className="field__error">{error}</span> : null}
         </span>

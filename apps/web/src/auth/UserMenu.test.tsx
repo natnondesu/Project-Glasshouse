@@ -1,7 +1,10 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { MemoryRouter } from 'react-router';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
+import * as files from '../ui/files';
 import * as serverMode from '../sync/serverMode';
+import { resetWorkspaceStore, useWorkspaceStore } from '../store/workspaceStore';
 import { takeStash } from '../sync/pendingStash';
 import { resetAuthStore, useAuthStore } from './authStore';
 import { UserMenu } from './UserMenu';
@@ -27,4 +30,42 @@ it('keeps an edit the server never confirmed when signing out, and still signs o
   await vi.waitFor(() => expect(useAuthStore.getState().status).toBe('signed-out'));
   expect(fetchSpy).toHaveBeenCalledWith('/auth/logout', expect.objectContaining({ method: 'POST' }));
   expect(takeStash('u1')).toEqual({ clientId: 'tab-1', commands: [edit] });
+});
+
+const asRole = (role: 'editor' | 'admin'): void =>
+  useAuthStore.setState({ status: 'signed-in', user: { id: 'u1', name: 'Ploy', email: 'p@x', role, mustChangePassword: false } });
+
+it('offers the workspace backup to admins only', async () => {
+  asRole('editor');
+  const { unmount } = render(<MemoryRouter><UserMenu /></MemoryRouter>);
+  await userEvent.click(screen.getByRole('button', { name: 'Account menu for Ploy' }));
+  expect(screen.queryByRole('menuitem', { name: 'Download workspace backup' })).toBeNull();
+  unmount();
+  asRole('admin');
+  render(<MemoryRouter><UserMenu /></MemoryRouter>);
+  await userEvent.click(screen.getByRole('button', { name: 'Account menu for Ploy' }));
+  expect(screen.getByRole('menuitem', { name: 'Download workspace backup' })).toBeInTheDocument();
+});
+
+it('downloads the backup under the name the server gives it', async () => {
+  asRole('admin');
+  const save = vi.spyOn(files, 'downloadJson').mockImplementation(() => {});
+  const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({ projects: [] }), { status: 200, headers: { 'content-disposition': 'attachment; filename="glasshouse-backup-2026-10-18.json"' } }));
+  render(<MemoryRouter><UserMenu /></MemoryRouter>);
+  await userEvent.click(screen.getByRole('button', { name: 'Account menu for Ploy' }));
+  await userEvent.click(screen.getByRole('menuitem', { name: 'Download workspace backup' }));
+  await vi.waitFor(() => expect(save).toHaveBeenCalledWith('glasshouse-backup-2026-10-18.json', { projects: [] }));
+  expect(fetchSpy).toHaveBeenCalledWith('/api/admin/backup');
+});
+
+it('says so when the backup cannot be downloaded', async () => {
+  asRole('admin');
+  resetWorkspaceStore();
+  const save = vi.spyOn(files, 'downloadJson').mockImplementation(() => {});
+  vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('', { status: 500 }));
+  render(<MemoryRouter><UserMenu /></MemoryRouter>);
+  await userEvent.click(screen.getByRole('button', { name: 'Account menu for Ploy' }));
+  await userEvent.click(screen.getByRole('menuitem', { name: 'Download workspace backup' }));
+  await vi.waitFor(() => expect(useWorkspaceStore.getState().notice).toBe('The backup could not be downloaded (server answered 500).'));
+  expect(save).not.toHaveBeenCalled();
 });

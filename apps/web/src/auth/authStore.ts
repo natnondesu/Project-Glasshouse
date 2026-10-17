@@ -12,6 +12,8 @@ interface AuthState {
   error: string | null;
   init: () => Promise<void>;
   signedOut: (sessionEnded: boolean) => void;
+  /** Re-reads who the server says I am, so a role changed by an admin applies without signing in again. */
+  refresh: () => Promise<void>;
 }
 
 const initial = { status: 'unknown' as Status, config: null, user: null, sessionEnded: false, error: null };
@@ -29,6 +31,11 @@ export const useAuthStore = create<AuthState>()((set) => ({
     }
   },
   signedOut: (sessionEnded) => set({ status: 'signed-out', user: null, sessionEnded }),
+  refresh: async () => {
+    const user = await getMe();
+    if (user === null) return set({ status: 'signed-out', user: null, sessionEnded: true });
+    set({ user, status: user.mustChangePassword ? 'must-change' : 'signed-in' });
+  },
 }));
 
 export const resetAuthStore = (): void => useAuthStore.setState({ ...initial });

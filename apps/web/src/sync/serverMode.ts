@@ -1,6 +1,7 @@
 import { apply, exportProjectFile, findRoom, parseWorkspace, type WorkspaceCommand } from '@glasshouse/domain';
 import { useAuthStore } from '../auth/authStore';
 import { AuthError, type AuthUser } from '../auth/authApi';
+import { usePeopleStore, resetPeopleStore } from '../people/peopleStore';
 import { resetClaimsStore, useClaimsStore, type Claim } from '../claims/claimsStore';
 import { messagesFor, useLangStore } from '../i18n';
 import { useWorkspaceStore, setCommit } from '../store/workspaceStore';
@@ -69,7 +70,16 @@ export async function startServerSync(transport: Transport = httpTransport(), is
     return () => {};
   }
   useClaimsStore.getState().setClaims(snapshot.claims ?? []);
-  const viewOnly = me?.role === 'viewer';
+  const viewOnly = (): boolean => useAuthStore.getState().user?.role === 'viewer';
+  const loadPeople = (): void => {
+    usePeopleStore.getState().load().catch((e: unknown) => console.warn('Could not load the people list; names show without email.', e));
+  };
+  // Dev mode has nobody to re-check, so only a signed-in tab asks the server who it is now.
+  const recheckRole = (): void => {
+    if (!me) return;
+    useAuthStore.getState().refresh().catch((e: unknown) => console.warn('Could not re-check your role.', e));
+  };
+  let hasBeenLive = false;
   let offlineTimer: ReturnType<typeof setTimeout> | null = null;
   const unloadGuard = createUnloadGuard(window);
   const client = new SyncClient(transport, { seq: snapshot.seq, workspace: parsed.value }, {
@@ -93,15 +103,23 @@ export async function startServerSync(transport: Transport = httpTransport(), is
       }
       useClaimsStore.getState().pushLost({ roomId, roomName: loc.room.name, holderName: useClaimsStore.getState().byRoom[roomId]?.name ?? null, changes, file: file.value });
     },
-    onDropped: (dropped) => useWorkspaceStore.getState().setNotice(dropped.map((d) => d.error.message).join(' ')),
+    onDropped: (dropped) => {
+      useWorkspaceStore.getState().setNotice(dropped.map((d) => d.error.message).join(' '));
+      if (dropped.some((d) => d.error.code === 'forbidden')) recheckRole();
+    },
     onConnection: (status) => {
       const s = useWorkspaceStore.getState();
       if (status === 'live') {
         if (offlineTimer !== null) clearTimeout(offlineTimer);
         offlineTimer = null;
         s.setConnection('live');
-        if (viewOnly) s.setReadOnly(true, 'view-only');
+        if (viewOnly()) s.setReadOnly(true, 'view-only');
         else s.setReadOnly(false);
+        if (hasBeenLive && me) {
+          recheckRole();
+          loadPeople();
+        }
+        hasBeenLive = true;
         return;
       }
       if (status === 'connecting') {
@@ -119,14 +137,23 @@ export async function startServerSync(transport: Transport = httpTransport(), is
   setCommit((_ws, command) => client.dispatch(command));
   store.replace(parsed.value);
   store.setLoad({ kind: 'ready' });
-  if (viewOnly) store.setReadOnly(true, 'view-only');
+  if (viewOnly()) store.setReadOnly(true, 'view-only');
+  if (me) loadPeople();
+  const unsubscribeAuth = useAuthStore.subscribe((s, prev) => {
+    if (s.user?.role === prev.user?.role) return;
+    const ws = useWorkspaceStore.getState();
+    if (s.user?.role === 'viewer') ws.setReadOnly(true, 'view-only');
+    else if (ws.readOnlyReason === 'view-only') ws.setReadOnly(false);
+  });
   client.start();
   return () => {
+    unsubscribeAuth();
     if (offlineTimer !== null) clearTimeout(offlineTimer);
     client.stop();
     if (activeSync === client) activeSync = null;
     unloadGuard.dispose();
     resetClaimsStore();
+    resetPeopleStore();
     setCommit(apply);
     useWorkspaceStore.getState().setConnection('local');
     useWorkspaceStore.getState().setReadOnly(false);

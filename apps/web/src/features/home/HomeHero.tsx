@@ -3,6 +3,7 @@ import { lazy, Suspense } from 'react';
 import { Link } from 'react-router';
 import { useT } from '../../i18n';
 import { IconArrowRight } from '../../ui/icons';
+import { usePeople } from '../../people/peopleStore';
 import { personLabel } from '../../ui/person';
 import { pad2 } from '../../ui/StatusStamp';
 import { holdsTotal, RoomStatus } from './RoomCard';
@@ -15,10 +16,11 @@ const HeroScene = lazy(() => import('./HeroScene'));
 /** `lastOpened`: this really is the room opened last, not just the first room there is. */
 export function HomeHero({ summary, lastOpened }: { summary: RoomSummary; lastOpened: boolean }) {
   const m = useT();
+  const people = usePeople();
   const { room, site, project, revision } = summary;
   const approved = latestApproved(room.plan);
   const person = revision.state === 'approved' ? revision.approvedBy : revision.designedBy;
-  const by = person ? personLabel(m, person) : undefined;
+  const by = person ? personLabel(m, person, people) : undefined;
   const when = (revision.state === 'approved' ? revision.approvedAt : revision.submittedAt)?.slice(0, 10);
   // Something holds approval: the way to it leads; opening the room is still one step aside.
   const holds = revision.state === 'approved' ? 0 : holdsTotal(summary);
