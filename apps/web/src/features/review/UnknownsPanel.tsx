@@ -3,6 +3,7 @@ import { useState, type FormEvent } from 'react';
 import { useReviewCommit } from '../../store/hooks';
 import { useCan } from '../../auth/useCan';
 import { useT } from '../../i18n';
+import { usePeople } from '../../people/peopleStore';
 import { personLabel } from '../../ui/person';
 
 function AcknowledgeForm({ roomId, range, disabled }: { roomId: string; range: ReservedRange; disabled: boolean }) {
@@ -55,6 +56,7 @@ function AcknowledgeForm({ roomId, range, disabled }: { roomId: string; range: R
 export function UnknownsPanel({ roomId, revision }: { roomId: string; revision: Revision }) {
   const review = useReviewCommit(roomId);
   const m = useT();
+  const people = usePeople();
   const can = useCan();
   const [withdrawError, setWithdrawError] = useState<string | null>(null);
   const frozen = revision.state === 'approved';
@@ -76,7 +78,7 @@ export function UnknownsPanel({ roomId, revision }: { roomId: string; revision: 
               </p>
               {ack ? (
                 <div className="unknowns__ack">
-                  <p>{m.review.acceptedBy(personLabel(m, ack.by), ack.reason)}</p>
+                  <p>{m.review.acceptedBy(personLabel(m, ack.by, people), ack.reason)}</p>
                   <button
                     type="button"
                     className="btn btn--sm btn--quiet"

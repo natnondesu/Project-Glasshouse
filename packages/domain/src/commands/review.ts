@@ -1,6 +1,7 @@
 import { castDraft, produce, type Draft } from 'immer';
 import { findReserved } from '../devices';
 import { createDraftRevision } from '../factories';
+import { contentFingerprint } from '../fingerprint';
 import { currentRevision } from '../lookup';
 import { LIMITS } from '../model/defaults';
 import type { Id, Plan, Revision, UnverifiedName } from '../model/types';
@@ -77,6 +78,7 @@ export function applyReviewCommand(plan: Plan, cmd: ReviewCommand): Result<Plan>
           r.state = 'approved';
           r.approvedAt = cmd.at;
           r.approvedBy = person(reviewer.value, cmd.at, cmd.byId);
+          r.approvedHash = contentFingerprint(rev.content);
           d.history.push({ revision: r.number, action: `Approved by ${reviewer.value}${tail(cmd.byId)}`, at: cmd.at, code: 'approved', params: { by: reviewer.value, ...verified(cmd.byId) } });
         }),
       );

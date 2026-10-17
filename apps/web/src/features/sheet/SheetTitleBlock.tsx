@@ -1,6 +1,7 @@
-import type { Revision, RoomLocation } from '@glasshouse/domain';
+import { shortFingerprint, type Revision, type RoomLocation } from '@glasshouse/domain';
 import { pad2 } from '../../ui/StatusStamp';
 import { useT } from '../../i18n';
+import { usePeople } from '../../people/peopleStore';
 import { personLabel } from '../../ui/person';
 import { formatTime } from '../../ui/time';
 
@@ -13,7 +14,8 @@ interface SheetTitleBlockProps {
 
 export function SheetTitleBlock({ location, revision, printedAt, section }: SheetTitleBlockProps) {
   const m = useT();
-  const unverified = (n: { name: string; userId?: string } | null): string => (n ? personLabel(m, n) : m.sheet.notRecorded);
+  const people = usePeople();
+  const unverified = (n: { name: string; userId?: string } | null): string => (n ? personLabel(m, n, people) : m.sheet.notRecorded);
   return (
     <header className="sheet-title">
       <h2 className="sheet-title__main">
@@ -34,6 +36,12 @@ export function SheetTitleBlock({ location, revision, printedAt, section }: Shee
           <dt>{m.sheet.approved}</dt>
           <dd>{formatTime(revision.approvedAt)}</dd>
         </div>
+        {revision.approvedHash ? (
+          <div>
+            <dt>{m.sheet.fingerprint}</dt>
+            <dd className="mono">{shortFingerprint(revision.approvedHash)}</dd>
+          </div>
+        ) : null}
         <div>
           <dt>{m.sheet.printed}</dt>
           <dd className="sheet-title__printed">{formatTime(printedAt)}</dd>

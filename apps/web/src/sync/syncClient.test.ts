@@ -1,6 +1,7 @@
-import { createWorkspace, type Workspace, type WorkspaceCommand } from '@glasshouse/domain';
+import { apply, createWorkspace, currentRevision, findRoom, type Workspace, type WorkspaceCommand } from '@glasshouse/domain';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AuthError } from '../auth/authApi';
+import type { Claim } from '../claims/claimsStore';
 import { NetworkError, SyncClient, WATCHDOG_MS, type BatchOutcome, type EventHandlers, type Transport } from './syncClient';
 
 const RETRY_MIN_MS = 500;
@@ -43,7 +44,7 @@ function fakeServer() {
   return { transport, posts, failOnce: () => void (failNext = 1), get seq() { return seq; } };
 }
 
-const callbacks = () => ({ onWorkspace: vi.fn<(ws: Workspace) => void>(), onSave: vi.fn(), onConnection: vi.fn(), onDropped: vi.fn(), onUnsaved: vi.fn<(has: boolean) => void>(), onAuthLost: vi.fn() });
+const callbacks = () => ({ onWorkspace: vi.fn<(ws: Workspace) => void>(), onSave: vi.fn(), onConnection: vi.fn(), onDropped: vi.fn(), onUnsaved: vi.fn<(has: boolean) => void>(), onAuthLost: vi.fn(), onClaims: vi.fn<(claims: Claim[]) => void>(), onClaimLost: vi.fn<(lost: { roomId: string; workspace: Workspace; changes: number }) => void>() });
 
 describe('SyncClient', () => {
   beforeEach(() => vi.useFakeTimers());
@@ -105,6 +106,40 @@ describe('SyncClient', () => {
     expect(server.transport.fetchWorkspace).toHaveBeenCalled();
     expect(server.transport.openEvents).toHaveBeenCalledTimes(2);
   });
+  describe('server generation', () => {
+    const handlersOf = (server: ReturnType<typeof fakeServer>, n = 0) => (server.transport.openEvents as ReturnType<typeof vi.fn>).mock.calls[n]![1] as EventHandlers;
+
+    it('does nothing when hello carries the generation the snapshot had', async () => {
+      const server = fakeServer();
+      const client = new SyncClient(server.transport, { seq: 0, workspace: createWorkspace(), generation: 'g1' }, callbacks(), { clientId: 'me' });
+      client.start();
+      handlersOf(server).onHello('g1');
+      await vi.advanceTimersByTimeAsync(5_000);
+      expect(server.transport.fetchWorkspace).not.toHaveBeenCalled();
+    });
+
+    it('reloads the workspace, replaying unsent edits, when hello carries a different generation', async () => {
+      const server = fakeServer();
+      const cb = callbacks();
+      let n = 0;
+      const client = new SyncClient(server.transport, { seq: 0, workspace: createWorkspace(), generation: 'g1' }, cb, { clientId: 'me', newId: () => String(++n) });
+      client.start();
+      (server.transport.fetchWorkspace as ReturnType<typeof vi.fn>).mockResolvedValueOnce({ seq: 0, workspace: createWorkspace(), generation: 'g2' });
+      server.failOnce();
+      client.dispatch(create('p', 'Riverside'));
+      handlersOf(server).onHello('g2');
+      await vi.advanceTimersByTimeAsync(20_000);
+      expect(server.transport.fetchWorkspace).toHaveBeenCalledTimes(1);
+      expect(server.transport.openEvents).toHaveBeenCalledTimes(2);
+      // The unsent edit is not lost by the reload: it is sent again (same id) before the snapshot is read.
+      expect(server.posts).toEqual([['1'], ['1']]);
+      // The reconnected stream says hello with the new generation: no second reload.
+      handlersOf(server, 1).onHello('g2');
+      await vi.advanceTimersByTimeAsync(5_000);
+      expect(server.transport.fetchWorkspace).toHaveBeenCalledTimes(1);
+    });
+  });
+
   it('reconnects through a resync when the browser gives up on the stream', async () => {
     const server = fakeServer();
     const client = new SyncClient(server.transport, { seq: 0, workspace: createWorkspace() }, callbacks(), { clientId: 'me' });
@@ -259,5 +294,62 @@ describe('SyncClient', () => {
     await vi.advanceTimersByTimeAsync(60_000);
     expect(server.transport.postCommands).toHaveBeenCalledTimes(1);
     expect(server.posts).toEqual([]);
+  });
+
+  describe('claims', () => {
+    const wsWithRooms = (ids: string[]): Workspace =>
+      ([
+        { type: 'project/create', id: 'p', name: 'P' },
+        { type: 'site/create', projectId: 'p', id: 's', name: 'S' },
+        ...ids.map((id): WorkspaceCommand => ({ type: 'room/create', siteId: 's', id, floorAreaId: `fa-${id}`, name: id })),
+      ] as WorkspaceCommand[]).reduce((ws, c) => {
+        const r = apply(ws, c);
+        if (!r.ok) throw new Error(r.error.message);
+        return r.value;
+      }, createWorkspace());
+    const vlanAdd = (roomId: string, vid: number): WorkspaceCommand => ({ type: 'plan', roomId, command: { type: 'vlan/add', vlan: { vid, name: `V${vid}` } } });
+    const vlansOf = (ws: Workspace, roomId: string): number[] => currentRevision(findRoom(ws, roomId)!.room.plan).content.vlans.map((v) => v.vid);
+    const claim: Claim = { roomId: 'r', userId: 'u', name: 'Ada', since: 't', lastEditAt: 't' };
+
+    it('keeps this tab version when a room is claimed by someone else, drops its edits, and sends the rest', async () => {
+      const server = fakeServer();
+      (server.transport.postCommands as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+        accepted: [],
+        rejected: { commandId: '1', error: { code: 'claimed', message: 'Ada is editing this room, so your change was not saved.', targets: ['r'] } },
+        skipped: ['2'],
+      });
+      const cb = callbacks();
+      let n = 0;
+      const client = new SyncClient(server.transport, { seq: 0, workspace: wsWithRooms(['r', 'q']) }, cb, { clientId: 'me', newId: () => String(++n) });
+      client.start();
+      client.dispatch(vlanAdd('r', 10));
+      client.dispatch(vlanAdd('r', 12));
+      client.dispatch(vlanAdd('q', 11));
+      await client.flush();
+      expect(cb.onClaimLost).toHaveBeenCalledTimes(1);
+      const lost = cb.onClaimLost.mock.calls[0]![0];
+      expect(lost).toMatchObject({ roomId: 'r', changes: 2 });
+      expect(vlansOf(lost.workspace, 'r')).toEqual([10, 12]);
+      expect(cb.onDropped).not.toHaveBeenCalled();
+      const sent = (server.transport.postCommands as ReturnType<typeof vi.fn>).mock.calls.map((c) => (c[1] as { commandId: string }[]).map((x) => x.commandId));
+      expect(sent).toEqual([['1'], ['3']]);
+      expect(vlansOf(client.workspace, 'r')).toEqual([]);
+      expect(vlansOf(client.workspace, 'q')).toEqual([11]);
+    });
+
+    it('passes claims from the event stream and from a resync snapshot to onClaims', async () => {
+      const server = fakeServer();
+      const cb = callbacks();
+      const client = new SyncClient(server.transport, { seq: 0, workspace: createWorkspace() }, cb, { clientId: 'me' });
+      client.start();
+      const handlers = (server.transport.openEvents as ReturnType<typeof vi.fn>).mock.calls[0]![1] as EventHandlers;
+      handlers.onClaims([claim]);
+      expect(cb.onClaims).toHaveBeenLastCalledWith([claim]);
+      (server.transport.fetchWorkspace as ReturnType<typeof vi.fn>).mockResolvedValueOnce({ seq: 0, workspace: createWorkspace(), claims: [claim] });
+      handlers.onResync();
+      await vi.advanceTimersByTimeAsync(5_000);
+      expect(cb.onClaims).toHaveBeenLastCalledWith([claim]);
+      expect(cb.onClaims).toHaveBeenCalledTimes(2);
+    });
   });
 });

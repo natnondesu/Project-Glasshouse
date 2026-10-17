@@ -19,7 +19,8 @@ const router = createBrowserRouter(routes);
 export function App({ repository = idbRepository }: { repository?: Repository }) {
   const load = useWorkspaceStore((s) => s.load);
   const authStatus = useAuthStore((s) => s.status);
-  const me = useAuthStore((s) => s.user);
+  // Keyed by id: a role change is applied in place by the sync, so it must not tear the sync down.
+  const meId = useAuthStore((s) => s.user?.id ?? null);
 
   useEffect(() => {
     if (SERVER_MODE) void useAuthStore.getState().init();
@@ -31,7 +32,7 @@ export function App({ repository = idbRepository }: { repository?: Repository })
       // StrictMode runs this twice: a cancelled start stops itself as soon as it finishes.
       let stop: (() => void) | null = null;
       let cancelled = false;
-      void startServerSync(undefined, () => cancelled, me).then((s) => (cancelled ? s() : (stop = s)));
+      void startServerSync(undefined, () => cancelled, useAuthStore.getState().user).then((s) => (cancelled ? s() : (stop = s)));
       return () => {
         cancelled = true;
         stop?.();
@@ -42,7 +43,7 @@ export function App({ repository = idbRepository }: { repository?: Repository })
       .then((isWriter) => useWorkspaceStore.getState().setReadOnly(!isWriter))
       .then(() => hydrate(repository));
     return startPersistence(repository);
-  }, [repository, authStatus, me]);
+  }, [repository, authStatus, meId]);
 
   if (SERVER_MODE && authStatus === 'unknown') return <p className="app-loading" role="status">{messagesFor(useLangStore.getState().lang).shell.opening}</p>;
   if (SERVER_MODE && authStatus === 'signed-out') return <SignInScreen />;

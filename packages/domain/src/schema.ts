@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import { z } from './zod';
 import { migrate } from './migrations';
 import { CURRENT_SCHEMA_VERSION, LIMITS } from './model/defaults';
 import type { Workspace } from './model/types';
@@ -114,6 +114,7 @@ const revision = z.object({
   approvedBy: unverifiedName.nullable(),
   submittedAt: text.nullable(),
   approvedAt: text.nullable(),
+  approvedHash: z.string().regex(/^[0-9a-f]{64}$/).optional(),
   acknowledgements: z.array(z.object({ reservedRangeId: id, reason: text, by: unverifiedName })),
 });
 const plan = z.object({

@@ -89,6 +89,31 @@ it('stamps the print date when printing, not when the page was opened', () => {
   vi.useRealTimers();
 });
 
+it('prints the short fingerprint in every title block, and none for a revision approved without one', () => {
+  approveMdf();
+  const hashed = (hash: string | undefined) => {
+    const ws = useWorkspaceStore.getState().workspace;
+    useWorkspaceStore.getState().replace({
+      ...ws,
+      projects: ws.projects.map((p) => ({
+        ...p,
+        sites: p.sites.map((s) => ({
+          ...s,
+          rooms: s.rooms.map((r) => (r.id !== mdf ? r : { ...r, plan: { ...r.plan, revisions: r.plan.revisions.map(({ approvedHash: _dropped, ...rev }) => (hash ? { ...rev, approvedHash: hash } : rev)) } })),
+        })),
+      })),
+    });
+  };
+  hashed('ab'.repeat(32));
+  const first = open(mdf);
+  const pages = first.container.querySelectorAll('.sheet-page');
+  for (const page of pages) expect(page).toHaveTextContent('Fingerprintabababababab');
+  first.unmount();
+  hashed(undefined);
+  const second = open(mdf);
+  expect(second.container).not.toHaveTextContent('Fingerprint');
+});
+
 it('keeps printing the Approved revision after a new draft starts', () => {
   useWorkspaceStore.getState().dispatch({ type: 'review', roomId: server, command: { type: 'review/new-draft', at: AT } });
   const { container } = open(server);

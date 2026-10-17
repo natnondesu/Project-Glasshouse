@@ -1,5 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { ClaimRegistry } from '../claims';
 import type { AuthConfig } from '../config';
 import { MemoryIdentityStore } from '../identity/memoryIdentityStore';
 import { MemoryCommandStore } from '../store/memoryStore';
@@ -7,7 +8,8 @@ import { WorkspaceService } from '../workspaceService';
 import { buildApp } from './app';
 import { registerAuthRoutes } from './auth/authRoutes';
 import { LoginThrottle } from './auth/loginThrottle';
-import { createSessionAuth, SESSION_COOKIE } from './auth/sessionAuth';
+import { createSessionAuth, SESSION_COOKIE, SESSION_IDLE_MS } from './auth/sessionAuth';
+import { hashToken } from '../identity/tokens';
 import { devAuthenticate, registerDevAuthRoutes } from './devAuth';
 import { MAX_CATCH_UP } from './events';
 
@@ -19,8 +21,8 @@ afterEach(async () => {
 
 const actor = { id: 'dev:t', name: 't', role: 'editor' as const, verified: false };
 
-async function start(service: WorkspaceService, heartbeatMs?: number): Promise<string> {
-  app = await buildApp({ service, authenticate: devAuthenticate, authRoutes: registerDevAuthRoutes, publicOrigin: null, heartbeatMs });
+async function start(service: WorkspaceService, heartbeatMs?: number, claims?: ClaimRegistry): Promise<string> {
+  app = await buildApp({ service, authenticate: devAuthenticate, authRoutes: registerDevAuthRoutes, publicOrigin: null, heartbeatMs, claims });
   await app.listen({ port: 0, host: '127.0.0.1' });
   const address = app.server.address();
   if (address === null || typeof address === 'string') throw new Error('no port');
@@ -45,6 +47,20 @@ async function readEvents(url: string, until: (text: string) => boolean, init: R
 }
 
 const create = (i: number) => ({ clientId: 'a', commandId: String(i), command: { type: 'project/create' as const, id: `p${i}`, name: `P${i}` } });
+
+it('sends the current claims after the backlog, then again on every change', async () => {
+  const claims = new ClaimRegistry();
+  claims.touch('r', { id: 'p', name: 'Ploy' });
+  const service = await WorkspaceService.open(new MemoryCommandStore(), { claims });
+  const base = await start(service, undefined, claims);
+  const reading = readEvents(`${base}/api/events?after=0`, (t) => (t.match(/event: claims/g) ?? []).length >= 2);
+  await new Promise((r) => setTimeout(r, 100));
+  claims.touch('q', { id: 'u', name: 'U' });
+  const text = await reading;
+  const frames = [...text.matchAll(/event: claims\ndata: (.*)\n/g)].map((m) => JSON.parse(m[1]!) as { claims: { roomId: string; userId: string }[] });
+  expect(frames[0]!.claims.map((c) => c.userId)).toEqual(['p']);
+  expect(frames[1]!.claims.map((c) => c.userId)).toEqual(['p', 'u']);
+});
 
 it('sends what the client missed, then live commands, in order', async () => {
   const service = await WorkspaceService.open(new MemoryCommandStore());
@@ -123,13 +139,13 @@ describe('a stream ends when the person behind it no longer has access', () => {
   const PUBLIC = 'https://glasshouse.company.test';
   const config: AuthConfig = { mode: 'on', publicUrl: new URL(PUBLIC), localLogin: true, oidc: null, bootstrapAdmin: null, defaultRole: 'viewer', secureCookies: true, seedUsers: [] };
 
-  async function signedIn() {
+  async function signedIn(clock = { now: new Date(NOW) }) {
     const store = new MemoryIdentityStore();
-    await store.createUser({ id: 'u1', email: 'u1@company.test', displayName: 'U One', role: 'editor', source: 'local', oidcSubject: null, passwordHash: 'x', mustChangePassword: false, active: true, createdAt: NOW, lastLoginAt: null });
-    const sessions = createSessionAuth(store, { secure: false });
+    await store.createUser({ id: 'u1', email: 'u1@company.test', displayName: 'U One', role: 'editor', source: 'local', oidcSubject: null, passwordHash: 'x', mustChangePassword: false, nameLocked: false, active: true, createdAt: NOW, lastLoginAt: null });
+    const sessions = createSessionAuth(store, { secure: false, now: () => clock.now });
     const service = await WorkspaceService.open(new MemoryCommandStore());
     app = await buildApp({
-      service, authenticate: sessions.authenticate, publicOrigin: PUBLIC, heartbeatMs: 30,
+      service, authenticate: sessions.authenticate, recheck: sessions.check, publicOrigin: PUBLIC, heartbeatMs: 30,
       authRoutes: (a) => registerAuthRoutes(a, { store, sessions, config, oidc: null, throttle: new LoginThrottle(), now: () => new Date() }),
     });
     // The cookie is minted through the real session code; the stream is read over a real socket.
@@ -139,7 +155,7 @@ describe('a stream ends when the person behind it no longer has access', () => {
     let token = '';
     const reply = { setCookie: (_name: string, value: string) => (token = value) } as never;
     await sessions.startSession(reply, (await store.findUserById('u1'))!);
-    return { store, base: `http://127.0.0.1:${address.port}`, cookie: `${SESSION_COOKIE}=${token}`, logout: () => app!.inject({ method: 'POST', url: '/auth/logout', headers: { 'x-glasshouse': '1', origin: PUBLIC, cookie: `${SESSION_COOKIE}=${token}` } }) };
+    return { store, tokenHash: hashToken(token), base: `http://127.0.0.1:${address.port}`, cookie: `${SESSION_COOKIE}=${token}`, logout: () => app!.inject({ method: 'POST', url: '/auth/logout', headers: { 'x-glasshouse': '1', origin: PUBLIC, cookie: `${SESSION_COOKIE}=${token}` } }) };
   }
 
   /** Resolves true when the server closes the stream, false if it is still open after `ms`. */
@@ -182,4 +198,49 @@ describe('a stream ends when the person behind it no longer has access', () => {
     await store.updateUser('u1', { mustChangePassword: true });
     expect(await endsWithin(res, 1000)).toBe(true);
   });
+
+  it('does not count an open tab as activity: heartbeats leave lastSeenAt alone, and the session still lapses after 12 idle hours', async () => {
+    const clock = { now: new Date(NOW) };
+    const { base, cookie, store, tokenHash } = await signedIn(clock);
+    const before = (await store.findSession(tokenHash))!.lastSeenAt;
+    const res = await fetch(`${base}/api/events?after=0`, { headers: { cookie } });
+    const reader = res.body!.getReader();
+    const decoder = new TextDecoder();
+    let pings = 0;
+    while (pings < 5) {
+      const { value, done } = await reader.read();
+      if (done) throw new Error('the stream ended while the session was still good');
+      const seen = (decoder.decode(value, { stream: true }).match(/event: ping/g) ?? []).length;
+      for (let i = 0; i < seen; i += 1) clock.now = new Date(clock.now.getTime() + 6 * 60 * 1000);
+      pings += seen;
+    }
+    expect((await store.findSession(tokenHash))!.lastSeenAt).toBe(before);
+    clock.now = new Date(clock.now.getTime() + SESSION_IDLE_MS);
+    const ended = await (async () => {
+      const deadline = Date.now() + 1000;
+      while (Date.now() < deadline) {
+        const next = await Promise.race([reader.read(), new Promise<'wait'>((r) => setTimeout(() => r('wait'), deadline - Date.now()))]);
+        if (next !== 'wait' && next.done) return true;
+      }
+      return false;
+    })();
+    expect(ended).toBe(true);
+  });
+});
+
+it('opens every stream with a hello frame carrying the server generation, before the backlog', async () => {
+  const service = await WorkspaceService.open(new MemoryCommandStore());
+  await service.submit(create(1), actor);
+  const base = await start(service);
+  const text = await readEvents(`${base}/api/events?after=0`, (t) => t.includes('id: 1'));
+  expect(text.startsWith(`event: hello\ndata: ${JSON.stringify({ generation: service.generation })}\n\n`)).toBe(true);
+  expect(text.indexOf('event: hello')).toBeLessThan(text.indexOf('event: command'));
+});
+
+it('gives each server process its own generation', async () => {
+  const store = new MemoryCommandStore();
+  const first = await WorkspaceService.open(store);
+  const second = await WorkspaceService.open(store);
+  expect(first.generation).toMatch(/^[0-9a-f-]{36}$/);
+  expect(second.generation).not.toBe(first.generation);
 });

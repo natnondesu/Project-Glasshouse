@@ -1,5 +1,6 @@
 import { newId, parseWorkspace, type DomainError, type Result, type Workspace, type WorkspaceCommand } from '@glasshouse/domain';
 import { AuthError } from '../auth/authApi';
+import type { Claim } from '../claims/claimsStore';
 import type { SaveState } from '../store/workspaceStore';
 import { SyncEngine, type Dropped, type ServerEvent } from './syncEngine';
 
@@ -11,16 +12,20 @@ export interface BatchOutcome {
 
 export interface EventHandlers {
   onOpen(): void;
+  /** The first frame of every stream: which server process this is. A different one than the snapshot's means a restart or restore. */
+  onHello(generation: string): void;
   onCommand(event: ServerEvent): void;
   onResync(): void;
   /** The server's periodic `ping` event: proof the stream is alive even when no edits flow. */
   onHeartbeat(): void;
+  /** The server's live list of who is editing which room. */
+  onClaims(claims: Claim[]): void;
   /** `closed`: the browser gave up on the stream (it won't retry by itself). */
   onError(closed: boolean): void;
 }
 
 export interface Transport {
-  fetchWorkspace(): Promise<{ seq: number; workspace: unknown }>;
+  fetchWorkspace(): Promise<{ seq: number; workspace: unknown; claims?: Claim[]; generation?: string }>;
   /** Throws NetworkError when the server can't be reached or fails (5xx); the batch is then retried as is. */
   postCommands(clientId: string, commands: { commandId: string; command: WorkspaceCommand }[]): Promise<BatchOutcome>;
   openEvents(after: number, handlers: EventHandlers): () => void;
@@ -39,6 +44,9 @@ export interface SyncCallbacks {
   onUnsaved(hasUnsaved: boolean): void;
   /** The session ended (or needs a new password): the client has stopped; unsent edits stay in `pendingCommands()`. */
   onAuthLost(): void;
+  onClaims?(claims: Claim[]): void;
+  /** Someone else holds the room: this tab's edits to it were refused. `workspace` is this tab's version from before they were dropped. */
+  onClaimLost?(lost: { roomId: string; workspace: Workspace; changes: number }): void;
 }
 
 const RETRY_MIN_MS = 500;
@@ -67,16 +75,18 @@ export class SyncClient {
   private stopped = false;
   private authLost = false;
   private watchdog: ReturnType<typeof setTimeout> | null = null;
+  private generation: string | undefined;
 
   constructor(
     private readonly transport: Transport,
-    start: { seq: number; workspace: Workspace },
+    start: { seq: number; workspace: Workspace; generation?: string },
     private readonly callbacks: SyncCallbacks,
     ids: { clientId?: string; newId?: () => string } = {},
   ) {
     this.id = ids.clientId ?? newId();
     this.newId = ids.newId ?? newId;
     this.engine = new SyncEngine(start, this.id);
+    this.generation = start.generation;
   }
 
   get workspace(): Workspace {
@@ -147,7 +157,17 @@ export class SyncClient {
       for (const a of outcome.accepted) this.report(this.engine.acked(a.commandId, a.seq));
       if (outcome.rejected) {
         const { commandId, error } = outcome.rejected;
-        this.report([{ commandId, error }, ...this.engine.rejected(commandId)]);
+        const roomId = error.code === 'claimed' ? error.targets[0] : undefined;
+        if (roomId) {
+          // Keep this tab's version before dropping it: the person can download it (Decision 2).
+          const mine = this.engine.workspace;
+          const before = this.engine.pendingList().length;
+          const dropped = this.engine.dropDraftEdits(roomId);
+          this.callbacks.onClaimLost?.({ roomId, workspace: mine, changes: before - this.engine.pendingList().length });
+          this.report(dropped.filter((d) => d.commandId !== commandId));
+        } else {
+          this.report([{ commandId, error }, ...this.engine.rejected(commandId)]);
+        }
       }
       this.engine.markUnsent(outcome.skipped);
     }
@@ -183,6 +203,13 @@ export class SyncClient {
         this.reconnectMs = RETRY_MIN_MS;
         this.callbacks.onConnection('live');
       },
+      onHello: (generation) => {
+        this.resetWatchdog();
+        const known = this.generation;
+        this.generation = generation;
+        // A restored or restarted server may hold different history under the same seq numbers: start over from its snapshot.
+        if (known !== undefined && known !== generation) void this.resync('server');
+      },
       onCommand: (event) => {
         this.resetWatchdog();
         const result = this.engine.remote(event);
@@ -196,6 +223,7 @@ export class SyncClient {
       // The server asks when we are too far behind or it can't read its log; reloading fixes that, so it isn't the page being out of step.
       onResync: () => void this.resync('server'),
       onHeartbeat: () => this.resetWatchdog(),
+      onClaims: (claims) => this.callbacks.onClaims?.(claims),
       onError: (closed) => {
         this.callbacks.onConnection('offline');
         // Otherwise EventSource reconnects by itself and sends Last-Event-ID, so the server sends what we missed.
@@ -253,6 +281,8 @@ export class SyncClient {
         const parsed = parseWorkspace(snapshot.workspace);
         if (!parsed.ok) throw new Error(parsed.error.message);
         this.report(this.engine.reset({ seq: snapshot.seq, workspace: parsed.value }));
+        this.generation = snapshot.generation ?? this.generation;
+        this.callbacks.onClaims?.(snapshot.claims ?? []);
         this.paused = false;
         break;
       } catch (e) {

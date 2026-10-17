@@ -1,10 +1,25 @@
-import { apply, createWorkspace, type Workspace, type WorkspaceCommand } from '@glasshouse/domain';
+import { apply, createWorkspace, currentRevision, findRoom, type Workspace, type WorkspaceCommand } from '@glasshouse/domain';
 import { describe, expect, it } from 'vitest';
 import { SyncEngine } from './syncEngine';
 
 const create = (id: string, name = id): WorkspaceCommand => ({ type: 'project/create', id, name });
 const names = (ws: Workspace) => ws.projects.map((p) => p.name);
 const start = () => ({ seq: 0, workspace: createWorkspace() });
+
+function wsWithRooms(ids: string[]): Workspace {
+  const commands: WorkspaceCommand[] = [
+    { type: 'project/create', id: 'p', name: 'P' },
+    { type: 'site/create', projectId: 'p', id: 's', name: 'S' },
+    ...ids.map((id): WorkspaceCommand => ({ type: 'room/create', siteId: 's', id, floorAreaId: `fa-${id}`, name: id })),
+  ];
+  return commands.reduce((ws, c) => {
+    const r = apply(ws, c);
+    if (!r.ok) throw new Error(r.error.message);
+    return r.value;
+  }, createWorkspace());
+}
+const vlanAdd = (roomId: string, vid: number): WorkspaceCommand => ({ type: 'plan', roomId, command: { type: 'vlan/add', vlan: { vid, name: `V${vid}` } } });
+const vlansOf = (ws: Workspace, roomId: string): number[] => currentRevision(findRoom(ws, roomId)!.room.plan).content.vlans.map((v) => v.vid);
 
 describe('SyncEngine', () => {
   it('shows local edits at once and keeps them pending until the server orders them', () => {
@@ -91,5 +106,17 @@ describe('SyncEngine', () => {
     expect(e.hasUnsaved()).toBe(true);
     e.acked('1', 1);
     expect(e.hasUnsaved()).toBe(false);
+  });
+
+  it('drops every unconfirmed draft edit to one room and keeps the rest', () => {
+    const engine = new SyncEngine({ seq: 0, workspace: wsWithRooms(['r', 'q']) }, 'me');
+    engine.local('1', vlanAdd('r', 10));
+    engine.local('2', { type: 'room/rename', roomId: 'r', name: 'Renamed' });
+    engine.local('3', vlanAdd('q', 11));
+    engine.local('4', vlanAdd('r', 12));
+    engine.dropDraftEdits('r');
+    expect(engine.pendingList().map((p) => p.commandId)).toEqual(['2', '3']);
+    expect(vlansOf(engine.workspace, 'r')).toEqual([]);
+    expect(vlansOf(engine.workspace, 'q')).toEqual([11]);
   });
 });

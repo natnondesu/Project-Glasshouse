@@ -1,7 +1,8 @@
-import { parseWorkspace, type WorkspaceCommand } from '@glasshouse/domain';
-import { apply } from '@glasshouse/domain';
+import { apply, exportProjectFile, findRoom, parseWorkspace, type WorkspaceCommand } from '@glasshouse/domain';
 import { useAuthStore } from '../auth/authStore';
 import { AuthError, type AuthUser } from '../auth/authApi';
+import { usePeopleStore, resetPeopleStore } from '../people/peopleStore';
+import { resetClaimsStore, useClaimsStore, type Claim } from '../claims/claimsStore';
 import { messagesFor, useLangStore } from '../i18n';
 import { useWorkspaceStore, setCommit } from '../store/workspaceStore';
 import { httpTransport } from './httpTransport';
@@ -11,6 +12,9 @@ import { SyncClient, type Transport } from './syncClient';
 
 /** Built with VITE_GLASSHOUSE_SERVER=1: the workspace lives on the Glasshouse server, not in this browser. */
 export const SERVER_MODE = import.meta.env.VITE_GLASSHOUSE_SERVER === '1';
+
+/** A failed "who am I now" check is tried once more after this. */
+export const ROLE_RECHECK_RETRY_MS = 2000;
 
 /** A blip shorter than this doesn't flash the read-only banner. */
 export const OFFLINE_GRACE_MS = 3000;
@@ -50,7 +54,7 @@ export async function startServerSync(transport: Transport = httpTransport(), is
       }
     }
   }
-  let snapshot: { seq: number; workspace: unknown };
+  let snapshot: { seq: number; workspace: unknown; claims?: Claim[]; generation?: string };
   try {
     snapshot = await transport.fetchWorkspace();
   } catch (e) {
@@ -68,29 +72,74 @@ export async function startServerSync(transport: Transport = httpTransport(), is
     store.setLoad({ kind: 'failed', reason: parsed.error.message, raw: snapshot.workspace });
     return () => {};
   }
-  const viewOnly = me?.role === 'viewer';
+  useClaimsStore.getState().setClaims(snapshot.claims ?? []);
+  const viewOnly = (): boolean => useAuthStore.getState().user?.role === 'viewer';
+  const loadPeople = (): void => {
+    usePeopleStore.getState().load().catch((e: unknown) => console.warn('Could not load the people list; names show without email.', e));
+  };
+  let roleRetryTimer: ReturnType<typeof setTimeout> | null = null;
+  // Dev mode has nobody to re-check, so only a signed-in tab asks the server who it is now.
+  const recheckRole = (): void => {
+    if (!me) return;
+    // A second request replaces the pending retry instead of leaving it to fire on its own.
+    if (roleRetryTimer !== null) clearTimeout(roleRetryTimer);
+    roleRetryTimer = null;
+    const refresh = (): Promise<void> => useAuthStore.getState().refresh();
+    refresh().catch(() => {
+      if (roleRetryTimer !== null) clearTimeout(roleRetryTimer);
+      roleRetryTimer = setTimeout(() => {
+        roleRetryTimer = null;
+        refresh().catch((e: unknown) => console.warn('Could not re-check your role.', e));
+      }, ROLE_RECHECK_RETRY_MS);
+    });
+  };
+  let hasBeenLive = false;
   let offlineTimer: ReturnType<typeof setTimeout> | null = null;
   const unloadGuard = createUnloadGuard(window);
-  const client = new SyncClient(transport, { seq: snapshot.seq, workspace: parsed.value }, {
+  // Saving an empty list would replace another person's unsent edits waiting in this tab.
+  const stashUnsent = (): void => {
+    const pending = client.pendingCommands();
+    if (me && pending.length > 0) saveStash({ userId: me.id, clientId: client.clientId, commands: pending });
+    unloadGuard.set(false);
+  };
+  const client = new SyncClient(transport, { seq: snapshot.seq, workspace: parsed.value, generation: snapshot.generation }, {
     onWorkspace: (ws) => useWorkspaceStore.getState().adopt(ws),
     onSave: (save) => useWorkspaceStore.getState().setSave(save),
     onUnsaved: (has) => unloadGuard.set(has),
     onAuthLost: () => {
-      // Saving an empty list would replace another person's unsent edits waiting in this tab.
-      const pending = client.pendingCommands();
-      if (me && pending.length > 0) saveStash({ userId: me.id, clientId: client.clientId, commands: pending });
-      unloadGuard.set(false);
+      stashUnsent();
       useAuthStore.getState().signedOut(true);
     },
-    onDropped: (dropped) => useWorkspaceStore.getState().setNotice(dropped.map((d) => d.error.message).join(' ')),
+    onClaims: (claims) => useClaimsStore.getState().setClaims(claims),
+    onClaimLost: ({ roomId, workspace, changes }) => {
+      const loc = findRoom(workspace, roomId);
+      const file = loc ? exportProjectFile(workspace, loc.project.id, new Date().toISOString()) : null;
+      if (!loc || !file?.ok) {
+        useWorkspaceStore.getState().setNotice(messagesFor(useLangStore.getState().lang).claims.lostNoCopy);
+        return;
+      }
+      // The holder can be this very person (their other tab, or a claim that changed hands back): "<me> took over" would be nonsense.
+      const holder = useClaimsStore.getState().byRoom[roomId];
+      const holderName = holder && holder.userId !== me?.id ? holder.name : null;
+      useClaimsStore.getState().pushLost({ userId: me?.id ?? null, roomId, roomName: loc.room.name, holderName, changes, file: file.value });
+    },
+    onDropped: (dropped) => {
+      useWorkspaceStore.getState().setNotice(dropped.map((d) => d.error.message).join(' '));
+      if (dropped.some((d) => d.error.code === 'forbidden')) recheckRole();
+    },
     onConnection: (status) => {
       const s = useWorkspaceStore.getState();
       if (status === 'live') {
         if (offlineTimer !== null) clearTimeout(offlineTimer);
         offlineTimer = null;
         s.setConnection('live');
-        if (viewOnly) s.setReadOnly(true, 'view-only');
+        if (viewOnly()) s.setReadOnly(true, 'view-only');
         else s.setReadOnly(false);
+        if (hasBeenLive && me) {
+          recheckRole();
+          loadPeople();
+        }
+        hasBeenLive = true;
         return;
       }
       if (status === 'connecting') {
@@ -108,13 +157,26 @@ export async function startServerSync(transport: Transport = httpTransport(), is
   setCommit((_ws, command) => client.dispatch(command));
   store.replace(parsed.value);
   store.setLoad({ kind: 'ready' });
-  if (viewOnly) store.setReadOnly(true, 'view-only');
+  if (viewOnly()) store.setReadOnly(true, 'view-only');
+  if (me) loadPeople();
+  const unsubscribeAuth = useAuthStore.subscribe((s, prev) => {
+    // The session can also end outside the sync (the role re-check gets a 401): the unsent edits are kept just the same.
+    if (prev.user && !s.user) stashUnsent();
+    if (s.user?.role === prev.user?.role) return;
+    const ws = useWorkspaceStore.getState();
+    if (s.user?.role === 'viewer') ws.setReadOnly(true, 'view-only');
+    else if (ws.readOnlyReason === 'view-only') ws.setReadOnly(false);
+  });
   client.start();
   return () => {
+    unsubscribeAuth();
     if (offlineTimer !== null) clearTimeout(offlineTimer);
+    if (roleRetryTimer !== null) clearTimeout(roleRetryTimer);
     client.stop();
     if (activeSync === client) activeSync = null;
     unloadGuard.dispose();
+    resetClaimsStore();
+    resetPeopleStore();
     setCommit(apply);
     useWorkspaceStore.getState().setConnection('local');
     useWorkspaceStore.getState().setReadOnly(false);

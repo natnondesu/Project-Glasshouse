@@ -11,6 +11,8 @@ import type { AuthConfig } from '../../config';
 import { createSessionAuth, SESSION_COOKIE, SESSION_IDLE_MS } from './sessionAuth';
 import { LoginThrottle, MAX_FAILURES, MAX_FAILURES_PER_IP } from './loginThrottle';
 import { registerAuthRoutes } from './authRoutes';
+import { closedPort } from './closedPort.testutil';
+import { createOidcLogin, type OidcLogin } from './oidc';
 
 vi.mock('../../identity/passwords', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../identity/passwords')>();
@@ -31,7 +33,7 @@ async function setup(users: Partial<User>[] = [{}]) {
   for (const [i, over] of users.entries()) {
     await store.createUser({
       id: `u${i}`, email: `user${i}@company.test`, displayName: `User ${i}`, role: 'editor', source: 'local', oidcSubject: null,
-      passwordHash: await hashPassword('password-123456'), mustChangePassword: false, active: true, createdAt: clock.toISOString(), lastLoginAt: null, ...over,
+      passwordHash: await hashPassword('password-123456'), mustChangePassword: false, nameLocked: false, active: true, createdAt: clock.toISOString(), lastLoginAt: null, ...over,
     });
   }
   const sessions = createSessionAuth(store, { secure: true, now: () => clock });
@@ -160,5 +162,54 @@ describe('local sign-in', () => {
     await store.updateUser('u0', { active: false });
     expect((await app.inject({ url: '/api/workspace', headers: { cookie } })).statusCode).toBe(401);
     expect((await login(app, 'user0@company.test', 'password-123456')).statusCode).toBe(401);
+  });
+});
+
+describe('company sign-in trouble does not take local sign-in down or end in an error page', () => {
+  const oidcConfigFor = (port: number): AuthConfig => ({ ...config, oidc: { issuer: `http://127.0.0.1:${port}`, clientId: 'glasshouse', clientSecret: 's' } });
+
+  async function withOidc(oidc: OidcLogin, store = new MemoryIdentityStore(), oidcConfig = oidcConfigFor(0)) {
+    await store.createUser({
+      id: 'u0', email: 'user0@company.test', displayName: 'User 0', role: 'editor', source: 'local', oidcSubject: null,
+      passwordHash: await hashPassword('password-123456'), mustChangePassword: false, nameLocked: false, active: true, createdAt: '2026-10-18T09:00:00.000Z', lastLoginAt: null,
+    });
+    const sessions = createSessionAuth(store, { secure: true });
+    const service = await WorkspaceService.open(new MemoryCommandStore());
+    const app = await buildApp({
+      service, authenticate: sessions.authenticate, publicOrigin: PUBLIC,
+      authRoutes: (a) => registerAuthRoutes(a, { store, sessions, config: oidcConfig, oidc, throttle: new LoginThrottle(), now: () => new Date() }),
+    });
+    apps.push(app);
+    return app;
+  }
+
+  it('sends the browser back with "unavailable" while the provider is away, and password sign-in still works', async () => {
+    const unreachable = oidcConfigFor(await closedPort());
+    const oidc = createOidcLogin({ ...unreachable.oidc!, redirectUri: `${PUBLIC}/auth/oidc/callback`, warn: () => undefined });
+    const app = await withOidc(oidc, new MemoryIdentityStore(), unreachable);
+    const start = await app.inject({ url: '/auth/oidc/start' });
+    expect(start.statusCode).toBe(302);
+    expect(start.headers.location).toBe('/?signin_error=unavailable');
+    expect((await login(app, 'user0@company.test', 'password-123456')).statusCode).toBe(200);
+  });
+
+  it('sends the browser back with "generic" when starting fails for any other reason', async () => {
+    const app = await withOidc({ start: () => Promise.reject(new Error('boom')), finish: () => Promise.reject(new Error('unused')), warmUp: () => Promise.resolve() });
+    const start = await app.inject({ url: '/auth/oidc/start' });
+    expect(start.headers.location).toBe('/?signin_error=generic');
+  });
+
+  it('sends the browser back with "generic", not a 500 page, when saving the person fails after the token exchange', async () => {
+    const store = new MemoryIdentityStore();
+    const oidc: OidcLogin = {
+      start: () => Promise.resolve({ url: 'https://idp.test/', binding: 'b' }),
+      finish: () => Promise.resolve({ claims: { sub: 'new-person', email: 'new@company.test', emailVerified: true, name: 'New' }, returnTo: '/' }),
+      warmUp: () => Promise.resolve(),
+    };
+    const app = await withOidc(oidc, store);
+    store.createUser = () => Promise.reject(new Error('database is down'));
+    const done = await app.inject({ url: '/auth/oidc/callback?code=x&state=y', headers: { cookie: 'gh_oidc=b' } });
+    expect(done.statusCode).toBe(302);
+    expect(done.headers.location).toBe('/?signin_error=generic');
   });
 });

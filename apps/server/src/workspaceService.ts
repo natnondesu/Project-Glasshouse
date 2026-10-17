@@ -1,7 +1,9 @@
-import { apply, createWorkspace, err, parseWorkspace, withSample, type DomainError, type Workspace, type WorkspaceCommand } from '@glasshouse/domain';
+import { randomUUID } from 'node:crypto';
+import { apply, approvedRevisionChanges, createWorkspace, currentRevision, draftEditRoom, err, findRoom, newlyApprovedRevisions, parseWorkspace, withSample, type DomainError, type Workspace, type WorkspaceCommand } from '@glasshouse/domain';
+import type { ClaimRegistry } from './claims';
 import { atLeast } from './identity/types';
 import { ROLE_LABEL, requiredRole, stampCommand } from './permissions';
-import type { Actor, CommandStore, LoggedCommand } from './store/commandStore';
+import type { Actor, ApprovalRecord, CommandStore, LoggedCommand } from './store/commandStore';
 
 export const SNAPSHOT_EVERY = 200;
 const REPLAY_PAGE = 1000;
@@ -26,6 +28,8 @@ interface OpenOptions {
   seedSample?: boolean;
   snapshotEvery?: number;
   now?: () => string;
+  /** One editor per room draft; omit in dev mode, where nobody is signed in. */
+  claims?: ClaimRegistry;
   onError?: (message: string, error: unknown) => void;
 }
 
@@ -37,14 +41,50 @@ const isRecord = (value: unknown): value is Record<string, unknown> => typeof va
 const commandIdOf = (item: unknown): string => (isRecord(item) && typeof item.commandId === 'string' ? item.commandId : '');
 const rejected = (message: string): SubmitOutcome => ({ kind: 'rejected', error: err('invalid_value', message).error });
 
+type ApprovalOutcome = { ok: true; record: ApprovalRecord | null } | { ok: false; roomId: string };
+
+/** The record for an approval: what was approved, by whom, when, under which seq. Null only for commands that are not approvals. */
+function approvalRecord(seq: number, command: WorkspaceCommand, after: Workspace, actor: Actor): ApprovalOutcome {
+  if (command.type !== 'review' || command.command.type !== 'review/approve') return { ok: true, record: null };
+  const loc = findRoom(after, command.roomId);
+  const rev = loc ? currentRevision(loc.room.plan) : null;
+  if (!loc || !rev || rev.state !== 'approved' || !rev.approvedHash || !rev.approvedAt) return { ok: false, roomId: command.roomId };
+  return {
+    ok: true,
+    record: { seq, roomId: loc.room.id, revision: rev.number, contentHash: rev.approvedHash, approverId: actor.id, approverName: rev.approvedBy?.name ?? actor.name, approvedAt: rev.approvedAt },
+  };
+}
+
+/** Applies logged commands after `from` to `workspace`; throws on a gap or a command that won't apply. */
+async function replayAfter(store: CommandStore, from: { seq: number; workspace: Workspace }, onEntry: (e: LoggedCommand, state: { seq: number; workspace: Workspace }) => void = () => {}): Promise<{ seq: number; workspace: Workspace }> {
+  let { seq, workspace } = from;
+  for (;;) {
+    const page = await store.commandsAfter(seq, REPLAY_PAGE);
+    if (page.length === 0) return { seq, workspace };
+    for (const entry of page) {
+      if (entry.seq !== seq + 1) throw new Error(`The command log has a gap after seq ${seq} (next is ${entry.seq}).`);
+      const result = apply(workspace, entry.command);
+      if (result === undefined) throw new Error(`Replaying seq ${entry.seq} failed: unknown change type "${entry.command.type}".`);
+      if (!result.ok) throw new Error(`Replaying seq ${entry.seq} failed: ${result.error.message}`);
+      workspace = result.value;
+      seq = entry.seq;
+      onEntry(entry, { seq, workspace });
+    }
+  }
+}
+
 /**
  * The one place edits are accepted. Holds the workspace in memory, applies commands strictly one at a time,
  * validates the result, logs it, then tells subscribers. Single instance by design (see the P1 design doc).
  */
 export class WorkspaceService {
+  /** Changes with every process start, so a tab can tell that the server it knew was restarted (e.g. restored from a backup). */
+  readonly generation = randomUUID();
   private queue: Promise<unknown> = Promise.resolve();
   private readonly listeners = new Set<Listener>();
   private sinceSnapshot = 0;
+  /** True after an append error, until the log tail has been re-read. */
+  private recovering = false;
 
   private constructor(
     private readonly store: CommandStore,
@@ -52,6 +92,7 @@ export class WorkspaceService {
     private readonly snapshotEvery: number,
     private readonly onError: (message: string, error: unknown) => void,
     private readonly now: () => string,
+    private readonly claims: ClaimRegistry | null,
   ) {}
 
   static async open(store: CommandStore, options: OpenOptions = {}): Promise<WorkspaceService> {
@@ -73,25 +114,18 @@ export class WorkspaceService {
         workspace = seeded.value;
       }
     }
-    for (;;) {
-      const page = await store.commandsAfter(seq, REPLAY_PAGE);
-      if (page.length === 0) break;
-      for (const entry of page) {
-        if (entry.seq !== seq + 1) throw new Error(`The command log has a gap after seq ${seq} (next is ${entry.seq}).`);
-        const result = apply(workspace, entry.command);
-        if (result === undefined) throw new Error(`Replaying seq ${entry.seq} failed: unknown change type "${entry.command.type}".`);
-        if (!result.ok) throw new Error(`Replaying seq ${entry.seq} failed: ${result.error.message}`);
-        workspace = result.value;
-        seq = entry.seq;
-      }
-    }
+    ({ seq, workspace } = await replayAfter(store, { seq, workspace }));
     // Always snapshot after boot: keeps the replay tail short and pins a seeded sample's IDs.
     await store.saveSnapshot(seq, workspace);
-    return new WorkspaceService(store, { seq, workspace }, options.snapshotEvery ?? SNAPSHOT_EVERY, onError, now);
+    return new WorkspaceService(store, { seq, workspace }, options.snapshotEvery ?? SNAPSHOT_EVERY, onError, now, options.claims ?? null);
   }
 
   get state(): { seq: number; workspace: Workspace } {
     return this.current;
+  }
+
+  get claimRegistry(): ClaimRegistry | null {
+    return this.claims;
   }
 
   subscribe(listener: Listener): () => void {
@@ -121,6 +155,29 @@ export class WorkspaceService {
     return { accepted, rejected: null, skipped: [] };
   }
 
+  async ready(): Promise<{ ok: true; seq: number } | { ok: false; reason: string }> {
+    // The healthcheck is what notices a broken database first, so it also finishes any recovery the next edit would.
+    // Without a pending recovery it only pings: queued behind a stuck submit it would hang and the container would be restarted for nothing.
+    if (this.recovering) {
+      try {
+        await this.enqueue(async () => {
+          if (this.recovering) await this.recover();
+        });
+      } catch (e) {
+        this.onError('Catching up with the command log failed', e);
+        return { ok: false, reason: 'Catching up with the database log failed.' };
+      }
+    }
+    try {
+      await this.store.ping();
+    } catch (e) {
+      // The reason is served without sign-in: details go to the log only.
+      this.onError('The database is not answering', e);
+      return { ok: false, reason: 'The database is not answering.' };
+    }
+    return { ok: true, seq: this.current.seq };
+  }
+
   /** Writes a snapshot now (used on shutdown). */
   flush(): Promise<void> {
     return this.enqueue(() => this.writeSnapshot());
@@ -137,6 +194,7 @@ export class WorkspaceService {
     const { clientId, commandId, command } = submission;
     if (!isNonEmptyString(clientId) || !isNonEmptyString(commandId)) return rejected('Each change needs a clientId and a commandId.');
     if (typeof command !== 'object' || command === null || !isNonEmptyString(command.type)) return rejected('Each change needs a command with a type.');
+    if (this.recovering) await this.recover();
     const previous = await this.store.findCommand(clientId, commandId);
     if (previous) return { kind: 'accepted', seq: previous.seq, duplicate: true };
     if (BROWSER_ONLY.has(command.type)) return rejected(`"${command.type}" only applies to a workspace stored in one browser.`);
@@ -147,6 +205,11 @@ export class WorkspaceService {
     const needed = requiredRole(command);
     if (!atLeast(actor.role, needed)) {
       return { kind: 'rejected', error: err('forbidden', `${ROLE_LABEL[actor.role]}s can't make this change. Ask an admin for ${ROLE_LABEL[needed]} access.`).error };
+    }
+    const claimRoom = this.claims && actor.verified ? draftEditRoom(command) : null;
+    if (claimRoom && !this.claims!.canEdit(claimRoom, actor.id)) {
+      const held = this.claims!.holder(claimRoom)!;
+      return { kind: 'rejected', error: err('claimed', `${held.name} is editing this room, so your change wasn't saved.`, [claimRoom]).error };
     }
     const toApply = actor.verified ? stampCommand(command, actor, this.now()) : command;
     let result: ReturnType<typeof apply> | undefined;
@@ -160,16 +223,41 @@ export class WorkspaceService {
     if (!result.ok) return { kind: 'rejected', error: result.error };
     const checked = parseWorkspace(result.value);
     if (!checked.ok) return rejected(`That change would leave the workspace invalid: ${checked.error.message}`);
-    const entry: LoggedCommand = { seq: this.current.seq + 1, clientId, commandId, actor, command: toApply };
-    await this.store.append(entry);
-    this.current = { seq: entry.seq, workspace: result.value };
-    for (const listener of this.listeners) {
-      try {
-        listener(entry);
-      } catch (e) {
-        this.onError(`A live-update listener failed at seq ${entry.seq}`, e);
+    const touched = approvedRevisionChanges(this.current.workspace, result.value);
+    if (touched.length > 0) {
+      const t = touched[0]!;
+      const advice = toApply.type === 'project/import' ? 'Import the file as a copy instead.' : 'Start a new draft.';
+      return { kind: 'rejected', error: err('invalid_value', `Revision ${t.revision} of ${t.roomName} is approved, so it can't be changed. ${advice}`, [t.roomId]).error };
+    }
+    // Only a review can approve a room here. A copy or a new project may carry approvals as history; a merge into rooms that exist may not.
+    if (toApply.type === 'project/import' && toApply.resolution.mode === 'merge') {
+      const made = newlyApprovedRevisions(this.current.workspace, result.value)[0];
+      if (made) {
+        return { kind: 'rejected', error: err('invalid_value', `This file marks revision ${made.revision} of ${made.roomName} as approved, but it isn't approved here. Import it as a copy instead.`, [made.roomId]).error };
       }
     }
+    const approval = approvalRecord(this.current.seq + 1, toApply, result.value, actor);
+    if (!approval.ok) {
+      this.onError(`Approval at seq ${this.current.seq + 1} has no approved revision with a fingerprint and time`, toApply);
+      return { kind: 'rejected', error: err('invalid_value', "The approval couldn't be recorded, so it wasn't saved. Try again; if it keeps failing, tell an admin.", [approval.roomId]).error };
+    }
+    const entry: LoggedCommand = { seq: this.current.seq + 1, clientId, commandId, actor, command: toApply };
+    try {
+      await this.store.append(entry, approval.record);
+    } catch (e) {
+      // The insert may have committed before the error reached us. Re-read the log before the next command
+      // so a landed row is applied (and answered as a duplicate) instead of colliding with the next seq.
+      this.recovering = true;
+      throw e;
+    }
+    this.current = { seq: entry.seq, workspace: result.value };
+    if (claimRoom) {
+      const step = command.type === 'review' ? command.command.type : null;
+      if (step === 'review/submit' || step === 'review/discard-draft') this.claims!.release(claimRoom, actor.id, { admin: false });
+      else this.claims!.touch(claimRoom, actor);
+    }
+    this.claims?.prune((roomId) => findRoom(this.current.workspace, roomId) !== null);
+    this.notify(entry);
     this.sinceSnapshot += 1;
     if (this.sinceSnapshot >= this.snapshotEvery) {
       try {
@@ -180,6 +268,26 @@ export class WorkspaceService {
       }
     }
     return { kind: 'accepted', seq: entry.seq, duplicate: false };
+  }
+
+  /** Brings memory up to the log after an append whose outcome was unknown. Subscribers hear about landed commands. */
+  private async recover(): Promise<void> {
+    // State advances before each announcement, so a failed trailing read leaves nothing announced twice.
+    this.current = await replayAfter(this.store, this.current, (entry, state) => {
+      this.current = state;
+      this.notify(entry);
+    });
+    this.recovering = false;
+  }
+
+  private notify(entry: LoggedCommand): void {
+    for (const listener of this.listeners) {
+      try {
+        listener(entry);
+      } catch (e) {
+        this.onError(`A live-update listener failed at seq ${entry.seq}`, e);
+      }
+    }
   }
 
   private async writeSnapshot(): Promise<void> {

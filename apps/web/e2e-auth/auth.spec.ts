@@ -1,17 +1,5 @@
-import { expect, test, type Page } from '@playwright/test';
-
-async function signIn(page: Page, email: string, password: string): Promise<void> {
-  await page.goto('/');
-  await page.getByLabel('Email').fill(email);
-  await page.getByLabel('Password').fill(password);
-  await page.getByRole('button', { name: 'Sign in' }).click();
-}
-
-async function signOut(page: Page): Promise<void> {
-  await page.getByRole('button', { name: /^Account menu for / }).click();
-  await page.getByRole('menuitem', { name: 'Sign out' }).click();
-  await expect(page.getByRole('heading', { name: 'Sign in to Glasshouse' })).toBeVisible();
-}
+import { expect, test } from '@playwright/test';
+import { signIn, signOut } from './helpers';
 
 test('the workspace is behind sign-in, and a wrong password is explained', async ({ page }) => {
   await page.goto('/');
@@ -88,7 +76,7 @@ test('a reviewer who submitted can’t approve; another reviewer can, and names 
   await ada.goto('/rooms/r-e2e/review');
   await ada.getByRole('button', { name: 'Approve revision' }).click();
   await ada.getByRole('button', { name: 'Confirm approval' }).click();
-  await expect(ada.getByText('by Ada Admin', { exact: true })).toBeVisible();
-  await expect(ada.getByText('Rae Reviewer', { exact: true })).toBeVisible();
+  await expect(ada.getByText('by Ada Admin (admin@company.test)', { exact: true })).toBeVisible();
+  await expect(ada.getByText('Rae Reviewer (rev@company.test)', { exact: true })).toBeVisible();
   await expect(ada.getByText(/\(unverified\)/)).toHaveCount(0);
 });

@@ -1,0 +1,7 @@
+name: glasshouse
+services:
+  web:
+    image: oxygenai/glasshouse:${TAG:-latest}
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile

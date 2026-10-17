@@ -26,7 +26,7 @@ describe('provisionOidcUser', () => {
 
   it('links an existing local account by verified email, never through an unverified email', async () => {
     const store = new MemoryIdentityStore();
-    await store.createUser({ id: 'local-1', email: 'ploy@company.test', displayName: 'Ploy', role: 'editor', source: 'local', oidcSubject: null, passwordHash: 'x', mustChangePassword: false, active: true, createdAt: NOW, lastLoginAt: null });
+    await store.createUser({ id: 'local-1', email: 'ploy@company.test', displayName: 'Ploy', role: 'editor', source: 'local', oidcSubject: null, passwordHash: 'x', mustChangePassword: false, nameLocked: false, active: true, createdAt: NOW, lastLoginAt: null });
     const unverified = await provisionOidcUser(store, claims({ emailVerified: false }), opts);
     expect(unverified).toEqual({ refused: 'exists' });
     const linked = await provisionOidcUser(store, claims(), opts);
@@ -39,5 +39,21 @@ describe('provisionOidcUser', () => {
     expect('user' in noEmail && noEmail.user).toMatchObject({ oidcSubject: 'sub-x', displayName: 'sub-x' });
     if ('user' in noEmail) await store.updateUser(noEmail.user.id, { active: false });
     expect(await provisionOidcUser(store, claims({ email: null, sub: 'sub-x' }), opts)).toEqual({ refused: 'switched_off' });
+  });
+  it('keeps a name an admin set; a company sign-in no longer overwrites it', async () => {
+    const store = new MemoryIdentityStore();
+    const first = await provisionOidcUser(store, claims({ name: 'Ploy' }), opts);
+    if (!('user' in first)) throw new Error('refused');
+    await store.updateUser(first.user.id, { displayName: 'Ploy Sriwan', nameLocked: true });
+    const again = await provisionOidcUser(store, claims({ name: 'Ploy' }), opts);
+    expect(again).toMatchObject({ user: { displayName: 'Ploy Sriwan', nameLocked: true } });
+  });
+
+  it('still follows the company name while no admin has set one', async () => {
+    const store = new MemoryIdentityStore();
+    const first = await provisionOidcUser(store, claims({ name: 'Ploy' }), opts);
+    expect(first).toMatchObject({ user: { nameLocked: false } });
+    const again = await provisionOidcUser(store, claims({ name: 'Ploy S.' }), opts);
+    expect(again).toMatchObject({ user: { displayName: 'Ploy S.', nameLocked: false } });
   });
 });

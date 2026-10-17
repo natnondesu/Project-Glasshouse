@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 
-test('home leads with the last room in 3D and opens any room from its card', async ({ page }) => {
+test('home leads with the last room in 3D and opens any room from its card', async ({ page, browserName }) => {
+  test.skip(browserName === 'firefox' && !!process.env.CI, "Playwright's Firefox has no WebGL in the CI image");
   await page.goto('/');
   await page.getByRole('complementary', { name: 'Projects' }).getByRole('link', { name: /MDF-1/ }).click();
   await page.waitForURL(/\/rooms\/[^/]+\/plan/);

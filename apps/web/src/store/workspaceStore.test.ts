@@ -1,5 +1,7 @@
 import { apply, currentRevision, findRoom } from '@glasshouse/domain';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { resetAuthStore, useAuthStore } from '../auth/authStore';
+import { resetClaimsStore, useClaimsStore } from '../claims/claimsStore';
 import { resetWorkspaceStore, setCommit, useWorkspaceStore } from './workspaceStore';
 
 const store = () => useWorkspaceStore.getState();
@@ -123,5 +125,38 @@ describe('refusing edits while read-only', () => {
     store().setReadOnly(true, reason);
     expect(setWidth('a', 6)?.message).toBe(message);
     expect(width('a')).toBe(5);
+  });
+});
+
+describe('a room someone else is editing', () => {
+  beforeEach(() => {
+    resetWorkspaceStore();
+    resetAuthStore();
+    resetClaimsStore();
+    seed();
+    useAuthStore.setState({ status: 'signed-in', user: { id: 'u-me', name: 'Me', email: 'me@x', role: 'editor', mustChangePassword: false } });
+    useClaimsStore.getState().setClaims([{ roomId: 'a', userId: 'u-other', name: 'Ada', since: 't', lastEditAt: 't' }]);
+  });
+
+  it('refuses a plan command for that room and leaves the workspace alone', () => {
+    const before = store().workspace;
+    expect(setWidth('a', 6)).toEqual({ code: 'claimed', message: 'Ada is editing this room.', targets: ['a'] });
+    expect(store().workspace).toBe(before);
+  });
+
+  it('refuses undo and redo for that room', () => {
+    useClaimsStore.getState().setClaims([]);
+    setWidth('a', 6);
+    setWidth('a', 7);
+    store().undo('a');
+    useClaimsStore.getState().setClaims([{ roomId: 'a', userId: 'u-other', name: 'Ada', since: 't', lastEditAt: 't' }]);
+    expect(store().undo('a')).toMatchObject({ code: 'claimed', targets: ['a'] });
+    expect(store().redo('a')).toMatchObject({ code: 'claimed', targets: ['a'] });
+    expect(width('a')).toBe(6);
+  });
+
+  it('still lets a command for another room through', () => {
+    expect(setWidth('b', 7)).toBeNull();
+    expect(width('b')).toBe(7);
   });
 });

@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 
-test('walks the room at eye height after choosing where to start, stands at a rack, and leaves with Esc', async ({ page }) => {
+test('walks the room at eye height after choosing where to start, stands at a rack, and leaves with Esc', async ({ page, browserName }) => {
+  test.skip(browserName === 'firefox' && !!process.env.CI, "Playwright's Firefox has no WebGL in the CI image");
   await page.goto('/');
   await page.getByRole('complementary', { name: 'Projects' }).getByRole('link', { name: /Server room A/ }).click();
   await page.getByRole('link', { name: '3D' }).click();

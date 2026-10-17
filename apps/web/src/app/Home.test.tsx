@@ -3,10 +3,12 @@ import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { createMemoryRouter, RouterProvider } from 'react-router';
 import { beforeEach, expect, it } from 'vitest';
+import { resetAuthStore, useAuthStore } from '../auth/authStore';
 import { routes } from './routes';
 import { resetWorkspaceStore, useWorkspaceStore } from '../store/workspaceStore';
 
 beforeEach(() => {
+  resetAuthStore();
   localStorage.clear();
   resetWorkspaceStore();
   const s = useWorkspaceStore.getState();
@@ -46,6 +48,16 @@ it('adds a room to a site from Home and opens it', async () => {
   await user.click(screen.getByRole('button', { name: /^New room in Bangna campus/ }));
   expect(router.state.location.pathname).toMatch(/^\/rooms\/.+\/plan$/);
   expect(useWorkspaceStore.getState().workspace.projects[0]!.sites[0]!.rooms.map((r) => r.name)).toContain('New room');
+});
+
+it.each([
+  ['viewer', false],
+  ['editor', true],
+] as const)('signed in as a %s, the New room card is present: %s', (role, present) => {
+  useAuthStore.setState({ status: 'signed-in', user: { id: 'u1', name: 'Nok', email: 'n@x', role, mustChangePassword: false } });
+  open();
+  expect(screen.queryByRole('button', { name: /^New room in Bangna campus/ }) !== null).toBe(present);
+  expect(screen.getByRole('region', { name: /Bangna campus/ })).toBeInTheDocument();
 });
 
 it.each([

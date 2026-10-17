@@ -42,9 +42,15 @@ export function registerAuthRoutes(app: FastifyInstance, deps: AuthRouteDeps): v
     const bindingCookie = { httpOnly: true, sameSite: 'lax' as const, secure: config.secureCookies, path: '/auth/oidc' };
     app.get('/auth/oidc/start', async (request, reply) => {
       const returnTo = safeReturnTo((request.query as { returnTo?: unknown }).returnTo);
-      const { url, binding } = await oidc.start(returnTo);
-      reply.setCookie(OIDC_BINDING_COOKIE, binding, { ...bindingCookie, maxAge: OIDC_BINDING_MAX_AGE_S });
-      return reply.redirect(url);
+      try {
+        const { url, binding } = await oidc.start(returnTo);
+        reply.setCookie(OIDC_BINDING_COOKIE, binding, { ...bindingCookie, maxAge: OIDC_BINDING_MAX_AGE_S });
+        return reply.redirect(url);
+      } catch (e) {
+        if (e instanceof OidcError) return failTo(reply, e.code);
+        request.log.error(e, 'Company sign-in could not start');
+        return failTo(reply, 'generic');
+      }
     });
     app.get('/auth/oidc/callback', async (request, reply) => {
       const binding = request.cookies[OIDC_BINDING_COOKIE];
@@ -57,10 +63,15 @@ export function registerAuthRoutes(app: FastifyInstance, deps: AuthRouteDeps): v
         request.log.error(e, 'Company sign-in failed');
         return failTo(reply, 'generic');
       }
-      const outcome = await provisionOidcUser(store, result.claims, { defaultRole: config.defaultRole, bootstrapAdmin: config.bootstrapAdmin, now: now().toISOString() });
-      if ('refused' in outcome) return failTo(reply, outcome.refused);
-      await sessions.startSession(reply, outcome.user);
-      return reply.redirect(result.returnTo);
+      try {
+        const outcome = await provisionOidcUser(store, result.claims, { defaultRole: config.defaultRole, bootstrapAdmin: config.bootstrapAdmin, now: now().toISOString() });
+        if ('refused' in outcome) return failTo(reply, outcome.refused);
+        await sessions.startSession(reply, outcome.user);
+        return reply.redirect(result.returnTo);
+      } catch (e) {
+        request.log.error(e, 'Company sign-in failed after the token exchange');
+        return failTo(reply, 'generic');
+      }
     });
   }
 

@@ -8,12 +8,14 @@
   },
   "scripts": {
     "test": "vitest run",
+    "test:cov": "vitest run --coverage --coverage.reporter=lcov --coverage.reporter=text-summary",
     "test:watch": "vitest",
     "coverage": "vitest run --coverage",
     "typecheck": "tsc --noEmit",
     "build": "tsc --noEmit"
   },
   "dependencies": {
+    "@noble/hashes": "^2.4.0",
     "immer": "^11.1.21",
     "polygon-clipping": "^0.15.7",
     "zod": "^4.6.7"

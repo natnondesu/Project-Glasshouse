@@ -9,6 +9,8 @@ export interface AdminUser {
   source: 'oidc' | 'local';
   active: boolean;
   mustChangePassword: boolean;
+  /** An admin set the name: company sign-in no longer overwrites it. */
+  nameLocked: boolean;
   createdAt: string;
   lastLoginAt: string | null;
 }

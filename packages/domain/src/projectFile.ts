@@ -1,5 +1,6 @@
 import { castDraft, produce } from 'immer';
 import { newId } from './ids';
+import { contentFingerprint } from './fingerprint';
 import { currentRevision, findProject, findRoom, findSite } from './lookup';
 import { migrate } from './migrations';
 import { CURRENT_SCHEMA_VERSION, LIMITS } from './model/defaults';
@@ -209,8 +210,10 @@ function stripIdentity(p: Project): Project {
         ...room,
         plan: {
           ...room.plan,
-          revisions: room.plan.revisions.map((r) => ({
+          revisions: room.plan.revisions.map(({ approvedHash, ...r }) => ({
             ...r,
+            // A hash the content doesn't match would let a file vouch for an approval nobody gave.
+            ...(approvedHash !== undefined && approvedHash === contentFingerprint(r.content) ? { approvedHash } : {}),
             designedBy: r.designedBy && withoutUserId(r.designedBy),
             approvedBy: r.approvedBy && withoutUserId(r.approvedBy),
             acknowledgements: r.acknowledgements.map((a) => ({ ...a, by: withoutUserId(a.by) })),
@@ -225,6 +228,20 @@ function stripIdentity(p: Project): Project {
       })),
     })),
   };
+}
+
+/** A hand-edited file can move a room to another site; merging would then keep both copies under one ID. */
+function duplicateId(p: Project): { id: Id; name: string } | null {
+  const seen = new Set<Id>();
+  for (const s of p.sites) {
+    if (seen.has(s.id)) return { id: s.id, name: s.name };
+    seen.add(s.id);
+    for (const r of s.rooms) {
+      if (seen.has(r.id)) return { id: r.id, name: r.name };
+      seen.add(r.id);
+    }
+  }
+  return null;
 }
 
 export function applyImport(ws: Workspace, incoming: ProjectFile, resolution: ImportResolution): Result<Workspace> {
@@ -245,6 +262,8 @@ export function applyImport(ws: Workspace, incoming: ProjectFile, resolution: Im
   }
   const local = findProject(ws, file.project.id);
   const merged = local ? mergeProject(local, file.project, new Set(resolution.takeIncoming)) : file.project;
+  const dup = duplicateId(merged);
+  if (dup) return err('invalid_value', `"${dup.name}" appears more than once in this project after the merge (the file moves it to another site). Import the file as a copy instead.`, [dup.id]);
   return ok(
     produce(ws, (d) => {
       const i = d.projects.findIndex((p) => p.id === merged.id);

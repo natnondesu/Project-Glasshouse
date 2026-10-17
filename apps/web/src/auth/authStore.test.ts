@@ -25,3 +25,29 @@ it('knows dev mode, signed-out, must-change and signed-in', async () => {
   await useAuthStore.getState().init();
   expect(useAuthStore.getState().status).toBe('must-change');
 });
+
+it('refresh adopts a changed role, and signs out with a notice when the session is gone', async () => {
+  useAuthStore.setState({ status: 'signed-in', user: { id: 'u1', name: 'Ploy', email: 'p@x', role: 'viewer', mustChangePassword: false } });
+  respond({ '/auth/me': [200, { id: 'u1', name: 'Ploy', email: 'p@x', role: 'editor', mustChangePassword: false }] });
+  await useAuthStore.getState().refresh();
+  expect(useAuthStore.getState()).toMatchObject({ status: 'signed-in', user: { role: 'editor' } });
+
+  vi.restoreAllMocks();
+  respond({ '/auth/me': [401, { error: { code: 'unauthorised' } }] });
+  await useAuthStore.getState().refresh();
+  expect(useAuthStore.getState()).toMatchObject({ status: 'signed-out', user: null, sessionEnded: true });
+});
+
+it('refresh keeps the same user object when nothing about the person changed, and a new one when the role did', async () => {
+  const before = { id: 'u1', name: 'Ploy', email: 'p@x', role: 'editor' as const, mustChangePassword: false };
+  useAuthStore.setState({ status: 'signed-in', user: before });
+  respond({ '/auth/me': [200, { ...before }] });
+  await useAuthStore.getState().refresh();
+  expect(useAuthStore.getState().user).toBe(before);
+
+  vi.restoreAllMocks();
+  respond({ '/auth/me': [200, { ...before, role: 'viewer' }] });
+  await useAuthStore.getState().refresh();
+  expect(useAuthStore.getState().user).not.toBe(before);
+  expect(useAuthStore.getState().user?.role).toBe('viewer');
+});

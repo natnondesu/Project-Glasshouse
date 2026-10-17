@@ -5,6 +5,7 @@ import { createMemoryRouter, RouterProvider } from 'react-router';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { routes } from '../../app/routes';
 import { resetAuthStore, useAuthStore } from '../../auth/authStore';
+import { resetPeopleStore, usePeopleStore } from '../../people/peopleStore';
 import { resetWorkspaceStore, useWorkspaceStore } from '../../store/workspaceStore';
 
 const revision = () => currentRevision(findRoom(useWorkspaceStore.getState().workspace, 'r')!.room.plan);
@@ -35,6 +36,7 @@ const review = (command: ReviewCommand): void => {
 
 beforeEach(() => {
   resetAuthStore();
+  resetPeopleStore();
   seed();
 });
 
@@ -59,6 +61,37 @@ it('AC13/AC16: submits and approves after confirming, flags self-approval, and s
   expect(screen.getByRole('link', { name: 'Open Install sheet' })).toHaveClass('btn--ink');
   await user.click(screen.getByRole('button', { name: 'Start new draft' }));
   expect(revision()).toMatchObject({ number: 2, state: 'draft' });
+});
+
+describe('approval fingerprint', () => {
+  const approveWith = (approvedHash: string | undefined): void => {
+    review({ type: 'review/submit', designedBy: 'Ploy', at: AT });
+    review({ type: 'review/approve', reviewer: 'Nok', at: AT });
+    const { workspace, replace } = useWorkspaceStore.getState();
+    replace({
+      ...workspace,
+      projects: workspace.projects.map((p) => ({
+        ...p,
+        sites: p.sites.map((s) => ({
+          ...s,
+          rooms: s.rooms.map((r) => ({ ...r, plan: { ...r.plan, revisions: r.plan.revisions.map(({ approvedHash: _dropped, ...rev }) => (approvedHash ? { ...rev, approvedHash } : rev)) } })),
+        })),
+      })),
+    });
+  };
+
+  it('shows the short fingerprint on an approved revision', () => {
+    approveWith('ab'.repeat(32));
+    open();
+    expect(screen.getByRole('status')).toHaveTextContent('Fingerprint abababababab');
+  });
+
+  it('shows no fingerprint for a revision approved before fingerprints existed', () => {
+    approveWith(undefined);
+    open();
+    expect(screen.getByRole('status')).toHaveTextContent('APPROVED');
+    expect(screen.queryByText(/Fingerprint/)).toBeNull();
+  });
 });
 
 it('cancels a submit without changing anything', async () => {
@@ -235,6 +268,15 @@ describe('signed in on the shared server', () => {
     const history = screen.getByRole('region', { name: 'Revisions and history' });
     expect(history).toHaveTextContent('Approved by Nok R.');
     expect(history).not.toHaveTextContent('unverified');
+  });
+
+  it('shows the approver as the directory has them, with their email, on the stamp', () => {
+    review({ type: 'review/submit', designedBy: 'Ploy S.', byId: 'other', at: AT });
+    review({ type: 'review/approve', reviewer: 'Nok', byId: 'me', at: AT });
+    usePeopleStore.setState({ byId: { me: { name: 'Nok Rattana', email: 'nok@x.test' } } });
+    signInAs('viewer');
+    open();
+    expect(screen.getByRole('status')).toHaveTextContent('by Nok Rattana (nok@x.test)');
   });
 
   it('labels each person on the revision list on their own', () => {

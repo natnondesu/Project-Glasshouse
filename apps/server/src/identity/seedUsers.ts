@@ -25,7 +25,7 @@ export async function seedUsers(store: IdentityStore, users: SeedUser[], now: st
   for (const u of users) {
     await store.createUser({
       id: randomUUID(), email: u.email, displayName: u.displayName, role: u.role, source: 'local', oidcSubject: null,
-      passwordHash: await hashPassword(u.password), mustChangePassword: false, active: true, createdAt: now, lastLoginAt: null,
+      passwordHash: await hashPassword(u.password), mustChangePassword: false, nameLocked: false, active: true, createdAt: now, lastLoginAt: null,
     });
   }
 }

@@ -1,12 +1,14 @@
-# Local Postgres for `pnpm dev:server`. Not a production deployment (that is Plan C).
+# Local Postgres for `pnpm dev:server`. Not the production deployment (see deployment/ and docs/go-live.md).
+# Postgres 18 cannot open the old Postgres 17 volume (glasshouse-db); that volume is left untouched.
+# Delete it by hand (docker volume rm glasshouse-db) once the old dev data is no longer needed.
 services:
   db:
-    image: postgres:17-alpine
+    image: postgres:18-alpine
     environment:
       POSTGRES_USER: glasshouse
       POSTGRES_PASSWORD: glasshouse
       POSTGRES_DB: glasshouse
     ports: ['127.0.0.1:5432:5432']
-    volumes: ['glasshouse-db:/var/lib/postgresql/data']
+    volumes: ['glasshouse-db-18:/var/lib/postgresql']
 volumes:
-  glasshouse-db:
+  glasshouse-db-18:

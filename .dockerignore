@@ -1,0 +1,11 @@
+node_modules
+**/node_modules
+.git
+.claude
+**/dist
+**/dist-server
+**/test-results
+**/playwright-report
+.superpowers
+deployment/.env
+deployment/.env.smoke

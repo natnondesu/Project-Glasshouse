@@ -4,13 +4,13 @@ import { DuplicateUserError, type IdentityStore, type Role, type Session, type U
 
 interface UserRow {
   id: string; email: string; display_name: string; role: Role; source: 'oidc' | 'local'; oidc_subject: string | null;
-  password_hash: string | null; must_change_password: boolean; active: boolean; created_at: Date; last_login_at: Date | null;
+  password_hash: string | null; must_change_password: boolean; name_locked: boolean; active: boolean; created_at: Date; last_login_at: Date | null;
 }
 interface SessionRow { token_hash: string; user_id: string; created_at: Date; last_seen_at: Date; expires_at: Date }
 
 const toUser = (r: UserRow): User => ({
   id: r.id, email: r.email, displayName: r.display_name, role: r.role, source: r.source, oidcSubject: r.oidc_subject,
-  passwordHash: r.password_hash, mustChangePassword: r.must_change_password, active: r.active,
+  passwordHash: r.password_hash, mustChangePassword: r.must_change_password, nameLocked: r.name_locked, active: r.active,
   createdAt: r.created_at.toISOString(), lastLoginAt: r.last_login_at ? r.last_login_at.toISOString() : null,
 });
 const toSession = (r: SessionRow): Session => ({
@@ -18,7 +18,7 @@ const toSession = (r: SessionRow): Session => ({
 });
 const COLUMN: Record<keyof UserPatch, string> = {
   email: 'email', displayName: 'display_name', role: 'role', active: 'active', passwordHash: 'password_hash',
-  mustChangePassword: 'must_change_password', lastLoginAt: 'last_login_at', oidcSubject: 'oidc_subject',
+  mustChangePassword: 'must_change_password', nameLocked: 'name_locked', lastLoginAt: 'last_login_at', oidcSubject: 'oidc_subject',
 };
 const UNIQUE_VIOLATION = '23505';
 const isUniqueViolation = (e: unknown): boolean => typeof e === 'object' && e !== null && (e as { code?: string }).code === UNIQUE_VIOLATION;
@@ -57,9 +57,9 @@ export class PgIdentityStore implements IdentityStore {
   async createUser(u: User) {
     try {
       await this.pool.query(
-        `insert into users (id, email, display_name, role, source, oidc_subject, password_hash, must_change_password, active, created_at, last_login_at)
-         values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
-        [u.id, u.email, u.displayName, u.role, u.source, u.oidcSubject, u.passwordHash, u.mustChangePassword, u.active, u.createdAt, u.lastLoginAt],
+        `insert into users (id, email, display_name, role, source, oidc_subject, password_hash, must_change_password, name_locked, active, created_at, last_login_at)
+         values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
+        [u.id, u.email, u.displayName, u.role, u.source, u.oidcSubject, u.passwordHash, u.mustChangePassword, u.nameLocked, u.active, u.createdAt, u.lastLoginAt],
       );
     } catch (e) {
       if (isUniqueViolation(e)) throw new DuplicateUserError(`A user with this email or sign-in already exists: ${u.email}`);

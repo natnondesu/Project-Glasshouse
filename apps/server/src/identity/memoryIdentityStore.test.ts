@@ -4,7 +4,7 @@ import { DuplicateUserError, type User } from './types';
 
 export const userFixture = (over: Partial<User> = {}): User => ({
   id: 'u1', email: 'ploy@company.test', displayName: 'Ploy S.', role: 'editor', source: 'local', oidcSubject: null,
-  passwordHash: null, mustChangePassword: false, active: true, createdAt: '2026-10-18T00:00:00.000Z', lastLoginAt: null, ...over,
+  passwordHash: null, mustChangePassword: false, nameLocked: false, active: true, createdAt: '2026-10-18T00:00:00.000Z', lastLoginAt: null, ...over,
 });
 
 describe('MemoryIdentityStore', () => {
@@ -24,6 +24,8 @@ describe('MemoryIdentityStore', () => {
     expect(await s.countActiveAdmins()).toBe(1);
     expect((await s.updateUser('u1', { role: 'reviewer' }))?.role).toBe('reviewer');
     expect(await s.countActiveAdmins()).toBe(0);
+    expect((await s.updateUser('u1', { nameLocked: true }))?.nameLocked).toBe(true);
+    expect((await s.findUserById('u1'))?.nameLocked).toBe(true);
     expect(await s.updateUser('missing', { role: 'admin' })).toBeNull();
   });
 

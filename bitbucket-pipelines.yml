@@ -1,0 +1,116 @@
+options:
+  runtime:
+    cloud:
+      version: '3'
+
+definitions:
+  caches:
+    pnpm: ~/.pnpm-store
+    sonar: ~/.sonar
+  services:
+    docker:
+      memory: 7168 # every step that uses the docker service is size 2x
+
+  steps:
+    - step: &unit
+        name: Unit tests, types, build
+        image: node:22-alpine
+        caches: [node, pnpm]
+        script:
+          - corepack enable
+          - pnpm config set store-dir ~/.pnpm-store
+          - pnpm install --frozen-lockfile
+          - pnpm test:cov
+          - node scripts/lcov-rebase.mjs
+          - pnpm typecheck
+          - pnpm build
+        artifacts:
+          - packages/domain/coverage/lcov.info
+          - apps/server/coverage/lcov.info
+          - apps/web/coverage/lcov.info
+
+    - step: &e2e
+        name: Browser tests (local, shared server, sign-in)
+        image: mcr.microsoft.com/playwright:v1.64.0-noble
+        size: 2x
+        caches: [pnpm]
+        script:
+          - corepack enable
+          - pnpm config set store-dir ~/.pnpm-store
+          - pnpm install --frozen-lockfile
+          - pnpm e2e
+          - pnpm e2e:server
+          - pnpm e2e:auth
+        artifacts:
+          - name: Playwright traces
+            type: shared
+            paths:
+              - apps/web/test-results/**
+            capture-on: failed
+
+    - step: &db
+        name: Postgres tests
+        image: node:22
+        size: 2x
+        caches: [node, pnpm]
+        services: [docker]
+        script:
+          # Testcontainers inside Bitbucket's docker service: no Ryuk sidecar (the service forbids privileged containers).
+          - export TESTCONTAINERS_RYUK_DISABLED=true
+          - export TESTCONTAINERS_HOST_OVERRIDE=localhost
+          - corepack enable
+          - pnpm config set store-dir ~/.pnpm-store
+          - pnpm install --frozen-lockfile
+          - pnpm test:db
+
+pipelines:
+  pull-requests:
+    '**':
+      - parallel:
+          - step: *unit
+          - step: *e2e
+          - step: *db
+
+  branches:
+    main:
+      - parallel:
+          - step: *unit
+          - step: *e2e
+          - step: *db
+      - step:
+          name: SonarQube analysis
+          runs-on: [self.hosted, linux, operation.internal]
+          image: sonarsource/sonar-scanner-cli:12
+          caches: [sonar]
+          script:
+            - sonar-scanner -Dsonar.host.url=${SONAR_HOST_URL} -Dsonar.token=${SONAR_TOKEN}
+
+  tags:
+    v*.*.*:
+      - parallel:
+          - step: *unit
+          - step: *e2e
+          - step: *db
+      - stage:
+          name: Release
+          deployment: Production
+          steps:
+            - step:
+                name: Build and push the Docker image
+                image: docker
+                size: 2x
+                services: [docker]
+                script:
+                  - export PATH=/usr/bin:$PATH # buildkit auth workaround, as in rtsp-viewer-next
+                  - echo "$DOCKER_HUB_ACCESS_TOKEN" | docker login -u "$DOCKER_HUB_USER" --password-stdin
+                  - docker buildx create --use --driver docker-container
+                  - docker buildx inspect --bootstrap
+                  - export TAG=$BITBUCKET_TAG
+                  - cd docker
+                  - >-
+                    docker buildx bake --allow=fs.read=.. -f docker-compose.yml
+                    --set "web.tags=oxygenai/glasshouse:$TAG"
+                    --set "web.tags=oxygenai/glasshouse:latest"
+                    --set "web.cache-from=type=registry,ref=oxygenai/buildkit-cache:glasshouse"
+                    --set "web.cache-to=type=registry,ref=oxygenai/buildkit-cache:glasshouse,mode=max"
+                    --push web

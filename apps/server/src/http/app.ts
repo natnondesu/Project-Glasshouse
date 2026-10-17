@@ -1,13 +1,16 @@
 import fastifyCookie from '@fastify/cookie';
 import fastifyStatic from '@fastify/static';
-import Fastify, { type FastifyInstance, type FastifyRequest } from 'fastify';
+import Fastify, { type FastifyError, type FastifyInstance, type FastifyRequest } from 'fastify';
 import type { Writable } from 'node:stream';
+import type { ClaimRegistry } from '../claims';
 import type { Actor } from '../store/commandStore';
 import type { WorkspaceService } from '../workspaceService';
 import { checkMutation } from './auth/csrf';
+import { registerClaims } from './claims';
 import { registerCommands } from './commands';
 import type { Authenticate } from './devAuth';
 import { registerEvents } from './events';
+import { registerSecurityHeaders } from './security';
 
 declare module 'fastify' {
   interface FastifyRequest {
@@ -21,12 +24,16 @@ const BODY_LIMIT = 25 * 1024 * 1024;
 export interface AppDeps {
   service: WorkspaceService;
   authenticate: Authenticate;
+  /** What an open event stream re-runs on each heartbeat; defaults to `authenticate`. Pass a check that does not count as activity. */
+  recheck?: Authenticate;
   /** Public sign-in routes (/auth/*): dev or real. */
   authRoutes: (app: FastifyInstance) => void | Promise<void>;
   /** GLASSHOUSE_PUBLIC_URL's origin; null in dev-insecure. */
   publicOrigin: string | null;
   /** Admin-only API routes, registered inside the authenticated plugin. */
   admin?: (api: FastifyInstance) => void;
+  /** Names and emails of everyone, for any signed-in role. */
+  people?: (api: FastifyInstance) => void;
   /** Fastify's trustProxy, so request.ip is the client behind a reverse proxy. */
   trustProxy?: boolean | number | string;
   webDir?: string | null;
@@ -34,6 +41,8 @@ export interface AppDeps {
   /** Where the log lines go instead of stdout (tests). Implies logging. */
   logStream?: Writable;
   heartbeatMs?: number;
+  /** One editor per room draft; null/absent in dev mode. */
+  claims?: ClaimRegistry;
 }
 
 // Fastify's types take a function (not a hop count) for "trust the nearest N proxies".
@@ -62,12 +71,31 @@ const serializeRequest = (request: FastifyRequest) => ({
   remotePort: request.socket?.remotePort,
 });
 
-export async function buildApp({ service, authenticate, authRoutes, publicOrigin, admin, trustProxy = false, webDir = null, logger = false, logStream, heartbeatMs }: AppDeps): Promise<FastifyInstance> {
+export async function buildApp({ service, authenticate, recheck, authRoutes, publicOrigin, admin, people, trustProxy = false, webDir = null, logger = false, logStream, heartbeatMs, claims }: AppDeps): Promise<FastifyInstance> {
   // Force-close: open event streams would otherwise keep shutdown waiting forever.
   const app = Fastify({ logger: logger || logStream ? { ...(logStream ? { stream: logStream } : {}), serializers: { req: serializeRequest } } : false, trustProxy: typeof trustProxy === 'number' ? hopsTrusted(trustProxy) : trustProxy, bodyLimit: BODY_LIMIT, forceCloseConnections: true });
+  // Fastify's own client errors (body too large, bad JSON, wrong media type) use its shape, not ours; the web app tells a
+  // refusal from a flaky proxy by the envelope, so without this it would retry them forever. Server errors stay Fastify's.
+  app.setErrorHandler((error: FastifyError, _request, reply) => {
+    const status = error.statusCode;
+    if (status === undefined || status < 400 || status > 499) return reply.send(error);
+    const tooLarge = status === 413;
+    const message = tooLarge
+      ? `This is larger than the server accepts (${BODY_LIMIT / 1024 / 1024} MB). Split it into smaller pieces, or import fewer projects at once.`
+      : status === 415
+        ? 'The server only accepts JSON here.'
+        : 'The request could not be read. If you typed or pasted JSON, check it is valid.';
+    return reply.code(status).send({ error: { code: tooLarge ? 'too_large' : 'invalid_value', message, targets: [] } });
+  });
   await app.register(fastifyCookie);
+  await registerSecurityHeaders(app, { https: publicOrigin?.startsWith('https:') ?? false });
   app.decorateRequest('actor', null);
   app.get('/api/health', async () => ({ ok: true, seq: service.state.seq }));
+  // For the container healthcheck and the proxy: the workspace is loaded (we are listening) and the database answers.
+  app.get('/api/ready', async (_request, reply) => {
+    const r = await service.ready();
+    return r.ok ? r : reply.code(503).send(r);
+  });
   await app.register(async (auth) => {
     await authRoutes(auth);
   });
@@ -82,10 +110,12 @@ export async function buildApp({ service, authenticate, authRoutes, publicOrigin
       if (csrf) return reply.code(403).send({ error: { code: 'csrf', message: csrf, targets: [] } });
       request.actor = actor;
     });
-    api.get('/api/workspace', async () => service.state);
+    api.get('/api/workspace', async () => ({ ...service.state, generation: service.generation, claims: claims?.list() ?? [] }));
     registerCommands(api, service);
-    registerEvents(api, service, authenticate, { heartbeatMs });
+    if (claims) registerClaims(api, { service, claims });
+    registerEvents(api, service, recheck ?? authenticate, { heartbeatMs, claims });
     admin?.(api);
+    people?.(api);
   });
   if (webDir) {
     await app.register(fastifyStatic, { root: webDir, wildcard: false });

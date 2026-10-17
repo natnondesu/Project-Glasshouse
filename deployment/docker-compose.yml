@@ -1,0 +1,101 @@
+# Glasshouse on the ops host. Same shape as the team's other apps (see docs/go-live.md).
+name: glasshouse
+
+x-common-healthcheck: &common-healthcheck
+  interval: 30s
+  timeout: 10s
+  retries: 3
+  start_period: 20s
+
+x-common-environment: &common-environment
+  TZ: ${TZ:-Asia/Bangkok}
+
+services:
+  db:
+    image: postgres:18-alpine
+    container_name: glasshouse-db
+    restart: unless-stopped
+    environment:
+      <<: *common-environment
+      POSTGRES_DB: ${POSTGRES_DB:-glasshouse}
+      POSTGRES_USER: ${POSTGRES_USER:-glasshouse}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+    volumes:
+      - ${GLASSHOUSE_DATA_DIR:-/data/services/services-data/glasshouse}/db-data:/var/lib/postgresql
+    healthcheck:
+      <<: *common-healthcheck
+      test: ['CMD-SHELL', 'pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"']
+    # web also joins traefik-proxy, where another stack's own `db` could answer to that name: the apps use this alias instead.
+    # An alias (not only container_name) so it still resolves when the smoke/staging override drops container_name.
+    networks:
+      default:
+        aliases: [glasshouse-db]
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+
+  web:
+    image: oxygenai/glasshouse:${TAG:-latest}
+    container_name: glasshouse-web
+    restart: unless-stopped
+    # Optional so the smoke override can supply its own; a missing value still fails loudly (the :? checks and the app's config check).
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      <<: *common-environment
+      GLASSHOUSE_AUTH: 'on'
+      GLASSHOUSE_STORE: postgres
+      DATABASE_URL: postgresql://${POSTGRES_USER:-glasshouse}:${POSTGRES_PASSWORD}@glasshouse-db:5432/${POSTGRES_DB:-glasshouse}
+    expose: ['8787']
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      <<: *common-healthcheck
+      # While starting, check every 2s so the container turns healthy (and Traefik routes to it) quickly after a restart; needs Docker Engine 25+.
+      start_interval: 2s
+      test: ['CMD', 'wget', '-qO-', 'http://127.0.0.1:8787/api/ready']
+    # SIGTERM writes a final snapshot before exit.
+    stop_grace_period: 30s
+    labels:
+      traefik.enable: 'true'
+      traefik.docker.network: 'traefik-proxy'
+      traefik.http.routers.glasshouse.rule: 'Host(`${GLASSHOUSE_HOST:?set GLASSHOUSE_HOST in .env}`)'
+      traefik.http.routers.glasshouse.entrypoints: 'web'
+      traefik.http.routers.glasshouse.tls: 'false'
+      traefik.http.services.glasshouse.loadbalancer.server.port: '8787'
+      # No compress middleware: it can buffer the live-update stream (text/event-stream).
+    networks: [default, traefik-proxy]
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+
+  backup:
+    image: postgres:18-alpine
+    container_name: glasshouse-backup
+    restart: unless-stopped
+    environment:
+      <<: *common-environment
+      PGHOST: glasshouse-db
+      PGDATABASE: ${POSTGRES_DB:-glasshouse}
+      PGUSER: ${POSTGRES_USER:-glasshouse}
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      BACKUP_AT: ${BACKUP_AT:-03:00}
+      BACKUP_KEEP_DAYS: ${BACKUP_KEEP_DAYS:-14}
+    entrypoint: ['/bin/sh', '/backup.sh']
+    volumes:
+      - ./backup.sh:/backup.sh:ro
+      - ${GLASSHOUSE_DATA_DIR:-/data/services/services-data/glasshouse}/backups:/backups
+    depends_on:
+      db:
+        condition: service_healthy
+    networks: [default]
+
+networks:
+  default:
+    driver: bridge
+  traefik-proxy:
+    external: true

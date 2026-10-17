@@ -13,6 +13,8 @@ export interface OidcLogin {
   start(returnTo: string): Promise<{ url: string; binding: string }>;
   /** `binding` is the cookie value the callback request arrived with: a sign-in only finishes in the browser that started it. */
   finish(callbackUrl: URL, binding: string | null): Promise<{ claims: OidcClaims; returnTo: string }>;
+  /** Discovers now; failures are logged and retried on the next sign-in. */
+  warmUp(): Promise<void>;
 }
 
 /** What the sign-in screen is told when a company sign-in fails. The browser words these itself, in the reader's language. */
@@ -59,13 +61,25 @@ const FAILURE_CODES = new Map<string, SigninErrorCode>([
 const sameSecret = (a: string, b: string): boolean => timingSafeEqual(createHash('sha256').update(a).digest(), createHash('sha256').update(b).digest());
 const text = (v: unknown): string | null => (typeof v === 'string' && v.trim() !== '' ? v.trim() : null);
 
-export async function createOidcLogin(options: { issuer: string; clientId: string; clientSecret: string; redirectUri: string; now?: () => number; warn?: (message: string) => void }): Promise<OidcLogin> {
+export function createOidcLogin(options: { issuer: string; clientId: string; clientSecret: string; redirectUri: string; now?: () => number; warn?: (message: string) => void }): OidcLogin {
   const now = options.now ?? (() => Date.now());
   const warn = options.warn ?? ((message: string) => console.warn(message));
   const issuer = new URL(options.issuer);
   // Plain http only for a loopback test IdP; Authelia is always https.
   const insecure = issuer.protocol === 'http:' && LOOPBACK.has(issuer.hostname);
-  const config = await client.discovery(issuer, options.clientId, undefined, client.ClientSecretBasic(options.clientSecret), insecure ? { execute: [client.allowInsecureRequests] } : undefined);
+  let discovered: Promise<client.Configuration> | null = null;
+  // Discovery on first use, retried after a failure: an Authelia outage at deploy time must not take
+  // local password sign-in down with it.
+  const getConfig = (): Promise<client.Configuration> => {
+    discovered ??= client
+      .discovery(issuer, options.clientId, undefined, client.ClientSecretBasic(options.clientSecret), insecure ? { execute: [client.allowInsecureRequests] } : undefined)
+      .catch((e: unknown) => {
+        discovered = null;
+        warn(`Company sign-in: could not reach ${issuer.origin} for discovery (${e instanceof Error ? e.message : String(e)}).`);
+        throw new OidcError('unavailable');
+      });
+    return discovered;
+  };
   const pending = new Map<string, { verifier: string; nonce: string; binding: string; returnTo: string; at: number }>();
   const prune = (): void => {
     const cutoff = now() - PENDING_TTL_MS;
@@ -74,6 +88,7 @@ export async function createOidcLogin(options: { issuer: string; clientId: strin
   };
   return {
     async start(returnTo) {
+      const config = await getConfig();
       prune();
       const state = client.randomState();
       const verifier = client.randomPKCECodeVerifier();
@@ -90,7 +105,11 @@ export async function createOidcLogin(options: { issuer: string; clientId: strin
       });
       return { url: url.href, binding };
     },
+    async warmUp() {
+      await getConfig();
+    },
     async finish(callbackUrl, binding) {
+      const config = await getConfig();
       const state = callbackUrl.searchParams.get('state') ?? '';
       const p = pending.get(state);
       // Single use, whatever happens next.
