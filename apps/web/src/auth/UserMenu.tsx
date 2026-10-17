@@ -52,9 +52,14 @@ export function UserMenu() {
   const downloadBackup = async (): Promise<void> => {
     setOpen(false);
     const notify = useWorkspaceStore.getState().setNotice;
+    let res: Response;
     try {
-      const res = await fetch('/api/admin/backup');
-      if (!res.ok) return notify(m.auth.backupFailed(res.status));
+      res = await fetch('/api/admin/backup');
+    } catch {
+      return notify(m.users.unreachable);
+    }
+    if (!res.ok) return notify(m.auth.backupFailed(res.status));
+    try {
       downloadJson(filenameOf(res), await res.json());
     } catch (e) {
       notify(e instanceof Error ? e.message : String(e));

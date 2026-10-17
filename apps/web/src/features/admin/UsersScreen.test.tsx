@@ -99,6 +99,31 @@ describe('renaming', () => {
     await vi.waitFor(() => expect(usePeopleStore.getState().byId).toEqual({ b: { name: 'Ploy Sriwan', email: 'ploy@company.test' } }));
   });
 
+  it('keeps the rename form open with the typed name when the server refuses, and closes it once a retry works', async () => {
+    let refuse = true;
+    const spy = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      if (String(input) === '/api/admin/users/b' && init?.method === 'PATCH') {
+        return refuse ? json({ error: { message: 'That name is taken.' } }, 409) : json({ ...users[1], displayName: 'Ploy Sriwan', nameLocked: true });
+      }
+      if (String(input) === '/api/people') return json({ people: [] });
+      return json(users);
+    });
+    render(<MemoryRouter><UsersScreen /></MemoryRouter>);
+    const row = await screen.findByRole('row', { name: /Ploy/ });
+    await userEvent.click(within(row).getByRole('button', { name: 'Rename Ploy' }));
+    const input = screen.getByRole('textbox', { name: 'New name for Ploy' });
+    await userEvent.clear(input);
+    await userEvent.type(input, 'Ploy Sriwan');
+    await userEvent.click(screen.getByRole('button', { name: 'Save' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('That name is taken.');
+    expect(screen.getByRole('textbox', { name: 'New name for Ploy' })).toHaveValue('Ploy Sriwan');
+    refuse = false;
+    await userEvent.click(screen.getByRole('button', { name: 'Save' }));
+    await screen.findByRole('row', { name: /Ploy Sriwan/ });
+    expect(screen.queryByRole('textbox', { name: /New name for/ })).toBeNull();
+    expect(patches(spy)).toHaveLength(2);
+  });
+
   it('saves with Enter and cancels with Escape without a request', async () => {
     const spy = vi.spyOn(globalThis, 'fetch').mockImplementation(async () => json(users));
     render(<MemoryRouter><UsersScreen /></MemoryRouter>);

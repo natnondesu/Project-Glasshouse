@@ -69,3 +69,13 @@ it('says so when the backup cannot be downloaded', async () => {
   await vi.waitFor(() => expect(useWorkspaceStore.getState().notice).toBe('The backup could not be downloaded (server answered 500).'));
   expect(save).not.toHaveBeenCalled();
 });
+
+it('says in the app language when the backup download cannot reach the server', async () => {
+  asRole('admin');
+  vi.spyOn(files, 'downloadJson').mockImplementation(() => {});
+  vi.spyOn(globalThis, 'fetch').mockRejectedValue(new TypeError('Failed to fetch'));
+  render(<MemoryRouter><UserMenu /></MemoryRouter>);
+  await userEvent.click(screen.getByRole('button', { name: 'Account menu for Ploy' }));
+  await userEvent.click(screen.getByRole('menuitem', { name: 'Download workspace backup' }));
+  await vi.waitFor(() => expect(useWorkspaceStore.getState().notice).toBe('Could not reach the Glasshouse server. Check your connection and try again.'));
+});

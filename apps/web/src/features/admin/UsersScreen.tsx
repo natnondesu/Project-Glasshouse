@@ -38,24 +38,28 @@ export function UsersScreen() {
     );
   }
 
-  const run = async (work: () => Promise<void>): Promise<void> => {
+  const run = async (work: () => Promise<void>): Promise<boolean> => {
     setError(null);
     try {
       await work();
+      return true;
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
+      return false;
     }
   };
   const replace = (u: AdminUser): void => setUsers((list) => (list ?? []).map((x) => (x.id === u.id ? u : x)));
   const saveName = (u: AdminUser): void => {
     const draft = renaming?.draft.trim() ?? '';
-    setRenaming(null);
     // Any name sent locks it against company sign-in, so an unchanged name is not sent.
-    if (draft === '' || draft === u.displayName) return;
+    if (draft === '' || draft === u.displayName) return setRenaming(null);
     void run(async () => {
       replace(await updateUser(u.id, { displayName: draft }));
       // Labels elsewhere read the directory; a failed refresh must not hide that the rename worked.
       usePeopleStore.getState().load().catch((e: unknown) => console.warn('Could not refresh the people list after a rename.', e));
+    }).then((saved) => {
+      // The form stays open on a failure, with the typed name, so nothing has to be typed again.
+      if (saved) setRenaming((current) => (current?.id === u.id ? null : current));
     });
   };
   const add = (e: FormEvent): void => {
