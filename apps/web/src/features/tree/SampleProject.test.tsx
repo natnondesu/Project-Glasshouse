@@ -23,3 +23,16 @@ it('loads the Sample Project on request, labels it, and stops offering it once p
   expect(tree().getByRole('link', { name: /Server room A/ })).toHaveTextContent('R01 APPROVED');
   expect(tree().queryByRole('button', { name: 'Load sample project' })).toBeNull();
 });
+
+it('offers the showcase to a workspace that already has the first sample, and adds only that', async () => {
+  const user = userEvent.setup();
+  const { createSampleProject } = await import('@glasshouse/domain');
+  const first = createSampleProject('2026-10-17T00:00:00.000Z');
+  if (!first.ok) throw new Error(first.error.message);
+  const s = useWorkspaceStore.getState();
+  s.replace({ ...s.workspace, projects: [first.value] });
+  render(<RouterProvider router={createMemoryRouter(routes)} />);
+  await user.click(tree().getByRole('button', { name: 'Add the sample Riverside Campus' }));
+  expect(useWorkspaceStore.getState().workspace.projects.map((p) => p.name)).toEqual([SAMPLE_PROJECT_NAME, SHOWCASE_PROJECT_NAME]);
+  expect(tree().queryByRole('button', { name: /^(Add the sample|Load sample)/ })).toBeNull();
+});
