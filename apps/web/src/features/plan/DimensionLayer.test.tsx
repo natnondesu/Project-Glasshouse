@@ -16,7 +16,7 @@ beforeEach(() => {
   s.setLoad({ kind: 'ready' });
   s.dispatch({ type: 'project/create', id: 'p', name: 'P' });
   s.dispatch({ type: 'site/create', projectId: 'p', id: 's', name: 'S' });
-  s.dispatch({ type: 'room/create', siteId: 's', id: 'r', name: 'MDF-1' });
+  s.dispatch({ type: 'room/create', siteId: 's', id: 'r', floorAreaId: 'fa-r', name: 'MDF-1' });
   s.dispatch({ type: 'plan', roomId: 'r', command: { type: 'object/add', object: { ...(createObject('rack', { x: 1, y: 1 }, []) as Rack), id: 'rk', name: 'RK-01' } } });
   s.dispatch({ type: 'plan', roomId: 'r', command: { type: 'dimension/add', dimension: { id: 'd1', a: { kind: 'point', x: 0, y: 1 }, b: { kind: 'object', objectId: 'rk', u: -0.5, v: -0.5 }, offset: 0 } } });
 });

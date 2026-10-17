@@ -85,6 +85,21 @@ describe('WorkspaceService', () => {
     expect(await submit(svc, '1', { type: 'backup/mark', at: '2026-10-17T00:00:00.000Z' })).toMatchObject({ kind: 'rejected' });
   });
 
+  it('refuses sample/load, which would build different ids on every replica', async () => {
+    const svc = await WorkspaceService.open(new MemoryCommandStore());
+    expect(await submit(svc, '1', { type: 'sample/load', at: '2026-10-17T00:00:00.000Z' })).toMatchObject({ kind: 'rejected' });
+    expect(svc.state.seq).toBe(0);
+  });
+
+  it('logs a batch item under the batch clientId even when the item carries its own', async () => {
+    const store = new MemoryCommandStore();
+    const svc = await WorkspaceService.open(store);
+    const item = { commandId: '1', command: create('p'), clientId: 'spoofed' } as { commandId: string; command: WorkspaceCommand };
+    await svc.submitBatch('real', [item], ploy);
+    expect((await store.commandsAfter(0, 10)).map((e) => e.clientId)).toEqual(['real']);
+    expect(await store.findCommand('real', '1')).not.toBeNull();
+  });
+
   it('keeps memory unchanged when the log write fails', async () => {
     class FailingStore extends MemoryCommandStore {
       override async append(): Promise<void> {

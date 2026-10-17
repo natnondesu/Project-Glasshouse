@@ -2,6 +2,7 @@ import { parseWorkspace } from '@glasshouse/domain';
 import { apply } from '@glasshouse/domain';
 import { useWorkspaceStore, setCommit } from '../store/workspaceStore';
 import { httpTransport } from './httpTransport';
+import { createUnloadGuard } from './unloadGuard';
 import { SyncClient, type Transport } from './syncClient';
 
 /** Built with VITE_GLASSHOUSE_SERVER=1: the workspace lives on the Glasshouse server, not in this browser. */
@@ -29,9 +30,11 @@ export async function startServerSync(transport: Transport = httpTransport(), is
     return () => {};
   }
   let offlineTimer: ReturnType<typeof setTimeout> | null = null;
+  const unloadGuard = createUnloadGuard(window);
   const client = new SyncClient(transport, { seq: snapshot.seq, workspace: parsed.value }, {
     onWorkspace: (ws) => useWorkspaceStore.getState().adopt(ws),
     onSave: (save) => useWorkspaceStore.getState().setSave(save),
+    onUnsaved: (has) => unloadGuard.set(has),
     onDropped: (dropped) => useWorkspaceStore.getState().setNotice(dropped.map((d) => d.error.message).join(' ')),
     onConnection: (status) => {
       const s = useWorkspaceStore.getState();
@@ -60,6 +63,7 @@ export async function startServerSync(transport: Transport = httpTransport(), is
   return () => {
     if (offlineTimer !== null) clearTimeout(offlineTimer);
     client.stop();
+    unloadGuard.dispose();
     setCommit(apply);
     useWorkspaceStore.getState().setConnection('local');
     useWorkspaceStore.getState().setReadOnly(false);

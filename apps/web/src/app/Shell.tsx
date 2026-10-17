@@ -48,7 +48,7 @@ export function Shell() {
       </a>
       <HintLayer />
       <TitleBlock roomId={roomId} />
-      {connection === 'offline' ? (
+      {connection === 'offline' || (readOnly && connection !== 'local') ? (
         <p className="read-only-banner" role="alert">
           {m.shell.offline}
         </p>

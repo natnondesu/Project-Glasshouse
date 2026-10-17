@@ -4,6 +4,7 @@ import type { PlanCommand } from './commands/plan';
 import type { ReviewCommand } from './commands/review';
 import { createWorkspace } from './factories';
 import { newId } from './ids';
+import { exportProjectFile, type ProjectFile } from './projectFile';
 import { currentRevision, findRoom } from './lookup';
 import type { CableType, Id, Port, Project, Rack, Template, Workspace } from './model/types';
 import { err, ok, type Result } from './result';
@@ -46,8 +47,8 @@ export function createSampleProject(at: string): Result<Project> {
   const mdfId = newId();
   run({ type: 'project/create', id: projectId, name: SAMPLE_PROJECT_NAME });
   run({ type: 'site/create', projectId, id: siteId, name: 'Bangna campus' });
-  run({ type: 'room/create', siteId, id: serverId, name: 'Server room A' });
-  run({ type: 'room/create', siteId, id: mdfId, name: 'MDF-1' });
+  run({ type: 'room/create', siteId, id: serverId, floorAreaId: newId(), name: 'Server room A' });
+  run({ type: 'room/create', siteId, id: mdfId, floorAreaId: newId(), name: 'MDF-1' });
 
   // Server room A: rectangular, two populated racks, Approved so the Install sheet works at once.
   plan(serverId, { type: 'survey/update', patch: { width: 6, length: 4.8, powerBudget: 8000, networkHandoff: 'Fibre patch panel on the north wall' } });
@@ -247,4 +248,21 @@ export function withSample(ws: Workspace, at: string): Result<Workspace> {
     added.push(showcase.value);
   }
   return ok({ ...ws, projects: [...ws.projects, ...added] });
+}
+
+/**
+ * The missing sample projects as project files whose IDs are already fixed. A server workspace imports
+ * these instead of `sample/load`, because every replica must build the same projects from the command.
+ */
+export function sampleProjectFiles(ws: Workspace, at: string): Result<ProjectFile[]> {
+  const built = withSample(ws, at);
+  if (!built.ok) return built;
+  const added = built.value.projects.slice(ws.projects.length);
+  const files: ProjectFile[] = [];
+  for (const project of added) {
+    const file = exportProjectFile({ ...built.value, projects: [project] }, project.id, at);
+    if (!file.ok) return file;
+    files.push(file.value);
+  }
+  return ok(files);
 }

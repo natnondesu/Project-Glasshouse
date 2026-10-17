@@ -74,7 +74,24 @@ export interface ImportPreview {
   idClash: boolean;
 }
 
-export type ImportResolution = { mode: 'copy' } | { mode: 'merge'; takeIncoming: Id[] };
+/** The IDs a copy gets, by the file's old ID. Made by the caller so every replica of the command builds the same copy. */
+export interface CopyIds {
+  project: Id;
+  sites: Record<Id, Id>;
+  rooms: Record<Id, Id>;
+}
+
+export type ImportResolution = { mode: 'copy'; ids: CopyIds } | { mode: 'merge'; takeIncoming: Id[] };
+
+export function createCopyIds(file: ProjectFile): CopyIds {
+  const sites: Record<Id, Id> = {};
+  const rooms: Record<Id, Id> = {};
+  for (const site of file.project.sites) {
+    sites[site.id] = newId();
+    for (const room of site.rooms) rooms[room.id] = newId();
+  }
+  return { project: newId(), sites, rooms };
+}
 
 function latestTemplates(templates: Template[]): Template[] {
   const byId = new Map<Id, Template>();
@@ -143,23 +160,43 @@ function mergeProject(local: Project, incoming: Project, take: ReadonlySet<Id>):
 
 const COPY_SUFFIX = ' (copy)';
 
-function copyProject(p: Project): Project {
-  return {
+const has = (map: Record<Id, Id>, key: Id): boolean => Object.prototype.hasOwnProperty.call(map, key);
+const badCopyIds = () => err('invalid_value', 'The copy needs a new ID for the project and for every site and room in the file.');
+
+function copyProject(ws: Workspace, p: Project, ids: CopyIds | undefined): Result<Project> {
+  if (!ids || typeof ids.project !== 'string' || typeof ids.sites !== 'object' || ids.sites === null || typeof ids.rooms !== 'object' || ids.rooms === null) {
+    return badCopyIds();
+  }
+  const fresh: Id[] = [ids.project];
+  for (const s of p.sites) {
+    if (!has(ids.sites, s.id)) return badCopyIds();
+    fresh.push(ids.sites[s.id]!);
+    for (const r of s.rooms) {
+      if (!has(ids.rooms, r.id)) return badCopyIds();
+      fresh.push(ids.rooms[r.id]!);
+    }
+  }
+  if (fresh.some((id) => typeof id !== 'string' || id.length === 0) || new Set(fresh).size !== fresh.length) return badCopyIds();
+  if (fresh.some((id) => findProject(ws, id) || findSite(ws, id) || findRoom(ws, id))) {
+    return err('invalid_value', 'Those IDs are already in use.', fresh);
+  }
+  return ok({
     ...p,
-    id: newId(),
+    id: ids.project,
     name: `${p.name.slice(0, LIMITS.nameMaxLength - COPY_SUFFIX.length)}${COPY_SUFFIX}`,
     isSample: false,
-    sites: p.sites.map((s) => ({ ...s, id: newId(), rooms: s.rooms.map((r) => ({ ...r, id: newId() })) })),
-  };
+    sites: p.sites.map((s) => ({ ...s, id: ids.sites[s.id]!, rooms: s.rooms.map((r) => ({ ...r, id: ids.rooms[r.id]! })) })),
+  });
 }
 
 export function applyImport(ws: Workspace, file: ProjectFile, resolution: ImportResolution): Result<Workspace> {
   const additions = latestTemplates(file.templates).filter((t) => !ws.catalog.some((c) => c.id === t.id));
   if (resolution.mode === 'copy') {
-    const copy = copyProject(file.project);
+    const copy = copyProject(ws, file.project, resolution.ids);
+    if (!copy.ok) return copy;
     return ok(
       produce(ws, (d) => {
-        d.projects.push(castDraft(copy));
+        d.projects.push(castDraft(copy.value));
         d.catalog.push(...castDraft(additions));
       }),
     );

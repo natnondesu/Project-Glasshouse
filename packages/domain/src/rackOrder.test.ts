@@ -20,7 +20,7 @@ describe('rack order', () => {
   });
 
   it('saves and clears the order on the plan, refusing a rack listed twice', () => {
-    const plan = createPlan();
+    const plan = createPlan('fa');
     const saved = setRackOrder(plan, ['A2', 'A1']);
     expect(saved.ok && saved.value.rackOrder).toEqual(['A2', 'A1']);
     const cleared = setRackOrder(saved.ok ? saved.value : plan, null);

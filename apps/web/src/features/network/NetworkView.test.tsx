@@ -16,7 +16,7 @@ beforeEach(() => {
   const sw: Template = { ...(s.workspace.catalog.find((x) => x.id === 'tpl-switch-1u') as Template), ports: [{ count: 2, prefix: 'p', start: 1, media: 'rj45', speed: '1G' }] };
   s.dispatch({ type: 'project/create', id: 'p', name: 'P' });
   s.dispatch({ type: 'site/create', projectId: 'p', id: 's', name: 'S' });
-  s.dispatch({ type: 'room/create', siteId: 's', id: 'r', name: 'R' });
+  s.dispatch({ type: 'room/create', siteId: 's', id: 'r', floorAreaId: 'fa-r', name: 'R' });
   s.dispatch({ type: 'plan', roomId: 'r', command: { type: 'object/add', object: { ...(createObject('rack', { x: 1, y: 1 }, []) as Rack), id: 'rk', name: 'RK-01' } } });
   s.dispatch({ type: 'plan', roomId: 'r', command: { type: 'device/place', id: 'sw', rackId: 'rk', bottomU: 40, template: sw } });
 });

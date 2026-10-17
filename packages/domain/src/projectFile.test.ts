@@ -4,7 +4,7 @@ import { createWorkspace } from './factories';
 import { currentRevision, findRoom } from './lookup';
 import type { Rack, Template, Workspace } from './model/types';
 import { createObject } from './objects';
-import { applyImport, exportProjectFile, parseProjectFile, previewImport, type ProjectFile } from './projectFile';
+import { applyImport, createCopyIds, exportProjectFile, parseProjectFile, previewImport, type ProjectFile } from './projectFile';
 
 const AT = '2026-10-14T09:00:00.000Z';
 function run(ws: Workspace, ...cmds: WorkspaceCommand[]): Workspace {
@@ -20,8 +20,8 @@ function source(): Workspace {
     createWorkspace(),
     { type: 'project/create', id: 'p', name: 'Northgate' },
     { type: 'site/create', projectId: 'p', id: 's', name: 'Site A' },
-    { type: 'room/create', siteId: 's', id: 'r1', name: 'MDF-1' },
-    { type: 'room/create', siteId: 's', id: 'r2', name: 'Server room B' },
+    { type: 'room/create', siteId: 's', id: 'r1', floorAreaId: 'fa-r1', name: 'MDF-1' },
+    { type: 'room/create', siteId: 's', id: 'r2', floorAreaId: 'fa-r2', name: 'Server room B' },
     { type: 'plan', roomId: 'r1', command: { type: 'object/add', object: rack } },
   );
   const t = ws.catalog.find((x) => x.id === 'tpl-server-2u') as Template;
@@ -80,7 +80,7 @@ describe('project file', () => {
 
   it('imports as a copy with new ids', () => {
     const local = source();
-    const ws = run(local, { type: 'project/import', file: fileOf(local), resolution: { mode: 'copy' } });
+    const ws = run(local, { type: 'project/import', file: fileOf(local), resolution: { mode: 'copy', ids: createCopyIds(fileOf(local)) } });
     expect(ws.projects.map((p) => p.name)).toEqual(['Northgate', 'Northgate (copy)']);
     const copy = ws.projects[1]!;
     expect(copy.id).not.toBe('p');

@@ -12,7 +12,7 @@ function seed(withRack: boolean): void {
   s.setLoad({ kind: 'ready' });
   s.dispatch({ type: 'project/create', id: 'p', name: 'P' });
   s.dispatch({ type: 'site/create', projectId: 'p', id: 's', name: 'S' });
-  s.dispatch({ type: 'room/create', siteId: 's', id: 'r', name: 'MDF-1' });
+  s.dispatch({ type: 'room/create', siteId: 's', id: 'r', floorAreaId: 'fa-r', name: 'MDF-1' });
   if (withRack) s.dispatch({ type: 'plan', roomId: 'r', command: { type: 'object/add', object: { ...(createObject('rack', { x: 1, y: 0.6 }, []) as Rack), name: 'RK-01' } } });
 }
 const open = () => render(<RouterProvider router={createMemoryRouter(routes, { initialEntries: ['/rooms/r/elevation'] })} />);

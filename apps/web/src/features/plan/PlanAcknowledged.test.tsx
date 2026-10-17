@@ -13,7 +13,7 @@ beforeEach(() => {
   s.setLoad({ kind: 'ready' });
   s.dispatch({ type: 'project/create', id: 'p', name: 'P' });
   s.dispatch({ type: 'site/create', projectId: 'p', id: 's', name: 'S' });
-  s.dispatch({ type: 'room/create', siteId: 's', id: 'r', name: 'R' });
+  s.dispatch({ type: 'room/create', siteId: 's', id: 'r', floorAreaId: 'fa-r', name: 'R' });
   s.dispatch({ type: 'plan', roomId: 'r', command: { type: 'object/add', object: { ...(createObject('rack', { x: 1, y: 0.6 }, []) as Rack), id: 'rk', name: 'RK-01' } } });
   s.dispatch({ type: 'plan', roomId: 'r', command: { type: 'reserved/add', rackId: 'rk', range: { id: 'rsv', label: 'Core', bottomU: 10, heightU: 4, demand: { kind: 'unknown' }, notes: '' } } });
   s.dispatch({ type: 'review', roomId: 'r', command: { type: 'review/acknowledge', reservedRangeId: 'rsv', reason: 'Customer will not share', by: 'Somchai', at: '2026-10-14T00:00:00.000Z' } });

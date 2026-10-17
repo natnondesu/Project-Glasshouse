@@ -14,7 +14,7 @@ beforeEach(() => {
   const rack = { ...(createObject('rack', { x: 1, y: 0.6 }, []) as Rack), name: 'RK-01' };
   s.dispatch({ type: 'project/create', id: 'p', name: 'Northgate' });
   s.dispatch({ type: 'site/create', projectId: 'p', id: 's', name: 'Site A' });
-  s.dispatch({ type: 'room/create', siteId: 's', id: 'r', name: 'MDF 1' });
+  s.dispatch({ type: 'room/create', siteId: 's', id: 'r', floorAreaId: 'fa-r', name: 'MDF 1' });
   s.dispatch({ type: 'plan', roomId: 'r', command: { type: 'object/add', object: rack } });
   s.dispatch({ type: 'plan', roomId: 'r', command: { type: 'device/place', id: 'ch', rackId: rack.id, bottomU: 5, template: t('tpl-chassis-6u') } });
   s.dispatch({ type: 'plan', roomId: 'r', command: { type: 'node/insert', id: 'n1', chassisId: 'ch', slot: 1, template: t('tpl-node') } });

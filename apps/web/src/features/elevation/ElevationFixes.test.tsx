@@ -14,7 +14,7 @@ beforeEach(() => {
   const t = (id: string) => s.workspace.catalog.find((x) => x.id === id) as Template;
   s.dispatch({ type: 'project/create', id: 'p', name: 'P' });
   s.dispatch({ type: 'site/create', projectId: 'p', id: 's', name: 'S' });
-  s.dispatch({ type: 'room/create', siteId: 's', id: 'r', name: 'R' });
+  s.dispatch({ type: 'room/create', siteId: 's', id: 'r', floorAreaId: 'fa-r', name: 'R' });
   s.dispatch({ type: 'plan', roomId: 'r', command: { type: 'object/add', object: { ...(createObject('rack', { x: 1, y: 1 }, []) as Rack), id: 'rk', name: 'RK-01' } } });
   s.dispatch({ type: 'plan', roomId: 'r', command: { type: 'device/place', id: 'ch', rackId: 'rk', bottomU: 1, template: t('tpl-chassis-6u') } });
   s.dispatch({ type: 'plan', roomId: 'r', command: { type: 'device/update', id: 'ch', patch: { name: 'Deepvision Test Chassis' } } });

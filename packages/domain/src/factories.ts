@@ -1,13 +1,13 @@
 import { seedTemplates } from './catalog';
 import { newId } from './ids';
 import { CURRENT_SCHEMA_VERSION, DEFAULT_DESIGN_LIMIT_PCT, DEFAULT_POWER_BUDGET_W, DEFAULT_ROOM } from './model/defaults';
-import type { Plan, PlanContent, Revision, Survey, Workspace } from './model/types';
+import type { Id, Plan, PlanContent, Revision, Survey, Workspace } from './model/types';
 
-export function createSurvey(): Survey {
+export function createSurvey(floorAreaId: Id = newId()): Survey {
   return {
     width: DEFAULT_ROOM.width,
     length: DEFAULT_ROOM.length,
-    floorAreas: [{ id: newId(), x: 0, y: 0, w: DEFAULT_ROOM.width, d: DEFAULT_ROOM.length }],
+    floorAreas: [{ id: floorAreaId, x: 0, y: 0, w: DEFAULT_ROOM.width, d: DEFAULT_ROOM.length }],
     cutOuts: [],
     powerBudget: DEFAULT_POWER_BUDGET_W,
     designLimitPct: DEFAULT_DESIGN_LIMIT_PCT,
@@ -16,7 +16,7 @@ export function createSurvey(): Survey {
   };
 }
 
-export const emptyContent = (): PlanContent => ({ survey: createSurvey(), objects: [], templatesUsed: [], dimensions: [], feeds: [], links: [], vlans: [] });
+export const emptyContent = (floorAreaId?: Id): PlanContent => ({ survey: createSurvey(floorAreaId), objects: [], templatesUsed: [], dimensions: [], feeds: [], links: [], vlans: [] });
 
 export function createDraftRevision(number: number, content: PlanContent): Revision {
   return {
@@ -31,7 +31,7 @@ export function createDraftRevision(number: number, content: PlanContent): Revis
   };
 }
 
-export const createPlan = (): Plan => ({ revisions: [createDraftRevision(1, emptyContent())], notes: [], history: [], equipmentState: {} });
+export const createPlan = (floorAreaId: Id): Plan => ({ revisions: [createDraftRevision(1, emptyContent(floorAreaId))], notes: [], history: [], equipmentState: {} });
 
 export const createWorkspace = (): Workspace => ({
   schemaVersion: CURRENT_SCHEMA_VERSION,

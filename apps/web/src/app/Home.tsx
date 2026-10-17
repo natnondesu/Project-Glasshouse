@@ -32,7 +32,7 @@ export function Home() {
   }
   const addRoom = (siteId: string): void => {
     const id = newId();
-    const problem = dispatch({ type: 'room/create', siteId, id, name: m.tree.newRoom });
+    const problem = dispatch({ type: 'room/create', siteId, id, floorAreaId: newId(), name: m.tree.newRoom });
     setError(problem?.message ?? null);
     if (!problem) void navigate(`/rooms/${id}/plan`);
   };

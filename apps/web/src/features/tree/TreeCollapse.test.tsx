@@ -12,8 +12,8 @@ beforeEach(() => {
   s.setLoad({ kind: 'ready' });
   s.dispatch({ type: 'project/create', id: 'p', name: 'Northgate' });
   s.dispatch({ type: 'site/create', projectId: 'p', id: 's', name: 'Site A' });
-  s.dispatch({ type: 'room/create', siteId: 's', id: 'r', name: 'MDF-1' });
-  s.dispatch({ type: 'room/create', siteId: 's', id: 'r2', name: 'MDF-2' });
+  s.dispatch({ type: 'room/create', siteId: 's', id: 'r', floorAreaId: 'fa-r', name: 'MDF-1' });
+  s.dispatch({ type: 'room/create', siteId: 's', id: 'r2', floorAreaId: 'fa-r2', name: 'MDF-2' });
 });
 
 const open = (path = '/') => render(<RouterProvider router={createMemoryRouter(routes, { initialEntries: [path] })} />);

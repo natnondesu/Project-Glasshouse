@@ -21,7 +21,7 @@ export type WorkspaceCommand =
   | { type: 'site/create'; projectId: Id; id: Id; name: string }
   | { type: 'site/rename'; siteId: Id; name: string }
   | { type: 'site/delete'; siteId: Id }
-  | { type: 'room/create'; siteId: Id; id: Id; name: string }
+  | { type: 'room/create'; siteId: Id; id: Id; floorAreaId: Id; name: string }
   | { type: 'room/rename'; roomId: Id; name: string }
   | { type: 'room/delete'; roomId: Id }
   | { type: 'plan'; roomId: Id; command: PlanCommand }
@@ -132,8 +132,11 @@ export function apply(ws: Workspace, cmd: WorkspaceCommand): Result<Workspace> {
       if (!name.ok) return name;
       if (!findSite(ws, cmd.siteId)) return gone('site', cmd.siteId);
       if (idTaken(ws, cmd.id)) return err('invalid_value', 'That ID is already in use.', [cmd.id]);
+      if (typeof cmd.floorAreaId !== 'string' || cmd.floorAreaId.length === 0 || cmd.floorAreaId === cmd.id) {
+        return err('invalid_value', 'A new room needs its own floor area ID.', [cmd.id]);
+      }
       return ok(produce(ws, (d) => {
-        draftSite(d, cmd.siteId).rooms.push(castDraft({ id: cmd.id, name: name.value, notes: '', plan: createPlan() }));
+        draftSite(d, cmd.siteId).rooms.push(castDraft({ id: cmd.id, name: name.value, notes: '', plan: createPlan(cmd.floorAreaId) }));
       }));
     }
     case 'room/rename': {

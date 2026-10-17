@@ -74,4 +74,22 @@ describe('SyncEngine', () => {
     expect(names(e.workspace)).toEqual(['Sent', 'Not sent yet']);
     expect(e.takeUnsent().map((c) => c.commandId)).toEqual(['2']);
   });
+
+  it('hands out at most 500 unsent edits at a time, in order', () => {
+    const e = new SyncEngine(start(), 'me');
+    for (let i = 0; i < 1200; i++) e.local(`c${i}`, create(`p${i}`));
+    const sizes = [e.takeUnsent().length, e.takeUnsent().length, e.takeUnsent().length, e.takeUnsent().length];
+    expect(sizes).toEqual([500, 500, 200, 0]);
+  });
+
+  it('knows whether any edit is still unsent or unacknowledged', () => {
+    const e = new SyncEngine(start(), 'me');
+    expect(e.hasUnsaved()).toBe(false);
+    e.local('1', create('p'));
+    expect(e.hasUnsaved()).toBe(true);
+    e.takeUnsent();
+    expect(e.hasUnsaved()).toBe(true);
+    e.acked('1', 1);
+    expect(e.hasUnsaved()).toBe(false);
+  });
 });

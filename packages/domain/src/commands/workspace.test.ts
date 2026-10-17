@@ -18,10 +18,15 @@ const seeded = (): Workspace =>
     createWorkspace(),
     { type: 'project/create', id: 'p', name: '  Northgate ' },
     { type: 'site/create', projectId: 'p', id: 's', name: 'Site A' },
-    { type: 'room/create', siteId: 's', id: 'r', name: 'MDF-1' },
+    { type: 'room/create', siteId: 's', id: 'r', floorAreaId: 'fa-r', name: 'MDF-1' },
   );
 
 describe('hierarchy', () => {
+  it('refuses a room with no floor area id', () => {
+    const r = apply(seeded(), { type: 'room/create', siteId: 's', id: 'r2', name: 'MDF-2' } as unknown as WorkspaceCommand);
+    expect(r).toMatchObject({ ok: false });
+  });
+
   it('creates Project → Site → Room with a draft plan', () => {
     const ws = seeded();
     const loc = findRoom(ws, 'r');
@@ -51,7 +56,7 @@ describe('hierarchy', () => {
     expect(apply(ws, { type: 'project/create', id: 'q', name: '' })).toMatchObject({ ok: false, error: { message: "Project name can't be empty." } });
     expect(apply(ws, { type: 'project/create', id: 'p', name: 'Again' }).ok).toBe(false);
     expect(apply(ws, { type: 'site/create', projectId: 'nope', id: 'x', name: 'S' })).toMatchObject({ ok: false, error: { code: 'not_found' } });
-    expect(apply(ws, { type: 'room/create', siteId: 'nope', id: 'x', name: 'R' }).ok).toBe(false);
+    expect(apply(ws, { type: 'room/create', siteId: 'nope', id: 'x', floorAreaId: 'fa-x', name: 'R' }).ok).toBe(false);
     expect(apply(ws, { type: 'room/rename', roomId: 'nope', name: 'R' }).ok).toBe(false);
     expect(apply(ws, { type: 'site/delete', siteId: 'nope' }).ok).toBe(false);
   });

@@ -23,6 +23,18 @@ async function projectIdOnServer(request: APIRequestContext, name: string): Prom
   return id;
 }
 
+async function serverRooms(request: APIRequestContext, projectName: string): Promise<{ site: string; name: string; width: number; areaW: number }[]> {
+  const ws = await (await request.get('/api/workspace')).json();
+  const project = ws.workspace.projects.find((p: { name: string }) => p.name === projectName);
+  return (project?.sites ?? []).flatMap((s: { name: string; rooms: { name: string; plan: { revisions: { content: { survey: { width: number; floorAreas: { w: number }[] } } }[] } }[] }) =>
+    s.rooms.map((r) => ({ site: s.name, name: r.name, width: r.plan.revisions[r.plan.revisions.length - 1]!.content.survey.width, areaW: r.plan.revisions[r.plan.revisions.length - 1]!.content.survey.floorAreas[0]!.w })),
+  );
+}
+
+async function areaWidthOnServer(request: APIRequestContext, projectName: string): Promise<number | undefined> {
+  return (await serverRooms(request, projectName))[0]?.areaW;
+}
+
 test('two people edit the same workspace and see each other live; a reload keeps everything', async ({ browser }) => {
   const ploy = await (await browser.newContext()).newPage();
   const nok = await (await browser.newContext()).newPage();
@@ -79,4 +91,36 @@ test('a project file exported from one place imports into the server and is stor
 
   await expect(tree.getByText('Migrated')).toBeVisible();
   await expect.poll(async () => (await serverProjects(request)).some((p) => p.name === 'Migrated')).toBe(true);
+  // The import carried the site and the room with it.
+  await expect.poll(async () => (await serverRooms(request, 'Migrated')).map((r) => `${r.site}/${r.name}`)).toEqual(['Site A/MDF-1']);
+});
+
+test('floor edits and undo work in a room created this session, and survive a reload', async ({ page, request }) => {
+  await page.goto('/');
+  await createProject(page, 'Undo test');
+  await page.getByRole('button', { name: 'Add site to Undo test' }).click();
+  await page.getByRole('textbox', { name: 'Site name' }).fill('Site U');
+  await page.keyboard.press('Enter');
+  await page.getByRole('button', { name: 'Add room to Site U' }).click();
+  await page.getByRole('textbox', { name: 'Room name' }).fill('Room U');
+  await page.keyboard.press('Enter');
+  const area = page.getByRole('textbox', { name: 'W', exact: true });
+  await expect(area).toHaveValue(/^5(\.00)?$/);
+  const notice = page.getByText("A change didn't go through");
+
+  // The room's floor area was made in this session: edits by its ID must reach the same area on the server.
+  await area.fill('3');
+  await area.press('Enter');
+  await expect.poll(async () => await areaWidthOnServer(request, 'Undo test')).toBe(3);
+
+  // Undo is a keyboard shortcut on the page, not inside the field.
+  await page.getByRole('main').click({ position: { x: 2, y: 2 } });
+  await page.keyboard.press(process.platform === 'darwin' ? 'Meta+z' : 'Control+z');
+  await expect(area).toHaveValue(/^5(\.00)?$/);
+  await expect.poll(async () => await areaWidthOnServer(request, 'Undo test')).toBe(5);
+  await expect(notice).toHaveCount(0);
+
+  await page.reload();
+  await expect(page.getByRole('textbox', { name: 'W', exact: true })).toHaveValue(/^5(\.00)?$/);
+  await expect(notice).toHaveCount(0);
 });

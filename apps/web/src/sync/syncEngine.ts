@@ -20,6 +20,9 @@ interface Pending {
   ackedSeq?: number;
 }
 
+/** The server accepts at most this many commands in one request (its BATCH_MAX). */
+export const MAX_BATCH = 500;
+
 export type RemoteResult = { kind: 'applied'; dropped: Dropped[] } | { kind: 'ignored' } | { kind: 'resync' };
 
 /**
@@ -57,10 +60,15 @@ export class SyncEngine {
     return null;
   }
 
-  takeUnsent(): { commandId: string; command: WorkspaceCommand }[] {
-    const unsent = this.pending.filter((p) => !p.sent);
-    this.pending = this.pending.map((p) => (p.sent ? p : { ...p, sent: true }));
-    return unsent.map(({ commandId, command }) => ({ commandId, command }));
+  takeUnsent(limit = MAX_BATCH): { commandId: string; command: WorkspaceCommand }[] {
+    const taken = new Set(this.pending.filter((p) => !p.sent).slice(0, limit).map((p) => p.commandId));
+    this.pending = this.pending.map((p) => (taken.has(p.commandId) ? { ...p, sent: true } : p));
+    return this.pending.filter((p) => taken.has(p.commandId)).map(({ commandId, command }) => ({ commandId, command }));
+  }
+
+  /** True while an edit is unsent or the server hasn't yet said it took it. */
+  hasUnsaved(): boolean {
+    return this.pending.some((p) => p.ackedSeq === undefined);
   }
 
   markUnsent(ids: string[]): void {

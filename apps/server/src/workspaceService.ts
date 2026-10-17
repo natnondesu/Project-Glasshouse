@@ -4,7 +4,7 @@ import type { Actor, CommandStore, LoggedCommand } from './store/commandStore';
 export const SNAPSHOT_EVERY = 200;
 const REPLAY_PAGE = 1000;
 /** Only meaningful for a browser-local workspace. */
-const BROWSER_ONLY = new Set<string>(['backup/mark']);
+const BROWSER_ONLY = new Set<string>(['backup/mark', 'sample/load']);
 
 export interface Submission {
   clientId: string;
@@ -108,7 +108,7 @@ export class WorkspaceService {
     const accepted: BatchOutcome['accepted'] = [];
     for (const [i, item] of items.entries()) {
       const commandId = commandIdOf(item);
-      const outcome = await this.submit({ clientId, ...item }, actor);
+      const outcome = await this.submit({ ...item, clientId }, actor);
       if (outcome.kind === 'rejected') {
         return { accepted, rejected: { commandId, error: outcome.error }, skipped: items.slice(i + 1).map(commandIdOf) };
       }

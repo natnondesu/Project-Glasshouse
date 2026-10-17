@@ -12,7 +12,7 @@ beforeEach(() => {
   s.setLoad({ kind: 'ready' });
   s.dispatch({ type: 'project/create', id: 'p', name: 'P' });
   s.dispatch({ type: 'site/create', projectId: 'p', id: 's', name: 'S' });
-  s.dispatch({ type: 'room/create', siteId: 's', id: 'r', name: 'R' });
+  s.dispatch({ type: 'room/create', siteId: 's', id: 'r', floorAreaId: 'fa-r', name: 'R' });
   // Added out of order: the back row first, then the front row right to left.
   for (const [id, x, y] of [['B1', 1, 2], ['A2', 2.2, 0.6], ['A1', 1, 0.6]] as const) {
     s.dispatch({ type: 'plan', roomId: 'r', command: { type: 'object/add', object: { ...(createObject('rack', { x, y }, []) as Rack), id, name: id } } });

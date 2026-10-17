@@ -10,8 +10,8 @@ const setWidth = (roomId: string, w: number, coalesceKey?: string) =>
 function seed(): void {
   store().dispatch({ type: 'project/create', id: 'p', name: 'P' });
   store().dispatch({ type: 'site/create', projectId: 'p', id: 's', name: 'S' });
-  store().dispatch({ type: 'room/create', siteId: 's', id: 'a', name: 'A' });
-  store().dispatch({ type: 'room/create', siteId: 's', id: 'b', name: 'B' });
+  store().dispatch({ type: 'room/create', siteId: 's', id: 'a', floorAreaId: 'fa-a', name: 'A' });
+  store().dispatch({ type: 'room/create', siteId: 's', id: 'b', floorAreaId: 'fa-b', name: 'B' });
 }
 
 describe('workspace store', () => {

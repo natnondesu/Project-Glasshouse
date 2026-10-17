@@ -2,6 +2,8 @@ import type { WorkspaceCommand } from '@glasshouse/domain';
 import { NetworkError, type BatchOutcome, type EventHandlers, type Transport } from './syncClient';
 import type { ServerEvent } from './syncEngine';
 
+/** A hung request becomes a NetworkError, which the sync client retries. */
+const REQUEST_TIMEOUT_MS = 30_000;
 const describe = (e: unknown): string => (e instanceof Error ? e.message : String(e));
 
 export function httpTransport(base = ''): Transport {
@@ -9,7 +11,7 @@ export function httpTransport(base = ''): Transport {
     async fetchWorkspace() {
       let res: Response;
       try {
-        res = await fetch(`${base}/api/workspace`, { headers: { accept: 'application/json' } });
+        res = await fetch(`${base}/api/workspace`, { headers: { accept: 'application/json' }, signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS) });
       } catch (e) {
         throw new NetworkError(`Can't reach the Glasshouse server (${describe(e)})`);
       }
@@ -23,6 +25,7 @@ export function httpTransport(base = ''): Transport {
           method: 'POST',
           headers: { 'content-type': 'application/json', 'x-glasshouse': '1' },
           body: JSON.stringify({ clientId, commands }),
+          signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
         });
       } catch (e) {
         throw new NetworkError(`Can't reach the Glasshouse server (${describe(e)})`);

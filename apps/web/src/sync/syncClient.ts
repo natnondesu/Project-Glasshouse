@@ -34,6 +34,8 @@ export interface SyncCallbacks {
   onSave(save: SaveState): void;
   onConnection(status: ConnectionStatus): void;
   onDropped(dropped: Dropped[]): void;
+  /** True while any edit is unsent or unacknowledged; called only when that changes. */
+  onUnsaved(hasUnsaved: boolean): void;
 }
 
 const RETRY_MIN_MS = 500;
@@ -52,7 +54,11 @@ export class SyncClient {
   private closeEvents: (() => void) | null = null;
   private resyncing = false;
   private paused = false;
+  /** Resyncs from a seq gap or an event that won't apply, and from the server asking: they slow retries down. */
   private resyncCount = 0;
+  /** Only the first kind: the page itself is out of step with the server. */
+  private outOfStepCount = 0;
+  private unsaved = false;
   private reconnectMs = RETRY_MIN_MS;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private stopped = false;
@@ -84,12 +90,14 @@ export class SyncClient {
     this.clearWatchdog();
     this.closeEvents?.();
     this.closeEvents = null;
+    this.unsaved = false;
   }
 
   /** The store calls this for every edit; the returned workspace is what the screen shows. */
   dispatch(command: WorkspaceCommand): Result<Workspace> {
     const error = this.engine.local(this.newId(), command);
     if (error) return { ok: false, error };
+    this.notifyUnsaved();
     this.callbacks.onSave({ kind: 'saving' });
     if (!this.paused) void this.flush();
     return { ok: true, value: this.engine.workspace };
@@ -129,7 +137,15 @@ export class SyncClient {
     if (!this.stopped && !this.paused) this.callbacks.onSave({ kind: 'saved', at: new Date() });
   }
 
+  private notifyUnsaved(): void {
+    const has = this.engine.hasUnsaved();
+    if (has === this.unsaved) return;
+    this.unsaved = has;
+    this.callbacks.onUnsaved(has);
+  }
+
   private report(dropped: Dropped[]): void {
+    this.notifyUnsaved();
     if (dropped.length > 0) this.callbacks.onDropped(dropped);
     this.callbacks.onWorkspace(this.engine.workspace);
   }
@@ -147,13 +163,15 @@ export class SyncClient {
       onCommand: (event) => {
         this.resetWatchdog();
         const result = this.engine.remote(event);
-        if (result.kind === 'resync') void this.resync();
+        if (result.kind === 'resync') void this.resync('out-of-step');
         else if (result.kind === 'applied') {
           this.resyncCount = 0;
+          this.outOfStepCount = 0;
           this.report(result.dropped);
         }
       },
-      onResync: () => void this.resync(),
+      // The server asks when we are too far behind or it can't read its log; reloading fixes that, so it isn't the page being out of step.
+      onResync: () => void this.resync('server'),
       onHeartbeat: () => this.resetWatchdog(),
       onError: (closed) => {
         this.callbacks.onConnection('offline');
@@ -188,14 +206,15 @@ export class SyncClient {
     this.reconnectMs = Math.min(wait * 2, RETRY_MAX_MS);
     this.reconnectTimer = setTimeout(() => {
       this.reconnectTimer = null;
-      void this.resync();
+      void this.resync('connection');
     }, wait);
   }
 
-  private async resync(): Promise<void> {
+  private async resync(cause: 'out-of-step' | 'server' | 'connection'): Promise<void> {
     if (this.resyncing || this.stopped) return;
     this.resyncing = true;
-    this.resyncCount += 1;
+    if (cause !== 'connection') this.resyncCount += 1;
+    if (cause === 'out-of-step') this.outOfStepCount += 1;
     this.clearWatchdog();
     this.closeEvents?.();
     this.closeEvents = null;
@@ -224,7 +243,7 @@ export class SyncClient {
     }
     // Repeated resyncs mean events keep failing to apply here (e.g. a version mismatch): slow down and say so.
     if (this.resyncCount >= 2) await delay(Math.min(RETRY_MIN_MS * 2 ** (this.resyncCount - 2), RETRY_MAX_MS));
-    if (this.resyncCount >= 3) {
+    if (this.outOfStepCount >= 3) {
       this.callbacks.onSave({ kind: 'failed', reason: 'This page is out of step with the server. Reload to continue.' });
     }
     this.resyncing = false;

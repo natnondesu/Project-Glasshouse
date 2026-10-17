@@ -42,7 +42,7 @@ function fakeServer() {
   return { transport, posts, failOnce: () => void (failNext = 1), get seq() { return seq; } };
 }
 
-const callbacks = () => ({ onWorkspace: vi.fn<(ws: Workspace) => void>(), onSave: vi.fn(), onConnection: vi.fn(), onDropped: vi.fn() });
+const callbacks = () => ({ onWorkspace: vi.fn<(ws: Workspace) => void>(), onSave: vi.fn(), onConnection: vi.fn(), onDropped: vi.fn(), onUnsaved: vi.fn<(has: boolean) => void>() });
 
 describe('SyncClient', () => {
   beforeEach(() => vi.useFakeTimers());
@@ -113,6 +113,48 @@ describe('SyncClient', () => {
     await vi.advanceTimersByTimeAsync(1_000);
     expect(server.transport.fetchWorkspace).toHaveBeenCalled();
     expect(server.transport.openEvents).toHaveBeenCalledTimes(2);
+  });
+
+  it('does not tell the user to reload after repeated lost connections', async () => {
+    const server = fakeServer();
+    const cb = callbacks();
+    const client = new SyncClient(server.transport, { seq: 0, workspace: createWorkspace() }, cb, { clientId: 'me' });
+    client.start();
+    for (let i = 0; i < 5; i++) {
+      const calls = (server.transport.openEvents as ReturnType<typeof vi.fn>).mock.calls;
+      (calls[calls.length - 1]![1] as EventHandlers).onError(true);
+      await vi.advanceTimersByTimeAsync(20_000);
+    }
+    await vi.advanceTimersByTimeAsync(WATCHDOG_MS + 20_000);
+    await vi.advanceTimersByTimeAsync(WATCHDOG_MS + 20_000);
+    expect((server.transport.openEvents as ReturnType<typeof vi.fn>).mock.calls.length).toBeGreaterThanOrEqual(6);
+    expect(cb.onSave).not.toHaveBeenCalledWith(expect.objectContaining({ reason: expect.stringContaining('out of step') }));
+    client.stop();
+  });
+
+  it('does not tell the user to reload after repeated server-requested resyncs', async () => {
+    const server = fakeServer();
+    const cb = callbacks();
+    const client = new SyncClient(server.transport, { seq: 0, workspace: createWorkspace() }, cb, { clientId: 'me' });
+    client.start();
+    for (let i = 0; i < 4; i++) {
+      const calls = (server.transport.openEvents as ReturnType<typeof vi.fn>).mock.calls;
+      (calls[calls.length - 1]![1] as EventHandlers).onResync();
+      await vi.advanceTimersByTimeAsync(20_000);
+    }
+    expect(cb.onSave).not.toHaveBeenCalledWith(expect.objectContaining({ reason: expect.stringContaining('out of step') }));
+    client.stop();
+  });
+
+  it('reports unsaved edits until the server has ordered them', async () => {
+    const server = fakeServer();
+    const cb = callbacks();
+    const client = new SyncClient(server.transport, { seq: 0, workspace: createWorkspace() }, cb, { clientId: 'me' });
+    client.start();
+    client.dispatch(create('p'));
+    await vi.advanceTimersByTimeAsync(100);
+    expect(cb.onUnsaved.mock.calls.map((c) => c[0])).toEqual([true, false]);
+    client.stop();
   });
 
   it('backs off and tells the user when every event fails to apply', async () => {

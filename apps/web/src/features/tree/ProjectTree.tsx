@@ -9,6 +9,7 @@ import { ImportDialog } from '../handoff/ImportDialog';
 import { pad2 } from '../../ui/StatusStamp';
 import { useT } from '../../i18n';
 import { SERVER_MODE } from '../../sync/serverMode';
+import { sampleCommands } from './sampleLoad';
 import { BackupPanel } from './BackupPanel';
 import { TreeRow } from './TreeRow';
 import './tree.css';
@@ -60,6 +61,15 @@ export function ProjectTree({ activeRoomId, onCollapse }: { activeRoomId: string
     onStartEdit: () => setEditingId(id),
     onStopEdit: () => setEditingId(null),
   });
+
+  const loadSample = (): void => {
+    const commands = sampleCommands(workspace, new Date().toISOString(), SERVER_MODE);
+    if (!commands.ok) {
+      setError(commands.error.message);
+      return;
+    }
+    for (const command of commands.value) if (!run(command)) return;
+  };
 
   const addProject = (): void => {
     const id = newId();
@@ -133,7 +143,7 @@ export function ProjectTree({ activeRoomId, onCollapse }: { activeRoomId: string
                     onRename={(name) => rename({ type: 'site/rename', siteId: site.id, name })}
                     onAdd={() => {
                       const id = newId();
-                      if (run({ type: 'room/create', siteId: site.id, id, name: m.tree.newRoom })) {
+                      if (run({ type: 'room/create', siteId: site.id, id, floorAreaId: newId(), name: m.tree.newRoom })) {
                         setEditingId(id);
                         navigate(`/rooms/${id}/plan`);
                       }
@@ -181,7 +191,7 @@ export function ProjectTree({ activeRoomId, onCollapse }: { activeRoomId: string
         </p>
       ) : null}
       {missing.length === 0 ? null : (
-        <button type="button" className="btn btn--sm btn--quiet tree__sample" onClick={() => run({ type: 'sample/load', at: new Date().toISOString() })}>
+        <button type="button" className="btn btn--sm btn--quiet tree__sample" onClick={loadSample}>
           {missing.length === 1 ? m.tree.loadOneSample(missing[0]!) : m.tree.loadSample}
         </button>
       )}
