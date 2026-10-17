@@ -41,3 +41,14 @@ it('restores only after confirmation, and a bad file changes nothing', async () 
   await user.click(screen.getByRole('button', { name: 'Replace workspace' }));
   expect(useWorkspaceStore.getState().workspace.projects).toEqual([]);
 });
+
+it('refuses a restore in the words for why the tab is read-only', async () => {
+  const user = userEvent.setup();
+  useWorkspaceStore.getState().setReadOnly(true, 'view-only');
+  render(<BackupPanel />);
+  const backup = exportBackup(createWorkspace(), '2026-10-01T00:00:00.000Z');
+  await user.upload(screen.getByLabelText('Choose a backup file'), new File([JSON.stringify(backup)], 'b.json'));
+  await user.click(await screen.findByRole('button', { name: 'Replace workspace' }));
+  expect(screen.getByRole('alert')).toHaveTextContent('You can view this workspace. Ask an admin for edit access.');
+  expect(useWorkspaceStore.getState().workspace.projects).toHaveLength(1);
+});

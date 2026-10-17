@@ -236,4 +236,14 @@ describe('signed in on the shared server', () => {
     expect(history).toHaveTextContent('Approved by Nok R.');
     expect(history).not.toHaveTextContent('unverified');
   });
+
+  it('labels each person on the revision list on their own', () => {
+    review({ type: 'review/submit', designedBy: 'Ploy', at: AT });
+    review({ type: 'review/approve', reviewer: 'Nok P.', byId: 'me', at: AT });
+    signInAs('viewer');
+    open();
+    const row = within(screen.getByRole('region', { name: 'Revisions and history' })).getAllByRole('listitem')[0]!;
+    expect(row).toHaveTextContent('Designed by Ploy (unverified) · approved by Nok P.');
+    expect(row).not.toHaveTextContent('Nok P. (unverified)');
+  });
 });

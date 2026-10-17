@@ -108,3 +108,20 @@ describe('review boundaries', () => {
     expect(seen).toEqual(['plan', 'draft/replace']);
   });
 });
+
+describe('refusing edits while read-only', () => {
+  beforeEach(() => {
+    resetWorkspaceStore();
+    seed();
+  });
+
+  it.each([
+    ['view-only', 'You can view this workspace. Ask an admin for edit access.'],
+    ['offline', "You're offline. Edits come back when the connection does."],
+    ['other-tab', 'This tab is read-only because Glasshouse is open in another tab.'],
+  ] as const)('says why for %s', (reason, message) => {
+    store().setReadOnly(true, reason);
+    expect(setWidth('a', 6)?.message).toBe(message);
+    expect(width('a')).toBe(5);
+  });
+});

@@ -1,7 +1,7 @@
 import { currentRevision, findRoom } from '@glasshouse/domain';
-import { fireEvent, render } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { createMemoryRouter, RouterProvider } from 'react-router';
-import { beforeEach, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 import { resetWorkspaceStore, useWorkspaceStore } from '../store/workspaceStore';
 import { routes } from './routes';
 
@@ -52,4 +52,22 @@ it('lets a lost connection outrank the view-only banner', () => {
   s.setReadOnly(true, 'view-only');
   render(<RouterProvider router={createMemoryRouter(routes, { initialEntries: ['/rooms/r/plan'] })} />);
   expect(bannerText()).toMatch(/Lost the connection/);
+});
+
+describe('plan tools while read-only', () => {
+  const tools = () => within(screen.getByRole('toolbar', { name: 'Plan tools' })).getAllByRole('button').map((b) => b.getAttribute('aria-label'));
+  const plan = () => render(<RouterProvider router={createMemoryRouter(routes, { initialEntries: ['/rooms/r/plan'] })} />);
+
+  it.each(['view-only', 'offline'] as const)('offers only viewing tools to a %s workspace', (reason) => {
+    useWorkspaceStore.getState().setReadOnly(true, reason);
+    plan();
+    expect(tools()).toEqual(['Select', 'Pan', 'Measure']);
+    expect(screen.queryByText(/is Draft and frozen/)).toBeNull();
+  });
+
+  it('leaves the tools alone for the tab that lost the lock to another tab', () => {
+    useWorkspaceStore.getState().setReadOnly(true);
+    plan();
+    expect(tools().length).toBeGreaterThan(3);
+  });
 });

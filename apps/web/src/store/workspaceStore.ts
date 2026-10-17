@@ -11,7 +11,9 @@ import {
   type WorkspaceCommand,
 } from '@glasshouse/domain';
 import { create } from 'zustand';
+import { messagesFor, useLangStore } from '../i18n';
 import type { ConnectionStatus } from '../sync/syncClient';
+import { readOnlyMessage } from './readOnlyMessage';
 
 export type SaveState = { kind: 'idle' } | { kind: 'saving' } | { kind: 'saved'; at: Date } | { kind: 'failed'; reason: string };
 type LoadState = { kind: 'loading' } | { kind: 'ready' } | { kind: 'failed'; reason: string; raw: unknown };
@@ -31,11 +33,11 @@ interface RoomHistory {
 
 const HISTORY_LIMIT = 100;
 const COALESCE_WINDOW_MS = 1000;
-const READ_ONLY_ERROR: DomainError = {
+const readOnlyError = (reason: ReadOnlyReason | null): DomainError => ({
   code: 'invalid_value',
-  message: 'This tab is read-only because Glasshouse is open in another tab.',
+  message: readOnlyMessage(messagesFor(useLangStore.getState().lang), reason),
   targets: [],
-};
+});
 
 type Commit = (ws: Workspace, command: WorkspaceCommand) => Result<Workspace>;
 let commit: Commit = apply;
@@ -104,7 +106,7 @@ export const useWorkspaceStore = create<WorkspaceState>()((set, get) => ({
   ...initialData(),
   dispatch: (command, options = {}) => {
     const state = get();
-    if (state.readOnly) return READ_ONLY_ERROR;
+    if (state.readOnly) return readOnlyError(state.readOnlyReason);
     const result = commit(state.workspace, command);
     if (!result.ok) return result.error;
     if (command.type !== 'plan') {

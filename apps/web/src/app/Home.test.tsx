@@ -47,3 +47,17 @@ it('adds a room to a site from Home and opens it', async () => {
   expect(router.state.location.pathname).toMatch(/^\/rooms\/.+\/plan$/);
   expect(useWorkspaceStore.getState().workspace.projects[0]!.sites[0]!.rooms.map((r) => r.name)).toContain('New room');
 });
+
+it.each([
+  [{}, 'Ploy (unverified)'],
+  [{ byId: 'u1' }, 'Ploy S.'],
+])('labels the hero person by whether they signed in (%j)', (who, label) => {
+  const s = useWorkspaceStore.getState();
+  const mdf = s.workspace.projects[0]!.sites[0]!.rooms.find((r) => r.name === 'MDF-1')!;
+  localStorage.setItem('glasshouse:last-room', mdf.id);
+  s.dispatch({ type: 'review', roomId: mdf.id, command: { type: 'review/submit', designedBy: 'byId' in who ? 'Ploy S.' : 'Ploy', ...who, at: '2026-10-15T09:00:00.000Z' } });
+  open();
+  const stamp = document.querySelector('.home-hero__stamp')!;
+  expect(stamp).toHaveTextContent(label);
+  if ('byId' in who) expect(stamp).not.toHaveTextContent('unverified');
+});

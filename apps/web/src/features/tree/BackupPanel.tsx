@@ -1,5 +1,6 @@
 import { backupDue, daysSinceBackup, exportBackup, parseBackup, type Workspace } from '@glasshouse/domain';
 import { useRef, useState } from 'react';
+import { readOnlyMessage } from '../../store/readOnlyMessage';
 import { useWorkspaceStore } from '../../store/workspaceStore';
 import { downloadJson, readJsonFile } from '../../ui/files';
 import { formatTime } from '../../ui/time';
@@ -15,6 +16,7 @@ function statusText(m: Messages, ws: Workspace, now: Date): string {
 export function BackupPanel() {
   const workspace = useWorkspaceStore((s) => s.workspace);
   const readOnly = useWorkspaceStore((s) => s.readOnly);
+  const readOnlyReason = useWorkspaceStore((s) => s.readOnlyReason);
   const dispatch = useWorkspaceStore((s) => s.dispatch);
   const fileInput = useRef<HTMLInputElement>(null);
   const [pending, setPending] = useState<Workspace | null>(null);
@@ -46,7 +48,7 @@ export function BackupPanel() {
   const restore = (): void => {
     if (!pending) return;
     if (readOnly) {
-      setError(m.backup.readOnlyTab);
+      setError(readOnlyMessage(m, readOnlyReason));
       return;
     }
     useWorkspaceStore.getState().replace(pending);

@@ -14,6 +14,7 @@ import { NotFound } from './NotFound';
 // three.js is large and only this view needs it: keep it out of the main bundle.
 const Room3DView = lazy(() => import('../features/room3d/Room3DView'));
 import { ViewTabs } from './ViewTabs';
+import { useWorkspaceStore } from '../store/workspaceStore';
 import { useT } from '../i18n';
 import { useDocumentTitle } from '../ui/useDocumentTitle';
 import { useRememberRoom } from '../features/home/lastRoom';
@@ -25,6 +26,8 @@ export function RoomScreen() {
   const { roomId = '', view = 'plan' } = useParams();
   const realLocation = useRoomLocation(roomId);
   const viewedNumber = useViewedRevisionNumber();
+  const storeReadOnly = useWorkspaceStore((s) => s.readOnly);
+  const storeReadOnlyReason = useWorkspaceStore((s) => s.readOnlyReason);
   const m = useT();
   const tabLabel = TAB_LABEL[view] ? m.views[TAB_LABEL[view]!] : view;
   useDocumentTitle(realLocation ? `${realLocation.room.name} · ${tabLabel}` : null);
@@ -33,7 +36,9 @@ export function RoomScreen() {
   const past = view === 'review' ? null : locationAtRevision(realLocation, viewedNumber);
   const location = past ?? realLocation;
   const revision = currentRevision(location.room.plan);
-  const readOnly = past !== null || revision.state !== 'draft';
+  const frozen = past !== null || revision.state !== 'draft';
+  // A viewer or an offline user can't change this draft either; another tab holding the lock keeps its own refusal message.
+  const readOnly = frozen || (storeReadOnly && storeReadOnlyReason !== 'other-tab');
   let body;
   if (view === 'plan') body = <PlanView key={`${roomId}:${revision.number}`} location={location} readOnly={readOnly} />;
   else if (view === 'elevation') body = <ElevationView key={`${roomId}:${revision.number}`} location={location} readOnly={readOnly} viewingPast={past !== null} />;
@@ -50,7 +55,7 @@ export function RoomScreen() {
   return (
     <div className="room-screen">
       <h1 className="visually-hidden">{m.views.pageTitle(realLocation.room.name, TAB_LABEL[view] ? m.views[TAB_LABEL[view]!] : view)}</h1>
-      <ViewTabs roomId={roomId} frozen={!past && readOnly && view !== 'review' ? revision : null} />
+      <ViewTabs roomId={roomId} frozen={!past && frozen && view !== 'review' ? revision : null} />
       {past ? <RevisionBanner roomId={roomId} view={view} viewed={revision} current={currentRevision(realLocation.room.plan)} /> : null}
       <ErrorBoundary key={view} label={m.views.drawing[view] ?? m.views.drawing.other!}>
         {body}
