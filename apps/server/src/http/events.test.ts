@@ -8,7 +8,8 @@ import { WorkspaceService } from '../workspaceService';
 import { buildApp } from './app';
 import { registerAuthRoutes } from './auth/authRoutes';
 import { LoginThrottle } from './auth/loginThrottle';
-import { createSessionAuth, SESSION_COOKIE } from './auth/sessionAuth';
+import { createSessionAuth, SESSION_COOKIE, SESSION_IDLE_MS } from './auth/sessionAuth';
+import { hashToken } from '../identity/tokens';
 import { devAuthenticate, registerDevAuthRoutes } from './devAuth';
 import { MAX_CATCH_UP } from './events';
 
@@ -138,13 +139,13 @@ describe('a stream ends when the person behind it no longer has access', () => {
   const PUBLIC = 'https://glasshouse.company.test';
   const config: AuthConfig = { mode: 'on', publicUrl: new URL(PUBLIC), localLogin: true, oidc: null, bootstrapAdmin: null, defaultRole: 'viewer', secureCookies: true, seedUsers: [] };
 
-  async function signedIn() {
+  async function signedIn(clock = { now: new Date(NOW) }) {
     const store = new MemoryIdentityStore();
     await store.createUser({ id: 'u1', email: 'u1@company.test', displayName: 'U One', role: 'editor', source: 'local', oidcSubject: null, passwordHash: 'x', mustChangePassword: false, nameLocked: false, active: true, createdAt: NOW, lastLoginAt: null });
-    const sessions = createSessionAuth(store, { secure: false });
+    const sessions = createSessionAuth(store, { secure: false, now: () => clock.now });
     const service = await WorkspaceService.open(new MemoryCommandStore());
     app = await buildApp({
-      service, authenticate: sessions.authenticate, publicOrigin: PUBLIC, heartbeatMs: 30,
+      service, authenticate: sessions.authenticate, recheck: sessions.check, publicOrigin: PUBLIC, heartbeatMs: 30,
       authRoutes: (a) => registerAuthRoutes(a, { store, sessions, config, oidc: null, throttle: new LoginThrottle(), now: () => new Date() }),
     });
     // The cookie is minted through the real session code; the stream is read over a real socket.
@@ -154,7 +155,7 @@ describe('a stream ends when the person behind it no longer has access', () => {
     let token = '';
     const reply = { setCookie: (_name: string, value: string) => (token = value) } as never;
     await sessions.startSession(reply, (await store.findUserById('u1'))!);
-    return { store, base: `http://127.0.0.1:${address.port}`, cookie: `${SESSION_COOKIE}=${token}`, logout: () => app!.inject({ method: 'POST', url: '/auth/logout', headers: { 'x-glasshouse': '1', origin: PUBLIC, cookie: `${SESSION_COOKIE}=${token}` } }) };
+    return { store, tokenHash: hashToken(token), base: `http://127.0.0.1:${address.port}`, cookie: `${SESSION_COOKIE}=${token}`, logout: () => app!.inject({ method: 'POST', url: '/auth/logout', headers: { 'x-glasshouse': '1', origin: PUBLIC, cookie: `${SESSION_COOKIE}=${token}` } }) };
   }
 
   /** Resolves true when the server closes the stream, false if it is still open after `ms`. */
@@ -196,5 +197,33 @@ describe('a stream ends when the person behind it no longer has access', () => {
     const res = await fetch(`${base}/api/events?after=0`, { headers: { cookie } });
     await store.updateUser('u1', { mustChangePassword: true });
     expect(await endsWithin(res, 1000)).toBe(true);
+  });
+
+  it('does not count an open tab as activity: heartbeats leave lastSeenAt alone, and the session still lapses after 12 idle hours', async () => {
+    const clock = { now: new Date(NOW) };
+    const { base, cookie, store, tokenHash } = await signedIn(clock);
+    const before = (await store.findSession(tokenHash))!.lastSeenAt;
+    const res = await fetch(`${base}/api/events?after=0`, { headers: { cookie } });
+    const reader = res.body!.getReader();
+    const decoder = new TextDecoder();
+    let pings = 0;
+    while (pings < 5) {
+      const { value, done } = await reader.read();
+      if (done) throw new Error('the stream ended while the session was still good');
+      const seen = (decoder.decode(value, { stream: true }).match(/event: ping/g) ?? []).length;
+      for (let i = 0; i < seen; i += 1) clock.now = new Date(clock.now.getTime() + 6 * 60 * 1000);
+      pings += seen;
+    }
+    expect((await store.findSession(tokenHash))!.lastSeenAt).toBe(before);
+    clock.now = new Date(clock.now.getTime() + SESSION_IDLE_MS);
+    const ended = await (async () => {
+      const deadline = Date.now() + 1000;
+      while (Date.now() < deadline) {
+        const next = await Promise.race([reader.read(), new Promise<'wait'>((r) => setTimeout(() => r('wait'), deadline - Date.now()))]);
+        if (next !== 'wait' && next.done) return true;
+      }
+      return false;
+    })();
+    expect(ended).toBe(true);
   });
 });

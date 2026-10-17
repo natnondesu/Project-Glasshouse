@@ -1,5 +1,6 @@
 import { OAuth2Server } from 'oauth2-mock-server';
 import type { FastifyInstance } from 'fastify';
+import { createServer } from 'node:net';
 import { Writable } from 'node:stream';
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import type { AuthConfig } from '../../config';
@@ -9,7 +10,7 @@ import { WorkspaceService } from '../../workspaceService';
 import { buildApp } from '../app';
 import { registerAuthRoutes } from './authRoutes';
 import { LoginThrottle } from './loginThrottle';
-import { createOidcLogin, safeReturnTo } from './oidc';
+import { createOidcLogin, OidcError, safeReturnTo } from './oidc';
 import { createSessionAuth, SESSION_COOKIE } from './sessionAuth';
 
 const PUBLIC = 'http://localhost:5399';
@@ -41,7 +42,7 @@ afterEach(async () => {
 
 async function setup(store = new MemoryIdentityStore(), logStream?: Writable) {
   const config: AuthConfig = { mode: 'on', publicUrl: new URL(PUBLIC), localLogin: false, oidc: { issuer: idp.issuer.url!, clientId: 'glasshouse', clientSecret: 'test-secret' }, bootstrapAdmin: 'few@company.test', defaultRole: 'viewer', secureCookies: false, seedUsers: [] };
-  const oidc = await createOidcLogin({ ...config.oidc!, redirectUri: `${PUBLIC}/auth/oidc/callback` });
+  const oidc = createOidcLogin({ ...config.oidc!, redirectUri: `${PUBLIC}/auth/oidc/callback` });
   const sessions = createSessionAuth(store, { secure: false });
   const service = await WorkspaceService.open(new MemoryCommandStore());
   const app = await buildApp({ service, logStream, authenticate: sessions.authenticate, publicOrigin: PUBLIC, authRoutes: (a) => registerAuthRoutes(a, { store, sessions, config, oidc, throttle: new LoginThrottle(), now: () => new Date() }) });
@@ -181,6 +182,50 @@ it('keeps the one-time code and state out of the request log', async () => {
   await app.close();
   expect(logged).toContain('/auth/oidc/callback');
   expect(logged).not.toMatch(/code=|state=|returnTo/);
+});
+
+describe('an identity provider that is not reachable', () => {
+  const closedPort = (): Promise<number> =>
+    new Promise((resolve, reject) => {
+      const probe = createServer();
+      probe.once('error', reject);
+      probe.listen(0, '127.0.0.1', () => {
+        const { port } = probe.address() as { port: number };
+        probe.close(() => resolve(port));
+      });
+    });
+
+  it('does not stop createOidcLogin; start fails as unavailable and says so in the log', async () => {
+    const warnings: string[] = [];
+    const port = await closedPort();
+    const oidc = createOidcLogin({ issuer: `http://127.0.0.1:${port}`, clientId: 'glasshouse', clientSecret: 's', redirectUri: `${PUBLIC}/auth/oidc/callback`, warn: (m) => warnings.push(m) });
+    await expect(oidc.start('/')).rejects.toMatchObject({ code: 'unavailable' });
+    await expect(oidc.start('/')).rejects.toBeInstanceOf(OidcError);
+    expect(warnings[0]).toContain(`127.0.0.1:${port}`);
+  });
+
+  it('signs in once the provider is back, without a restart', async () => {
+    const port = await closedPort();
+    const oidc = createOidcLogin({ issuer: `http://127.0.0.1:${port}`, clientId: 'glasshouse', clientSecret: 's', redirectUri: `${PUBLIC}/auth/oidc/callback`, warn: () => undefined });
+    await expect(oidc.start('/')).rejects.toMatchObject({ code: 'unavailable' });
+    const late = new OAuth2Server();
+    await late.issuer.keys.generate('RS256');
+    // The mock names itself by host; the first call went to 127.0.0.1, so it must answer as that.
+    late.issuer.url = `http://127.0.0.1:${port}`;
+    await late.start(port, '127.0.0.1');
+    try {
+      const { url } = await oidc.start('/');
+      expect(url).toContain(`127.0.0.1:${port}`);
+    } finally {
+      await late.stop();
+    }
+  });
+
+  it('warmUp rejects while the provider is away, so the caller can ignore it and sign-in retries later', async () => {
+    const port = await closedPort();
+    const oidc = createOidcLogin({ issuer: `http://127.0.0.1:${port}`, clientId: 'glasshouse', clientSecret: 's', redirectUri: `${PUBLIC}/auth/oidc/callback`, warn: () => undefined });
+    await expect(oidc.warmUp()).rejects.toMatchObject({ code: 'unavailable' });
+  });
 });
 
 describe('safeReturnTo', () => {

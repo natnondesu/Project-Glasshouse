@@ -36,10 +36,11 @@ if (config.auth.mode === 'dev-insecure') {
   await seedUsers(idStore, auth.seedUsers, new Date().toISOString());
   const sessions = createSessionAuth(idStore, { secure: auth.secureCookies });
   const throttle = new LoginThrottle();
-  // Discovery failing at boot stops the server with the IdP's error: loud, as it should be.
-  const oidc = auth.oidc ? await createOidcLogin({ ...auth.oidc, redirectUri: new URL('/auth/oidc/callback', auth.publicUrl).href }) : null;
+  const oidc = auth.oidc ? createOidcLogin({ ...auth.oidc, redirectUri: new URL('/auth/oidc/callback', auth.publicUrl).href }) : null;
+  // getConfig already logged a failure and the next sign-in retries, so nothing more to do here.
+  void oidc?.warmUp().catch(() => undefined);
   const built = await buildApp({
-    service, claims, authenticate: sessions.authenticate, publicOrigin: auth.publicUrl.origin, trustProxy: config.trustProxy, webDir: config.webDir, logger: true,
+    service, claims, authenticate: sessions.authenticate, recheck: sessions.check, publicOrigin: auth.publicUrl.origin, trustProxy: config.trustProxy, webDir: config.webDir, logger: true,
     admin: (api) => registerAdmin(api, { store: idStore, service, localLogin: auth.localLogin, now: () => new Date() }),
     people: (api) => registerPeople(api, idStore),
     authRoutes: (a) => registerAuthRoutes(a, { store: idStore, sessions, config: auth, oidc, throttle, now: () => new Date() }),

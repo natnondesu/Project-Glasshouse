@@ -10,6 +10,7 @@ import { registerClaims } from './claims';
 import { registerCommands } from './commands';
 import type { Authenticate } from './devAuth';
 import { registerEvents } from './events';
+import { registerSecurityHeaders } from './security';
 
 declare module 'fastify' {
   interface FastifyRequest {
@@ -23,6 +24,8 @@ const BODY_LIMIT = 25 * 1024 * 1024;
 export interface AppDeps {
   service: WorkspaceService;
   authenticate: Authenticate;
+  /** What an open event stream re-runs on each heartbeat; defaults to `authenticate`. Pass a check that does not count as activity. */
+  recheck?: Authenticate;
   /** Public sign-in routes (/auth/*): dev or real. */
   authRoutes: (app: FastifyInstance) => void | Promise<void>;
   /** GLASSHOUSE_PUBLIC_URL's origin; null in dev-insecure. */
@@ -68,10 +71,11 @@ const serializeRequest = (request: FastifyRequest) => ({
   remotePort: request.socket?.remotePort,
 });
 
-export async function buildApp({ service, authenticate, authRoutes, publicOrigin, admin, people, trustProxy = false, webDir = null, logger = false, logStream, heartbeatMs, claims }: AppDeps): Promise<FastifyInstance> {
+export async function buildApp({ service, authenticate, recheck, authRoutes, publicOrigin, admin, people, trustProxy = false, webDir = null, logger = false, logStream, heartbeatMs, claims }: AppDeps): Promise<FastifyInstance> {
   // Force-close: open event streams would otherwise keep shutdown waiting forever.
   const app = Fastify({ logger: logger || logStream ? { ...(logStream ? { stream: logStream } : {}), serializers: { req: serializeRequest } } : false, trustProxy: typeof trustProxy === 'number' ? hopsTrusted(trustProxy) : trustProxy, bodyLimit: BODY_LIMIT, forceCloseConnections: true });
   await app.register(fastifyCookie);
+  await registerSecurityHeaders(app, { https: publicOrigin?.startsWith('https:') ?? false });
   app.decorateRequest('actor', null);
   app.get('/api/health', async () => ({ ok: true, seq: service.state.seq }));
   // For the container healthcheck and the proxy: the workspace is loaded (we are listening) and the database answers.
@@ -96,7 +100,7 @@ export async function buildApp({ service, authenticate, authRoutes, publicOrigin
     api.get('/api/workspace', async () => ({ ...service.state, claims: claims?.list() ?? [] }));
     registerCommands(api, service);
     if (claims) registerClaims(api, { service, claims });
-    registerEvents(api, service, authenticate, { heartbeatMs, claims });
+    registerEvents(api, service, recheck ?? authenticate, { heartbeatMs, claims });
     admin?.(api);
     people?.(api);
   });
