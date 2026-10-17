@@ -31,6 +31,8 @@ type Listener = (entry: LoggedCommand) => void;
 
 const describe = (e: unknown): string => (e instanceof Error ? e.message : String(e));
 const isNonEmptyString = (value: unknown): value is string => typeof value === 'string' && value.length > 0;
+const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null;
+const commandIdOf = (item: unknown): string => (isRecord(item) && typeof item.commandId === 'string' ? item.commandId : '');
 const rejected = (message: string): SubmitOutcome => ({ kind: 'rejected', error: err('invalid_value', message).error });
 
 /**
@@ -105,11 +107,12 @@ export class WorkspaceService {
   async submitBatch(clientId: string, items: { commandId: string; command: WorkspaceCommand }[], actor: Actor): Promise<BatchOutcome> {
     const accepted: BatchOutcome['accepted'] = [];
     for (const [i, item] of items.entries()) {
+      const commandId = commandIdOf(item);
       const outcome = await this.submit({ clientId, ...item }, actor);
       if (outcome.kind === 'rejected') {
-        return { accepted, rejected: { commandId: item.commandId, error: outcome.error }, skipped: items.slice(i + 1).map((x) => x.commandId) };
+        return { accepted, rejected: { commandId, error: outcome.error }, skipped: items.slice(i + 1).map(commandIdOf) };
       }
-      accepted.push({ commandId: item.commandId, seq: outcome.seq });
+      accepted.push({ commandId, seq: outcome.seq });
     }
     return { accepted, rejected: null, skipped: [] };
   }
@@ -126,6 +129,7 @@ export class WorkspaceService {
   }
 
   private async submitNow(submission: Submission, actor: Actor): Promise<SubmitOutcome> {
+    if (!isRecord(submission)) return rejected('Each change needs a submission object.');
     const { clientId, commandId, command } = submission;
     if (!isNonEmptyString(clientId) || !isNonEmptyString(commandId)) return rejected('Each change needs a clientId and a commandId.');
     if (typeof command !== 'object' || command === null || !isNonEmptyString(command.type)) return rejected('Each change needs a command with a type.');

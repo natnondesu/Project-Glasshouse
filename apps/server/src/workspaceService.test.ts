@@ -2,7 +2,7 @@ import { type WorkspaceCommand } from '@glasshouse/domain';
 import { describe, expect, it, vi } from 'vitest';
 import type { LoggedCommand } from './store/commandStore';
 import { MemoryCommandStore } from './store/memoryStore';
-import { WorkspaceService } from './workspaceService';
+import { WorkspaceService, type Submission } from './workspaceService';
 
 const ploy = { id: 'dev:Ploy', name: 'Ploy' };
 const create = (id: string, name = id): WorkspaceCommand => ({ type: 'project/create', id, name });
@@ -48,6 +48,24 @@ describe('WorkspaceService', () => {
     const nullCommand = { clientId: 'a', commandId: '1', command: null as unknown as WorkspaceCommand };
     expect(await svc.submit(nullCommand, ploy)).toMatchObject({ kind: 'rejected' });
     expect(await submit(svc, '2', create('p'))).toMatchObject({ kind: 'accepted', seq: 1 });
+  });
+
+  it('rejects a null submission without throwing', async () => {
+    const svc = await WorkspaceService.open(new MemoryCommandStore());
+    expect(await svc.submit(null as unknown as Submission, ploy)).toMatchObject({ kind: 'rejected' });
+    expect(svc.state.seq).toBe(0);
+  });
+
+  it('keeps batch results when one item is null, and skips the rest', async () => {
+    const svc = await WorkspaceService.open(new MemoryCommandStore());
+    const out = await svc.submitBatch('a', [
+      { commandId: '1', command: create('p') },
+      null as unknown as { commandId: string; command: WorkspaceCommand },
+      { commandId: '3', command: create('q') },
+    ], ploy);
+    expect(out.accepted).toEqual([{ commandId: '1', seq: 1 }]);
+    expect(out.rejected).toMatchObject({ commandId: '', error: { code: 'invalid_value' } });
+    expect(out.skipped).toEqual(['3']);
   });
 
   it('refuses to replay a logged command type this build does not know', async () => {
