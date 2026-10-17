@@ -140,6 +140,10 @@ export class WorkspaceService {
     const previous = await this.store.findCommand(clientId, commandId);
     if (previous) return { kind: 'accepted', seq: previous.seq, duplicate: true };
     if (BROWSER_ONLY.has(command.type)) return rejected(`"${command.type}" only applies to a workspace stored in one browser.`);
+    if (command.type === 'review' && !(isRecord(command.command) && isNonEmptyString(command.command.type))) return rejected('Each review change needs a command with a type.');
+    if (actor.verified && actor.name.trim() === '') {
+      return { kind: 'rejected', error: err('forbidden', 'Your account has no name. Ask an admin to set one.').error };
+    }
     const needed = requiredRole(command);
     if (!atLeast(actor.role, needed)) {
       return { kind: 'rejected', error: err('forbidden', `${ROLE_LABEL[actor.role]}s can't make this change. Ask an admin for ${ROLE_LABEL[needed]} access.`).error };

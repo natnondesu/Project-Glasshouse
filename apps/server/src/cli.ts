@@ -8,14 +8,15 @@ const USAGE = 'Usage: node dist/cli.js create-admin <email> "<Display Name>" | r
 /** Exit codes: 0 done, 1 refused, 2 usage. The one-time password is printed once and never stored in clear. */
 export async function runCli(args: string[], store: IdentityStore, print: (line: string) => void, now: () => Date = () => new Date()): Promise<number> {
   const [cmd, email, ...nameParts] = args;
-  if (cmd === 'create-admin' && email && nameParts.length > 0) {
+  const displayName = nameParts.join(' ').trim();
+  if (cmd === 'create-admin' && email && displayName) {
     if (await store.findUserByEmail(email)) {
       print(`A user with ${email} already exists.`);
       return 1;
     }
     const temp = temporaryPassword();
     await store.createUser({
-      id: randomUUID(), email, displayName: nameParts.join(' ').trim(), role: 'admin', source: 'local', oidcSubject: null,
+      id: randomUUID(), email, displayName, role: 'admin', source: 'local', oidcSubject: null,
       passwordHash: await hashPassword(temp), mustChangePassword: true, active: true, createdAt: now().toISOString(), lastLoginAt: null,
     });
     print(`Created admin ${email}.`);

@@ -15,17 +15,26 @@ afterEach(async () => {
 const NOW = '2026-10-18T09:00:00.000Z';
 const user = (id: string, role: Role, over: Partial<User> = {}): User => ({ id, email: `${id}@company.test`, displayName: id, role, source: 'local', oidcSubject: null, passwordHash: 'x', mustChangePassword: false, active: true, createdAt: NOW, lastLoginAt: null, ...over });
 
+/** A real database yields between the count and the write; give the memory store the same gap. */
+class SlowCountStore extends MemoryIdentityStore {
+  override async countActiveAdmins(): Promise<number> {
+    const n = await super.countActiveAdmins();
+    await new Promise((resolve) => setTimeout(resolve, 5));
+    return n;
+  }
+}
+
 async function setup(as: User, others: User[] = []) {
-  const store = new MemoryIdentityStore();
+  const store = new SlowCountStore();
   for (const u of [as, ...others]) await store.createUser(u);
   const service = await WorkspaceService.open(new MemoryCommandStore());
   const app = await buildApp({
     service, publicOrigin: null, authRoutes: registerDevAuthRoutes,
-    authenticate: async () => { const u = await store.findUserById(as.id); return u && u.active ? { id: u.id, name: u.displayName, role: u.role, verified: true } : null; },
+    authenticate: async (request) => { const u = await store.findUserById(String(request.headers['x-test-user'] ?? as.id)); return u && u.active ? { id: u.id, name: u.displayName, role: u.role, verified: true } : null; },
     admin: (api) => registerAdmin(api, { store, localLogin: true, now: () => new Date(NOW) }),
   });
   apps.push(app);
-  const call = (method: 'GET' | 'POST' | 'PATCH', url: string, payload?: object) => app.inject({ method, url, headers: { 'x-glasshouse': '1' }, ...(payload ? { payload } : {}) });
+  const call = (method: 'GET' | 'POST' | 'PATCH', url: string, payload?: object, asUser?: string) => app.inject({ method, url, headers: { 'x-glasshouse': '1', ...(asUser ? { 'x-test-user': asUser } : {}) }, ...(payload ? { payload } : {}) });
   return { app, store, call };
 }
 
@@ -56,6 +65,13 @@ describe('admin users API', () => {
     const { call } = await setup(user('ad', 'admin'), [user('ad2', 'admin', { active: false })]);
     expect((await call('PATCH', '/api/admin/users/ad', { role: 'editor' })).statusCode).toBe(409);
     expect((await call('PATCH', '/api/admin/users/ad', { active: false })).statusCode).toBe(409);
+  });
+
+  it('two admins demoting each other at once leave exactly one admin', async () => {
+    const { call, store } = await setup(user('a', 'admin'), [user('b', 'admin')]);
+    const results = await Promise.all([call('PATCH', '/api/admin/users/b', { role: 'editor' }, 'a'), call('PATCH', '/api/admin/users/a', { role: 'editor' }, 'b')]);
+    expect(results.map((r) => r.statusCode).sort()).toEqual([200, 409]);
+    expect(await store.countActiveAdmins()).toBe(1);
   });
 
   it('resets a local password and refuses it for an SSO user', async () => {

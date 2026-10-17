@@ -14,4 +14,7 @@ it('creates the first admin and resets a password, printing the one-time passwor
   expect(await runCli(['reset-password', 'few@company.test'], store, (l) => out.push(l))).toBe(0);
   expect(await runCli(['reset-password', 'nobody@company.test'], store, (l) => out.push(l))).toBe(1);
   expect(await runCli(['bogus'], store, (l) => out.push(l))).toBe(2);
+  expect(await runCli(['create-admin', 'blank@company.test', '  '], store, (l) => out.push(l))).toBe(2);
+  expect(await runCli(['create-admin', 'blank@company.test', ''], store, (l) => out.push(l))).toBe(2);
+  expect(await store.findUserByEmail('blank@company.test')).toBeNull();
 });

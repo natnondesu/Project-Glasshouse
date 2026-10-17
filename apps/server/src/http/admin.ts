@@ -10,6 +10,15 @@ const patchBody = z.object({ role: z.enum(ROLES).optional(), active: z.boolean()
 const refuse = (reply: FastifyReply, status: number, code: string, message: string) => reply.code(status).send({ error: { code, message, targets: [] } });
 
 export function registerAdmin(api: FastifyInstance, { store, localLogin, now }: { store: IdentityStore; localLogin: boolean; now: () => Date }): void {
+  // One instance by design (see the P1 design doc), so an in-process queue is enough to make
+  // "count the admins, then change one" atomic.
+  let queue: Promise<unknown> = Promise.resolve();
+  const serialized = <T>(job: () => Promise<T>): Promise<T> => {
+    const run = queue.then(job);
+    queue = run.catch(() => undefined);
+    return run;
+  };
+
   api.register(async (admin) => {
     admin.addHook('preHandler', async (request, reply) => {
       if (request.actor?.role !== 'admin') return refuse(reply, 403, 'forbidden', 'Only admins can manage users.');
@@ -17,7 +26,7 @@ export function registerAdmin(api: FastifyInstance, { store, localLogin, now }: 
 
     admin.get('/api/admin/users', async () => (await store.listUsers()).map(toAdminUser));
 
-    admin.post('/api/admin/users', async (request, reply) => {
+    admin.post('/api/admin/users', (request, reply) => serialized(async () => {
       if (!localLogin) return refuse(reply, 400, 'invalid_value', 'Sign-in with a password is switched off; people join through the company account.');
       const body = createBody.safeParse(request.body);
       if (!body.success) return refuse(reply, 400, 'invalid_value', 'Give an email, a name and a role.');
@@ -33,9 +42,9 @@ export function registerAdmin(api: FastifyInstance, { store, localLogin, now }: 
         throw e;
       }
       return reply.code(201).send({ user: toAdminUser(user), temporaryPassword: temp });
-    });
+    }));
 
-    admin.patch('/api/admin/users/:id', async (request, reply) => {
+    admin.patch('/api/admin/users/:id', (request, reply) => serialized(async () => {
       const { id } = request.params as { id: string };
       const body = patchBody.safeParse(request.body);
       if (!body.success) return refuse(reply, 400, 'invalid_value', 'Nothing to change.');
@@ -47,9 +56,9 @@ export function registerAdmin(api: FastifyInstance, { store, localLogin, now }: 
       const updated = await store.updateUser(id, body.data);
       if (body.data.active === false) await store.deleteUserSessions(id);
       return updated ? toAdminUser(updated) : refuse(reply, 404, 'not_found', 'That user no longer exists.');
-    });
+    }));
 
-    admin.post('/api/admin/users/:id/reset-password', async (request, reply) => {
+    admin.post('/api/admin/users/:id/reset-password', (request, reply) => serialized(async () => {
       const { id } = request.params as { id: string };
       const target = await store.findUserById(id);
       if (!target) return refuse(reply, 404, 'not_found', 'That user no longer exists.');
@@ -58,6 +67,6 @@ export function registerAdmin(api: FastifyInstance, { store, localLogin, now }: 
       await store.updateUser(id, { passwordHash: await hashPassword(temp), mustChangePassword: true });
       await store.deleteUserSessions(id);
       return { temporaryPassword: temp };
-    });
+    }));
   });
 }

@@ -209,4 +209,26 @@ describe('roles and stamped names', () => {
     await go(svc, dev as never, '1', { type: 'project/create', id: 'p', name: 'P' });
     expect((await svc.commandsAfter(0, 1))[0]!.command).toEqual({ type: 'project/create', id: 'p', name: 'P' });
   });
+
+  it('refuses a verified account with no name, so self-approval can’t slip past the guard', async () => {
+    const svc = await open();
+    const nameless = { id: 'u-n', name: '  ', role: 'admin' as const, verified: true };
+    expect(await svc.submit({ clientId: 'c', commandId: '1', command: { type: 'project/create', id: 'p', name: 'P' } }, nameless)).toMatchObject({ kind: 'rejected', error: { code: 'forbidden', message: 'Your account has no name. Ask an admin to set one.' } });
+    expect(svc.state.seq).toBe(0);
+  });
+
+  it('rejects a malformed review command without throwing, and skips the rest of the batch', async () => {
+    const svc = await open();
+    const items = [
+      { commandId: '1', command: { type: 'project/create', id: 'p', name: 'P' } as WorkspaceCommand },
+      { commandId: '2', command: { type: 'review' } as unknown as WorkspaceCommand },
+      { commandId: '3', command: { type: 'project/create', id: 'q', name: 'Q' } as WorkspaceCommand },
+    ];
+    const outcome = await svc.submitBatch('c', items, editor);
+    expect(outcome.accepted).toHaveLength(1);
+    expect(outcome.rejected).toMatchObject({ commandId: '2', error: { code: 'invalid_value' } });
+    expect(outcome.skipped).toEqual(['3']);
+    const nullCmd = await svc.submit({ clientId: 'c', commandId: '4', command: { type: 'review', roomId: 'r', command: null } as unknown as WorkspaceCommand }, editor);
+    expect(nullCmd).toMatchObject({ kind: 'rejected' });
+  });
 });
