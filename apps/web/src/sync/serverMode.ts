@@ -1,4 +1,5 @@
 import { parseWorkspace } from '@glasshouse/domain';
+import { apply } from '@glasshouse/domain';
 import { useWorkspaceStore, setCommit } from '../store/workspaceStore';
 import { httpTransport } from './httpTransport';
 import { SyncClient, type Transport } from './syncClient';
@@ -11,15 +12,17 @@ export const OFFLINE_GRACE_MS = 3000;
 
 const describe = (e: unknown): string => (e instanceof Error ? e.message : String(e));
 
-export async function startServerSync(transport: Transport = httpTransport()): Promise<() => void> {
+export async function startServerSync(transport: Transport = httpTransport(), isCancelled: () => boolean = () => false): Promise<() => void> {
   const store = useWorkspaceStore.getState();
   let snapshot: { seq: number; workspace: unknown };
   try {
     snapshot = await transport.fetchWorkspace();
   } catch (e) {
+    if (isCancelled()) return () => {};
     store.setLoad({ kind: 'failed', reason: describe(e), raw: null });
     return () => {};
   }
+  if (isCancelled()) return () => {};
   const parsed = parseWorkspace(snapshot.workspace);
   if (!parsed.ok) {
     store.setLoad({ kind: 'failed', reason: parsed.error.message, raw: snapshot.workspace });
@@ -57,5 +60,7 @@ export async function startServerSync(transport: Transport = httpTransport()): P
   return () => {
     if (offlineTimer !== null) clearTimeout(offlineTimer);
     client.stop();
+    setCommit(apply);
+    useWorkspaceStore.getState().setConnection('local');
   };
 }

@@ -21,7 +21,7 @@ export function App({ repository = idbRepository }: { repository?: Repository })
       // StrictMode runs this twice: a cancelled start stops itself as soon as it finishes.
       let stop: (() => void) | null = null;
       let cancelled = false;
-      void startServerSync().then((s) => (cancelled ? s() : (stop = s)));
+      void startServerSync(undefined, () => cancelled).then((s) => (cancelled ? s() : (stop = s)));
       return () => {
         cancelled = true;
         stop?.();

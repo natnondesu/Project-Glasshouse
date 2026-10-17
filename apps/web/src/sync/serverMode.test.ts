@@ -45,3 +45,31 @@ it('goes read-only when the stream stays down, and back when it returns', async 
   stop();
   vi.useRealTimers();
 });
+
+it('a cancelled start never wires the store, even when its fetch resolves last', async () => {
+  let release!: () => void;
+  const gate = new Promise<void>((r) => (release = r));
+  const first = transport({ fetchWorkspace: vi.fn(async () => (await gate, { seq: 0, workspace: createWorkspace() })) });
+  const second = transport();
+  let cancelled = false;
+  const p1 = startServerSync(first, () => cancelled);
+  cancelled = true;
+  const stop2 = await startServerSync(second);
+  release();
+  (await p1)();
+  useWorkspaceStore.getState().dispatch({ type: 'project/create', id: 'p', name: 'Riverside' });
+  await vi.waitFor(() => expect(second.postCommands).toHaveBeenCalled());
+  expect(first.postCommands).not.toHaveBeenCalled();
+  stop2();
+});
+
+it('after stop, edits apply locally again', async () => {
+  const t = transport();
+  const stop = await startServerSync(t);
+  stop();
+  expect(useWorkspaceStore.getState().connection).toBe('local');
+  expect(useWorkspaceStore.getState().dispatch({ type: 'project/create', id: 'q', name: 'Local' })).toBeNull();
+  expect(useWorkspaceStore.getState().workspace.projects.some((p) => p.id === 'q')).toBe(true);
+  await new Promise((r) => setTimeout(r, 50));
+  expect(t.postCommands).not.toHaveBeenCalled();
+});
