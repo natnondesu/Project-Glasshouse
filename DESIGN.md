@@ -124,6 +124,13 @@ Colour never works alone. Blocking issues use a solid circle icon, warnings a da
 - A "Skip to main content" link is the first Tab stop on every page. Outside a room the title block shows the workspace (projects · rooms) instead of blank cells.
 - Below, every room is a card per site: its plan drawn small at its real width so labels keep 11px (blocking objects in red); the room name is the card's link and the hold counts are links of their own, revision chip, facts, and its approval holds in the Review badge's terms. A dashed card adds a room to that site.
 
+## Sign-in and accounts
+
+- **Sign-in screen**: a glass card centred on the grid ground. "Sign in with your company account" comes first; below an "or" rule sits the email-and-password form. A wrong password is explained in an alert; a first-time local user is taken to "Choose your own password" before anything else.
+- **User menu**: lives in the title block's tools corner, after Catalog. The button reads the person's name; the menu shows name, email, a role stamp, Users (admins only) and Sign out.
+- **View-only banner**: for Viewers, the app is read-only and the same banner slot that reports a lost connection says "You can view this workspace. Ask an admin for edit access."
+- **Users screen** (`/admin/users`, admins only): a table of everyone with access (name, email, role, how they sign in, status, last sign-in) and an Add user form. A new local person's temporary password appears once, in a box with the code in mono type, and is never shown again.
+
 ## Browser tab
 
 - The document title names the place: "Server room A · Network · Glasshouse", in the interface language.

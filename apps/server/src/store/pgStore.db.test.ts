@@ -6,6 +6,8 @@ import { PgCommandStore } from './pgStore';
 let container: StartedPostgreSqlContainer;
 // The log stores only id and name; read-back entries carry role viewer and verified true (a record, not a credential).
 const actor = { id: 'dev:Ploy', name: 'Ploy', role: 'viewer' as const, verified: true };
+// Creating a project needs Editor, so the service is driven as an editor; the log keeps the same id and name.
+const editor = { ...actor, role: 'editor' as const };
 
 beforeAll(async () => {
   container = await new PostgreSqlContainer('postgres:17-alpine').start();
@@ -19,7 +21,7 @@ it('keeps commands and snapshots across a restart, and migrations run twice safe
   const store = await PgCommandStore.connect(url);
   const svc = await WorkspaceService.open(store, { snapshotEvery: 2 });
   for (const [i, name] of ['Riverside', 'Northgate', 'Bangna'].entries()) {
-    await svc.submit({ clientId: 'a', commandId: String(i), command: { type: 'project/create', id: `p${i}`, name } }, actor);
+    await svc.submit({ clientId: 'a', commandId: String(i), command: { type: 'project/create', id: `p${i}`, name } }, editor);
   }
   await store.close();
 
