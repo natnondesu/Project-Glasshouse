@@ -28,17 +28,21 @@ const LINE_STEP = 17;
 
 /** Gap between a wrapped leaf block and its spine, so the spine never touches a box. */
 const SPINE_GAP = 11;
+/** How far above a wrapped leaf its row bus runs; the line drops from there into the box. */
+const ROW_BUS_ABOVE = 17;
+
+const isWrapped = (n: TopoNode): boolean => n.leaf && n.leafRow > 0;
 
 function edgePath(a: TopoNode, b: TopoNode, tree: boolean): string {
   if (tree) {
     const [top, bottom] = a.y <= b.y ? [a, b] : [b, a];
-    if (bottom.leaf && bottom.leafRow > 0) {
+    if (isWrapped(bottom)) {
       // Org-chart spine: down from the parent, along the block's left edge, then into the wrapped row.
       const x1 = top.x + top.w / 2;
       const y1 = top.y + top.h;
       const firstBus = y1 + (ROW_GAP / 2);
       const spine = bottom.blockLeft - SPINE_GAP;
-      const rowBus = bottom.y - 17;
+      const rowBus = bottom.y - ROW_BUS_ABOVE;
       const x2 = bottom.x + bottom.w / 2;
       return `M${x1} ${y1} V${firstBus} H${spine} V${rowBus} H${x2} V${bottom.y}`;
     }
@@ -58,10 +62,13 @@ function edgePath(a: TopoNode, b: TopoNode, tree: boolean): string {
   return `M${x1} ${y1} L${x2} ${y2}`;
 }
 
-/** Where a cable count sits: on the elbow's bus for tree edges, mid-line otherwise. */
-function badgeAt(a: TopoNode, b: TopoNode, tree: boolean): [number, number] {
+/** Where a cable count sits: on the drop into the child for tree edges, mid-line otherwise. */
+export function badgeAt(a: TopoNode, b: TopoNode, tree: boolean): [number, number] {
   if (tree) {
     const [top, bottom] = a.y <= b.y ? [a, b] : [b, a];
+    // A wrapped leaf's line comes down the spine and drops in from its own row bus: the pill sits on that
+    // drop, not partway down the parent's drop, which would land inside a box in an earlier row.
+    if (isWrapped(bottom)) return [bottom.x + bottom.w / 2, bottom.y - ROW_BUS_ABOVE / 2];
     return [bottom.x + bottom.w / 2, top.y + top.h + (bottom.y - top.y - top.h) / 2 + (bottom.y - top.y - top.h) / 4];
   }
   const [x1, y1] = mid(a);
