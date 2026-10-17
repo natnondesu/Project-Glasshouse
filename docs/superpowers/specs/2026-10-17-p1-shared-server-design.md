@@ -129,6 +129,15 @@ Plan C shipped 2026-10-18 (branch `feat/p1c-go-live`). Deployment, backups, the 
 - Deployment follows the company pattern: `oxygenai/glasshouse` image, Traefik on `traefik-proxy` with `GLASSHOUSE_TRUST_PROXY=172.16.7.0/24`, no compress middleware (it can buffer the event stream), Postgres 18.
 - Weight and floor load, and measured/assumed values, become Plan D before the pilot; install-day verification stays after go-live.
 
+Plan C follow-ups (reviewed and deliberately left for after go-live):
+- Restore the domain's branch-coverage threshold to 85 % (lowered to 83 % to match actual coverage when `test:cov` joined the pipeline); server and web have no thresholds yet.
+- Alert on backup freshness (newest dump older than 26 h) as part of IT's off-host backup copy.
+- After an admin takeover and release, an offline former holder's queued edits can land on the room once it is free again (the claim is gone, so nothing refuses them).
+- Release-on-leave can race a fast leave-and-return (a late release frees a just-renewed claim; the next edit claims again).
+- The browser's zod "jitless" switch keys on `document`; a future web worker that parses schemas must set it too.
+- Company sign-in discovery against an IdP that hangs (rather than refuses) waits for the fetch timeout.
+- Firefox skips the two WebGL e2e specs in CI (no WebGL in the Linux Playwright image).
+
 ### Features queued with P1 (product owner, 2026-10-17)
 
 | Order | Feature | Why here |
