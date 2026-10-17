@@ -22,6 +22,32 @@ export const MIGRATIONS: { name: string; sql: string }[] = [
         created_at timestamptz not null default now()
       );`,
   },
+  {
+    name: '002_identity',
+    sql: `
+      create table users (
+        id text primary key,
+        email text not null,
+        display_name text not null,
+        role text not null check (role in ('viewer', 'editor', 'reviewer', 'admin')),
+        source text not null check (source in ('oidc', 'local')),
+        oidc_subject text unique,
+        password_hash text,
+        must_change_password boolean not null default false,
+        active boolean not null default true,
+        created_at timestamptz not null default now(),
+        last_login_at timestamptz
+      );
+      create unique index users_email_lower on users (lower(email));
+      create table sessions (
+        token_hash text primary key,
+        user_id text not null references users(id) on delete cascade,
+        created_at timestamptz not null,
+        last_seen_at timestamptz not null,
+        expires_at timestamptz not null
+      );
+      create index sessions_user on sessions (user_id);`,
+  },
 ];
 
 const LOCK_KEY = 727274;
