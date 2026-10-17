@@ -19,11 +19,6 @@ const projectFile = () => {
 
 const lostOf = (patch: Partial<ClaimLost> = {}): ClaimLost => ({ roomId: 'r', roomName: 'MDF-1', holderName: 'Ada', changes: 2, file: projectFile(), ...patch });
 const queue = () => useClaimsStore.getState().lost;
-const answerConfirm = async (ok: boolean) => {
-  await vi.waitFor(() => expect(useConfirmStore.getState().request).not.toBeNull());
-  act(() => useConfirmStore.getState().answer(ok));
-};
-
 beforeEach(() => {
   clearClaimsStore();
   useConfirmStore.setState({ request: null, resolve: null });
@@ -56,28 +51,57 @@ it('downloads this tab version as a Glasshouse project file', async () => {
   expect(downloadJson).toHaveBeenCalledWith('Riverside - MDF-1 - my version.json', expect.objectContaining({ format: 'glasshouse.project' }));
 });
 
-it('asks before Dismiss throws the copy away, and keeps it on no', async () => {
+it('warns inside the dialog on Dismiss, not through the app-level confirm', async () => {
   render(<ClaimLostDialog />);
   await userEvent.click(screen.getByRole('button', { name: 'Dismiss' }));
-  expect(useConfirmStore.getState().request).toMatchObject({ title: 'Discard your version?', confirmLabel: 'Discard', tone: 'danger' });
-  await answerConfirm(false);
+  expect(screen.getByRole('heading', { name: 'Discard your version?' })).toBeInTheDocument();
+  expect(screen.getByText(/only in this copy/)).toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: 'Download my version' })).toBeNull();
+  expect(screen.getByRole('button', { name: 'Keep it' })).toHaveFocus();
+  expect(useConfirmStore.getState().request).toBeNull();
   expect(queue()).toHaveLength(1);
-  expect(screen.getByRole('dialog')).toBeInTheDocument();
 });
 
-it('drops the copy on Dismiss once the person confirms the discard', async () => {
+it('Keep it returns to the download view with the copy intact', async () => {
   render(<ClaimLostDialog />);
   await userEvent.click(screen.getByRole('button', { name: 'Dismiss' }));
-  await answerConfirm(true);
-  await vi.waitFor(() => expect(queue()).toHaveLength(0));
+  await userEvent.click(screen.getByRole('button', { name: 'Keep it' }));
+  expect(screen.getByRole('button', { name: 'Download my version' })).toHaveFocus();
+  expect(screen.queryByRole('button', { name: 'Discard' })).toBeNull();
+  expect(queue()).toHaveLength(1);
+});
+
+it('Discard drops the copy', async () => {
+  render(<ClaimLostDialog />);
+  await userEvent.click(screen.getByRole('button', { name: 'Dismiss' }));
+  await userEvent.click(screen.getByRole('button', { name: 'Discard' }));
+  expect(queue()).toHaveLength(0);
   expect(screen.queryByRole('dialog')).toBeNull();
 });
 
-it('closes without asking after the file was downloaded', async () => {
+it('shows the next copy in its normal view, not the previous warning', async () => {
+  useClaimsStore.getState().pushLost(lostOf({ roomId: 'q', roomName: 'IDF-2' }));
+  render(<ClaimLostDialog />);
+  await userEvent.click(screen.getByRole('button', { name: 'Dismiss' }));
+  await userEvent.click(screen.getByRole('button', { name: 'Discard' }));
+  expect(screen.getByRole('dialog', { name: 'IDF-2 is being edited by someone else' })).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Download my version' })).toBeInTheDocument();
+});
+
+it('re-opens when the browser closes the dialog while a copy is still waiting', () => {
+  const showModal = vi.fn();
+  HTMLDialogElement.prototype.showModal = showModal;
+  render(<ClaimLostDialog />);
+  showModal.mockClear();
+  fireEvent(document.querySelector('dialog')!, new Event('close'));
+  expect(showModal).toHaveBeenCalledTimes(1);
+});
+
+it('closes without a warning after the file was downloaded', async () => {
   render(<ClaimLostDialog />);
   await userEvent.click(screen.getByRole('button', { name: 'Download my version' }));
   await userEvent.click(screen.getByRole('button', { name: 'Dismiss' }));
-  expect(useConfirmStore.getState().request).toBeNull();
+  expect(screen.queryByRole('button', { name: 'Keep it' })).toBeNull();
   expect(queue()).toHaveLength(0);
 });
 
@@ -90,7 +114,7 @@ it('does not discard on Escape', () => {
   expect(queue()).toHaveLength(1);
 });
 
-it('shows a second loss after the first is closed, and asks again for it', async () => {
+it('shows a second loss after the first is closed, and warns again for it', async () => {
   useClaimsStore.getState().pushLost(lostOf({ roomId: 'q', roomName: 'IDF-2', holderName: 'Bo' }));
   render(<ClaimLostDialog />);
   expect(screen.getByRole('dialog', { name: 'MDF-1 is being edited by someone else' })).toBeInTheDocument();
@@ -98,7 +122,7 @@ it('shows a second loss after the first is closed, and asks again for it', async
   await userEvent.click(screen.getByRole('button', { name: 'Dismiss' }));
   expect(screen.getByRole('dialog', { name: 'IDF-2 is being edited by someone else' })).toBeInTheDocument();
   await userEvent.click(screen.getByRole('button', { name: 'Dismiss' }));
-  expect(useConfirmStore.getState().request).not.toBeNull();
+  expect(screen.getByRole('button', { name: 'Keep it' })).toBeInTheDocument();
 });
 
 it('queues a loss that arrives while the dialog is open', () => {

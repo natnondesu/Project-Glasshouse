@@ -1021,6 +1021,7 @@ export const en = {
     discardTitle: 'Discard your version?',
     discardBody: "Your unsent changes to this room are only in this copy. If you discard it, they're gone.",
     discard: 'Discard',
+    keepIt: 'Keep it',
     lostNoCopy: "Someone else took over this room, and your unsent changes to it couldn't be kept.",
     requestFailed: (status: number) => `The server answered ${status}.`,
     unreachable: 'Could not reach the Glasshouse server. Check your connection and try again.',

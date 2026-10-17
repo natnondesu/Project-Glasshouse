@@ -1,9 +1,9 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Browser } from '@playwright/test';
 import { signIn } from './helpers';
 
 const LONG_WAIT_MS = 30_000;
 
-test('one editor per room: the other sees who, takes over, and the first keeps their work', async ({ browser }) => {
+async function arrangeLostCopy(browser: Browser, tag: string) {
   const eddieCtx = await browser.newContext({ acceptDownloads: true });
   const adaCtx = await browser.newContext();
   const eddie = await eddieCtx.newPage();
@@ -15,15 +15,15 @@ test('one editor per room: the other sees who, takes over, and the first keeps t
 
   // Ada creates the room through the API, as the review e2e does; both then open its plan.
   const commands = [
-    { type: 'project/create', id: 'p-claims', name: 'Claims e2e' },
-    { type: 'site/create', projectId: 'p-claims', id: 's-claims', name: 'Site' },
-    { type: 'room/create', siteId: 's-claims', id: 'r-claims', floorAreaId: 'fa-claims', name: 'MDF-CLAIMS' },
-  ].map((command, i) => ({ commandId: `claims-setup-${i}`, command }));
-  const setup = await ada.request.post('/api/commands', { headers: { 'x-glasshouse': '1' }, data: { clientId: 'e2e-claims-setup', commands } });
+    { type: 'project/create', id: `p-${tag}`, name: `Claims e2e ${tag}` },
+    { type: 'site/create', projectId: `p-${tag}`, id: `s-${tag}`, name: 'Site' },
+    { type: 'room/create', siteId: `s-${tag}`, id: `r-${tag}`, floorAreaId: `fa-${tag}`, name: `MDF-${tag}` },
+  ].map((command, i) => ({ commandId: `claims-setup-${tag}-${i}`, command }));
+  const setup = await ada.request.post('/api/commands', { headers: { 'x-glasshouse': '1' }, data: { clientId: `e2e-claims-setup-${tag}`, commands } });
   expect(await setup.json()).toMatchObject({ rejected: null });
 
-  await eddie.goto('/rooms/r-claims/plan');
-  await ada.goto('/rooms/r-claims/plan');
+  await eddie.goto(`/rooms/r-${tag}/plan`);
+  await ada.goto(`/rooms/r-${tag}/plan`);
   await expect(eddie.getByLabel('Width')).toBeEnabled();
 
   // Eddie's first edit claims the room.
@@ -46,13 +46,37 @@ test('one editor per room: the other sees who, takes over, and the first keeps t
 
   // Eddie comes back: his queued edit is refused and he is offered his version.
   await eddieCtx.setOffline(false);
-  const dialog = eddie.getByRole('dialog', { name: /is being edited by someone else/ });
+  // The dialog's name follows its heading, which changes in the discard warning; the element is the stable handle.
+  const dialog = eddie.locator('dialog.claim-lost');
   await expect(dialog).toBeVisible({ timeout: LONG_WAIT_MS });
-  await expect(dialog).toContainText('Ada Admin took over');
+  await expect(dialog).toContainText(/took over/);
+  return { eddie, eddieCtx, adaCtx, dialog };
+}
+
+test('Dismiss warns inside the dialog before the only copy goes; Keep it comes back, Discard closes', async ({ browser }) => {
+  const { eddie, eddieCtx, adaCtx, dialog } = await arrangeLostCopy(browser, 'discard');
+  await dialog.getByRole('button', { name: 'Dismiss' }).click();
+  await expect(dialog.getByRole('heading', { name: 'Discard your version?' })).toBeVisible();
+  await expect(dialog.getByRole('button', { name: 'Download my version' })).toBeHidden();
+  await dialog.getByRole('button', { name: 'Keep it' }).click();
+  await expect(dialog.getByRole('button', { name: 'Download my version' })).toBeVisible();
+  await dialog.getByRole('button', { name: 'Dismiss' }).click();
+  await dialog.getByRole('button', { name: 'Discard' }).click();
+  await expect(dialog).toBeHidden();
+  await expect(eddie.getByRole('region', { name: /Ada Admin is editing this room/ })).toBeVisible();
+
+  await eddieCtx.close();
+  await adaCtx.close();
+});
+
+test('one editor per room: the other sees who, takes over, and the first keeps their work', async ({ browser }) => {
+  const { eddie, eddieCtx, adaCtx, dialog } = await arrangeLostCopy(browser, 'claims');
   const download = eddie.waitForEvent('download');
   await dialog.getByRole('button', { name: 'Download my version' }).click();
   expect((await download).suggestedFilename()).toMatch(/my version\.json$/);
+  // The file is saved, so Dismiss closes without the discard warning.
   await dialog.getByRole('button', { name: 'Dismiss' }).click();
+  await expect(dialog).toBeHidden();
   await expect(eddie.getByRole('region', { name: /Ada Admin is editing this room/ })).toBeVisible();
   await expect(eddie.getByLabel('Width')).toBeDisabled();
 
