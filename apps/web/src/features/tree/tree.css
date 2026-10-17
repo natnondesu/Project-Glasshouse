@@ -166,20 +166,6 @@
   flex-direction: column;
 }
 
-.tree__catalog {
-  margin-top: 10px;
-  padding: 12px 10px 2px;
-  border-top: 1px solid var(--line);
-  font-size: var(--text-sm);
-  font-weight: 600;
-  text-decoration: none;
-  color: var(--ink);
-}
-
-.tree__catalog:hover {
-  color: var(--acc);
-}
-
 .tree__head-actions {
   display: flex;
   gap: 6px;

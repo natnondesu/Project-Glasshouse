@@ -13,8 +13,8 @@ const DEG = Math.PI / 180;
 /** Never below the floor and never straight down, so Racks can't look inverted or floating (FR08). */
 export const MIN_ELEVATION = 8 * DEG;
 export const MAX_ELEVATION = 85 * DEG;
-export const MIN_DISTANCE = 1.5;
-export const MAX_DISTANCE = 80;
+const MIN_DISTANCE = 1.5;
+const MAX_DISTANCE = 80;
 const ORBIT_RAD_PER_PX = 0.006;
 const TARGET_HEIGHT_M = 0.8;
 

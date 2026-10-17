@@ -2,7 +2,7 @@ import { en, type Messages } from './en';
 import { loadedThai, useLangStore, type Lang } from './lang';
 
 export type { Messages } from './en';
-export { useLangStore, loadStoredLang, type Lang } from './lang';
+export { useLangStore, loadStoredLang } from './lang';
 
 export const messagesFor = (lang: Lang): Messages => (lang === 'th' ? (loadedThai() ?? en) : en);
 

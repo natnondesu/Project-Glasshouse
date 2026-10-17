@@ -653,7 +653,6 @@ export const en = {
     choose: 'Choose…',
     newPort: (name: string) => `New port: ${name}`,
     link: 'Link',
-    removedDevice: 'Removed device',
     groups: 'Network ports',
     groupsEmpty: 'No ports. Add a group for each run of ports, e.g. 48 × RJ45 then 4 × SFP+.',
     groupCount: (i: number) => `Group ${i} count`,
@@ -754,7 +753,6 @@ export const en = {
     unlinked: (n: number) => `Not cabled (${n})`,
     deviceLabel: (name: string, where: string) => `${name}, ${where}`,
     edgeLabel: (a: string, b: string, n: number) => `${a} to ${b}, ${n} ${n === 1 ? 'cable' : 'cables'}`,
-    vlanCol: 'VLAN',
   },
   vlans: {
     title: 'VLANs',
@@ -812,7 +810,6 @@ export const en = {
     openSheet: 'Open Install sheet',
     blockedBy: 'Approval is blocked by',
     ready: 'Ready for approval: no blocking issues.',
-    notes: 'Review notes',
     events: 'What happened, newest first',
     pages: 'History pages',
     newer: 'Newer',

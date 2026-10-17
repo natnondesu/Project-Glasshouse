@@ -25,7 +25,7 @@ interface PortManagerProps {
   onClose: () => void;
 }
 
-export function portLabel(m: Messages, content: PlanContent, deviceId: Id, port: Port, stateOf?: (id: Id) => EquipmentState): string {
+function portLabel(m: Messages, content: PlanContent, deviceId: Id, port: Port, stateOf?: (id: Id) => EquipmentState): string {
   const ref = { deviceId, port: port.name };
   const link = linkAt(content, ref);
   if (!link) return m.ports.portFree(port.name);

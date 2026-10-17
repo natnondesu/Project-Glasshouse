@@ -1,7 +1,7 @@
 import { footprintOf, placementPolygon, rotatedBoundsSize, type Placement, type PlanContent, type Point, type RoomObject } from '@glasshouse/domain';
 import type { GapSide } from './measure';
 
-export interface Gap {
+interface Gap {
   side: GapSide;
   from: Point;
   to: Point;

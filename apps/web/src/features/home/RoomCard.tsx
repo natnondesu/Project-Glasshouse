@@ -7,7 +7,7 @@ import { writePreference } from '../../ui/usePersistentState';
 import type { RoomSummary } from './rooms';
 import { RoomThumbnail } from './RoomThumbnail';
 
-export function RoomFacts({ summary }: { summary: RoomSummary }) {
+function RoomFacts({ summary }: { summary: RoomSummary }) {
   const m = useT();
   const content = summary.revision.content;
   const parts = [m.home.racks(summary.racks), m.home.devices(summary.devices)];

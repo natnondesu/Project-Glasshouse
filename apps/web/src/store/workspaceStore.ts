@@ -13,9 +13,9 @@ import {
 import { create } from 'zustand';
 
 export type SaveState = { kind: 'idle' } | { kind: 'saving' } | { kind: 'saved'; at: Date } | { kind: 'failed'; reason: string };
-export type LoadState = { kind: 'loading' } | { kind: 'ready' } | { kind: 'failed'; reason: string; raw: unknown };
+type LoadState = { kind: 'loading' } | { kind: 'ready' } | { kind: 'failed'; reason: string; raw: unknown };
 
-export interface DispatchOptions {
+interface DispatchOptions {
   /** Consecutive edits with the same key in the same room inside COALESCE_WINDOW_MS become one undo step. */
   coalesceKey?: string;
 }
@@ -43,7 +43,7 @@ interface Data {
   lastEdit: { key: string; roomId: Id; at: number } | null;
 }
 
-export interface WorkspaceState extends Data {
+interface WorkspaceState extends Data {
   dispatch: (command: WorkspaceCommand, options?: DispatchOptions) => DomainError | null;
   undo: (roomId: Id) => void;
   redo: (roomId: Id) => void;

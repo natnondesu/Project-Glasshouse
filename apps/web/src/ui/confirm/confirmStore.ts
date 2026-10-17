@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 
-export interface ConfirmRequest {
+interface ConfirmRequest {
   title: string;
   /** What happens, in a sentence: what goes, and whether undo brings it back. */
   body: string;

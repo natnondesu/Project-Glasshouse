@@ -72,7 +72,7 @@ export interface Object3D {
 }
 
 /** Cut-outs are columns and notches the floor can't use: shown solid so they read as obstacles, not holes. */
-export const COLUMN_HEIGHT_M = 2.6;
+const COLUMN_HEIGHT_M = 2.6;
 
 export interface Column3D {
   id: string;

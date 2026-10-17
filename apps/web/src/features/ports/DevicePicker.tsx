@@ -11,7 +11,7 @@ interface DevicePickerProps {
 }
 
 /** Every word typed must appear in the device's name or its rack's: "neo 03 nvr" finds Neopolis-03's NVRs. */
-export function matchOwners(owners: PortOwnerOption[], query: string): PortOwnerOption[] {
+function matchOwners(owners: PortOwnerOption[], query: string): PortOwnerOption[] {
   const words = query.toLowerCase().split(/\s+/).filter(Boolean);
   if (words.length === 0) return owners;
   return owners.filter((o) => {

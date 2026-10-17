@@ -3,6 +3,7 @@ import { createPlan } from '../factories';
 import { currentRevision, findProject, findRoom, findSite } from '../lookup';
 import type { Id, PlanContent, Room, Site, Workspace, EquipmentState } from '../model/types';
 import { err, ok, type Result } from '../result';
+import { LIMITS } from '../model/defaults';
 import { validateName } from '../validation';
 import { applyCatalogCommand, type CatalogCommand } from './catalog';
 import { applyPlanCommand, type PlanCommand } from './plan';
@@ -72,7 +73,18 @@ function applyToPlan(ws: Workspace, roomId: Id, command: PlanCommand): Result<Wo
   );
 }
 
+/** True when any string anywhere in the value is longer than `max` (commands carry whole files on import). */
+function hasOverlongText(value: unknown, max: number): boolean {
+  if (typeof value === 'string') return value.length > max;
+  if (Array.isArray(value)) return value.some((v) => hasOverlongText(v, max));
+  if (value !== null && typeof value === 'object') return Object.values(value).some((v) => hasOverlongText(v, max));
+  return false;
+}
+
 export function apply(ws: Workspace, cmd: WorkspaceCommand): Result<Workspace> {
+  if (hasOverlongText(cmd, LIMITS.storedTextMaxLength)) {
+    return err('invalid_value', `Text is limited to ${LIMITS.storedTextMaxLength.toLocaleString('en')} characters.`);
+  }
   switch (cmd.type) {
     case 'project/create': {
       const name = validateName(cmd.name, 'Project name');

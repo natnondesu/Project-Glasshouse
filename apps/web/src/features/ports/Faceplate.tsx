@@ -5,7 +5,7 @@ import type { ReactNode } from 'react';
 const MODULE_COLS = 6;
 
 /** The jack's number as printed on the panel: the name without the block's shared prefix. */
-export const shortName = (port: Port, label: string): string => (label && port.name.startsWith(label) ? port.name.slice(label.length) : port.name);
+const shortName = (port: Port, label: string): string => (label && port.name.startsWith(label) ? port.name.slice(label.length) : port.name);
 
 /** Splits a block's rows into modules of MODULE_COLS columns, keeping each column's top and bottom jack together. */
 function modules(rows: (Port | null)[][]): (Port | null)[][][] {

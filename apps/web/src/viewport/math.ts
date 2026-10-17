@@ -7,7 +7,7 @@ export interface View {
   ty: number;
 }
 
-export const MIN_SCALE = 20;
+const MIN_SCALE = 20;
 export const MAX_SCALE = 1200;
 const WHEEL_SENSITIVITY = 0.01;
 const LINE_HEIGHT_PX = 16;

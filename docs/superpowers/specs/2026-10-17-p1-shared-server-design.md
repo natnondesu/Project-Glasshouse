@@ -76,6 +76,18 @@ The spec's "Onsite editor / IT editor" split is merged into Editor until there i
 
 Plans B and C are written in detail once Plan A lands, against the interfaces it actually ships.
 
+Plan C also fixes a known import gap: a hand-edited Project file that moves a Room between Sites can duplicate the Room ID on merge; the server import must refuse it.
+
+### Features queued with P1 (product owner, 2026-10-17)
+
+| Order | Feature | Why here |
+| --- | --- | --- |
+| After B | **Weight and floor load** — Template weight (kg), Rack load limit and an optional floor load limit (kg/m²), with warnings in checks | Small, fits the existing checks; in place before the pilot |
+| After B | **Measured / assumed values** — a flag on survey and object dimensions, shown on the plan and the Install sheet | Small; "honest status" for onsite data before the pilot |
+| After C | **Install-day verification** — installers record serial and asset tag and mark each Device installed (using Equipment state), on the Install sheet or the Device inspector | Needs signed-in users (B) and the shared server; shaped by the pilot's real install days |
+
+Stored text is already capped at 10,000 characters per field in the schema and at command entry (done before P1, 2026-10-17).
+
 ## Decisions (product owner, 2026-10-17)
 
 1. Role matrix as above: one cumulative role per user.

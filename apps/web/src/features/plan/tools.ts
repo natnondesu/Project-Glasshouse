@@ -27,13 +27,13 @@ export type Tool = 'select' | 'pan' | 'measure' | 'dimension' | 'area' | 'cut' |
 export type ToolGroupId = 'floor' | 'objects' | 'measure' | 'power';
 
 /** Wording (label, flyout name, hint) lives in the message catalogues under `tools.spec`. */
-export interface ToolSpec {
+interface ToolSpec {
   id: Tool;
   shortcut: string | null;
   Icon: ComponentType<SVGProps<SVGSVGElement>>;
 }
 
-export interface ToolGroup {
+interface ToolGroup {
   id: ToolGroupId;
   tools: Tool[];
 }
@@ -69,7 +69,7 @@ export const TOOL_GROUPS: ToolGroup[] = [
 ];
 
 /** Every tool in toolbar order, for shortcuts and lookups. */
-export const TOOLS: ToolSpec[] = [...SOLO_TOOLS, ...TOOL_GROUPS.flatMap((g) => g.tools)].map((id) => TOOL_SPECS[id]);
+const TOOLS: ToolSpec[] = [...SOLO_TOOLS, ...TOOL_GROUPS.flatMap((g) => g.tools)].map((id) => TOOL_SPECS[id]);
 
 export const toolForKey = (key: string): Tool | null =>
   TOOLS.find((t) => t.shortcut !== null && t.shortcut.toLowerCase() === key.toLowerCase())?.id ?? null;

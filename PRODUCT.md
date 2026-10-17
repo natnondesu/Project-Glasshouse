@@ -10,7 +10,7 @@ web
 
 - **Onsite engineers** (OxygenAI Operations) survey a physical Room on a laptop with a trackpad: footprint, doors, MCB panels, existing racks and furniture, power budget and network handoff.
 - **IT planners** fill Racks with Devices, configure Chassis and their Nodes, and check U, depth and power.
-- **Reviewers** resolve Review notes and approve a frozen Revision before installation.
+- **Reviewers** read the checks and Review notes and approve a frozen Revision before installation.
 - The head of Operations demos the finished MVP to the team to gather feedback.
 
 ## Product Purpose
@@ -26,6 +26,7 @@ The room geometry, rack U occupancy, Chassis → Node containment, clearance and
 - Workflow: onsite surveys → hands a Project file to IT → IT plans → submit → reviewer approves → Install sheet printed for install day.
 - The hierarchy is Project → Site → Room, with one Plan per Room. Revisions are Draft, In review or Approved.
 - The MVP is browser-local; work moves between people by exporting and importing a Project file. Hosted as a static app on Vercel.
+- Production (P1, in progress) moves the whole team onto one shared server on company infrastructure, signed in through Authelia or an app account (`docs/superpowers/specs/2026-10-17-p1-shared-server-design.md`).
 - Used on laptops, often in bright server rooms or on a trolley next to a rack.
 
 ## Capabilities and Constraints

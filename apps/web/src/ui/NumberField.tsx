@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import './fields.css';
 import { useT } from '../i18n';
 
-export type ParsedNumber = { kind: 'empty' } | { kind: 'invalid' } | { kind: 'ok'; value: number };
+type ParsedNumber = { kind: 'empty' } | { kind: 'invalid' } | { kind: 'ok'; value: number };
 
 const NUMBER_PATTERN = /^-?(\d+\.?\d*|\.\d+)$/;
 const THOUSANDS_PATTERN = /^-?\d{1,3}(,\d{3})+(\.\d+)?$/;
