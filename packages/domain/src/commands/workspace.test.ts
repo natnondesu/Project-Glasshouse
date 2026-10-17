@@ -116,3 +116,18 @@ describe('stored text ceiling', () => {
     expect(parseWorkspace(ws).ok).toBe(true);
   });
 });
+
+describe('draft/replace', () => {
+  it('restores a draft only while it still matches what the user saw', () => {
+    const ws = seeded();
+    const before = currentRevision(findRoom(ws, 'r')!.room.plan).content;
+    const edited = run(ws, { type: 'plan', roomId: 'r', command: { type: 'survey/update', patch: { width: 9 } } });
+    const seen = currentRevision(findRoom(edited, 'r')!.room.plan).content;
+    const undone = apply(edited, { type: 'draft/replace', roomId: 'r', content: before, expected: seen });
+    expect(undone.ok && currentRevision(findRoom(undone.value, 'r')!.room.plan).content.survey.width).toBe(5);
+    // Someone else widened it again: the old "seen" content no longer matches.
+    const changedAgain = run(edited, { type: 'plan', roomId: 'r', command: { type: 'survey/update', patch: { width: 11 } } });
+    expect(apply(changedAgain, { type: 'draft/replace', roomId: 'r', content: before, expected: seen })).toMatchObject({ ok: false, error: { code: 'stale', targets: ['r'] } });
+    expect(apply(edited, { type: 'draft/replace', roomId: 'nope', content: before, expected: seen })).toMatchObject({ ok: false, error: { code: 'not_found' } });
+  });
+});

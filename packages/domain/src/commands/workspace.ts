@@ -5,6 +5,7 @@ import type { Id, PlanContent, Room, Site, Workspace, EquipmentState } from '../
 import { err, ok, type Result } from '../result';
 import { LIMITS } from '../model/defaults';
 import { validateName } from '../validation';
+import { canonicalJson } from '../canonical';
 import { applyCatalogCommand, type CatalogCommand } from './catalog';
 import { applyPlanCommand, type PlanCommand } from './plan';
 import { applyReviewCommand, type ReviewCommand } from './review';
@@ -24,6 +25,8 @@ export type WorkspaceCommand =
   | { type: 'room/rename'; roomId: Id; name: string }
   | { type: 'room/delete'; roomId: Id }
   | { type: 'plan'; roomId: Id; command: PlanCommand }
+  /** Undo/redo: restores a draft, but only if it is still what the user saw — never over someone else's edit. */
+  | { type: 'draft/replace'; roomId: Id; content: PlanContent; expected: PlanContent }
   | { type: 'review'; roomId: Id; command: ReviewCommand }
   | { type: 'backup/mark'; at: string }
   | { type: 'sample/load'; at: string }
@@ -179,6 +182,14 @@ export function apply(ws: Workspace, cmd: WorkspaceCommand): Result<Workspace> {
       const result = applyReviewCommand(loc.room.plan, cmd.command);
       if (!result.ok) return result;
       return ok(produce(ws, (d) => void (draftRoom(d, cmd.roomId).plan = castDraft(result.value))));
+    }
+    case 'draft/replace': {
+      const loc = findRoom(ws, cmd.roomId);
+      if (!loc) return gone('room', cmd.roomId);
+      if (canonicalJson(currentRevision(loc.room.plan).content) !== canonicalJson(cmd.expected)) {
+        return err('stale', 'This room changed since, so that undo would overwrite newer work.', [cmd.roomId]);
+      }
+      return replaceDraftContent(ws, cmd.roomId, cmd.content);
     }
     case 'plan':
       return applyToPlan(ws, cmd.roomId, cmd.command);
