@@ -25,7 +25,11 @@ services:
     healthcheck:
       <<: *common-healthcheck
       test: ['CMD-SHELL', 'pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"']
-    networks: [default]
+    # web also joins traefik-proxy, where another stack's own `db` could answer to that name: the apps use this alias instead.
+    # An alias (not only container_name) so it still resolves when the smoke/staging override drops container_name.
+    networks:
+      default:
+        aliases: [glasshouse-db]
     deploy:
       resources:
         limits:
@@ -43,7 +47,7 @@ services:
       <<: *common-environment
       GLASSHOUSE_AUTH: 'on'
       GLASSHOUSE_STORE: postgres
-      DATABASE_URL: postgresql://${POSTGRES_USER:-glasshouse}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-glasshouse}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-glasshouse}:${POSTGRES_PASSWORD}@glasshouse-db:5432/${POSTGRES_DB:-glasshouse}
     expose: ['8787']
     depends_on:
       db:
@@ -75,7 +79,7 @@ services:
     restart: unless-stopped
     environment:
       <<: *common-environment
-      PGHOST: db
+      PGHOST: glasshouse-db
       PGDATABASE: ${POSTGRES_DB:-glasshouse}
       PGUSER: ${POSTGRES_USER:-glasshouse}
       PGPASSWORD: ${POSTGRES_PASSWORD}

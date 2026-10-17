@@ -11,6 +11,9 @@ const createBody = z.object({ email: z.string().email().max(200), displayName: z
 const patchBody = z.object({ role: z.enum(ROLES).optional(), active: z.boolean().optional(), displayName: z.string().trim().min(1).max(80).optional() });
 const refuse = (reply: FastifyReply, status: number, code: string, message: string) => reply.code(status).send({ error: { code, message, targets: [] } });
 
+/** The server's own calendar day (TZ in the container is Asia/Bangkok), which is the day the admin sees on the wall. */
+const localDay = (d: Date): string => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
 export function registerAdmin(api: FastifyInstance, { store, service, localLogin, now }: { store: IdentityStore; service: WorkspaceService; localLogin: boolean; now: () => Date }): void {
   // One instance by design (see the P1 design doc), so an in-process queue is enough to make
   // "count the admins, then change one" atomic.
@@ -30,7 +33,7 @@ export function registerAdmin(api: FastifyInstance, { store, service, localLogin
 
     admin.get('/api/admin/backup', async (_request, reply) => {
       const at = now();
-      reply.header('content-disposition', `attachment; filename="glasshouse-backup-${at.toISOString().slice(0, 10)}.json"`);
+      reply.header('content-disposition', `attachment; filename="glasshouse-backup-${localDay(at)}.json"`);
       return exportBackup(service.state.workspace, at.toISOString());
     });
 

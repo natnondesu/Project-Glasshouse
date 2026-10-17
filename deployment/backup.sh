@@ -3,7 +3,7 @@
 # `backup.sh --once` takes one backup now and exits (used by the restore drill); it exits non-zero if the dump failed.
 set -eu
 case "${BACKUP_AT:-03:00}" in
-  [0-2][0-9]:[0-5][0-9]) ;;
+  [01][0-9]:[0-5][0-9] | 2[0-3]:[0-5][0-9]) ;;
   *) echo "backup: BACKUP_AT must look like 03:00 (HH:MM), got '${BACKUP_AT:-}'" >&2; exit 2 ;;
 esac
 # Called from an `if`, where `set -e` does not apply, so every step is checked by hand.

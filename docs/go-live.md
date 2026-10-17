@@ -90,12 +90,19 @@ The company directory maps the name claim to a first name, so company sign-in gi
    docker compose exec web node dist/cli.js create-admin you@oxygenai.com "Your Name"
    ```
 
-6. Recovery: if the only admin was demoted or switched off, restore the role from the host.
+6. Recovery, when nobody can sign in as an admin. What each command can do:
+
+   - `set-role <email> admin` gives the admin role back to an account that still exists and is switched on. It does not switch an account on, and it refuses to demote the last active admin.
+   - `reset-password <email>` works only for a local (password) account. It does not work for a company account, and it does not switch an account on.
+   - If the admin account itself is switched off, or it is a company account whose password you cannot reset: ask another admin to switch it on or change it in the Users screen, or create a new local admin with a new email (`create-admin`; sign-in with a password needs `GLASSHOUSE_LOCAL_LOGIN=on`).
 
    ```sh
    docker compose exec web node dist/cli.js set-role you@oxygenai.com admin
    docker compose exec web node dist/cli.js reset-password you@oxygenai.com
+   docker compose exec web node dist/cli.js create-admin new.admin@oxygenai.com "New Admin"
    ```
+
+   Always run the CLI with `docker compose exec web ...`, never `docker compose run`: `run` can start a newer image than the one serving, and a newer image migrates the live database when it starts.
 
 ## 5. Proxy and client addresses
 
@@ -140,12 +147,12 @@ From your laptop: `ssh -L 18787:127.0.0.1:18787 <ops-host>`, then open `http://l
 
 What to expect after the import:
 
-- Imported approvals are historical records. An imported Project file can carry approved revisions; they show "(unverified)" names and get no row in the server's approvals table (only approvals made on this server are recorded there).
+- Imported approvals are historical records. An imported Project file can carry approved revisions; they show "(unverified)" names and get no row in the server's approvals table (only approvals made on this server are recorded there). They come in as a new project or as a copy; an import that merges into rooms this server already has is refused when the file marks one of them approved ("Import it as a copy instead"), and an approval hash that does not match the content is dropped.
 - An imported room is unclaimed: the first accepted edit claims it.
 
 ## 7. Backups and restore
 
-- **Nightly dumps** by the `backup` container into `/data/services/services-data/glasshouse/backups/glasshouse-YYYY-MM-DD-HHMM.dump`, keeping 14 days. Check it weekly: `docker logs --tail 20 glasshouse-backup` must show a recent `backup: wrote ...` line. A failed dump is logged to stderr, leaves no file behind, and is retried every 30 seconds while the `BACKUP_AT` minute lasts; if that window passes it is retried the next day. `BACKUP_AT` must be `HH:MM`; the container refuses to start otherwise.
+- **Nightly dumps** by the `backup` container into `/data/services/services-data/glasshouse/backups/glasshouse-YYYY-MM-DD-HHMM.dump`, keeping 14 days. Check it weekly: `docker logs --tail 20 glasshouse-backup` must show a recent `backup: wrote ...` line. A failed dump is logged to stderr, leaves no file behind, and is retried every 30 seconds while the `BACKUP_AT` minute lasts; if that window passes it is retried the next day. `BACKUP_AT` must be a 24-hour `HH:MM` between `00:00` and `23:59`; the container refuses to start otherwise.
 - **In-app download**: an admin chooses "Download workspace backup" in the account menu. It is the whole workspace as a file the app can import; use it before risky edits and for the weekly off-host copy before go-live.
 - **Off the host**: ask IT for their standard off-host backup target and copy `backups/` there. The dumps on the same disk do not protect against losing the disk.
 - **Restore** a dump into the running stack (this replaces everything in the database with the dump's contents):
@@ -154,7 +161,7 @@ What to expect after the import:
   ./restore.sh /data/services/services-data/glasshouse/backups/glasshouse-YYYY-MM-DD-HHMM.dump
   ```
 
-  It asks you to type `yes` first (`FORCE=1` skips the question; the smoke test uses that). It stops `web`, loads the dump into `db`, and starts `web`, which replays the restored log. If the load fails it exits non-zero and leaves `web` stopped on purpose: the previous data may be partly replaced, so restore an earlier dump with the same script, or ask for help with the output in hand, before starting `web` again. Then open the app and check a few rooms. Use `sudo ./restore.sh ...` if the backups folder is not readable by you. Browser tabs that were open during the restore reload their workspace by themselves once `web` is back (the restarted server has a new generation id, which every live-update stream announces first), replaying anything they had not sent yet; nobody needs to refresh by hand.
+  It asks you to type `yes` first (`FORCE=1` skips the question; the smoke test uses that). It stops `web`, loads the dump into `db`, and starts `web`, which replays the restored log. The dump is converted to SQL first, then run in one transaction that starts by emptying the `public` schema: a damaged dump, or any failure while loading, rolls back and leaves the previous data exactly as it was. In that case the script exits non-zero and leaves `web` stopped; start it again with `docker compose up -d --wait web` (or try another dump). Then open the app and check a few rooms. Use `sudo ./restore.sh ...` if the backups folder is not readable by you. Browser tabs that were open during the restore reload their workspace by themselves once `web` is back (the restarted server has a new generation id, which every live-update stream announces first), replaying anything they had not sent yet; nobody needs to refresh by hand.
 - **Restore drill: before go-live and every quarter.** Take a backup now (`docker compose exec -T backup sh /backup.sh --once`), make a visible change, restore the backup, and confirm the change is gone and the rest is intact. Do it on the staging stack from section 6 if the real one already holds live work (`COMPOSE="$STAGING" ./restore.sh <dump>`). `pnpm smoke` from a laptop runs the same drill against a throwaway stack, including the second-instance refusal.
 
 ## 8. Releasing

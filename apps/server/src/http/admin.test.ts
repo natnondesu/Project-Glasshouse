@@ -25,14 +25,14 @@ class SlowCountStore extends MemoryIdentityStore {
   }
 }
 
-async function setup(as: User, others: User[] = []) {
+async function setup(as: User, others: User[] = [], at = NOW) {
   const store = new SlowCountStore();
   for (const u of [as, ...others]) await store.createUser(u);
   const service = await WorkspaceService.open(new MemoryCommandStore());
   const app = await buildApp({
     service, publicOrigin: null, authRoutes: registerDevAuthRoutes,
     authenticate: async (request) => { const u = await store.findUserById(String(request.headers['x-test-user'] ?? as.id)); return u && u.active ? { id: u.id, name: u.displayName, role: u.role, verified: true } : null; },
-    admin: (api) => registerAdmin(api, { store, service, localLogin: true, now: () => new Date(NOW) }),
+    admin: (api) => registerAdmin(api, { store, service, localLogin: true, now: () => new Date(at) }),
   });
   apps.push(app);
   const call = (method: 'GET' | 'POST' | 'PATCH', url: string, payload?: object, asUser?: string) => app.inject({ method, url, headers: { 'x-glasshouse': '1', ...(asUser ? { 'x-test-user': asUser } : {}) }, ...(payload ? { payload } : {}) });
@@ -110,5 +110,19 @@ describe('admin users API', () => {
     expect(res.json().format).toBe(BACKUP_FORMAT);
     expect(parseBackup(res.json()).ok).toBe(true);
     expect((await call('GET', '/api/admin/backup', undefined, 'ed')).statusCode).toBe(403);
+  });
+
+  it("dates the backup file with the server's local day, not UTC", async () => {
+    const zone = process.env.TZ;
+    process.env.TZ = 'Asia/Bangkok';
+    try {
+      // 20:00 UTC on the 18th is 03:00 on the 19th in Bangkok.
+      const { call } = await setup(user('ad', 'admin'), [], '2026-10-18T20:00:00.000Z');
+      const res = await call('GET', '/api/admin/backup');
+      expect(res.headers['content-disposition']).toBe('attachment; filename="glasshouse-backup-2026-10-19.json"');
+    } finally {
+      if (zone === undefined) delete process.env.TZ;
+      else process.env.TZ = zone;
+    }
   });
 });

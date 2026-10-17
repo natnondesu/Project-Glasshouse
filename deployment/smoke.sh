@@ -144,14 +144,30 @@ dump="$(ls -t "$data_dir"/backups/glasshouse-*.dump 2>/dev/null | head -n 1)"
 
 step "a failed backup is reported and leaves nothing behind"
 before="$(ls "$data_dir/backups" | wc -l)"
-if $COMPOSE exec -T -e PGPASSWORD=wrong backup sh /backup.sh --once >/dev/null 2>&1; then
+if failed="$($COMPOSE exec -T -e PGPASSWORD=wrong backup sh /backup.sh --once 2>&1 >/dev/null)"; then
   fail "backup.sh --once exited 0 although pg_dump could not connect"
 fi
+echo "$failed" | grep -q 'pg_dump failed' || fail "the failed backup did not say 'pg_dump failed' on stderr: $failed"
 [ "$(ls "$data_dir/backups" | wc -l)" = "$before" ] || fail "a failed backup left a file in $data_dir/backups"
+
+step "a backup time that is not HH:MM is refused"
+for bad in 24:00 29:30 7:00 03:60; do
+  if $COMPOSE exec -T -e "BACKUP_AT=$bad" backup sh /backup.sh --once >/dev/null 2>&1; then
+    fail "backup.sh accepted BACKUP_AT=$bad"
+  fi
+done
 
 step "restore drill"
 create_project smoke-two "Smoke two" 2
 [ "$(seq_now)" = 2 ] || fail "the second project did not reach seq 2"
+# A damaged dump must change nothing; restore.sh leaves web stopped, so start it again and look.
+printf 'not a dump' > "$data_dir/junk.dump"
+if FORCE=1 sh ./restore.sh "$data_dir/junk.dump" >/dev/null 2>&1; then
+  fail "restore.sh accepted a file that is not a dump"
+fi
+$COMPOSE up -d --wait web >/dev/null || fail "web did not start after a refused restore"
+wait_ready
+[ "$(seq_now)" = 2 ] || fail "a refused restore changed the workspace"
 FORCE=1 sh ./restore.sh "$dump" || fail "restore.sh failed"
 wait_ready
 [ "$(seq_now)" = 1 ] || fail "after the restore the workspace is not back at seq 1"

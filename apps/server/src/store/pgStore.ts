@@ -56,6 +56,9 @@ export class PgCommandStore implements CommandStore {
     let lock: pg.PoolClient | undefined;
     try {
       lock = await pool.connect();
+      // At once, before the lock query and migrations: an unhandled 'error' event on this client would crash the process.
+      // If this connection drops later, Postgres frees the lock and a second server could start: stop rather than run unguarded.
+      lock.on('error', onLockLost);
       // Before migrating: a refused second (or newer) server must not touch the live database.
       const r = await lock.query<{ ok: boolean }>('select pg_try_advisory_lock($1) as ok', [INSTANCE_LOCK_KEY]);
       if (!r.rows[0]?.ok) {
@@ -67,8 +70,6 @@ export class PgCommandStore implements CommandStore {
       await pool.end().catch(() => undefined);
       throw e;
     }
-    // If this connection drops, Postgres frees the lock and a second server could start: stop rather than run unguarded.
-    lock.on('error', onLockLost);
     return new PgCommandStore(pool, lock);
   }
 
