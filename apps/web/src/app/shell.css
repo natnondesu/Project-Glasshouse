@@ -350,3 +350,10 @@
 .title-block__cells[hidden] {
   display: none;
 }
+
+.sync-notice {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}

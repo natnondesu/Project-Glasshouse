@@ -7,6 +7,7 @@ import { useWorkspaceStore } from '../store/workspaceStore';
 import { useViewedRevisionNumber } from '../store/hooks';
 import { useT } from '../i18n';
 import { HintLayer } from './HintLayer';
+import { SyncNotice } from './SyncNotice';
 import { ConfirmDialog } from '../ui/confirm/ConfirmDialog';
 import { TitleBlock } from './TitleBlock';
 import './shell.css';
@@ -20,6 +21,7 @@ export function Shell() {
   const undo = useWorkspaceStore((s) => s.undo);
   const redo = useWorkspaceStore((s) => s.redo);
   const readOnly = useWorkspaceStore((s) => s.readOnly);
+  const connection = useWorkspaceStore((s) => s.connection);
   const viewingPast = useViewedRevisionNumber() !== null;
   const [treeOpen, setTreeOpen] = usePersistentState('glasshouse:tree-open', true);
   const m = useT();
@@ -46,11 +48,16 @@ export function Shell() {
       </a>
       <HintLayer />
       <TitleBlock roomId={roomId} />
-      {readOnly ? (
+      {connection === 'offline' ? (
+        <p className="read-only-banner" role="alert">
+          {m.shell.offline}
+        </p>
+      ) : readOnly ? (
         <p className="read-only-banner" role="alert">
           {m.shell.otherTab}
         </p>
       ) : null}
+      <SyncNotice />
       <div className="shell__body">
         {treeOpen ? <ProjectTree activeRoomId={roomId} onCollapse={() => setTreeOpen(false)} /> : <PanelRail label={m.panels.projects} side="left" onExpand={() => setTreeOpen(true)} />}
         <main id="main" tabIndex={-1} className="shell__main">

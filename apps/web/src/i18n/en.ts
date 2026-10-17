@@ -40,6 +40,12 @@ export const en = {
     opening: 'Opening your workspace…',
     otherTab: 'Glasshouse is open in another tab, so this tab is read-only. Close the other tab and reload to edit here.',
     equipmentDetails: 'Equipment details',
+    serverIdle: 'Connected to the Glasshouse server',
+    savedServer: (time: string) => `Saved to the server · ${time}`,
+    offline: 'Lost the connection to the Glasshouse server. Reconnecting… Edits you already made are kept and will be sent.',
+    notApplied: (reason: string) => `A change didn't go through: ${reason}`,
+    serverUnreachable: (reason: string) => `Glasshouse couldn't reach its server. ${reason}`,
+    tryAgain: 'Try again',
   },
   views: {
     nav: 'Room views',

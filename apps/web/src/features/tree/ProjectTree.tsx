@@ -8,6 +8,7 @@ import { IconChevronLeft, IconPlus, IconUpload } from '../../ui/icons';
 import { ImportDialog } from '../handoff/ImportDialog';
 import { pad2 } from '../../ui/StatusStamp';
 import { useT } from '../../i18n';
+import { SERVER_MODE } from '../../sync/serverMode';
 import { BackupPanel } from './BackupPanel';
 import { TreeRow } from './TreeRow';
 import './tree.css';
@@ -186,7 +187,7 @@ export function ProjectTree({ activeRoomId, onCollapse }: { activeRoomId: string
       )}
       </div>
       {importing ? <ImportDialog file={importing} onClose={() => setImporting(null)} /> : null}
-      <BackupPanel />
+      {SERVER_MODE ? null : <BackupPanel />}
     </aside>
   );
 }
