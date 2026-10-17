@@ -2,7 +2,7 @@ import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testconta
 import pg from 'pg';
 import { afterAll, beforeAll, expect, it } from 'vitest';
 import { WorkspaceService } from '../workspaceService';
-import { PgCommandStore } from './pgStore';
+import { InstanceLockError, PgCommandStore } from './pgStore';
 
 let container: StartedPostgreSqlContainer;
 // The log stores only id and name; read-back entries carry role viewer and verified true (a record, not a credential).
@@ -80,4 +80,13 @@ it('rolls the command back when its approval cannot be written', async () => {
   expect(await store.findCommand('q', 'c')).toBeNull();
   expect(await store.commandsAfter(2199, 10)).toEqual([]);
   await store.close();
+});
+
+it('refuses a second server on the same database and frees the lock on close', async () => {
+  const url = container.getConnectionUri();
+  const first = await PgCommandStore.connect(url);
+  await expect(PgCommandStore.connect(url)).rejects.toBeInstanceOf(InstanceLockError);
+  await first.close();
+  const again = await PgCommandStore.connect(url);
+  await again.close();
 });

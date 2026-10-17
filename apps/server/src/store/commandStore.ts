@@ -45,5 +45,7 @@ export interface CommandStore {
   append(entry: LoggedCommand, approval?: ApprovalRecord | null): Promise<void>;
   listApprovals(): Promise<ApprovalRecord[]>;
   saveSnapshot(seq: number, workspace: Workspace): Promise<void>;
+  /** Throws when the database is unreachable. */
+  ping(): Promise<void>;
   close(): Promise<void>;
 }

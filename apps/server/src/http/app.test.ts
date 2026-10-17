@@ -73,3 +73,22 @@ it('reads the client address from X-Forwarded-For only when a proxy is trusted',
   }
   expect(seen).toEqual(['10.0.0.1', '203.0.113.9']);
 });
+
+it('serves readiness without auth, and 503 when the database does not answer', async () => {
+  const { app } = await setup(() => null);
+  const ok = await app.inject({ url: '/api/ready' });
+  expect(ok.statusCode).toBe(200);
+  expect(ok.json()).toEqual({ ok: true, seq: 0 });
+
+  class Down extends MemoryCommandStore {
+    override async ping(): Promise<void> {
+      throw new Error('connect ECONNREFUSED');
+    }
+  }
+  const service = await WorkspaceService.open(new Down());
+  const down = await buildApp({ service, authenticate: () => null, authRoutes: registerDevAuthRoutes, publicOrigin: null });
+  apps.push(down);
+  const res = await down.inject({ url: '/api/ready' });
+  expect(res.statusCode).toBe(503);
+  expect(res.json()).toEqual({ ok: false, reason: 'The database is not answering: connect ECONNREFUSED' });
+});

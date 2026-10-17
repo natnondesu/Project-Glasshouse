@@ -1,6 +1,6 @@
 import { createCopyIds, createObject, createWorkspace, exportProjectFile, type Rack, type Template, type WorkspaceCommand } from '@glasshouse/domain';
 import { describe, expect, it, vi } from 'vitest';
-import type { LoggedCommand } from './store/commandStore';
+import type { ApprovalRecord, LoggedCommand } from './store/commandStore';
 import { MemoryCommandStore } from './store/memoryStore';
 import { WorkspaceService, type Submission } from './workspaceService';
 
@@ -281,5 +281,64 @@ describe('approved revisions', () => {
     const { svc, store } = await approved();
     expect(await go(svc, editor, 'del', { type: 'room/delete', roomId: 'r' })).toMatchObject({ kind: 'accepted' });
     expect(await store.listApprovals()).toHaveLength(1);
+  });
+});
+
+describe('recovery and readiness', () => {
+  /** The insert lands, then the "network" fails: the classic ambiguous write. */
+  class AmbiguousOnce extends MemoryCommandStore {
+    failNext = false;
+    override async append(entry: LoggedCommand, approval?: ApprovalRecord | null): Promise<void> {
+      await super.append(entry, approval);
+      if (this.failNext) {
+        this.failNext = false;
+        throw new Error('connection reset after commit');
+      }
+    }
+  }
+
+  it('recovers from an append that committed but failed: the retry is answered once, nothing wedges', async () => {
+    const store = new AmbiguousOnce();
+    const svc = await WorkspaceService.open(store, { onError: () => {} });
+    const seen: number[] = [];
+    svc.subscribe((e) => seen.push(e.seq));
+    store.failNext = true;
+    await expect(submit(svc, '1', create('p'))).rejects.toThrow('connection reset');
+    // The client retries the same command id:
+    expect(await submit(svc, '1', create('p'))).toEqual({ kind: 'accepted', seq: 1, duplicate: true });
+    // And the next command takes seq 2 instead of colliding with the landed row:
+    expect(await submit(svc, '2', create('q'))).toEqual({ kind: 'accepted', seq: 2, duplicate: false });
+    expect(svc.state.workspace.projects.map((x) => x.id)).toEqual(['p', 'q']);
+    expect(seen).toEqual([1, 2]);
+  });
+
+  it('an append that failed without landing is simply retried', async () => {
+    class FailsOnce extends MemoryCommandStore {
+      failNext = true;
+      override async append(entry: LoggedCommand, approval?: ApprovalRecord | null): Promise<void> {
+        if (this.failNext) {
+          this.failNext = false;
+          throw new Error('database down');
+        }
+        await super.append(entry, approval);
+      }
+    }
+    const svc = await WorkspaceService.open(new FailsOnce(), { onError: () => {} });
+    await expect(submit(svc, '1', create('p'))).rejects.toThrow('database down');
+    expect(await submit(svc, '1', create('p'))).toEqual({ kind: 'accepted', seq: 1, duplicate: false });
+  });
+
+  it('is ready when the store answers, and says why when it does not', async () => {
+    class Down extends MemoryCommandStore {
+      down = false;
+      override async ping(): Promise<void> {
+        if (this.down) throw new Error('connect ECONNREFUSED');
+      }
+    }
+    const store = new Down();
+    const svc = await WorkspaceService.open(store);
+    expect(await svc.ready()).toEqual({ ok: true, seq: 0 });
+    store.down = true;
+    expect(await svc.ready()).toEqual({ ok: false, reason: 'The database is not answering: connect ECONNREFUSED' });
   });
 });

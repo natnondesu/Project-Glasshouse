@@ -68,6 +68,11 @@ export async function buildApp({ service, authenticate, authRoutes, publicOrigin
   await app.register(fastifyCookie);
   app.decorateRequest('actor', null);
   app.get('/api/health', async () => ({ ok: true, seq: service.state.seq }));
+  // For the container healthcheck and the proxy: the workspace is loaded (we are listening) and the database answers.
+  app.get('/api/ready', async (_request, reply) => {
+    const r = await service.ready();
+    return r.ok ? r : reply.code(503).send(r);
+  });
   await app.register(async (auth) => {
     await authRoutes(auth);
   });

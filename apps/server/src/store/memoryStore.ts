@@ -40,5 +40,7 @@ export class MemoryCommandStore implements CommandStore {
     this.snapshot = { seq, workspace: structuredClone(workspace) };
   }
 
+  async ping(): Promise<void> {}
+
   async close(): Promise<void> {}
 }

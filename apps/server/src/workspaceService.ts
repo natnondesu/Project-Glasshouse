@@ -51,6 +51,24 @@ function approvalRecord(seq: number, command: WorkspaceCommand, after: Workspace
   };
 }
 
+/** Applies logged commands after `from` to `workspace`; throws on a gap or a command that won't apply. */
+async function replayAfter(store: CommandStore, from: { seq: number; workspace: Workspace }, onEntry: (e: LoggedCommand) => void = () => {}): Promise<{ seq: number; workspace: Workspace }> {
+  let { seq, workspace } = from;
+  for (;;) {
+    const page = await store.commandsAfter(seq, REPLAY_PAGE);
+    if (page.length === 0) return { seq, workspace };
+    for (const entry of page) {
+      if (entry.seq !== seq + 1) throw new Error(`The command log has a gap after seq ${seq} (next is ${entry.seq}).`);
+      const result = apply(workspace, entry.command);
+      if (result === undefined) throw new Error(`Replaying seq ${entry.seq} failed: unknown change type "${entry.command.type}".`);
+      if (!result.ok) throw new Error(`Replaying seq ${entry.seq} failed: ${result.error.message}`);
+      workspace = result.value;
+      seq = entry.seq;
+      onEntry(entry);
+    }
+  }
+}
+
 /**
  * The one place edits are accepted. Holds the workspace in memory, applies commands strictly one at a time,
  * validates the result, logs it, then tells subscribers. Single instance by design (see the P1 design doc).
@@ -59,6 +77,8 @@ export class WorkspaceService {
   private queue: Promise<unknown> = Promise.resolve();
   private readonly listeners = new Set<Listener>();
   private sinceSnapshot = 0;
+  /** True after an append error, until the log tail has been re-read. */
+  private recovering = false;
 
   private constructor(
     private readonly store: CommandStore,
@@ -87,18 +107,7 @@ export class WorkspaceService {
         workspace = seeded.value;
       }
     }
-    for (;;) {
-      const page = await store.commandsAfter(seq, REPLAY_PAGE);
-      if (page.length === 0) break;
-      for (const entry of page) {
-        if (entry.seq !== seq + 1) throw new Error(`The command log has a gap after seq ${seq} (next is ${entry.seq}).`);
-        const result = apply(workspace, entry.command);
-        if (result === undefined) throw new Error(`Replaying seq ${entry.seq} failed: unknown change type "${entry.command.type}".`);
-        if (!result.ok) throw new Error(`Replaying seq ${entry.seq} failed: ${result.error.message}`);
-        workspace = result.value;
-        seq = entry.seq;
-      }
-    }
+    ({ seq, workspace } = await replayAfter(store, { seq, workspace }));
     // Always snapshot after boot: keeps the replay tail short and pins a seeded sample's IDs.
     await store.saveSnapshot(seq, workspace);
     return new WorkspaceService(store, { seq, workspace }, options.snapshotEvery ?? SNAPSHOT_EVERY, onError, now);
@@ -135,6 +144,15 @@ export class WorkspaceService {
     return { accepted, rejected: null, skipped: [] };
   }
 
+  async ready(): Promise<{ ok: true; seq: number } | { ok: false; reason: string }> {
+    try {
+      await this.store.ping();
+    } catch (e) {
+      return { ok: false, reason: `The database is not answering: ${describe(e)}` };
+    }
+    return { ok: true, seq: this.current.seq };
+  }
+
   /** Writes a snapshot now (used on shutdown). */
   flush(): Promise<void> {
     return this.enqueue(() => this.writeSnapshot());
@@ -151,6 +169,7 @@ export class WorkspaceService {
     const { clientId, commandId, command } = submission;
     if (!isNonEmptyString(clientId) || !isNonEmptyString(commandId)) return rejected('Each change needs a clientId and a commandId.');
     if (typeof command !== 'object' || command === null || !isNonEmptyString(command.type)) return rejected('Each change needs a command with a type.');
+    if (this.recovering) await this.recover();
     const previous = await this.store.findCommand(clientId, commandId);
     if (previous) return { kind: 'accepted', seq: previous.seq, duplicate: true };
     if (BROWSER_ONLY.has(command.type)) return rejected(`"${command.type}" only applies to a workspace stored in one browser.`);
@@ -186,15 +205,16 @@ export class WorkspaceService {
       return { kind: 'rejected', error: err('invalid_value', "The approval couldn't be recorded, so it wasn't saved. Try again; if it keeps failing, tell an admin.", [approval.roomId]).error };
     }
     const entry: LoggedCommand = { seq: this.current.seq + 1, clientId, commandId, actor, command: toApply };
-    await this.store.append(entry, approval.record);
-    this.current = { seq: entry.seq, workspace: result.value };
-    for (const listener of this.listeners) {
-      try {
-        listener(entry);
-      } catch (e) {
-        this.onError(`A live-update listener failed at seq ${entry.seq}`, e);
-      }
+    try {
+      await this.store.append(entry, approval.record);
+    } catch (e) {
+      // The insert may have committed before the error reached us. Re-read the log before the next command
+      // so a landed row is applied (and answered as a duplicate) instead of colliding with the next seq.
+      this.recovering = true;
+      throw e;
     }
+    this.current = { seq: entry.seq, workspace: result.value };
+    this.notify(entry);
     this.sinceSnapshot += 1;
     if (this.sinceSnapshot >= this.snapshotEvery) {
       try {
@@ -205,6 +225,22 @@ export class WorkspaceService {
       }
     }
     return { kind: 'accepted', seq: entry.seq, duplicate: false };
+  }
+
+  /** Brings memory up to the log after an append whose outcome was unknown. Subscribers hear about landed commands. */
+  private async recover(): Promise<void> {
+    this.current = await replayAfter(this.store, this.current, (entry) => this.notify(entry));
+    this.recovering = false;
+  }
+
+  private notify(entry: LoggedCommand): void {
+    for (const listener of this.listeners) {
+      try {
+        listener(entry);
+      } catch (e) {
+        this.onError(`A live-update listener failed at seq ${entry.seq}`, e);
+      }
+    }
   }
 
   private async writeSnapshot(): Promise<void> {
