@@ -3,7 +3,7 @@ import { afterEach, expect, it, vi } from 'vitest';
 import { MemoryCommandStore } from '../store/memoryStore';
 import { WorkspaceService } from '../workspaceService';
 import { buildApp } from './app';
-import { devAuthenticate } from './devAuth';
+import { devAuthenticate, registerDevAuthRoutes } from './devAuth';
 import { MAX_CATCH_UP } from './events';
 
 let app: FastifyInstance | null = null;
@@ -12,10 +12,10 @@ afterEach(async () => {
   app = null;
 });
 
-const actor = { id: 'dev:t', name: 't' };
+const actor = { id: 'dev:t', name: 't', role: 'editor' as const, verified: false };
 
 async function start(service: WorkspaceService, heartbeatMs?: number): Promise<string> {
-  app = await buildApp({ service, authenticate: devAuthenticate, heartbeatMs });
+  app = await buildApp({ service, authenticate: devAuthenticate, authRoutes: registerDevAuthRoutes, publicOrigin: null, heartbeatMs });
   await app.listen({ port: 0, host: '127.0.0.1' });
   const address = app.server.address();
   if (address === null || typeof address === 'string') throw new Error('no port');

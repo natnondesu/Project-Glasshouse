@@ -1,9 +1,14 @@
 import type { Workspace, WorkspaceCommand } from '@glasshouse/domain';
+import type { Role } from '../identity/types';
 
-/** Who sent a command. Plan A: a dev stand-in; Plan B: the signed-in user. */
+/** Who sent a command: the signed-in user, or the unverified dev stand-in (GLASSHOUSE_AUTH=dev-insecure). */
 export interface Actor {
   id: string;
   name: string;
+  role: Role;
+  /** False for the dev stand-in: nothing is stamped with its name. */
+  verified: boolean;
+  mustChangePassword?: boolean;
 }
 
 export interface LoggedCommand {

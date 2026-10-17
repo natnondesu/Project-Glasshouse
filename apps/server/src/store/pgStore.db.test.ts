@@ -4,7 +4,8 @@ import { WorkspaceService } from '../workspaceService';
 import { PgCommandStore } from './pgStore';
 
 let container: StartedPostgreSqlContainer;
-const actor = { id: 'dev:Ploy', name: 'Ploy' };
+// The log stores only id and name; read-back entries carry role viewer and verified true (a record, not a credential).
+const actor = { id: 'dev:Ploy', name: 'Ploy', role: 'viewer' as const, verified: true };
 
 beforeAll(async () => {
   container = await new PostgreSqlContainer('postgres:17-alpine').start();

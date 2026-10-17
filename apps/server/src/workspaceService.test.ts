@@ -4,7 +4,7 @@ import type { LoggedCommand } from './store/commandStore';
 import { MemoryCommandStore } from './store/memoryStore';
 import { WorkspaceService, type Submission } from './workspaceService';
 
-const ploy = { id: 'dev:Ploy', name: 'Ploy' };
+const ploy = { id: 'dev:Ploy', name: 'Ploy', role: 'editor' as const, verified: false };
 const create = (id: string, name = id): WorkspaceCommand => ({ type: 'project/create', id, name });
 const submit = (svc: WorkspaceService, commandId: string, command: WorkspaceCommand, clientId = 'a') => svc.submit({ clientId, commandId, command }, ploy);
 

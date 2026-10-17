@@ -2,7 +2,7 @@ import { createWorkspace } from '@glasshouse/domain';
 import { expect, it } from 'vitest';
 import { MemoryCommandStore } from './memoryStore';
 
-const actor = { id: 'dev:Ploy', name: 'Ploy' };
+const actor = { id: 'dev:Ploy', name: 'Ploy', role: 'editor' as const, verified: false };
 const entry = (seq: number, commandId = `c${seq}`) => ({ seq, clientId: 'a', commandId, actor, command: { type: 'project/create' as const, id: `p${seq}`, name: `P${seq}` } });
 
 it('keeps commands in order, pages them and finds them by client command id', async () => {
