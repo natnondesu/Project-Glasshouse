@@ -70,7 +70,7 @@ export function createShowcaseProject(at: string): Result<Project> {
   };
   const room = (siteId: Id, name: string, width: number, length: number, patch: Record<string, unknown> = {}): Id => {
     const id = newId();
-    run({ type: 'room/create', siteId, id, name });
+    run({ type: 'room/create', siteId, id, floorAreaId: newId(), name });
     plan(id, { type: 'survey/update', patch: { width, length, ...patch } });
     plan(id, { type: 'floor/update', id: firstAreaId(id), patch: { x: 0, y: 0, w: width, d: length } });
     VLANS.forEach(([vid, vname]) => plan(id, { type: 'vlan/add', vlan: { vid, name: vname } }));

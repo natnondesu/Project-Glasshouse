@@ -119,7 +119,7 @@ describe('AC09: template changes never touch placed devices', () => {
     const cmds: WorkspaceCommand[] = [
       { type: 'project/create', id: 'p', name: 'P' },
       { type: 'site/create', projectId: 'p', id: 's', name: 'S' },
-      { type: 'room/create', siteId: 's', id: 'r', name: 'R' },
+      { type: 'room/create', siteId: 's', id: 'r', floorAreaId: 'fa-r', name: 'R' },
       { type: 'plan', roomId: 'r', command: { type: 'object/add', object: rack } },
     ];
     let ws: Workspace = cmds.reduce((w, cmd) => {

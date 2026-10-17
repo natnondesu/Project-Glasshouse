@@ -5,7 +5,8 @@ import { apply as applyWorkspaceCommand } from './commands/workspace';
 import { createWorkspace } from './factories';
 import { currentRevision, findRoom } from './lookup';
 import { approvalBlockers, latestApproved } from './readiness';
-import { createSampleProject, withSample } from './sample';
+import { canonicalJson } from './canonical';
+import { createSampleProject, sampleProjectFiles, withSample } from './sample';
 import { feedRoute } from './feeds';
 import { footprintOf } from './footprint';
 import { pointInPolygon } from './geometry/polygon';
@@ -121,5 +122,28 @@ describe('Sample Project power feeds', () => {
     expect(mcb && mcb.type !== 'rack' && mcb.panel?.phase).toBe('three');
     expect(sc.vlans.map((v) => v.vid)).toEqual([10, 20, 99]);
     expect(checkPlan(sc)).toEqual([]);
+  });
+});
+
+describe('sampleProjectFiles', () => {
+  it('imports as the sample projects, flagged and with their templates, identically on every replica', () => {
+    const files = sampleProjectFiles(createWorkspace(), AT);
+    if (!files.ok) throw new Error(files.error.message);
+    expect(files.value).toHaveLength(2);
+    const importAll = (ws: Workspace): Workspace =>
+      files.value.reduce((w, file) => {
+        const r = applyWorkspaceCommand(w, { type: 'project/import', file, resolution: { mode: 'merge', takeIncoming: [] } });
+        if (!r.ok) throw new Error(r.error.message);
+        return r.value;
+      }, ws);
+    const a = importAll(createWorkspace());
+    expect(a.projects.map((p) => p.isSample)).toEqual([true, true]);
+    expect(files.value.every((f) => f.templates.length > 0 && f.project.isSample)).toBe(true);
+    expect(canonicalJson(importAll(createWorkspace()))).toBe(canonicalJson(a));
+  });
+
+  it('offers only the samples the workspace lacks', () => {
+    const files = sampleProjectFiles(sampleWorkspace(), AT);
+    expect(files).toMatchObject({ ok: true, value: [] });
   });
 });

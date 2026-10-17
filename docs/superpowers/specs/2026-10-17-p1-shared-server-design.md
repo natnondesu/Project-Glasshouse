@@ -80,6 +80,8 @@ The spec's "Onsite editor / IT editor" split is merged into Editor until there i
 
 Plans B and C are written in detail once Plan A lands, against the interfaces it actually ships.
 
+Plan A shipped 2026-10-17 (branch `feat/p1a-shared-workspace`). Lessons carried forward: every command must carry the IDs it creates (a domain test enforces it; `sample/load` is browser-only); a lost connection is detected by an `event: ping` heartbeat within ~35 s (a half-open stream can't be seen sooner). Plan C hardening list adds: recover from an ambiguous log append (insert committed but the client saw an error) by re-reading the log tail instead of wedging; enforce the single-instance rule with a session-level Postgres advisory lock held for the process lifetime; a dev database written before Plan A's final fixes must be reset (old `room/create` commands lack `floorAreaId`).
+
 Plan C also fixes a known import gap: a hand-edited Project file that moves a Room between Sites can duplicate the Room ID on merge; the server import must refuse it.
 
 ### Features queued with P1 (product owner, 2026-10-17)

@@ -1,5 +1,6 @@
 import { currentRevision, exportProjectFile } from '@glasshouse/domain';
 import { useState, type ReactNode } from 'react';
+import { SERVER_MODE } from '../sync/serverMode';
 import { NavLink, Link } from 'react-router';
 import { LanguageSwitch } from '../i18n/LanguageSwitch';
 import { useT } from '../i18n';
@@ -24,11 +25,11 @@ function SaveStatus({ save }: { save: SaveState }) {
   const m = useT();
   switch (save.kind) {
     case 'idle':
-      return <span className="save-status">{m.shell.saveIdle}</span>;
+      return <span className="save-status">{SERVER_MODE ? m.shell.serverIdle : m.shell.saveIdle}</span>;
     case 'saving':
       return <span className="save-status">{m.shell.saving}</span>;
     case 'saved':
-      return <span className="save-status">{m.shell.saved(time(save.at))}</span>;
+      return <span className="save-status">{SERVER_MODE ? m.shell.savedServer(time(save.at)) : m.shell.saved(time(save.at))}</span>;
     case 'failed':
       return (
         <span className="save-status save-status--failed" role="alert">

@@ -14,7 +14,7 @@ beforeEach(() => {
   const sw = s.workspace.catalog.find((x) => x.id === 'tpl-switch-1u') as Template;
   s.dispatch({ type: 'project/create', id: 'p', name: 'P' });
   s.dispatch({ type: 'site/create', projectId: 'p', id: 's', name: 'S' });
-  s.dispatch({ type: 'room/create', siteId: 's', id: 'r', name: 'R' });
+  s.dispatch({ type: 'room/create', siteId: 's', id: 'r', floorAreaId: 'fa-r', name: 'R' });
   for (const [id, x] of [['r1', 1], ['r2', 2.5]] as const) s.dispatch({ type: 'plan', roomId: 'r', command: { type: 'object/add', object: { ...(createObject('rack', { x, y: 0.6 }, []) as Rack), id, name: id.toUpperCase() } } });
   for (const [id, rackId, name] of [['a', 'r1', 'CORE-SW-01'], ['b', 'r2', 'CORE-SW-02']] as const) {
     s.dispatch({ type: 'plan', roomId: 'r', command: { type: 'device/place', id, rackId, bottomU: 40, template: sw } });

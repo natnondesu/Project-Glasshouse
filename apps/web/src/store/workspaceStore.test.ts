@@ -1,6 +1,6 @@
-import { currentRevision, findRoom } from '@glasshouse/domain';
+import { apply, currentRevision, findRoom } from '@glasshouse/domain';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { resetWorkspaceStore, useWorkspaceStore } from './workspaceStore';
+import { resetWorkspaceStore, setCommit, useWorkspaceStore } from './workspaceStore';
 
 const store = () => useWorkspaceStore.getState();
 const width = (roomId: string) => currentRevision(findRoom(store().workspace, roomId)!.room.plan).content.survey.width;
@@ -10,8 +10,8 @@ const setWidth = (roomId: string, w: number, coalesceKey?: string) =>
 function seed(): void {
   store().dispatch({ type: 'project/create', id: 'p', name: 'P' });
   store().dispatch({ type: 'site/create', projectId: 'p', id: 's', name: 'S' });
-  store().dispatch({ type: 'room/create', siteId: 's', id: 'a', name: 'A' });
-  store().dispatch({ type: 'room/create', siteId: 's', id: 'b', name: 'B' });
+  store().dispatch({ type: 'room/create', siteId: 's', id: 'a', floorAreaId: 'fa-a', name: 'A' });
+  store().dispatch({ type: 'room/create', siteId: 's', id: 'b', floorAreaId: 'fa-b', name: 'B' });
 }
 
 describe('workspace store', () => {
@@ -74,5 +74,27 @@ describe('review boundaries', () => {
     expect(store().history.b?.past).toHaveLength(1);
     store().undo('a');
     expect(width('a')).toBe(6);
+  });
+
+  it('undoes through draft/replace, and refuses when the room changed since', () => {
+    setWidth('a', 6);
+    // Someone else's edit arrives underneath (server mode adopts it without touching undo history).
+    const elsewhere = apply(store().workspace, { type: 'plan', roomId: 'a', command: { type: 'survey/update', patch: { width: 8 } } });
+    if (!elsewhere.ok) throw new Error(elsewhere.error.message);
+    store().adopt(elsewhere.value);
+    expect(store().undo('a')?.code).toBe('stale');
+    expect(width('a')).toBe(8);
+    expect(store().notice).toMatch(/changed since/);
+  });
+
+  it('routes every edit through the commit hook when one is set', () => {
+    const seen: string[] = [];
+    setCommit((ws, command) => {
+      seen.push(command.type);
+      return apply(ws, command);
+    });
+    setWidth('a', 7);
+    store().undo('a');
+    expect(seen).toEqual(['plan', 'draft/replace']);
   });
 });

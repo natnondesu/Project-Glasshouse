@@ -15,7 +15,7 @@ beforeEach(() => {
   s.setLoad({ kind: 'ready' });
   s.dispatch({ type: 'project/create', id: 'p', name: 'Northgate' });
   s.dispatch({ type: 'site/create', projectId: 'p', id: 's', name: 'Site A' });
-  s.dispatch({ type: 'room/create', siteId: 's', id: 'r', name: 'MDF-1' });
+  s.dispatch({ type: 'room/create', siteId: 's', id: 'r', floorAreaId: 'fa-r', name: 'MDF-1' });
   const file = exportProjectFile(useWorkspaceStore.getState().workspace, 'p', '2026-10-14T00:00:00.000Z');
   if (!file.ok) throw new Error(file.error.message);
   exported = JSON.stringify(file.value);

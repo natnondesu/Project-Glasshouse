@@ -1,0 +1,12 @@
+# Local Postgres for `pnpm dev:server`. Not a production deployment (that is Plan C).
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: glasshouse
+      POSTGRES_PASSWORD: glasshouse
+      POSTGRES_DB: glasshouse
+    ports: ['127.0.0.1:5432:5432']
+    volumes: ['glasshouse-db:/var/lib/postgresql/data']
+volumes:
+  glasshouse-db:

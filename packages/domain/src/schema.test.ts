@@ -12,7 +12,7 @@ describe('workspace schema', () => {
     for (const cmd of [
       { type: 'project/create', id: 'p', name: 'P' },
       { type: 'site/create', projectId: 'p', id: 's', name: 'S' },
-      { type: 'room/create', siteId: 's', id: 'r', name: 'R' },
+      { type: 'room/create', siteId: 's', id: 'r', floorAreaId: 'fa-r', name: 'R' },
     ] as const) {
       const r = apply(ws, cmd);
       if (!r.ok) throw new Error(r.error.message);

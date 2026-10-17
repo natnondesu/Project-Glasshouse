@@ -17,7 +17,7 @@ function run(ws: Workspace, ...cmds: WorkspaceCommand[]): Workspace {
   }, ws);
 }
 const room = (id: string): WorkspaceCommand[] => [
-  { type: 'room/create', siteId: 's', id, name: id.toUpperCase() },
+  { type: 'room/create', siteId: 's', id, floorAreaId: `fa-${id}`, name: id.toUpperCase() },
   { type: 'plan', roomId: id, command: { type: 'object/add', object: { ...(createObject('rack', { x: 1, y: 1 }, []) as Rack), id: `${id}-rk`, name: 'RK-01' } } },
   { type: 'plan', roomId: id, command: { type: 'device/place', id: `${id}-sw`, rackId: `${id}-rk`, bottomU: 40, template: SW } },
 ];

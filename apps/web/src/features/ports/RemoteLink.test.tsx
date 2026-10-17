@@ -14,7 +14,7 @@ beforeEach(() => {
   s.dispatch({ type: 'project/create', id: 'p', name: 'P' });
   s.dispatch({ type: 'site/create', projectId: 'p', id: 's', name: 'Campus' });
   for (const room of ['mdf', 'idf']) {
-    s.dispatch({ type: 'room/create', siteId: 's', id: room, name: room.toUpperCase() });
+    s.dispatch({ type: 'room/create', siteId: 's', id: room, floorAreaId: `fa-${room}`, name: room.toUpperCase() });
     s.dispatch({ type: 'plan', roomId: room, command: { type: 'object/add', object: { ...(createObject('rack', { x: 1, y: 1 }, []) as Rack), id: `${room}-rk`, name: 'RK-01' } } });
     s.dispatch({ type: 'plan', roomId: room, command: { type: 'device/place', id: `${room}-sw`, rackId: `${room}-rk`, bottomU: 40, template: sw } });
     s.dispatch({ type: 'plan', roomId: room, command: { type: 'device/update', id: `${room}-sw`, patch: { name: `${room.toUpperCase()}-SW` } } });

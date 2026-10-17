@@ -14,7 +14,7 @@ function seeded(): Workspace {
   const steps: WorkspaceCommand[] = [
     { type: 'project/create', id: 'p', name: 'Northgate' },
     { type: 'site/create', projectId: 'p', id: 's', name: 'Site A' },
-    { type: 'room/create', siteId: 's', id: 'r', name: 'MDF-1' },
+    { type: 'room/create', siteId: 's', id: 'r', floorAreaId: 'fa-r', name: 'MDF-1' },
     { type: 'plan', roomId: 'r', command: { type: 'object/add', object: rack } },
     { type: 'plan', roomId: 'r', command: { type: 'device/place', id: 'srv', rackId: rack.id, bottomU: 20, template: t('tpl-server-2u') } },
     { type: 'plan', roomId: 'r', command: { type: 'device/place', id: 'ch', rackId: rack.id, bottomU: 5, template: t('tpl-chassis-6u') } },

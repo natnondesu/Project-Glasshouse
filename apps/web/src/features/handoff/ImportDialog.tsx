@@ -1,4 +1,4 @@
-import { previewImport, type ProjectFile } from '@glasshouse/domain';
+import { createCopyIds, previewImport, type ProjectFile } from '@glasshouse/domain';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useWorkspaceStore } from '../../store/workspaceStore';
 import { pad2 } from '../../ui/StatusStamp';
@@ -37,7 +37,7 @@ export function ImportDialog({ file, onClose }: { file: ProjectFile; onClose: ()
       return next;
     });
   const confirm = (): void => {
-    const problem = dispatch({ type: 'project/import', file, resolution: mode === 'copy' ? { mode: 'copy' } : { mode: 'merge', takeIncoming: [...take] } });
+    const problem = dispatch({ type: 'project/import', file, resolution: mode === 'copy' ? { mode: 'copy', ids: createCopyIds(file) } : { mode: 'merge', takeIncoming: [...take] } });
     setError(problem?.message ?? null);
     if (!problem) onClose();
   };

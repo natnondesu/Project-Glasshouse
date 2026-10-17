@@ -115,6 +115,7 @@ Colour never works alone. Blocking issues use a solid circle icon, warnings a da
 ## Home
 
 - The project tree's header (Projects and its actions) and the backup panel stay put; only the tree scrolls between them.
+- Server mode (shared server, P1): the title block says "Connected to the Glasshouse server" / "Saved to the server · time"; the browser-backup panel is hidden. When the connection is lost (no events or heartbeat for 35 s, or the stream closes) the app goes read-only after 3 s with the banner "Lost the connection… Edits you already made are kept and will be sent", and recovers by itself. An edit the server refuses shows a closable notice "A change didn't go through: <reason>"; closing the tab while edits are unsent asks first.
 - Catalog lives at the far right of the title block, past a divider, on every page (icon only below 1360 px wide); that corner is where user settings join later.
 - The project tree stays. Beside it, the last room opened leads: name, approval stamp, racks / devices / power, what still holds approval, Open room and the Install sheet, and the room live in 3D on paper.
 - The 3D turns slowly (about one turn a minute). It stops under the pointer so a drag looks around from there, has a pause button, holds still under reduced motion, stops drawing when scrolled away, and never takes the scroll wheel. Clicking a rack opens it in the elevation.

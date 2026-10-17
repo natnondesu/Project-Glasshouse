@@ -31,7 +31,7 @@ function ready(withDevice = true): Workspace {
     createWorkspace(),
     { type: 'project/create', id: 'p', name: 'P' },
     { type: 'site/create', projectId: 'p', id: 's', name: 'S' },
-    { type: 'room/create', siteId: 's', id: 'r', name: 'MDF-1' },
+    { type: 'room/create', siteId: 's', id: 'r', floorAreaId: 'fa-r', name: 'MDF-1' },
     { type: 'plan', roomId: 'r', command: { type: 'object/add', object: rack } },
   );
   if (withDevice) {

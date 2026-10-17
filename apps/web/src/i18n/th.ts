@@ -41,6 +41,12 @@ export const th: Messages = {
     opening: 'กำลังเปิดพื้นที่ทำงาน…',
     otherTab: 'Glasshouse เปิดอยู่ในแท็บอื่น แท็บนี้จึงดูได้อย่างเดียว ปิดแท็บอื่นแล้วโหลดหน้านี้ใหม่เพื่อแก้ไข',
     equipmentDetails: 'รายละเอียดอุปกรณ์',
+    serverIdle: 'เชื่อมต่อเซิร์ฟเวอร์ Glasshouse แล้ว',
+    savedServer: (time) => `บันทึกไปยังเซิร์ฟเวอร์แล้ว · ${time}`,
+    offline: 'ขาดการเชื่อมต่อกับเซิร์ฟเวอร์ Glasshouse กำลังเชื่อมต่อใหม่… การแก้ไขที่ทำไว้จะถูกเก็บและส่งให้ภายหลัง',
+    notApplied: (reason) => `การแก้ไขหนึ่งรายการไม่สำเร็จ: ${reason}`,
+    serverUnreachable: (reason) => `Glasshouse เชื่อมต่อเซิร์ฟเวอร์ไม่ได้ ${reason}`,
+    tryAgain: 'ลองอีกครั้ง',
   },
   views: {
     nav: 'มุมมองห้อง',

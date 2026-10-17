@@ -2,6 +2,7 @@ export * from './units';
 export * from './model/types';
 export * from './model/defaults';
 export * from './result';
+export * from './canonical';
 export * from './ids';
 export * from './validation';
 export * from './geometry/polygon';

@@ -3,14 +3,15 @@ import {
   createWorkspace,
   currentRevision,
   findRoom,
-  replaceDraftContent,
   type DomainError,
   type Id,
   type PlanContent,
+  type Result,
   type Workspace,
   type WorkspaceCommand,
 } from '@glasshouse/domain';
 import { create } from 'zustand';
+import type { ConnectionStatus } from '../sync/syncClient';
 
 export type SaveState = { kind: 'idle' } | { kind: 'saving' } | { kind: 'saved'; at: Date } | { kind: 'failed'; reason: string };
 type LoadState = { kind: 'loading' } | { kind: 'ready' } | { kind: 'failed'; reason: string; raw: unknown };
@@ -24,6 +25,8 @@ interface DispatchOptions {
 interface RoomHistory {
   past: PlanContent[];
   future: PlanContent[];
+  /** Draft content right after this user's own last edit, undo or redo; undo checks it so other people's edits aren't overwritten. */
+  head: PlanContent | null;
 }
 
 const HISTORY_LIMIT = 100;
@@ -34,6 +37,13 @@ const READ_ONLY_ERROR: DomainError = {
   targets: [],
 };
 
+type Commit = (ws: Workspace, command: WorkspaceCommand) => Result<Workspace>;
+let commit: Commit = apply;
+/** Server mode sends every edit through the sync client; local mode applies it here. */
+export function setCommit(next: Commit): void {
+  commit = next;
+}
+
 interface Data {
   workspace: Workspace;
   load: LoadState;
@@ -41,16 +51,21 @@ interface Data {
   readOnly: boolean;
   history: Record<Id, RoomHistory>;
   lastEdit: { key: string; roomId: Id; at: number } | null;
+  connection: 'local' | ConnectionStatus;
+  notice: string | null;
 }
 
 interface WorkspaceState extends Data {
   dispatch: (command: WorkspaceCommand, options?: DispatchOptions) => DomainError | null;
-  undo: (roomId: Id) => void;
-  redo: (roomId: Id) => void;
+  undo: (roomId: Id) => DomainError | null;
+  redo: (roomId: Id) => DomainError | null;
   replace: (workspace: Workspace) => void;
   setLoad: (load: LoadState) => void;
   setSave: (save: SaveState) => void;
   setReadOnly: (readOnly: boolean) => void;
+  adopt: (workspace: Workspace) => void;
+  setConnection: (c: Data['connection']) => void;
+  setNotice: (n: string | null) => void;
 }
 
 const initialData = (): Data => ({
@@ -60,6 +75,8 @@ const initialData = (): Data => ({
   readOnly: false,
   history: {},
   lastEdit: null,
+  connection: 'local',
+  notice: null,
 });
 
 const draftContent = (ws: Workspace, roomId: Id): PlanContent | null => {
@@ -67,7 +84,7 @@ const draftContent = (ws: Workspace, roomId: Id): PlanContent | null => {
   return loc ? currentRevision(loc.room.plan).content : null;
 };
 
-const emptyHistory = (): RoomHistory => ({ past: [], future: [] });
+const emptyHistory = (): RoomHistory => ({ past: [], future: [], head: null });
 
 /** A Snapshot is a hard boundary: undo never reaches back across a review step, and an import may replace whole Rooms. */
 function historyAfter(history: Record<Id, RoomHistory>, command: WorkspaceCommand): Record<Id, RoomHistory> {
@@ -84,7 +101,7 @@ export const useWorkspaceStore = create<WorkspaceState>()((set, get) => ({
   dispatch: (command, options = {}) => {
     const state = get();
     if (state.readOnly) return READ_ONLY_ERROR;
-    const result = apply(state.workspace, command);
+    const result = commit(state.workspace, command);
     if (!result.ok) return result.error;
     if (command.type !== 'plan') {
       set({ workspace: result.value, history: historyAfter(state.history, command), lastEdit: null });
@@ -100,7 +117,7 @@ export const useWorkspaceStore = create<WorkspaceState>()((set, get) => ({
     const past = coalesce || before === null ? h.past : [...h.past, before].slice(-HISTORY_LIMIT);
     set({
       workspace: result.value,
-      history: { ...state.history, [roomId]: { past, future: [] } },
+      history: { ...state.history, [roomId]: { past, future: [], head: draftContent(result.value, roomId) } },
       lastEdit: key === undefined ? null : { key, roomId, at: now },
     });
     return null;
@@ -110,33 +127,47 @@ export const useWorkspaceStore = create<WorkspaceState>()((set, get) => ({
     const h = state.history[roomId];
     const previous = h?.past[h.past.length - 1];
     const current = draftContent(state.workspace, roomId);
-    if (!h || !previous || !current || state.readOnly) return;
-    const result = replaceDraftContent(state.workspace, roomId, previous);
-    if (!result.ok) return;
+    if (!h || !previous || !current || state.readOnly) return null;
+    const result = commit(state.workspace, { type: 'draft/replace', roomId, content: previous, expected: h.head ?? current });
+    if (!result.ok) {
+      set({ notice: result.error.message });
+      return result.error;
+    }
     set({
       workspace: result.value,
-      history: { ...state.history, [roomId]: { past: h.past.slice(0, -1), future: [current, ...h.future] } },
+      history: { ...state.history, [roomId]: { past: h.past.slice(0, -1), future: [current, ...h.future], head: previous } },
       lastEdit: null,
     });
+    return null;
   },
   redo: (roomId) => {
     const state = get();
     const h = state.history[roomId];
     const next = h?.future[0];
     const current = draftContent(state.workspace, roomId);
-    if (!h || !next || !current || state.readOnly) return;
-    const result = replaceDraftContent(state.workspace, roomId, next);
-    if (!result.ok) return;
+    if (!h || !next || !current || state.readOnly) return null;
+    const result = commit(state.workspace, { type: 'draft/replace', roomId, content: next, expected: h.head ?? current });
+    if (!result.ok) {
+      set({ notice: result.error.message });
+      return result.error;
+    }
     set({
       workspace: result.value,
-      history: { ...state.history, [roomId]: { past: [...h.past, current], future: h.future.slice(1) } },
+      history: { ...state.history, [roomId]: { past: [...h.past, current], future: h.future.slice(1), head: next } },
       lastEdit: null,
     });
+    return null;
   },
+  adopt: (workspace) => set({ workspace }),
+  setConnection: (connection) => set({ connection }),
+  setNotice: (notice) => set({ notice }),
   replace: (workspace) => set({ workspace, history: {}, lastEdit: null }),
   setLoad: (load) => set({ load }),
   setSave: (save) => set({ save }),
   setReadOnly: (readOnly) => set({ readOnly }),
 }));
 
-export const resetWorkspaceStore = (): void => useWorkspaceStore.setState(initialData());
+export const resetWorkspaceStore = (): void => {
+  setCommit(apply);
+  useWorkspaceStore.setState(initialData());
+};
