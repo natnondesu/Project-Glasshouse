@@ -74,26 +74,7 @@ Environment:
 | `GLASSHOUSE_LOCAL_LOGIN` | optional; `off` removes the email-and-password form |
 | `GLASSHOUSE_TRUST_PROXY` | `off` (default), `on` (one proxy hop), or a comma list of proxy IPs/CIDRs; see below |
 
-Authelia client, in Authelia's `configuration.yml`:
-
-```yaml
-identity_providers:
-  oidc:
-    clients:
-      - client_id: 'glasshouse'
-        client_name: 'Glasshouse'
-        client_secret: '$pbkdf2-sha512$310000$...'   # hash of the plain secret; the plain one goes in GLASSHOUSE_OIDC_CLIENT_SECRET
-        public: false
-        authorization_policy: 'two_factor'
-        require_pkce: true
-        pkce_challenge_method: 'S256'
-        redirect_uris:
-          - 'https://glasshouse.<company>/auth/oidc/callback'
-        scopes: ['openid', 'profile', 'email']
-        token_endpoint_auth_method: 'client_secret_basic'
-```
-
-Generate the hash with `authelia crypto hash generate pbkdf2 --password '<secret>'`. The client must use `client_secret_basic` (the server authenticates that way). Email and name are read from the ID token and, when the token omits them, from the userinfo endpoint; both are supported.
+The Authelia client definition lives in `docs/go-live.md` section 2, so there is one copy. The client must use `client_secret_basic` (the server authenticates that way). Email and name are read from the ID token and, when the token omits them, from the userinfo endpoint; both are supported.
 
 Behind the company reverse proxy:
 
@@ -132,9 +113,21 @@ Plans B and C are written in detail once Plan A lands, against the interfaces it
 
 Plan A shipped 2026-10-17 (branch `feat/p1a-shared-workspace`). Lessons carried forward: every command must carry the IDs it creates (a domain test enforces it; `sample/load` is browser-only); a lost connection is detected by an `event: ping` heartbeat within ~35 s (a half-open stream can't be seen sooner). Plan C hardening list adds: recover from an ambiguous log append (insert committed but the client saw an error) by re-reading the log tail instead of wedging; enforce the single-instance rule with a session-level Postgres advisory lock held for the process lifetime; a dev database written before Plan A's final fixes must be reset (old `room/create` commands lack `floorAreaId`).
 
-Plan B shipped 2026-10-18 (branch `feat/p1b-identity-roles`). Carried into Plan C: re-check event streams without refreshing the session's idle timer (today an open live tab counts as activity, 7-day cap); refresh the web role after a `forbidden` refusal or reconnect; a CLI `set-role` for bootstrap-admin recovery; OIDC discovery must not stop local sign-in at boot; errors after the OIDC token exchange redirect with a code instead of a 500; a smoke test against the real Authelia (claims via userinfo, `iss` parameter, exact issuer string, Secure cookies behind the proxy with `GLASSHOUSE_TRUST_PROXY`); a native read of the Thai sign-in strings.
+Plan B shipped 2026-10-18 (branch `feat/p1b-identity-roles`). Its carry-over list was closed by Plan C (non-touching stream re-checks, role refresh, `set-role`, OIDC discovery at boot, errors after the token exchange). Still open as pilot items: a smoke test against the real Authelia (claims via userinfo, `iss` parameter, exact issuer string, Secure cookies behind the proxy with `GLASSHOUSE_TRUST_PROXY`) and a native read of the Thai sign-in, claims and Users strings.
 
 Plan C also fixes a known import gap: a hand-edited Project file that moves a Room between Sites can duplicate the Room ID on merge; the server import must refuse it.
+
+Plan C shipped 2026-10-18 (branch `feat/p1c-go-live`). Deployment, backups, the restore drill, the Authelia client and the pilot checklist are in `docs/go-live.md`. Decisions taken in this plan (the product owner may overrule):
+
+- Claiming is automatic: the first accepted edit to a room claims it, each further edit renews it, and it is released by "Done editing", leaving the room, submitting it or discarding the draft. After 15 minutes without an edit any Editor may take over; an Admin may at any time. Claims live in memory, so a restart clears them. Dev mode has no claims.
+- A lost claim never loses work: the previous holder's unsent edits to that room are refused, and their browser offers "Download my version" first.
+- Approved means unchangeable on the server: any change that alters or removes an approved revision of a room that still exists is refused, including a "take incoming" import. The `approvals` table keeps the record and fingerprint forever. Imported approvals are historical records: they show "(unverified)" names and get no row in that table.
+- The append-only rule on commands and approvals is enforced by database triggers. The database owner could still disable them, so the Postgres password is an admin secret.
+- Fingerprint: the first 12 hex characters of the sha256 of the revision's canonical content, shown on the review panel and the Install sheet.
+- Names: a verified person shows with their current name and email; an admin can set a full name that company sign-in no longer overwrites (the company directory supplies first names only).
+- Backups: a `backup` container runs `pg_dump` daily at 03:00 Asia/Bangkok, keeping 14 days; admins can also download a workspace backup in the app.
+- Deployment follows the company pattern: `oxygenai/glasshouse` image, Traefik on `traefik-proxy` with `GLASSHOUSE_TRUST_PROXY=172.16.7.0/24`, no compress middleware (it can buffer the event stream), Postgres 18.
+- Weight and floor load, and measured/assumed values, become Plan D before the pilot; install-day verification stays after go-live.
 
 ### Features queued with P1 (product owner, 2026-10-17)
 

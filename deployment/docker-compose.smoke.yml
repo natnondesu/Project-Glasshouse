@@ -1,0 +1,14 @@
+# Only for deployment/smoke.sh (and a staging rehearsal, see docs/go-live.md): publish the app on localhost
+# and read the throwaway env file. Container names and Traefik labels are dropped so it cannot collide with a real stack.
+services:
+  db:
+    container_name: !reset null
+  backup:
+    container_name: !reset null
+  web:
+    container_name: !reset null
+    env_file:
+      - ${GLASSHOUSE_ENV_FILE:-.env.smoke}
+    ports: ['127.0.0.1:18787:8787']
+    labels:
+      traefik.enable: 'false'

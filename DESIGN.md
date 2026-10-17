@@ -130,6 +130,9 @@ Colour never works alone. Blocking issues use a solid circle icon, warnings a da
 - **User menu**: lives in the title block's tools corner, after Catalog. The button reads the person's name; the menu shows name, email, a role stamp, Users (admins only) and Sign out.
 - **View-only banner**: for Viewers, the app is read-only and the same banner slot that reports a lost connection says "You can view this workspace. Ask an admin for edit access."
 - **Users screen** (`/admin/users`, admins only): a table of everyone with access (name, email, role, how they sign in, status, last sign-in) and an Add user form. A new local person's temporary password appears once, in a box with the code in mono type, and is never shown again.
+- **Claim strip**: a slim strip between the view tabs and the drawing, always 44 px high so the drawing never jumps when the holder changes. When someone else holds the room it uses the attention style (warn background, warn left rule) with their name, the time of their last edit and Take over; when it is you it is neutral (control background, accent left rule) with "Done editing".
+- **Fingerprint**: the first 12 hex characters of the approved revision's hash, in the mono face and the muted ink, never a second stamp. It sits on the approval stamp in the review panel and in the title block of the Install sheet, so a printed sheet can be matched to what was approved.
+- **Claim-lost dialog**: the ordinary centred popup, narrowed to 480 px. It says who took over and how many changes were not saved, with "Download my version" as the primary action and Dismiss beside it. Discarding asks once more, because the copy lives only in that browser.
 
 ## Browser tab
 

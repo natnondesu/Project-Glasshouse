@@ -14,7 +14,9 @@
     "e2e:server": "pnpm --filter @glasshouse/web e2e:server",
     "e2e:auth": "pnpm --filter @glasshouse/web e2e:auth",
     "dev:server": "pnpm --filter @glasshouse/server dev",
-    "test:db": "pnpm --filter @glasshouse/server test:db"
+    "test:db": "pnpm --filter @glasshouse/server test:db",
+    "docker:build": "docker build -f docker/Dockerfile -t oxygenai/glasshouse:dev .",
+    "smoke": "sh deployment/smoke.sh"
   },
   "devDependencies": {
     "typescript": "^7.0.2"

@@ -11,3 +11,5 @@ playwright-report/
 
 # Impeccable critique snapshots (local working notes)
 .impeccable/
+deployment/.env
+deployment/.env.smoke
