@@ -27,7 +27,7 @@ export function describeAnchor(m: Messages, content: PlanContent, anchor: Dimens
   return onWall(content, [anchor.x, anchor.y]) ? m.dimension.wall : m.dimension.point;
 }
 
-export function dimensionLabel(m: Messages, content: PlanContent, dim: Dimension, length: number): string {
+function dimensionLabel(m: Messages, content: PlanContent, dim: Dimension, length: number): string {
   return m.dimension.label(formatMetres(length), describeAnchor(m, content, dim.a), describeAnchor(m, content, dim.b));
 }
 

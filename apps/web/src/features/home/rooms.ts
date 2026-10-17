@@ -13,7 +13,7 @@ export interface RoomSummary {
   holds: { blocks: number; needsAck: number };
 }
 
-export function summarise(project: Project, site: Site, room: Room): RoomSummary {
+function summarise(project: Project, site: Site, room: Room): RoomSummary {
   const revision = currentRevision(room.plan);
   const racks = racksOf(revision.content);
   const power = roomPower(revision.content);

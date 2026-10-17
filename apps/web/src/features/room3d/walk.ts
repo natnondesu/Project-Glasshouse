@@ -19,7 +19,7 @@ const STAND_OFF_M = 1.2;
 const LOOK_RAD_PER_PX = 0.005;
 const MAX_PITCH = 1.2;
 
-export const forwardOf = (heading: number): [number, number] => [Math.sin(heading), Math.cos(heading)];
+const forwardOf = (heading: number): [number, number] => [Math.sin(heading), Math.cos(heading)];
 
 /** Where the camera looks, one metre ahead, for three's lookAt. */
 export function lookTarget(c: WalkCamera): [number, number, number] {

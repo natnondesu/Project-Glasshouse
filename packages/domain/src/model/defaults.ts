@@ -20,6 +20,8 @@ export const LIMITS = {
   designLimitMaxPct: 100,
   nameMaxLength: 80,
   textMaxLength: 2000,
+  /** Hard ceiling for any stored text, above every edit limit: guards imports, restores and the shared server. */
+  storedTextMaxLength: 10_000,
   deviceDepthMinMm: 100,
   deviceDepthMaxMm: 1500,
   chassisMaxSlots: 64,

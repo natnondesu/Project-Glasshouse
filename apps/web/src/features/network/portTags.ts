@@ -2,7 +2,7 @@ import type { Id, PortRef } from '@glasshouse/domain';
 import { type TopoEdge, type TopoNode } from './topology';
 
 /** Port pairs shown per cable bundle before the rest are summarised. */
-export const MAX_TAG_LINES = 3;
+const MAX_TAG_LINES = 3;
 /** Above a leaf the tag shares the gap between wrapped rows, which fits two lines. */
 const MAX_LEAF_TAG_LINES = 2;
 

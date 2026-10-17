@@ -1,0 +1,305 @@
+/* Plan chrome: tool palette, flyouts, zoom and view menu. Imported after plan.css by PlanView only. */
+
+.toolbar {
+  position: absolute;
+  left: 12px;
+  top: 12px;
+  /* Above the search and zoom row, so tool hints and lists open over it. */
+  z-index: 6;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px;
+  border-radius: 14px;
+}
+
+.toolbar__sep {
+  height: 1px;
+  margin: 3px 6px;
+  background: var(--line);
+}
+
+.tool {
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-control);
+  background: none;
+  color: var(--ink);
+  transition: background var(--duration-fast) ease-out;
+}
+
+.tool:hover {
+  background: rgb(255 255 255 / 0.7);
+}
+
+.tool[aria-pressed='true'] {
+  background: var(--ink);
+  color: #fff;
+}
+
+.zoom {
+  position: absolute;
+  right: var(--inspector-space);
+  top: 12px;
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  padding: 4px;
+  border-radius: 14px;
+}
+
+.zoom .tool {
+  width: 34px;
+  height: 34px;
+}
+
+.zoom__value {
+  min-width: 70px;
+  text-align: center;
+  font-size: var(--text-xs);
+  color: var(--ink-2);
+}
+
+.zoom__fit {
+  height: 34px;
+  padding: 0 12px;
+  margin-left: 4px;
+  border: 0;
+  border-radius: var(--radius-field);
+  background: rgb(255 255 255 / 0.6);
+  font-weight: 600;
+  font-size: var(--text-xs);
+}
+
+.zoom__fit:hover {
+  background: #fff;
+}
+
+.zoom__fit[aria-pressed='true'] {
+  background: var(--ink);
+  color: #fff;
+}
+
+.tool-cell,
+.tool-group,
+.tool-group-wrap {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+.tool-group__more {
+  position: absolute;
+  right: 2px;
+  bottom: 2px;
+  width: 12px;
+  height: 12px;
+  display: grid;
+  place-items: end;
+  padding: 1px;
+  border: 0;
+  border-radius: 3px;
+  background: none;
+  color: var(--ink-2);
+  cursor: pointer;
+}
+
+.tool-group__more:hover,
+.tool-group__more[aria-expanded='true'] {
+  color: var(--ink);
+  background: rgb(14 24 36 / 0.08);
+}
+
+.tool[aria-pressed='true'] ~ .tool-group__more,
+.tool-cell:has(.tool[aria-pressed='true']) + .tool-group__more {
+  color: rgb(255 255 255 / 0.85);
+}
+
+.tool-hint {
+  position: absolute;
+  /* A hint never takes the pointer: it can sit over the drawing while a focused tool shows it. */
+  pointer-events: none;
+  left: calc(100% + 12px);
+  top: 50%;
+  z-index: 20;
+  width: max-content;
+  max-width: 240px;
+  display: grid;
+  gap: 3px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--ink);
+  color: #fff;
+  font-size: var(--text-xs);
+  line-height: 1.35;
+  box-shadow: var(--shadow-float);
+  transform: translateY(-50%);
+  pointer-events: none;
+  animation: hint-in var(--duration-fast) ease-out;
+}
+
+.tool-hint strong {
+  font-size: var(--text-sm);
+}
+
+.tool-hint span {
+  color: rgb(255 255 255 / 0.78);
+}
+
+.tool-hint kbd,
+.tool-flyout kbd {
+  justify-self: start;
+  padding: 0 5px;
+  border: 1px solid rgb(255 255 255 / 0.35);
+  border-radius: 4px;
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+}
+
+.tool-flyout {
+  position: absolute;
+  left: calc(100% + 10px);
+  top: -6px;
+  z-index: 21;
+  min-width: 220px;
+  display: flex;
+  flex-direction: column;
+  padding: 6px;
+  border-radius: 12px;
+  background: rgb(247 249 251 / 0.97);
+}
+
+.tool-flyout__title {
+  padding: 4px 8px 6px;
+  font-size: var(--text-2xs);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+}
+
+.tool-flyout__item {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 8px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  font-size: var(--text-sm);
+  text-align: left;
+  cursor: pointer;
+}
+
+.tool-flyout__item:hover {
+  background: rgb(14 24 36 / 0.06);
+}
+
+.tool-flyout__item:focus-visible {
+  background: rgb(14 24 36 / 0.06);
+  outline: none;
+  box-shadow: var(--focus-ring-inset);
+}
+
+.tool-flyout__item[aria-checked='true'] {
+  background: var(--ink);
+  color: #fff;
+}
+
+.tool-flyout__item kbd {
+  border-color: var(--line-strong);
+  color: var(--ink-2);
+}
+
+.tool-flyout__item[aria-checked='true'] kbd {
+  border-color: rgb(255 255 255 / 0.4);
+  color: #fff;
+}
+
+.view-menu {
+  position: relative;
+}
+
+.view-menu__count {
+  margin-left: 6px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--warn-bg);
+  color: var(--warn);
+  font-size: var(--text-2xs);
+}
+
+.view-menu__pop {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  z-index: 22;
+  min-width: 220px;
+  display: flex;
+  flex-direction: column;
+  padding: 6px;
+  border-radius: 12px;
+  background: rgb(247 249 251 / 0.97);
+}
+
+.view-menu__item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  font-size: var(--text-sm);
+  text-align: left;
+  cursor: pointer;
+}
+
+.view-menu__item:hover {
+  background: rgb(14 24 36 / 0.06);
+}
+
+.view-menu__item:focus-visible {
+  background: rgb(14 24 36 / 0.06);
+  outline: none;
+  box-shadow: var(--focus-ring-inset);
+}
+
+.view-menu__box {
+  width: 16px;
+  height: 16px;
+  display: grid;
+  place-items: center;
+  border: 1.5px solid var(--ink-2);
+  border-radius: 4px;
+  font-size: var(--text-2xs);
+  font-weight: 700;
+}
+
+.view-menu__item[aria-checked='true'] .view-menu__box {
+  border-color: var(--ink);
+  background: var(--ink);
+  color: #fff;
+}
+
+.view-menu__note {
+  margin: 4px 8px 4px;
+  font-size: var(--text-2xs);
+  color: var(--ink-2);
+}
+
+@keyframes hint-in {
+  from {
+    opacity: 0;
+    transform: translate(-4px, -50%);
+  }
+}

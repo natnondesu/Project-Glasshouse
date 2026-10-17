@@ -21,6 +21,7 @@ import { ALL_LAYERS, type PlanLayers } from './ViewMenu';
 import { usePersistentState } from '../../ui/usePersistentState';
 import { useInspectorOpen } from '../../ui/useInspectorOpen';
 import './plan.css';
+import './plan-tools.css';
 import { useT } from '../../i18n';
 import { useRoomIssues } from '../network/uplinks';
 

@@ -15,7 +15,7 @@ const ARROW_LEN_M = 0.12;
 const DIM_OPACITY = 0.16;
 
 type Vec3 = [number, number, number];
-export type FeedLook = 'normal' | 'path' | 'dim';
+type FeedLook = 'normal' | 'path' | 'dim';
 
 function Segment({ a, b, color, look }: { a: Vec3; b: Vec3; color: string; look: FeedLook }) {
   const dx = b[0] - a[0];
@@ -45,7 +45,7 @@ function Segment({ a, b, color, look }: { a: Vec3; b: Vec3; color: string; look:
 }
 
 /** The run as 3D points, source first: out of the panel, down the wall, along the floor, up into the load. */
-export function feedPoints(feed: Feed3D): Vec3[] | null {
+function feedPoints(feed: Feed3D): Vec3[] | null {
   const at = ([x, z]: Point, y: number): Vec3 => [x, y, z];
   const [panel, wall, ...rest] = feed.route;
   if (!panel || !wall || rest.length === 0) return null;

@@ -32,7 +32,7 @@ function common<T>(values: T[]): T | null {
 }
 
 /** Only what's filled in is sent: blank fields leave each port as it is. */
-export function patchOf(d: Draft): BulkPortPatch {
+function patchOf(d: Draft): BulkPortPatch {
   const patch: BulkPortPatch = {};
   if (d.media) patch.media = d.media;
   if (d.speed) patch.speed = d.speed;

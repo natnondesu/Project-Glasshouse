@@ -103,8 +103,8 @@ The three Revision states in the MVP; editing an Approved Plan starts a new Draf
 _Avoid_: Published (reserved for authoritative publication in a later stage)
 
 **Review note**:
-An issue raised against the current Revision that must be resolved before approval.
-_Avoid_: Comment, ticket
+A note written on one Revision for anyone who opens it later; it is never resolved and never blocks approval.
+_Avoid_: Comment, ticket, task
 
 **Unverified name**:
 A typed person name recorded on submission or approval without login, labelled as unverified wherever it appears.
@@ -159,3 +159,41 @@ _Avoid_: Bay, position
 **Node**:
 A Device mounted in a Chassis Slot; it inherits its Rack and U from the Chassis and occupies no U itself.
 _Avoid_: Internal computer, blade, child, server
+
+### Operations and network
+
+**Equipment state**:
+Whether a Device, Chassis or Node is Planned, Deployed or In maintenance on site; recorded on the Plan outside Revisions, so it can change after approval.
+_Avoid_: Status (reserved for the Revision state)
+
+**Power source**:
+Something in the Room that feeds Racks: an MCB panel (with numbered ways), wall plug, industrial socket, floor box, UPS or 3rd-party PDU; sources can feed each other in a tree.
+_Avoid_: Outlet, supply
+
+**Power feed**:
+One connection (Feed A, Feed B, …) from a Power source to a Rack or to another source, drawn automatically along the walls.
+_Avoid_: Cable, circuit
+
+**Port**:
+A named network interface on a Device or Node, inherited from its Template and editable per Device, with media, speed and optional VLAN settings.
+_Avoid_: Interface (except for a server's NIC), socket
+
+**Link**:
+A cable joining two Ports, at most one per Port, with an optional label and cable type; listed in the cable schedule.
+_Avoid_: Connection, patch
+
+**VLAN**:
+A numbered network (ID 1–4094 and a name) in a Room's list; a Port carries it as access or trunk.
+_Avoid_: Subnet
+
+**LAG**:
+Ports on one Device bundled under one name (a port-channel); the topology draws a LAG's Links as one line.
+_Avoid_: Trunk (that is a VLAN mode)
+
+**Stack**:
+Network switches managed as one, each with a member number (S1, S2, …) shown on its port tags.
+_Avoid_: Cluster, group
+
+**Uplink**:
+A Port linked to a Port in another Room of the same Site; both ends show the remote Room, Device and Port.
+_Avoid_: Cross-connect

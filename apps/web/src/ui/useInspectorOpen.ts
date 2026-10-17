@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import { usePersistentState } from './usePersistentState';
 
 /** Below this width the drawing gets the room until someone opens the inspector. */
-export const WIDE_ENOUGH_FOR_INSPECTOR_PX = 1360;
+const WIDE_ENOUGH_FOR_INSPECTOR_PX = 1360;
 
 /**
  * The right-hand inspector, shared by Plan, Elevation and Network: collapsed by default on a narrow

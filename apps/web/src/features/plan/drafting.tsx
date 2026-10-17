@@ -83,7 +83,7 @@ export function CalloutLayer({ issues, objects, view, maxX = Infinity }: { issue
 }
 
 /** Scale bar picks a round length close to SCALE_TARGET_PX at the current zoom. */
-export function scaleBar(view: View): { metres: number; px: number } {
+function scaleBar(view: View): { metres: number; px: number } {
   const metres = SCALE_STEPS_M.reduce((best, m) => (Math.abs(m * view.scale - SCALE_TARGET_PX) < Math.abs(best * view.scale - SCALE_TARGET_PX) ? m : best), 1);
   return { metres, px: metres * view.scale };
 }

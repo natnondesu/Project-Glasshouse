@@ -3,7 +3,7 @@ import type { Repository } from './repository';
 
 const KEY = 'current';
 
-export function createIdbRepository(dbName = 'glasshouse'): Repository {
+function createIdbRepository(dbName = 'glasshouse'): Repository {
   const store = createStore(dbName, 'workspace');
   return {
     load: async () => (await get<unknown>(KEY, store)) ?? null,

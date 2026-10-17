@@ -38,7 +38,7 @@ export function useSearchParamState(key: string): [string | null, (value: string
   return [params.get(key), set];
 }
 
-export type ReviewFn = (command: ReviewCommand) => string | null;
+type ReviewFn = (command: ReviewCommand) => string | null;
 
 export function useReviewCommit(roomId: Id): ReviewFn {
   const dispatch = useWorkspaceStore((s) => s.dispatch);

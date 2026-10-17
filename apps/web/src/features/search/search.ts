@@ -19,7 +19,7 @@ interface Entry extends SearchHit {
   text: string;
 }
 
-export const MAX_HITS = 8;
+const MAX_HITS = 8;
 
 const templateText = (content: PlanContent, id: string, version: number): string => {
   const tpl: Template | undefined = content.templatesUsed.find((x) => x.id === id && x.version === version);

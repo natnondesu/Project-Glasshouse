@@ -23,7 +23,7 @@ export interface SnapTarget {
   objectId: string | null;
 }
 
-export interface Measurement {
+interface Measurement {
   distance: number;
   dx: number;
   dy: number;

@@ -8,7 +8,7 @@ import { useT } from '../../i18n';
 /** Feed colours by letter: A blue, B amber, C green, D violet, then repeat. */
 const FEED_COLORS = ['#1c64c8', '#c77700', '#11795a', '#7a4fc2'];
 
-export function feedLetter(feed: PowerFeed, content: Pick<PlanContent, 'feeds'>): string {
+function feedLetter(feed: PowerFeed, content: Pick<PlanContent, 'feeds'>): string {
   const m = /([A-Z])$/.exec(feed.label.trim());
   if (m) return m[1]!;
   return String(content.feeds.filter((f) => f.targetId === feed.targetId).indexOf(feed) + 1);

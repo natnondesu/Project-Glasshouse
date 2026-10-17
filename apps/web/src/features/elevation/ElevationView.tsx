@@ -42,6 +42,7 @@ import { useDeviceDrag } from './deviceDrag';
 import { useT } from '../../i18n';
 import { useRoomIssues } from '../network/uplinks';
 import './elevation.css';
+import './elevation-panels.css';
 
 const MESSAGE_MS = 4000;
 

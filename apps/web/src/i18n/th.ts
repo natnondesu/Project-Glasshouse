@@ -648,7 +648,6 @@ export const th: Messages = {
     choose: 'เลือก…',
     newPort: (name) => `พอร์ตใหม่: ${name}`,
     link: 'เชื่อมต่อ',
-    removedDevice: 'อุปกรณ์ที่ถูกลบ',
     groups: 'พอร์ตเครือข่าย',
     groupsEmpty: 'ไม่มีพอร์ต เพิ่มกลุ่มสำหรับพอร์ตแต่ละชุด เช่น RJ45 48 พอร์ต แล้วตามด้วย SFP+ 4 พอร์ต',
     groupCount: (i) => `จำนวนพอร์ตกลุ่ม ${i}`,
@@ -749,7 +748,6 @@ export const th: Messages = {
     unlinked: (n) => `ยังไม่ได้ต่อสาย (${n})`,
     deviceLabel: (name, where) => `${name}, ${where}`,
     edgeLabel: (a, b, n) => `${a} ถึง ${b}, ${n} เส้น`,
-    vlanCol: 'VLAN',
   },
   vlans: {
     title: 'VLAN',
@@ -899,7 +897,6 @@ export const th: Messages = {
     openSheet: 'เปิดใบติดตั้ง',
     blockedBy: 'การอนุมัติติดอยู่ที่',
     ready: 'พร้อมอนุมัติ: ไม่มีปัญหาที่ต้องแก้',
-    notes: 'บันทึกการตรวจทาน',
     events: 'ประวัติล่าสุดก่อน',
     pages: 'หน้าประวัติ',
     newer: 'ใหม่กว่า',

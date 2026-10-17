@@ -97,3 +97,22 @@ describe('replaceDraftContent', () => {
     expect(replaceDraftContent(ws, 'nope', before).ok).toBe(false);
   });
 });
+
+describe('stored text ceiling', () => {
+  it('refuses any command carrying text over the stored limit, wherever it sits', async () => {
+    const { LIMITS } = await import('../model/defaults');
+    const huge = 'x'.repeat(LIMITS.storedTextMaxLength + 1);
+    expect(apply(seeded(), { type: 'project/create', id: 'q', name: huge })).toMatchObject({ ok: false, error: { code: 'invalid_value' } });
+    const nested = { type: 'plan', roomId: 'r', command: { type: 'survey/update', patch: { notes: huge } } } as WorkspaceCommand;
+    expect(apply(seeded(), nested)).toMatchObject({ ok: false, error: { message: expect.stringContaining('10,000') } });
+  });
+
+  it('rejects a stored workspace with over-long text instead of loading it', async () => {
+    const { LIMITS } = await import('../model/defaults');
+    const { parseWorkspace } = await import('../schema');
+    const ws = seeded();
+    const bloated = produce(ws, (d) => void (d.projects[0]!.notes = 'x'.repeat(LIMITS.storedTextMaxLength + 1)));
+    expect(parseWorkspace(bloated).ok).toBe(false);
+    expect(parseWorkspace(ws).ok).toBe(true);
+  });
+});

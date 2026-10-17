@@ -32,6 +32,8 @@ Sections 1–10 describe the MVP and its acceptance criteria. Sections 11–14 d
 | Input devices | Mouse-centric | Laptop/desktop, trackpad-first; no tablet or phone |
 | Stack | Unspecified | TypeScript end to end (ADR-0001) |
 
+Later changes, decided with the product owner: power feeds and sources (FR09a, 2026-10-14); equipment state, ports and cables, VLANs, LAGs, switch stacks, uplinks between rooms of a Site, a network topology view, Thai, and walk mode in room 3D (M5–M6 and team feedback, 2026-10-15 to 2026-10-17); Review notes became notes on a Revision that never block approval (2026-10-17).
+
 ## 1. Problem and product outcome
 
 Room surveys, equipment requirements and installation decisions often live in separate drawings, spreadsheets and conversations. This creates inconsistent rack positions, unclear equipment configurations, missed physical constraints and duplicated documentation when the final installation is recorded.
@@ -56,7 +58,7 @@ The intended outcome is an installation plan that onsite engineers can understan
 - The MVP is browser-local. Work moves between people by Project file; one person edits a Plan at a time by convention.
 - Generic Device geometry is sufficient. Manufacturer-accurate CAD models are not required.
 - Footprints are rectilinear (rectangles added and cut out). Diagonal and curved walls are out of scope.
-- Structured CPU/GPU/RAM inventories, cabling, PDU outlet assignment, procurement pricing and live monitoring are future scope. Configuration and network handoff fields are descriptive text.
+- Structured CPU/GPU/RAM inventories, PDU outlet assignment, procurement pricing and live monitoring are future scope. Configuration and network handoff fields are descriptive text; ports, cables, VLANs and LAGs are modelled.
 - Default dimensions, heights, clearances and Demand values are illustrative until confirmed. Visual fit does not establish mechanical compatibility or electrical approval.
 
 ## 2. Users and responsibilities
@@ -65,7 +67,7 @@ The intended outcome is an installation plan that onsite engineers can understan
 | --- | --- | --- |
 | Onsite engineer | Record physical conditions and installation constraints | Build the Footprint, place doors, MCB panels, Existing racks and furniture; record the Power budget |
 | IT planner | Design the proposed infrastructure | Place Racks, fill them with Devices, configure Chassis and Nodes, check U, depth, clearance and Demand |
-| Reviewer | Resolve uncertainty and approve installation intent | Review the Revision, resolve Review notes, acknowledge unknown Reserved-range Demand, approve |
+| Reviewer | Resolve uncertainty and approve installation intent | Review the Revision and its notes, acknowledge unknown Reserved-range Demand, approve |
 | Installation team | Install from approved intent | Work from the Install sheet on install day |
 | Project owner | Coordinate scope and hand-off | Review BOM and approved intent |
 | Administrator (production) | Manage access and integration policy | Assign project roles, maintain the shared Catalog, configure external systems |
@@ -84,11 +86,11 @@ All team members work on laptops or desktops, mostly with trackpads. Tablets and
 | Racks in customer racks | Rack owner + Reserved ranges | External containment mapping |
 | Clearance zones | Front/rear depths, checked | Configurable organisation standards |
 | Rack elevation | Implemented, front/rear inspection | Dual-face mounting rules |
-| Room 3D | Generic boxes with Device faces, view-only camera | Richer models where useful |
+| Room 3D | Generic boxes with Device faces, view-only orbit camera and walk mode at eye height | Richer models where useful |
 | Detailed rack 3D | Not in MVP (replaced by Usable depth check) | Reconsider after pilot feedback |
 | Catalog | Workspace-wide, browser-local | Shared, versioned Catalog with structured components |
 | Chassis and Nodes | Implemented | Verified external containment mapping |
-| Space and power checks | U, Usable depth, Footprint, clearance, Slot capacity, Demand vs Design limit | Feeds, PDUs, ports, weight |
+| Space and power checks | U, Usable depth, Footprint, clearance, Slot capacity, Demand vs Design limit, power feeds and way ratings, port media and VLAN checks | PDU outlets, weight |
 | Review and Revisions | Draft/In review/Approved, Unverified names | Named, authenticated reviewers; server-enforced Snapshots; audit |
 | Persistence | Browser storage, Workspace backup file | Server storage, backups, multi-user access |
 | Hand-off | Project file export/import | Real-time shared projects |
@@ -111,7 +113,7 @@ Accepting the MVP does not make it ready for shared operational use. The product
 6. For a Chassis, IT fills Slots with Node templates and configures each Node.
 7. IT and onsite inspect the plan, elevation, room 3D, BOM and checks.
 8. The Plan is submitted for review (recording an unverified "designed by" name), which freezes a Snapshot.
-9. The reviewer resolves Review notes, acknowledges unknown Reserved-range Demand with a reason, and approves (recording an unverified reviewer name).
+9. The reviewer reads the Revision's notes, acknowledges unknown Reserved-range Demand with a reason, and approves (recording an unverified reviewer name).
 10. The installation team prints the Install sheet from the Approved Revision. Later changes start a new Draft Revision.
 
 ### Product surfaces
@@ -124,7 +126,7 @@ Accepting the MVP does not make it ready for shared operational use. The product
 | Room 3D | Inspect the whole Room in 3D (view only); selecting a Rack opens its elevation |
 | Devices & BOM | List every Device including Nodes; export BOM CSV |
 | Catalog | Create, edit and remove workspace Templates |
-| Review | Read checks, resolve Review notes, record Acknowledged unknowns, submit/approve, view Revision history |
+| Review | Read checks and Review notes, record Acknowledged unknowns, submit/approve, view Revision history |
 | Install sheet | Print-ready document for an Approved Revision |
 
 Selecting a Device in any view opens its inspector. Selecting a Node resolves through its Chassis to the correct Rack. Selection uses stable record IDs, not names or screen positions.
@@ -229,7 +231,7 @@ The **Design limit** is a per-Plan percentage of the Power budget, default **80%
 | A Rack device or Node | Blocks |
 | A Reserved range | Allowed only after a reviewer records an **Acknowledged unknown** with a reason |
 
-There is no per-feed/PDU model, PSU failure scenario, cooling model or weight check in the MVP.
+There is no PDU outlet model, PSU failure scenario, cooling model or weight check in the MVP; power feeds are covered by FR09a.
 
 ### FR09a Power feeds (added 2026-10-14)
 
@@ -241,7 +243,7 @@ A Plan has numbered **Revisions** in one of three states: **Draft**, **In review
 
 Submitting copies the Survey, Footprint, room objects, Racks, Devices, Nodes, Reserved ranges, referenced Template versions and Power settings into a frozen **Snapshot**, records an optional unverified "designed by" name, and moves the Revision to In review. Submission does not require checks to pass.
 
-Review notes can be added and resolved in Draft or In review. Approval is available only when all blocking checks in Section 8 pass; it records a required unverified reviewer name and timestamp. When the designer and reviewer names match, the approval is visibly flagged as self-approved (not prevented).
+Review notes are notes on a Revision for anyone who opens it later: they can be added to any Revision, approved ones included, with an optional unverified name and the time. They are never resolved and never block approval (changed 2026-10-17). Approval is available only when all blocking checks in Section 8 pass; it records a required unverified reviewer name and timestamp. When the designer and reviewer names match, the approval is visibly flagged as self-approved (not prevented).
 
 Editing an Approved Plan starts a new Draft Revision with an incremented number; prior Snapshots never change. There is no publish step or baseline in the MVP, and no UI may use the word "Published".
 
@@ -271,7 +273,7 @@ The sheet has no edit controls or checkboxes. Recording installation progress is
 
 ### FR13 Sample Project and first run
 
-A clearly labelled **Sample Project** appears in the normal Project list for every new workspace. Users can open and edit it, delete it, and restore it with "Load sample". It contains one Site with two Rooms: a rectangular server room with an Approved Revision (so the Install sheet works immediately), and an L-shaped MDF with a column Cut-out, two OxygenAI Racks, one customer Rack with a Reserved range, an Existing rack, a populated 6U Chassis, one blocking issue and one open Review note. All sample hardware is generic and labelled illustrative.
+A clearly labelled **Sample Project** appears in the normal Project list for every new workspace. Users can open and edit it, delete it, and restore it with "Load sample". It contains one Site with two Rooms: a rectangular server room with an Approved Revision (so the Install sheet works immediately), and an L-shaped MDF with a column Cut-out, two OxygenAI Racks, one customer Rack with a Reserved range, an Existing rack, a populated 6U Chassis, one blocking issue and one Review note. All sample hardware is generic and labelled illustrative.
 
 ## 6. Conceptual data model
 
@@ -292,7 +294,7 @@ A clearly labelled **Sample Project** appears in the normal Project list for eve
 | Rack device | ID, Template ID + version, name, Rack ID, bottom U, height, depth, Demand, config, notes | In one Rack |
 | Chassis | Rack-device fields + Slot count, Slots per row, overhead Demand, Nodes | A Rack device |
 | Node | ID, Template ID + version, name, Chassis ID, Slot, Demand, config, notes | In one Chassis Slot; inherits Rack and U |
-| Review note | ID, text, resolved flag | Belongs to a Plan's current Revision |
+| Review note | ID, text, Revision number, time, optional unverified name | Belongs to a Plan, written on one Revision |
 | Acknowledged unknown | Reserved range ID, reason, unverified name, timestamp | Belongs to a Revision |
 | History event | Revision, action, timestamp | Plan history |
 
@@ -339,7 +341,6 @@ Defaults are rendering and planning assumptions, not manufacturer specifications
 | Unknown Demand on a Rack device or Node | Show unknown count | Block |
 | Unknown Demand on a Reserved range | Show unknown count | Block until an Acknowledged unknown is recorded |
 | Known Demand above Design limit | Show exceeded limit | Block |
-| Unresolved Review note | Allowed | Block |
 | Missing room name, no Devices, or missing reviewer name | Prompt | Block |
 | Edit to a non-Draft Revision | Prevented | Requires a new Draft |
 
@@ -459,13 +460,13 @@ Visual design follows `DESIGN.md` (glass and depth direction, adopted 2026-10-14
 ## 14. Decisions before production implementation
 
 1. ~~Project/site/room hierarchy~~ — decided: Project → Site → Room, one Plan per Room. Still open: whether multiple survey alternatives per Room are needed.
-2. Who can edit, review, approve and publish, including separation of duties.
+2. ~~Who can edit, review and approve~~ — decided 2026-10-17: one cumulative role per user (Viewer ⊂ Editor ⊂ Reviewer ⊂ Admin), global access to all Projects, a reviewer never approves their own submission. Still open: publishing rights (P2).
 3. The authoritative platform and its deployed version; validate Chassis → Node and Reserved-range mapping.
 4. ~~Measurement precision and polygon drawing~~ — decided: rectangles at 0.10 m. Still open: whether disconnected Floor areas should block.
-5. Measured/assumed/unknown provenance, mandatory survey evidence and installation verification fields.
+5. Measured/assumed/unknown provenance, mandatory survey evidence and installation verification fields. Provenance and install-day verification are queued after P1 (2026-10-17).
 6. The organisation's documented capacity, headroom and feed rules to replace the per-Plan Design limit.
 7. Structured hardware attributes and compatibility checks beyond free text and schematic Slots.
-8. Retention, backup/recovery, audit, deployment/network access and expected project size.
+8. Retention, backup/recovery, audit, deployment/network access and expected project size. Decided 2026-10-17: company infrastructure, the command log is kept forever as the audit trail. Still open: expected project size and the recovery-time target.
 9. The organisation's standard front/rear clearance depths, to replace the 1.00/0.60 m defaults.
 
 These decisions constrain production. They do not block building or evaluating the MVP.

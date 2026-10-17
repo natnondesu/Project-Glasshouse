@@ -17,7 +17,7 @@ import type { Rack3D, Scene3D } from './scene';
 import type { PowerPath } from '@glasshouse/domain';
 import { useT } from '../../i18n';
 
-export const FOV_DEG = 45;
+const FOV_DEG = 45;
 
 export function hasWebGL(): boolean {
   try {
@@ -31,7 +31,7 @@ export function hasWebGL(): boolean {
   }
 }
 
-export type CameraUpdate = (update: (prev: OrbitCamera) => OrbitCamera) => void;
+type CameraUpdate = (update: (prev: OrbitCamera) => OrbitCamera) => void;
 
 interface ControllerProps {
   camera: OrbitCamera;
@@ -172,7 +172,7 @@ interface Room3DCanvasProps {
   placing?: { onPick: (x: number, z: number) => void } | null;
 }
 
-export interface WalkMode {
+interface WalkMode {
   camera: WalkCamera;
   onCommit: (c: WalkCamera) => void;
   glide: { x: number; z: number } | null;

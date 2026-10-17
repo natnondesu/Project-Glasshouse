@@ -1,6 +1,6 @@
 import type { Repository } from './repository';
 
-export interface MemoryRepository extends Repository {
+interface MemoryRepository extends Repository {
   saved: unknown | null;
   failNextSave(reason: string): void;
 }

@@ -8,7 +8,7 @@ const DRAG_START_PX = 6;
 const EDGE_PX = 48;
 const EDGE_STEP_PX = 14;
 
-export interface RackDrag {
+interface RackDrag {
   id: Id;
   dx: number;
   /** Where it would land among the other racks (0 = first). */

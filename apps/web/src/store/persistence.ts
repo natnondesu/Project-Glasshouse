@@ -2,7 +2,7 @@ import { createWorkspace, parseWorkspace, withSample } from '@glasshouse/domain'
 import type { Repository } from '../storage/repository';
 import { useWorkspaceStore } from './workspaceStore';
 
-export const SAVE_DEBOUNCE_MS = 400;
+const SAVE_DEBOUNCE_MS = 400;
 /**
  * Browsers don't let an IndexedDB write started during unload finish, so an edit made just before
  * a reload or tab close would be lost. A synchronous localStorage copy bridges that gap.

@@ -1,10 +1,12 @@
 import { z } from 'zod';
 import { migrate } from './migrations';
-import { CURRENT_SCHEMA_VERSION } from './model/defaults';
+import { CURRENT_SCHEMA_VERSION, LIMITS } from './model/defaults';
 import type { Workspace } from './model/types';
 import { err, ok, type Result } from './result';
 
-const id = z.string().min(1);
+/** Every stored string has a ceiling, so one pasted blob can't bloat a shared workspace. */
+const text = z.string().max(LIMITS.storedTextMaxLength);
+const id = text.min(1);
 const num = z.number();
 const int = z.number().int();
 const demand = z.discriminatedUnion('kind', [
@@ -15,15 +17,15 @@ const category = z.enum(['server', 'network', 'power', 'chassis', 'misc']);
 export const templateSchema = z.object({
   id,
   version: int.positive(),
-  label: z.string(),
-  model: z.string(),
+  label: text,
+  model: text,
   category,
   mounting: z.enum(['rack', 'slot']),
   heightU: int.nonnegative(),
   depthMm: num.nonnegative(),
   demand,
-  color: z.string(),
-  defaultConfig: z.string(),
+  color: text,
+  defaultConfig: text,
   slotCount: int.positive().nullable(),
   slotsPerRow: int.positive().nullable(),
   illustrative: z.boolean(),
@@ -31,10 +33,10 @@ export const templateSchema = z.object({
     .array(
       z.object({
         count: int,
-        prefix: z.string(),
+        prefix: text,
         start: int,
         media: z.enum(['rj45', 'sfp', 'sfp_plus', 'qsfp']),
-        speed: z.string(),
+        speed: text,
         rows: z.union([z.literal(1), z.literal(2)]).optional(),
         order: z.enum(['odd_top', 'linear']).optional(),
       }),
@@ -49,25 +51,25 @@ const survey = z.object({
   cutOuts: z.array(rect),
   powerBudget: num,
   designLimitPct: num,
-  networkHandoff: z.string(),
-  notes: z.string(),
+  networkHandoff: text,
+  notes: text,
 });
-const objectBase = { id, name: z.string(), x: num, y: num, w: num, d: num, angle: num, height: num.nullable(), notes: z.string() };
+const objectBase = { id, name: text, x: num, y: num, w: num, d: num, angle: num, height: num.nullable(), notes: text };
 const portVlan = z.discriminatedUnion('mode', [
   z.object({ mode: z.literal('access'), vid: int }),
   z.object({ mode: z.literal('trunk'), allowed: z.union([z.array(int), z.literal('all')]), native: int.nullable() }),
 ]);
 const port = z.object({
-  name: z.string().min(1),
+  name: text.min(1),
   media: z.enum(['rj45', 'sfp', 'sfp_plus', 'qsfp']),
-  speed: z.string(),
+  speed: text,
   vlan: portVlan.optional(),
-  lag: z.string().optional(),
-  remote: z.object({ roomId: id, deviceId: id, port: z.string() }).optional(),
+  lag: text.optional(),
+  remote: z.object({ roomId: id, deviceId: id, port: text }).optional(),
 });
-const deviceBase = { id, templateId: id, templateVersion: int, name: z.string(), demand, config: z.string(), notes: z.string(), ports: z.array(port).optional() };
-const portRef = z.object({ deviceId: id, port: z.string().min(1) });
-const link = z.object({ id, a: portRef, b: portRef, label: z.string(), cable: z.enum(['cat6', 'cat6a', 'om3', 'om4', 'os2', 'dac', 'aoc']).nullable() });
+const deviceBase = { id, templateId: id, templateVersion: int, name: text, demand, config: text, notes: text, ports: z.array(port).optional() };
+const portRef = z.object({ deviceId: id, port: text.min(1) });
+const link = z.object({ id, a: portRef, b: portRef, label: text, cable: z.enum(['cat6', 'cat6a', 'om3', 'om4', 'os2', 'dac', 'aoc']).nullable() });
 const node = z.object({ ...deviceBase, slot: int.positive() });
 const placedDevice = z.object({ ...deviceBase, kind: z.literal('device'), category, bottomU: int.positive(), heightU: int.positive(), depthMm: num });
 const chassis = z.object({
@@ -80,7 +82,7 @@ const chassis = z.object({
   slotsPerRow: int.positive(),
   nodes: z.array(node),
 });
-const reserved = z.object({ id, label: z.string(), bottomU: int.positive(), heightU: int.positive(), demand, notes: z.string() });
+const reserved = z.object({ id, label: text, bottomU: int.positive(), heightU: int.positive(), demand, notes: text });
 const rack = z.object({
   ...objectBase,
   type: z.literal('rack'),
@@ -95,49 +97,49 @@ const rack = z.object({
 const simpleObject = z.object({ ...objectBase, type: z.enum(['existing_rack', 'door', 'mcb', 'furniture', 'wall_plug', 'industrial_socket', 'floor_box', 'ups', 'pdu']),
   hinge: z.enum(['left', 'right']).optional(),
   opening: z.enum(['swing', 'slide']).optional(),
-  panel: z.object({ phase: z.enum(['single', 'three']), ways: z.array(z.object({ ratingA: num, label: z.string() })) }).optional(),
+  panel: z.object({ phase: z.enum(['single', 'three']), ways: z.array(z.object({ ratingA: num, label: text })) }).optional(),
 });
-const unverifiedName = z.object({ name: z.string(), at: z.string() });
+const unverifiedName = z.object({ name: text, at: text });
 const anchor = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('point'), x: num, y: num }),
   z.object({ kind: z.literal('object'), objectId: id, u: num, v: num }),
 ]);
 const dimension = z.object({ id, a: anchor, b: anchor, offset: num });
-const feed = z.object({ id, targetId: id, sourceId: id, label: z.string(), way: int.positive().optional() });
+const feed = z.object({ id, targetId: id, sourceId: id, label: text, way: int.positive().optional() });
 const revision = z.object({
   number: int.positive(),
   state: z.enum(['draft', 'in_review', 'approved']),
-  content: z.object({ survey, objects: z.array(z.union([rack, simpleObject])), templatesUsed: z.array(templateSchema), dimensions: z.array(dimension), feeds: z.array(feed), links: z.array(link), vlans: z.array(z.object({ vid: int, name: z.string() })), stacks: z.array(z.object({ id, name: z.string(), members: z.array(z.object({ deviceId: id, member: int })) })).optional() }),
+  content: z.object({ survey, objects: z.array(z.union([rack, simpleObject])), templatesUsed: z.array(templateSchema), dimensions: z.array(dimension), feeds: z.array(feed), links: z.array(link), vlans: z.array(z.object({ vid: int, name: text })), stacks: z.array(z.object({ id, name: text, members: z.array(z.object({ deviceId: id, member: int })) })).optional() }),
   designedBy: unverifiedName.nullable(),
   approvedBy: unverifiedName.nullable(),
-  submittedAt: z.string().nullable(),
-  approvedAt: z.string().nullable(),
-  acknowledgements: z.array(z.object({ reservedRangeId: id, reason: z.string(), by: unverifiedName })),
+  submittedAt: text.nullable(),
+  approvedAt: text.nullable(),
+  acknowledgements: z.array(z.object({ reservedRangeId: id, reason: text, by: unverifiedName })),
 });
 const plan = z.object({
   revisions: z.array(revision).min(1),
-  notes: z.array(z.object({ id, text: z.string(), revision: int, createdAt: z.string(), by: z.string().optional() })),
+  notes: z.array(z.object({ id, text: text, revision: int, createdAt: text, by: text.optional() })),
   history: z.array(
     z.object({
       revision: int,
-      action: z.string(),
-      at: z.string(),
+      action: text,
+      at: text,
       code: z.enum(['submitted', 'approved', 'new_draft', 'draft_discarded', 'acknowledged', 'unacknowledged', 'note_added']).optional(),
-      params: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
+      params: z.record(text, z.union([text, z.number()])).optional(),
     }),
   ),
-  equipmentState: z.record(z.string(), z.enum(['planned', 'deployed', 'maintenance'])),
-  rackOrder: z.array(z.string()).optional(),
+  equipmentState: z.record(text, z.enum(['planned', 'deployed', 'maintenance'])),
+  rackOrder: z.array(text).optional(),
 });
-const room = z.object({ id, name: z.string(), notes: z.string(), plan });
-const site = z.object({ id, name: z.string(), notes: z.string(), rooms: z.array(room) });
-const project = z.object({ id, name: z.string(), notes: z.string(), isSample: z.boolean(), sites: z.array(site) });
+const room = z.object({ id, name: text, notes: text, plan });
+const site = z.object({ id, name: text, notes: text, rooms: z.array(room) });
+const project = z.object({ id, name: text, notes: text, isSample: z.boolean(), sites: z.array(site) });
 
 export const workspaceSchema = z.object({
   schemaVersion: z.literal(CURRENT_SCHEMA_VERSION),
   projects: z.array(project),
   catalog: z.array(templateSchema),
-  lastBackupAt: z.string().nullable(),
+  lastBackupAt: text.nullable(),
 });
 
 export function parseWorkspace(raw: unknown): Result<Workspace> {
