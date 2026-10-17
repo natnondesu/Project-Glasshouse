@@ -5,6 +5,7 @@ import { currentRevision, findRoom } from './lookup';
 import type { Rack, Template, Workspace } from './model/types';
 import { createObject } from './objects';
 import { isSelfApproved } from './readiness';
+import { newlyApprovedRevisions } from './approvals';
 import { applyImport, createCopyIds, exportProjectFile, parseProjectFile, previewImport, type ImportResolution, type ProjectFile } from './projectFile';
 
 const AT = '2026-10-14T09:00:00.000Z';
@@ -187,3 +188,89 @@ describe('template versions on import', () => {
     });
   });
 });
+
+describe('imports cannot create approvals', () => {
+  const approvedSource = (): Workspace =>
+    run(
+      source(),
+      { type: 'review', roomId: 'r1', command: { type: 'review/submit', designedBy: 'Dana', at: AT } },
+      { type: 'review', roomId: 'r1', command: { type: 'review/approve', reviewer: 'Ada', at: AT } },
+    );
+  const revisionsOf = (ws: Workspace, roomId = 'r1') => findRoom(ws, roomId)!.room.plan.revisions;
+  const mapRevisions = (file: ProjectFile, f: (r: ProjectFile['project']['sites'][number]['rooms'][number]['plan']['revisions'][number]) => ProjectFile['project']['sites'][number]['rooms'][number]['plan']['revisions'][number]): ProjectFile => ({
+    ...file,
+    project: { ...file.project, sites: file.project.sites.map((s) => ({ ...s, rooms: s.rooms.map((r) => ({ ...r, plan: { ...r.plan, revisions: r.plan.revisions.map(f) } })) })) },
+  });
+  const resolutionsFor = (file: ProjectFile): ImportResolution[] => [{ mode: 'merge', takeIncoming: [] }, { mode: 'copy', ids: createCopyIds(file) }];
+
+  it('keeps the approval hash of a file whose approved content is untouched', () => {
+    const file = fileOf(approvedSource());
+    expect(revisionsOf(approvedSource())[0]!.approvedHash).toBeDefined();
+    for (const resolution of resolutionsFor(file)) {
+      const ws = applyOk(createWorkspace(), file, resolution);
+      const rev = ws.projects[0]!.sites[0]!.rooms.find((r) => r.name === 'MDF-1')!.plan.revisions[0]!;
+      expect(rev.state).toBe('approved');
+      expect(rev.approvedHash).toBe(file.project.sites[0]!.rooms[0]!.plan.revisions[0]!.approvedHash);
+    }
+  });
+
+  it('drops an approval hash that does not match the content, in every mode', () => {
+    const file = mapRevisions(fileOf(approvedSource()), (v) => ({ ...v, content: { ...v.content, survey: { ...v.content.survey, width: v.content.survey.width + 1 } } }));
+    for (const resolution of resolutionsFor(file)) {
+      const ws = applyOk(createWorkspace(), file, resolution);
+      const rev = ws.projects[0]!.sites[0]!.rooms.find((r) => r.name === 'MDF-1')!.plan.revisions[0]!;
+      expect(rev.approvedHash).toBeUndefined();
+    }
+  });
+
+  it('drops a made-up approval hash on a non-approved revision', () => {
+    const file = mapRevisions(fileOf(source()), (v) => ({ ...v, approvedHash: 'a'.repeat(64) }));
+    const ws = applyOk(createWorkspace(), file, { mode: 'merge', takeIncoming: [] });
+    expect(ws.projects[0]!.sites[0]!.rooms[0]!.plan.revisions[0]!.approvedHash).toBeUndefined();
+  });
+});
+
+describe('newlyApprovedRevisions', () => {
+  const approvedFile = () =>
+    fileOf(
+      run(
+        source(),
+        { type: 'review', roomId: 'r1', command: { type: 'review/submit', designedBy: 'Dana', at: AT } },
+        { type: 'review', roomId: 'r1', command: { type: 'review/approve', reviewer: 'Ada', at: AT } },
+      ),
+    );
+
+  it('finds an in-review room that a merge would turn approved', () => {
+    const local = run(source(), { type: 'review', roomId: 'r1', command: { type: 'review/submit', designedBy: 'Dana', at: AT } });
+    const after = applyOk(local, approvedFile(), { mode: 'merge', takeIncoming: ['r1'] });
+    expect(newlyApprovedRevisions(local, after)).toEqual([{ roomId: 'r1', roomName: 'MDF-1', revision: 1 }]);
+  });
+
+  it('finds a draft turned approved by take-incoming', () => {
+    const after = applyOk(source(), approvedFile(), { mode: 'merge', takeIncoming: ['r1'] });
+    expect(newlyApprovedRevisions(source(), after)).toEqual([{ roomId: 'r1', roomName: 'MDF-1', revision: 1 }]);
+  });
+
+  it('finds an approved revision added on top of a server room', () => {
+    const file = approvedFile();
+    const withNext = { ...file, project: { ...file.project, sites: file.project.sites.map((s) => ({ ...s, rooms: s.rooms.map((r) => (r.id === 'r1' ? { ...r, plan: { ...r.plan, revisions: [...r.plan.revisions, { ...r.plan.revisions[0]!, number: 2 }] } } : r)) })) } };
+    const local = approvedFileWorkspace();
+    const after = applyOk(local, withNext, { mode: 'merge', takeIncoming: ['r1'] });
+    expect(newlyApprovedRevisions(local, after)).toEqual([{ roomId: 'r1', roomName: 'MDF-1', revision: 2 }]);
+  });
+
+  it('ignores rooms that are new on the server and approvals that were already there', () => {
+    const file = approvedFile();
+    expect(newlyApprovedRevisions(createWorkspace(), applyOk(createWorkspace(), file, { mode: 'merge', takeIncoming: [] }))).toEqual([]);
+    const local = approvedFileWorkspace();
+    expect(newlyApprovedRevisions(local, local)).toEqual([]);
+  });
+});
+
+function approvedFileWorkspace(): Workspace {
+  return run(
+    source(),
+    { type: 'review', roomId: 'r1', command: { type: 'review/submit', designedBy: 'Dana', at: AT } },
+    { type: 'review', roomId: 'r1', command: { type: 'review/approve', reviewer: 'Ada', at: AT } },
+  );
+}

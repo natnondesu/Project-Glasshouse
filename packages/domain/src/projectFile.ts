@@ -1,5 +1,6 @@
 import { castDraft, produce } from 'immer';
 import { newId } from './ids';
+import { contentFingerprint } from './fingerprint';
 import { currentRevision, findProject, findRoom, findSite } from './lookup';
 import { migrate } from './migrations';
 import { CURRENT_SCHEMA_VERSION, LIMITS } from './model/defaults';
@@ -209,8 +210,10 @@ function stripIdentity(p: Project): Project {
         ...room,
         plan: {
           ...room.plan,
-          revisions: room.plan.revisions.map((r) => ({
+          revisions: room.plan.revisions.map(({ approvedHash, ...r }) => ({
             ...r,
+            // A hash the content doesn't match would let a file vouch for an approval nobody gave.
+            ...(approvedHash !== undefined && approvedHash === contentFingerprint(r.content) ? { approvedHash } : {}),
             designedBy: r.designedBy && withoutUserId(r.designedBy),
             approvedBy: r.approvedBy && withoutUserId(r.approvedBy),
             acknowledgements: r.acknowledgements.map((a) => ({ ...a, by: withoutUserId(a.by) })),

@@ -1,4 +1,4 @@
-import { apply, approvedRevisionChanges, createWorkspace, currentRevision, draftEditRoom, err, findRoom, parseWorkspace, withSample, type DomainError, type Workspace, type WorkspaceCommand } from '@glasshouse/domain';
+import { apply, approvedRevisionChanges, createWorkspace, currentRevision, draftEditRoom, err, findRoom, newlyApprovedRevisions, parseWorkspace, withSample, type DomainError, type Workspace, type WorkspaceCommand } from '@glasshouse/domain';
 import type { ClaimRegistry } from './claims';
 import { atLeast } from './identity/types';
 import { ROLE_LABEL, requiredRole, stampCommand } from './permissions';
@@ -222,6 +222,13 @@ export class WorkspaceService {
       const t = touched[0]!;
       const advice = toApply.type === 'project/import' ? 'Import the file as a copy instead.' : 'Start a new draft.';
       return { kind: 'rejected', error: err('invalid_value', `Revision ${t.revision} of ${t.roomName} is approved, so it can't be changed. ${advice}`, [t.roomId]).error };
+    }
+    // Only a review can approve a room here. A copy or a new project may carry approvals as history; a merge into rooms that exist may not.
+    if (toApply.type === 'project/import' && toApply.resolution.mode === 'merge') {
+      const made = newlyApprovedRevisions(this.current.workspace, result.value)[0];
+      if (made) {
+        return { kind: 'rejected', error: err('invalid_value', `This file marks revision ${made.revision} of ${made.roomName} as approved, but it isn't approved here. Import it as a copy instead.`, [made.roomId]).error };
+      }
     }
     const approval = approvalRecord(this.current.seq + 1, toApply, result.value, actor);
     if (!approval.ok) {

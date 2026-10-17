@@ -278,6 +278,36 @@ describe('approved revisions', () => {
     expect(await store.listApprovals()).toHaveLength(1);
   });
 
+  describe('an import cannot approve a room of this server', () => {
+    async function approvedFileAndOtherServer(submitOther: boolean) {
+      const { svc: source } = await approved();
+      const file = exportProjectFile(source.state.workspace, 'p', NOW);
+      if (!file.ok) throw new Error(file.error.message);
+      const other = await WorkspaceService.open(new MemoryCommandStore(), { now: () => NOW });
+      for (const [i, c] of readyRoomCommands().entries()) await go(other, editor, `o${i}`, c);
+      if (submitOther) await go(other, editor, 'osub', { type: 'review', roomId: 'r', command: { type: 'review/submit', designedBy: '', at: 'x' } });
+      return { other, file: structuredClone(file.value) };
+    }
+    const message = 'This file marks revision 1 of MDF-1 as approved, but it isn\'t approved here. Import it as a copy instead.';
+
+    it.each([false, true])('refuses take-incoming that turns a draft or in_review revision approved (submitted: %s)', async (submitted) => {
+      const { other, file } = await approvedFileAndOtherServer(submitted);
+      const seq = other.state.seq;
+      const outcome = await go(other, editor, 'imp', { type: 'project/import', file, resolution: { mode: 'merge', takeIncoming: ['r'] } } as WorkspaceCommand);
+      expect(outcome).toMatchObject({ kind: 'rejected', error: { code: 'invalid_value', message, targets: ['r'] } });
+      expect(other.state.seq).toBe(seq);
+    });
+
+    it('lets a new project come in with its approvals as history, and records no approval', async () => {
+      const { file } = await approvedFileAndOtherServer(false);
+      const store = new MemoryCommandStore();
+      const fresh = await WorkspaceService.open(store, { now: () => NOW });
+      const outcome = await go(fresh, editor, 'imp', { type: 'project/import', file, resolution: { mode: 'merge', takeIncoming: [] } } as WorkspaceCommand);
+      expect(outcome).toMatchObject({ kind: 'accepted' });
+      expect(await store.listApprovals()).toEqual([]);
+    });
+  });
+
   it('keeps the approval record after the room is deleted', async () => {
     const { svc, store } = await approved();
     expect(await go(svc, editor, 'del', { type: 'room/delete', roomId: 'r' })).toMatchObject({ kind: 'accepted' });

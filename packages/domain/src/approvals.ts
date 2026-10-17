@@ -29,3 +29,25 @@ export function approvedRevisionChanges(before: Workspace, after: Workspace): Ap
   }
   return changes;
 }
+
+/**
+ * Approved revisions of rooms that already exist in `before` that were not approved, byte-identical, in `before`.
+ * Rooms new in `after` are not listed: an imported copy may carry approvals as history.
+ */
+export function newlyApprovedRevisions(before: Workspace, after: Workspace): ApprovedChange[] {
+  const changes: ApprovedChange[] = [];
+  for (const project of after.projects) {
+    for (const site of project.sites) {
+      for (const room of site.rooms) {
+        const was = findRoom(before, room.id);
+        if (!was) continue;
+        for (const rev of room.plan.revisions) {
+          if (rev.state !== 'approved') continue;
+          const same = was.room.plan.revisions.find((r) => r.number === rev.number);
+          if (!same || same.state !== 'approved' || canonicalJson(same) !== canonicalJson(rev)) changes.push({ roomId: room.id, roomName: room.name, revision: rev.number });
+        }
+      }
+    }
+  }
+  return changes;
+}
