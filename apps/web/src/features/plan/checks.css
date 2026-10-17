@@ -164,3 +164,12 @@
   background: var(--control-bg);
   color: var(--ink-2);
 }
+
+/* Notes on this revision: a quiet pointer, not a count of things to fix. */
+.checks__notes {
+  margin-left: auto;
+  font-size: var(--text-xs);
+  color: var(--ink-2);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}

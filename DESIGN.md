@@ -43,7 +43,9 @@ Colour never works alone. Blocking issues use a solid circle icon, warnings a da
 - One focus treatment: a solid 2px accent ring (`--focus-ring`, or `--focus-ring-inset` where an outline would be clipped). SVG items show focus by thickening their own line in accent.
 - Freezing actions confirm in place: Submit and Approve show what will freeze and the check status before they act. A disabled Approve says what it waits for.
 - A frozen revision is said once, in the tab bar: a chip ("R01 Approved · read-only") beside Start new draft, never a banner over each view.
-- Checks counts what holds approval the way the Review badge does: blocks, to acknowledge, open notes; plain warnings get a quieter chip. Its head stays one line.
+- Checks counts what holds approval the way the Review badge does: blocks and to acknowledge; plain warnings get a quieter chip. Notes on the revision on screen show as a quiet link to Review ("2 notes"), never as a hold. Its head stays one line.
+- Review notes are revision notes: written on a revision (approved ones too), read by anyone who opens it later, with an optional unverified name and the time. No resolving; they never hold approval. Earlier revisions' notes fold away under the current one.
+- Revisions and history shows the latest 5 revisions (Show all for the rest) and pages events 20 at a time, newest first, with Newer / Older.
 - Frozen revisions read as a record, not a form: values sit as plain figures beside their units, remove buttons are hidden, and the panel says Read-only with a lock instead of "Changes save as you type".
 - Approval is a stamp: APPROVED, revision, date and approver in a ruled green box, with the Install sheet as the next step.
 
@@ -80,7 +82,7 @@ Colour never works alone. Blocking issues use a solid circle icon, warnings a da
 ## 3D
 
 - Labels are sprites at a fixed screen size; the Labels menu picks which kinds are always labelled, the rest label on hover.
-- Walk puts you in the room at eye height (1.6 m, a wider 65° view), starting inside the door (or in front of the selected rack). Click the floor to glide there; drag to look; W/S or ↑/↓ walk, A/D step aside, ←/→ turn, Shift hurries; two-finger scroll walks too. Walls, racks, other objects and columns stop you, sliding along them. The rack list (and search) stands you in front of a rack's Front, looking at it. Esc or Back to overview returns to the orbit view; clicking a rack still selects it.
+- Walk puts you in the room at eye height (1.6 m, a wider 65° view), first asking where to start, like Street View: a pin follows the pointer on the floor (green where you can stand, red where you can't) and a click drops you there facing into the room; a spot too close to a rack moves to the nearest free floor. Start at the door is one click; Esc or Cancel goes back. Click the floor to glide there; drag to look; W/S or ↑/↓ walk, A/D step aside, ←/→ turn, Shift hurries; two-finger scroll walks too. Walls, racks, other objects and columns stop you, sliding along them. The rack list (and search) stands you in front of a rack's Front, looking at it. Esc or Back to overview returns to the orbit view; clicking a rack still selects it.
 - A highlighted power path glows and carries arrowheads moving from source to load (still under reduced motion); everything else on the power layer fades.
 
 ## Catalog
@@ -112,6 +114,8 @@ Colour never works alone. Blocking issues use a solid circle icon, warnings a da
 
 ## Home
 
+- The project tree's header (Projects and its actions) and the backup panel stay put; only the tree scrolls between them.
+- Catalog lives at the far right of the title block, past a divider, on every page (icon only below 1360 px wide); that corner is where user settings join later.
 - The project tree stays. Beside it, the last room opened leads: name, approval stamp, racks / devices / power, what still holds approval, Open room and the Install sheet, and the room live in 3D on paper.
 - The 3D turns slowly (about one turn a minute). It stops under the pointer so a drag looks around from there, has a pause button, holds still under reduced motion, stops drawing when scrolled away, and never takes the scroll wheel. Clicking a rack opens it in the elevation.
 - When the hero room has holds, the way to them leads: "Resolve 3 items" (to Review) is the primary button and Open room steps aside; each hold count is a link to where it is resolved. No small label above the room name; "Last opened" sits in the line under it.

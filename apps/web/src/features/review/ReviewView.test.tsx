@@ -1,5 +1,5 @@
 import { createObject, currentRevision, findRoom, type Rack, type Template } from '@glasshouse/domain';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { createMemoryRouter, RouterProvider } from 'react-router';
 import { beforeEach, expect, it } from 'vitest';
@@ -84,14 +84,17 @@ it('AC14: acknowledges unknown reserved demand with a reason and a name', async 
   expect(screen.queryByText('Reserved range U10–U13 in RK-01 has unknown demand.')).toBeNull();
 });
 
-it('adds and resolves review notes', async () => {
+it('adds a note on the current revision with who wrote it, never holding approval, even after approval', async () => {
   const user = userEvent.setup();
   open();
-  await user.type(screen.getByLabelText('New review note'), 'Confirm the PDU model');
+  await user.type(screen.getByLabelText('New note'), 'Confirm the PDU model');
+  await user.type(screen.getByLabelText('Your name (optional, unverified)'), 'Ploy');
   await user.click(screen.getByRole('button', { name: 'Add note' }));
-  expect(screen.getByText('1 review note is unresolved.')).toBeInTheDocument();
-  await user.click(screen.getByRole('checkbox', { name: 'Confirm the PDU model' }));
-  expect(screen.queryByText('1 review note is unresolved.')).toBeNull();
+  const notes = screen.getByRole('region', { name: 'Notes on R01' });
+  expect(notes).toHaveTextContent('Confirm the PDU model');
+  expect(notes).toHaveTextContent('Ploy (unverified)');
+  expect(screen.queryByRole('checkbox', { name: 'Confirm the PDU model' })).toBeNull();
+  // The Review badge counts only what holds approval.
   expect(screen.getByRole('link', { name: 'Review' })).toBeInTheDocument();
 });
 
@@ -116,4 +119,17 @@ it('discards a draft after confirming, back to the approved revision, and logs i
 it("offers no discard on a room's first draft", () => {
   open();
   expect(screen.queryByRole('button', { name: /^Discard draft/ })).toBeNull();
+});
+
+it('pages a long history 20 at a time, newest first', async () => {
+  const user = userEvent.setup();
+  const s = useWorkspaceStore.getState();
+  for (let i = 0; i < 25; i += 1) s.dispatch({ type: 'review', roomId: 'r', command: { type: 'note/add', id: `n${i}`, text: `Note ${i}`, at: `2026-10-15T09:${String(i).padStart(2, '0')}:00.000Z` } });
+  open();
+  const events = () => within(screen.getByRole('list', { name: 'What happened, newest first' })).getAllByRole('listitem');
+  expect(events()).toHaveLength(20);
+  expect(screen.getByRole('button', { name: 'Newer' })).toBeDisabled();
+  await user.click(screen.getByRole('button', { name: 'Older' }));
+  expect(events()).toHaveLength(5);
+  expect(screen.getByRole('button', { name: 'Older' })).toBeDisabled();
 });

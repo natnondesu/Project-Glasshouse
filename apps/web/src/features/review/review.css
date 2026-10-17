@@ -152,19 +152,32 @@
 }
 
 .notes__item {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  align-items: start;
-  gap: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 0;
+  border-top: 1px solid var(--line);
   font-size: var(--text-sm);
 }
 
-.notes__item.is-resolved label {
-  color: var(--ink-2);
-  text-decoration: line-through;
+.notes__text {
+  white-space: pre-wrap;
 }
 
-.notes__time,
+.notes__earlier summary {
+  cursor: pointer;
+  font-size: var(--text-xs);
+  color: var(--ink-2);
+}
+
+.review-form__row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 8px;
+}
+
+.notes__meta,
 .events__time {
   font-size: var(--text-2xs);
   color: var(--ink-2);
@@ -273,4 +286,17 @@
 .review-confirm--danger {
   align-self: stretch;
   border-color: var(--block-border);
+}
+
+.events__pages {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  font-size: var(--text-xs);
+  color: var(--ink-2);
+}
+
+.revisions__more {
+  align-self: flex-start;
 }

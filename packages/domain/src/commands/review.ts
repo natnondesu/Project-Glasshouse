@@ -15,8 +15,8 @@ export type ReviewCommand =
   | { type: 'review/discard-draft'; at: string }
   | { type: 'review/acknowledge'; reservedRangeId: Id; reason: string; by: string; at: string }
   | { type: 'review/unacknowledge'; reservedRangeId: Id; at: string }
-  | { type: 'note/add'; id: Id; text: string; at: string }
-  | { type: 'note/resolve'; id: Id; resolved: boolean; at: string };
+  /** A note on a revision (the current one unless named), on any revision, frozen or not: notes never change the design. */
+  | { type: 'note/add'; id: Id; text: string; at: string; revision?: number; by?: string };
 
 const STATE_TEXT: Record<Revision['state'], string> = { draft: 'a Draft', in_review: 'In review', approved: 'approved' };
 
@@ -26,6 +26,7 @@ const lastRevision = (d: Draft<Plan>): Draft<Revision> => {
   return r;
 };
 
+const NAME_MAX_NOTE = 60;
 const frozen = (rev: Revision): Failure => err('invalid_value', `Revision ${rev.number} is approved. Start a new draft to change it.`);
 
 function validateText(raw: string, empty: string, label: string): Result<string> {
@@ -123,25 +124,17 @@ export function applyReviewCommand(plan: Plan, cmd: ReviewCommand): Result<Plan>
       );
     }
     case 'note/add': {
-      if (!open) return frozen(rev);
       const text = validateText(cmd.text, 'Write the note first.', 'A note');
       if (!text.ok) return text;
       if (plan.notes.some((n) => n.id === cmd.id)) return err('invalid_value', 'A note with this ID already exists.', [cmd.id]);
+      const on = cmd.revision ?? rev.number;
+      if (!plan.revisions.some((r) => r.number === on)) return err('not_found', `There is no revision ${on}.`, []);
+      const by = cmd.by?.trim() ?? '';
+      if (by.length > NAME_MAX_NOTE) return err('invalid_value', `Names are up to ${NAME_MAX_NOTE} characters.`, []);
       return ok(
         produce(plan, (d) => {
-          d.notes.push({ id: cmd.id, text: text.value, resolved: false, createdAt: cmd.at });
-          d.history.push({ revision: rev.number, action: 'Added a review note', at: cmd.at, code: 'note_added' });
-        }),
-      );
-    }
-    case 'note/resolve': {
-      if (!plan.notes.some((n) => n.id === cmd.id)) return err('not_found', 'That note no longer exists.', [cmd.id]);
-      if (!open) return frozen(rev);
-      return ok(
-        produce(plan, (d) => {
-          const note = d.notes.find((n) => n.id === cmd.id);
-          if (note) note.resolved = cmd.resolved;
-          d.history.push({ revision: rev.number, action: cmd.resolved ? 'Resolved a review note' : 'Reopened a review note', at: cmd.at, code: cmd.resolved ? 'note_resolved' : 'note_reopened' });
+          d.notes.push({ id: cmd.id, text: text.value, revision: on, createdAt: cmd.at, ...(by ? { by } : {}) });
+          d.history.push({ revision: on, action: by ? `${by} (unverified) added a note` : 'Added a note', at: cmd.at, code: 'note_added', ...(by ? { params: { by } } : {}) });
         }),
       );
     }

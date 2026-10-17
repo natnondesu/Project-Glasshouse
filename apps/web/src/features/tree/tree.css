@@ -1,16 +1,28 @@
 .tree {
   flex: 0 0 272px;
   min-height: 0;
-  overflow-y: auto;
+  /* The tree scrolls inside; the header and the backup panel stay in place. */
+  overflow: hidden;
   padding: 14px 10px 16px;
   align-self: stretch;
 }
 
+.tree__scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  margin: 0 -6px;
+  padding: 0 6px;
+}
+
 .tree__head {
+  flex: none;
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 0 4px 10px 8px;
+  border-bottom: 1px solid transparent;
 }
 
 .tree__head h2 {

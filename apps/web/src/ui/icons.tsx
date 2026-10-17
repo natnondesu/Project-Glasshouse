@@ -234,3 +234,11 @@ export const IconGrip = (p: IconProps) => (
     {[3.5, 7, 10.5].flatMap((y) => [5, 9].map((x) => <circle key={`${x}-${y}`} cx={x} cy={y} r="1.2" />))}
   </svg>
 );
+export const IconCatalog = (p: IconProps) => (
+  <svg {...frame(16)} {...p}>
+    <rect x="2.5" y="2.5" width="11" height="3" rx="0.6" />
+    <rect x="2.5" y="6.5" width="11" height="3" rx="0.6" />
+    <rect x="2.5" y="10.5" width="11" height="3" rx="0.6" />
+    <path d="M4.5 4h1.5M4.5 8h1.5M4.5 12h1.5" />
+  </svg>
+);

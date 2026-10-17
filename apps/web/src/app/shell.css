@@ -96,6 +96,30 @@
   gap: 10px;
 }
 
+.title-block__tools {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding-left: 10px;
+  border-left: 1px solid var(--line);
+}
+
+.title-block__catalog {
+  text-decoration: none;
+}
+
+/* Narrow screens: the icon alone (its name in the tooltip), so the title block keeps to one line. */
+@media (max-width: 1359px) {
+  .title-block__catalog-label {
+    display: none;
+  }
+}
+
+.title-block__catalog.is-active {
+  background: var(--ink);
+  color: #fff;
+}
+
 .save-status {
   font-size: var(--text-xs);
   color: var(--ink-2);

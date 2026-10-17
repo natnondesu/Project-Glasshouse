@@ -30,7 +30,7 @@ export function Edges({ size, color, opacity = 0.55 }: { size: [number, number, 
 const FLOOR_CLICK_SLOP_PX = 4;
 
 /** `onPick` (walk mode) gets the plan point a click lands on. */
-export function Floor({ scene, palette, onPick }: { scene: Scene3D; palette: Palette3D; onPick?: (x: number, z: number) => void }) {
+export function Floor({ scene, palette, onPick, onHover }: { scene: Scene3D; palette: Palette3D; onPick?: (x: number, z: number) => void; onHover?: (at: [number, number] | null) => void }) {
   const geometry = useMemo(() => {
     const shapes = scene.floor.map(([outer, ...holes]) => {
       const shape = new Shape(outer!.map(([x, y]) => new Vector2(x, y)));
@@ -58,6 +58,8 @@ export function Floor({ scene, palette, onPick }: { scene: Scene3D; palette: Pal
             }
           : undefined
       }
+      onPointerMove={onHover ? (e) => onHover([e.point.x, e.point.z]) : undefined}
+      onPointerOut={onHover ? () => onHover(null) : undefined}
     >
       <meshStandardMaterial map={grid} side={DoubleSide} roughness={0.9} />
     </mesh>

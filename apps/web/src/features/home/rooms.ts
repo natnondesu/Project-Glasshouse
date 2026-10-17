@@ -10,7 +10,7 @@ export interface RoomSummary {
   knownW: number;
   limitW: number;
   /** What still holds approval, counted the way the Review badge counts it; all zero once approved. */
-  holds: { blocks: number; needsAck: number; openNotes: number };
+  holds: { blocks: number; needsAck: number };
 }
 
 export function summarise(project: Project, site: Site, room: Room): RoomSummary {
@@ -30,7 +30,6 @@ export function summarise(project: Project, site: Site, room: Room): RoomSummary
     holds: {
       blocks: issues.filter((i) => i.severity === 'block').length,
       needsAck: issues.filter((i) => i.severity === 'needs_ack').length,
-      openNotes: revision.state === 'approved' ? 0 : room.plan.notes.filter((n) => !n.resolved).length,
     },
   };
 }

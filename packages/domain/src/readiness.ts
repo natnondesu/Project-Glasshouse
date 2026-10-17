@@ -9,7 +9,7 @@ export const acknowledgedIds = (revision: Revision): Set<Id> => new Set(revision
 export const revisionIssues = (revision: Revision): Issue[] => checkPlan(revision.content, acknowledgedIds(revision));
 
 export interface Blocker {
-  code: IssueCode | 'no_devices' | 'open_notes';
+  code: IssueCode | 'no_devices';
   params: Record<string, string | number>;
   /** English wording, also used by the approve command's refusal. */
   message: string;
@@ -22,11 +22,9 @@ export function approvalBlockerItems(plan: Plan): Blocker[] {
   const issues: Blocker[] = revisionIssues(revision)
     .filter((i) => i.severity === 'block' || i.severity === 'needs_ack')
     .map((i) => ({ code: i.code, params: i.params, message: i.message }));
-  const openNotes = plan.notes.filter((n) => !n.resolved).length;
   return [
     ...(noDevices ? [{ code: 'no_devices' as const, params: {}, message: 'Add at least one Device before approval.' }] : []),
     ...issues,
-    ...(openNotes > 0 ? [{ code: 'open_notes' as const, params: { count: openNotes }, message: `${openNotes} review ${openNotes === 1 ? 'note is' : 'notes are'} unresolved.` }] : []),
   ];
 }
 

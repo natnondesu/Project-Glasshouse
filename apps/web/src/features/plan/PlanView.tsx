@@ -138,7 +138,7 @@ export function PlanView({ location, readOnly = false }: { location: RoomLocatio
           </p>
         ) : null}
       </section>
-      <ChecksStrip issues={issues} objects={content.objects} onSelect={select} openNotes={location.room.plan.notes.filter((n) => !n.resolved).length} />
+      <ChecksStrip issues={issues} objects={content.objects} onSelect={select} notes={{ count: location.room.plan.notes.filter((n) => n.revision === revision.number).length, href: `/rooms/${location.room.id}/review` }} />
       {inspectorOpen ? (
         <>
           <PanelCollapseTab label={m.panels.inspector} side="right" className="plan-view__tab" onCollapse={() => setInspectorOpen(false)} />

@@ -17,7 +17,6 @@ function approveMdf(): void {
   const ex = content.objects.find((o) => o.type === 'existing_rack')!;
   const range = content.objects.flatMap((o) => (o.type === 'rack' ? o.reserved : []))[0]!;
   s.dispatch({ type: 'plan', roomId: room.id, command: { type: 'object/remove', id: ex.id } });
-  s.dispatch({ type: 'review', roomId: room.id, command: { type: 'note/resolve', id: room.plan.notes[0]!.id, resolved: true, at: AT } });
   s.dispatch({ type: 'review', roomId: room.id, command: { type: 'review/acknowledge', reservedRangeId: range.id, reason: 'Customer will not share figures', by: 'Somchai', at: AT } });
   s.dispatch({ type: 'review', roomId: room.id, command: { type: 'review/submit', designedBy: 'Ploy', at: AT } });
   const problem = s.dispatch({ type: 'review', roomId: room.id, command: { type: 'review/approve', reviewer: 'Nok', at: AT } });

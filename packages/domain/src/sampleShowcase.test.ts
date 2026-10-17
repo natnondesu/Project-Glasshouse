@@ -40,7 +40,7 @@ describe('the Riverside showcase sample', () => {
     const severities = revisionIssues(currentRevision(server.plan)).map((i) => i.severity);
     expect(severities).toContain('block');
     expect(severities).toContain('needs_ack');
-    expect(server.plan.notes.filter((n) => !n.resolved)).toHaveLength(1);
+    expect(server.plan.notes).toHaveLength(1);
     expect(Object.values(server.plan.equipmentState)).toContain('maintenance');
   });
 

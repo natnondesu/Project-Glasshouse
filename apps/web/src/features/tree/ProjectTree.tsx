@@ -1,6 +1,6 @@
 import { currentRevision, newId, parseProjectFile, type ProjectFile, type WorkspaceCommand, missingSamples } from '@glasshouse/domain';
 import { useMemo, useRef, useState } from 'react';
-import { Link, useNavigate } from 'react-router';
+import { useNavigate } from 'react-router';
 import { useWorkspaceStore } from '../../store/workspaceStore';
 import { readJsonFile } from '../../ui/files';
 import { usePersistentState } from '../../ui/usePersistentState';
@@ -17,7 +17,6 @@ export function ProjectTree({ activeRoomId, onCollapse }: { activeRoomId: string
   const workspace = useWorkspaceStore((s) => s.workspace);
   // Derived once per workspace change: a selector returning a new array each time would re-render forever.
   const missing = useMemo(() => missingSamples(workspace), [workspace]);
-  const templateCount = useWorkspaceStore((s) => s.workspace.catalog.length);
   const dispatch = useWorkspaceStore((s) => s.dispatch);
   const navigate = useNavigate();
   const m = useT();
@@ -95,6 +94,8 @@ export function ProjectTree({ activeRoomId, onCollapse }: { activeRoomId: string
           }}
         />
       </div>
+      {/* Only the tree scrolls: the header with its actions, and backup below, stay put. */}
+      <div className="tree__scroll">
       {projects.length === 0 ? <p className="tree__empty">{m.tree.empty}</p> : null}
       <ul className="tree__list">
         {projects.map((project) => (
@@ -183,11 +184,9 @@ export function ProjectTree({ activeRoomId, onCollapse }: { activeRoomId: string
           {missing.length === 1 ? m.tree.loadOneSample(missing[0]!) : m.tree.loadSample}
         </button>
       )}
+      </div>
       {importing ? <ImportDialog file={importing} onClose={() => setImporting(null)} /> : null}
       <BackupPanel />
-      <Link to="/catalog" className="tree__catalog">
-        {m.tree.catalog(templateCount)}
-      </Link>
     </aside>
   );
 }

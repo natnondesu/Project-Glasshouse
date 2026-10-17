@@ -18,7 +18,7 @@ describe('Server category (Compute and Storage merged)', () => {
     if (!m.ok) throw new Error(m.error.message);
     const json = JSON.stringify(m.value);
     expect(json).not.toMatch(/"compute"|"storage"/);
-    expect((m.value as { schemaVersion: number }).schemaVersion).toBe(8);
+    expect((m.value as { schemaVersion: number }).schemaVersion).toBe(9);
     expect(json.match(/"server"/g)).toHaveLength(5);
     expect(json).toContain('"network"');
   });

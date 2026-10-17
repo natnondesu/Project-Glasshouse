@@ -14,9 +14,9 @@ it('groups rooms by project and site and counts what holds approval like the Rev
   const a = rooms.find((r) => r.room.name === 'Server room A')!;
   const mdf = rooms.find((r) => r.room.name === 'MDF-1')!;
   expect(a.revision.state).toBe('approved');
-  expect(a.holds).toEqual({ blocks: 0, needsAck: 0, openNotes: 0 });
+  expect(a.holds).toEqual({ blocks: 0, needsAck: 0 });
   expect(a.racks).toBe(3);
-  expect(mdf.holds).toEqual({ blocks: 1, needsAck: 1, openNotes: 1 });
+  expect(mdf.holds).toEqual({ blocks: 1, needsAck: 1 });
 });
 
 it('puts the last opened room in the hero, and falls back to the first room when it is gone', () => {

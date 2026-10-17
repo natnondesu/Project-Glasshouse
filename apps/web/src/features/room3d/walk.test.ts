@@ -1,7 +1,7 @@
 import { createObject, emptyContent, applyPlanCommand, type PlanCommand, type PlanContent, type Rack } from '@glasshouse/domain';
 import { describe, expect, it } from 'vitest';
 import { buildScene, rotateY } from './scene';
-import { entrance, look, moveTo, standAt, step, walkable, type WalkCamera } from './walk';
+import { entrance, look, moveTo, standAt, standHere, step, walkable, type WalkCamera } from './walk';
 
 function room(...cmds: PlanCommand[]): PlanContent {
   return cmds.reduce((c, cmd) => {
@@ -51,4 +51,12 @@ describe('walking the room', () => {
     const start = entrance(scene);
     expect(walkable(scene, start.x, start.z)).toBe(true);
   });
+
+  it('drops you where you click, or at the nearest free spot beside a rack, facing into the room', () => {
+    expect(standHere(scene, 0.6, 0.6)).toMatchObject({ x: 0.6, z: 0.6 });
+    const beside = standHere(scene, rack.position[0] + rack.size[0] / 2 + 0.2, rack.position[2])!;
+    expect(walkable(scene, beside.x, beside.z)).toBe(true);
+    expect(standHere(scene, -5, -5)).toBeNull();
+  });
 });
+

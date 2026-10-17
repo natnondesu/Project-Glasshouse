@@ -16,7 +16,7 @@ export function RoomFacts({ summary }: { summary: RoomSummary }) {
   return <p className="mono home-card__facts">{parts.join(' · ')}</p>;
 }
 
-export const holdsTotal = (s: RoomSummary): number => s.holds.blocks + s.holds.needsAck + s.holds.openNotes;
+export const holdsTotal = (s: RoomSummary): number => s.holds.blocks + s.holds.needsAck;
 
 /**
  * Approved: ready. Otherwise what still holds approval, each count a way straight to it: checks open
@@ -24,7 +24,7 @@ export const holdsTotal = (s: RoomSummary): number => s.holds.blocks + s.holds.n
  */
 export function RoomStatus({ summary }: { summary: RoomSummary }) {
   const m = useT();
-  const { blocks, needsAck, openNotes } = summary.holds;
+  const { blocks, needsAck } = summary.holds;
   const id = summary.room.id;
   const total = holdsTotal(summary);
   if (summary.revision.state === 'approved') {
@@ -40,7 +40,6 @@ export function RoomStatus({ summary }: { summary: RoomSummary }) {
   const links = [
     blocks ? <Link key="b" to={`/rooms/${id}/plan`} onClick={openChecks}>{m.home.blocks(blocks)}</Link> : null,
     needsAck ? <Link key="a" to={`/rooms/${id}/plan`} onClick={openChecks}>{m.checks.needsAck(needsAck)}</Link> : null,
-    openNotes ? <Link key="n" to={`/rooms/${id}/review`}>{m.checks.openNotes(openNotes)}</Link> : null,
   ].filter((l) => l !== null);
   return (
     <p className="home-card__status">
