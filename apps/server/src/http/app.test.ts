@@ -51,3 +51,14 @@ it('accepts a large project import', async () => {
   expect(res.statusCode).toBe(200);
   expect(res.json().accepted).toEqual([{ commandId: '1', seq: 1 }]);
 });
+
+it('never serves an API route to an unauthenticated encoded path', async () => {
+  const { app } = await setup(() => null);
+  expect((await app.inject({ url: '/%61pi/workspace' })).statusCode).not.toBe(200);
+  expect((await app.inject({ method: 'POST', url: '/%61pi/commands', payload: {} })).statusCode).not.toBe(200);
+});
+
+it('serves health with a query string without auth', async () => {
+  const { app } = await setup(() => null);
+  expect((await app.inject({ url: '/api/health?x=1' })).statusCode).toBe(200);
+});

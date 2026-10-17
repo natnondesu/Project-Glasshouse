@@ -37,7 +37,17 @@ export function registerEvents(app: FastifyInstance, service: WorkspaceService):
     };
     request.raw.on('close', cleanup);
 
-    const missed = await service.commandsAfter(after, MAX_CATCH_UP + 1);
+    let missed: LoggedCommand[];
+    try {
+      missed = await service.commandsAfter(after, MAX_CATCH_UP + 1);
+    } catch (e) {
+      // Headers are already sent, so a 500 is impossible; tell the client to reload instead of leaving a dead stream.
+      request.log.error(e, 'Could not read the command backlog for an event stream');
+      raw.write('event: resync\ndata: {}\n\n');
+      cleanup();
+      raw.end();
+      return;
+    }
     // Ahead of the server (database restored from a backup) or too far behind: reload the whole workspace.
     if (after > service.state.seq || missed.length > MAX_CATCH_UP) {
       raw.write('event: resync\ndata: {}\n\n');

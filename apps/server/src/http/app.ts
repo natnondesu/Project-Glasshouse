@@ -26,16 +26,19 @@ export async function buildApp({ service, authenticate, webDir = null, logger = 
   // Force-close: open event streams would otherwise keep shutdown waiting forever.
   const app = Fastify({ logger, bodyLimit: BODY_LIMIT, forceCloseConnections: true });
   app.decorateRequest('actor', null);
-  app.addHook('onRequest', async (request, reply) => {
-    if (!request.url.startsWith('/api/') || request.url === '/api/health') return;
-    const actor = authenticate(request);
-    if (!actor) return reply.code(401).send({ error: { code: 'unauthorised', message: 'Sign in to use Glasshouse.', targets: [] } });
-    request.actor = actor;
-  });
   app.get('/api/health', async () => ({ ok: true, seq: service.state.seq }));
-  app.get('/api/workspace', async () => service.state);
-  registerCommands(app, service);
-  registerEvents(app, service);
+  // Auth is attached to the routes in this plugin, not to a URL prefix: the router decodes paths
+  // (/%61pi/...), so a prefix test on the raw URL could be bypassed.
+  await app.register(async (api) => {
+    api.addHook('onRequest', async (request, reply) => {
+      const actor = authenticate(request);
+      if (!actor) return reply.code(401).send({ error: { code: 'unauthorised', message: 'Sign in to use Glasshouse.', targets: [] } });
+      request.actor = actor;
+    });
+    api.get('/api/workspace', async () => service.state);
+    registerCommands(api, service);
+    registerEvents(api, service);
+  });
   if (webDir) {
     await app.register(fastifyStatic, { root: webDir, wildcard: false });
     // The web app routes on the client: any other GET outside /api gets index.html.

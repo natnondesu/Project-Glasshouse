@@ -1,5 +1,5 @@
 import type { FastifyInstance } from 'fastify';
-import { afterEach, expect, it } from 'vitest';
+import { afterEach, expect, it, vi } from 'vitest';
 import { MemoryCommandStore } from '../store/memoryStore';
 import { WorkspaceService } from '../workspaceService';
 import { buildApp } from './app';
@@ -82,4 +82,13 @@ it('answers 400 when the client does not say where it is', async () => {
   const service = await WorkspaceService.open(new MemoryCommandStore());
   const base = await start(service);
   expect((await fetch(`${base}/api/events`)).status).toBe(400);
+});
+
+it('tells the client to resync, and ends the stream, when the backlog cannot be read', async () => {
+  const service = await WorkspaceService.open(new MemoryCommandStore());
+  vi.spyOn(service, 'commandsAfter').mockRejectedValue(new Error('db down'));
+  const base = await start(service);
+  const res = await fetch(`${base}/api/events?after=0`);
+  const text = await res.text();
+  expect(text).toContain('event: resync');
 });
