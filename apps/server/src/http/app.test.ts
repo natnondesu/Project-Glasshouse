@@ -85,10 +85,10 @@ it('serves readiness without auth, and 503 when the database does not answer', a
       throw new Error('connect ECONNREFUSED');
     }
   }
-  const service = await WorkspaceService.open(new Down());
+  const service = await WorkspaceService.open(new Down(), { onError: () => {} });
   const down = await buildApp({ service, authenticate: () => null, authRoutes: registerDevAuthRoutes, publicOrigin: null });
   apps.push(down);
   const res = await down.inject({ url: '/api/ready' });
   expect(res.statusCode).toBe(503);
-  expect(res.json()).toEqual({ ok: false, reason: 'The database is not answering: connect ECONNREFUSED' });
+  expect(res.json()).toEqual({ ok: false, reason: 'The database is not answering.' });
 });

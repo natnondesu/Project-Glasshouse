@@ -90,3 +90,17 @@ it('refuses a second server on the same database and frees the lock on close', a
   const again = await PgCommandStore.connect(url);
   await again.close();
 });
+
+it('a refused server does not migrate the database it was refused', async () => {
+  const admin = new pg.Client({ connectionString: container.getConnectionUri() });
+  await admin.connect();
+  await admin.query('create database guarded');
+  await admin.end();
+  const url = container.getConnectionUri().replace(/\/[^/]*$/, '/guarded');
+  const holder = new pg.Client({ connectionString: url });
+  await holder.connect();
+  await holder.query('select pg_advisory_lock(727275)');
+  await expect(PgCommandStore.connect(url)).rejects.toBeInstanceOf(InstanceLockError);
+  expect((await holder.query("select to_regclass('commands') as t")).rows[0].t).toBeNull();
+  await holder.end();
+});

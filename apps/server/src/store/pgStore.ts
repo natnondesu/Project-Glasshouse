@@ -37,15 +37,22 @@ export class PgCommandStore implements CommandStore {
   private constructor(private readonly pool: pg.Pool, private readonly lock: pg.PoolClient) {}
 
   static async connect(url: string, { onLockLost = defaultLockLost }: { onLockLost?: (error: unknown) => void } = {}): Promise<PgCommandStore> {
-    const pool = new pg.Pool({ connectionString: url, max: 6 });
+    // connectionTimeoutMillis: a readiness ping must fail rather than hang when the pool cannot get a connection.
+    const pool = new pg.Pool({ connectionString: url, max: 6, connectionTimeoutMillis: 5000 });
     pool.on('error', (e) => console.error('Postgres connection error', e));
-    await migrate(pool);
-    const lock = await pool.connect();
-    const r = await lock.query<{ ok: boolean }>('select pg_try_advisory_lock($1) as ok', [INSTANCE_LOCK_KEY]);
-    if (!r.rows[0]?.ok) {
-      lock.release();
-      await pool.end();
-      throw new InstanceLockError('Another Glasshouse server is already running against this database. Only one may run at a time (P1 design): stop the other one first.');
+    let lock: pg.PoolClient | undefined;
+    try {
+      lock = await pool.connect();
+      // Before migrating: a refused second (or newer) server must not touch the live database.
+      const r = await lock.query<{ ok: boolean }>('select pg_try_advisory_lock($1) as ok', [INSTANCE_LOCK_KEY]);
+      if (!r.rows[0]?.ok) {
+        throw new InstanceLockError('Another Glasshouse server is already running against this database. Only one may run at a time (P1 design): stop the other one first.');
+      }
+      await migrate(pool);
+    } catch (e) {
+      lock?.release(true);
+      await pool.end().catch(() => undefined);
+      throw e;
     }
     // If this connection drops, Postgres frees the lock and a second server could start: stop rather than run unguarded.
     lock.on('error', onLockLost);
@@ -116,7 +123,8 @@ export class PgCommandStore implements CommandStore {
 
   async close(): Promise<void> {
     await this.lock.query('select pg_advisory_unlock($1)', [INSTANCE_LOCK_KEY]).catch(() => undefined);
-    this.lock.release();
+    // Destroyed, not returned to the pool: the connection is closed, so the session lock is gone even if the unlock failed.
+    this.lock.release(true);
     await this.pool.end();
   }
 }

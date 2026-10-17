@@ -52,7 +52,7 @@ function approvalRecord(seq: number, command: WorkspaceCommand, after: Workspace
 }
 
 /** Applies logged commands after `from` to `workspace`; throws on a gap or a command that won't apply. */
-async function replayAfter(store: CommandStore, from: { seq: number; workspace: Workspace }, onEntry: (e: LoggedCommand) => void = () => {}): Promise<{ seq: number; workspace: Workspace }> {
+async function replayAfter(store: CommandStore, from: { seq: number; workspace: Workspace }, onEntry: (e: LoggedCommand, state: { seq: number; workspace: Workspace }) => void = () => {}): Promise<{ seq: number; workspace: Workspace }> {
   let { seq, workspace } = from;
   for (;;) {
     const page = await store.commandsAfter(seq, REPLAY_PAGE);
@@ -64,7 +64,7 @@ async function replayAfter(store: CommandStore, from: { seq: number; workspace: 
       if (!result.ok) throw new Error(`Replaying seq ${entry.seq} failed: ${result.error.message}`);
       workspace = result.value;
       seq = entry.seq;
-      onEntry(entry);
+      onEntry(entry, { seq, workspace });
     }
   }
 }
@@ -145,10 +145,21 @@ export class WorkspaceService {
   }
 
   async ready(): Promise<{ ok: true; seq: number } | { ok: false; reason: string }> {
+    // The healthcheck is what notices a broken database first, so it also finishes any recovery the next edit would.
+    try {
+      await this.enqueue(async () => {
+        if (this.recovering) await this.recover();
+      });
+    } catch (e) {
+      this.onError('Catching up with the command log failed', e);
+      return { ok: false, reason: 'Catching up with the database log failed.' };
+    }
     try {
       await this.store.ping();
     } catch (e) {
-      return { ok: false, reason: `The database is not answering: ${describe(e)}` };
+      // The reason is served without sign-in: details go to the log only.
+      this.onError('The database is not answering', e);
+      return { ok: false, reason: 'The database is not answering.' };
     }
     return { ok: true, seq: this.current.seq };
   }
@@ -229,7 +240,11 @@ export class WorkspaceService {
 
   /** Brings memory up to the log after an append whose outcome was unknown. Subscribers hear about landed commands. */
   private async recover(): Promise<void> {
-    this.current = await replayAfter(this.store, this.current, (entry) => this.notify(entry));
+    // State advances before each announcement, so a failed trailing read leaves nothing announced twice.
+    this.current = await replayAfter(this.store, this.current, (entry, state) => {
+      this.current = state;
+      this.notify(entry);
+    });
     this.recovering = false;
   }
 

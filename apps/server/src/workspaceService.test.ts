@@ -336,9 +336,66 @@ describe('recovery and readiness', () => {
       }
     }
     const store = new Down();
-    const svc = await WorkspaceService.open(store);
+    const onError = vi.fn();
+    const svc = await WorkspaceService.open(store, { onError });
     expect(await svc.ready()).toEqual({ ok: true, seq: 0 });
     store.down = true;
-    expect(await svc.ready()).toEqual({ ok: false, reason: 'The database is not answering: connect ECONNREFUSED' });
+    expect(await svc.ready()).toEqual({ ok: false, reason: 'The database is not answering.' });
+    expect(onError).toHaveBeenCalledWith(expect.stringContaining('not answering'), expect.objectContaining({ message: 'connect ECONNREFUSED' }));
+  });
+
+  it('applies and announces each recovered command once even when the trailing log read fails', async () => {
+    class TrailingReadFails extends AmbiguousOnce {
+      armed = false;
+      reads = 0;
+      override async commandsAfter(seq: number, limit: number): Promise<LoggedCommand[]> {
+        if (this.armed && ++this.reads === 2) {
+          this.armed = false;
+          throw new Error('read timed out');
+        }
+        return super.commandsAfter(seq, limit);
+      }
+    }
+    const store = new TrailingReadFails();
+    const svc = await WorkspaceService.open(store, { onError: () => {} });
+    const seen: { seq: number; stateSeq: number }[] = [];
+    svc.subscribe((e) => seen.push({ seq: e.seq, stateSeq: svc.state.seq }));
+    store.failNext = true;
+    await expect(submit(svc, '1', create('p'))).rejects.toThrow('connection reset');
+    store.armed = true;
+    await expect(submit(svc, '1', create('p'))).rejects.toThrow('read timed out');
+    expect(await submit(svc, '1', create('p'))).toEqual({ kind: 'accepted', seq: 1, duplicate: true });
+    expect(await submit(svc, '2', create('q'))).toEqual({ kind: 'accepted', seq: 2, duplicate: false });
+    expect(seen).toEqual([{ seq: 1, stateSeq: 1 }, { seq: 2, stateSeq: 2 }]);
+  });
+
+  it('ready() catches up with the log right away after an ambiguous append', async () => {
+    const store = new AmbiguousOnce();
+    const svc = await WorkspaceService.open(store, { onError: () => {} });
+    const seen: number[] = [];
+    svc.subscribe((e) => seen.push(e.seq));
+    store.failNext = true;
+    await expect(submit(svc, '1', create('p'))).rejects.toThrow('connection reset');
+    expect(await svc.ready()).toEqual({ ok: true, seq: 1 });
+    expect(seen).toEqual([1]);
+    expect(svc.state.workspace.projects.map((x) => x.id)).toEqual(['p']);
+  });
+
+  it('ready() says so, without details, when catching up fails', async () => {
+    class ReadsFail extends AmbiguousOnce {
+      broken = false;
+      override async commandsAfter(seq: number, limit: number): Promise<LoggedCommand[]> {
+        if (this.broken) throw new Error('secret host:5432 refused');
+        return super.commandsAfter(seq, limit);
+      }
+    }
+    const store = new ReadsFail();
+    const onError = vi.fn();
+    const svc = await WorkspaceService.open(store, { onError });
+    store.failNext = true;
+    await expect(submit(svc, '1', create('p'))).rejects.toThrow('connection reset');
+    store.broken = true;
+    expect(await svc.ready()).toEqual({ ok: false, reason: 'Catching up with the database log failed.' });
+    expect(onError).toHaveBeenCalledWith(expect.stringContaining('Catching up'), expect.objectContaining({ message: 'secret host:5432 refused' }));
   });
 });
