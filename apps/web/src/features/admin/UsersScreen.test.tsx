@@ -30,7 +30,7 @@ it('lists people, changes a role, and shows a new user’s one-time password', a
   const row = (await screen.findByRole('row', { name: /Ploy/ }));
   expect(within(row).getByText('Local')).toBeInTheDocument();
   expect(within(row).getByRole('button', { name: 'Reset password for Ploy' })).toBeInTheDocument();
-  expect(within(row).getByRole('button', { name: 'Switch off Ploy' })).toHaveTextContent('Active');
+  expect(within(row).getByRole('button', { name: 'Active — Switch off Ploy' })).toHaveTextContent('Active');
   expect(within(screen.getByRole('row', { name: /Few/ })).queryByRole('button', { name: /Reset password/ })).not.toBeInTheDocument();
   await userEvent.selectOptions(within(row).getByRole('combobox', { name: 'Role for Ploy' }), 'editor');
   expect(fetchSpy).toHaveBeenCalledWith('/api/admin/users/b', expect.objectContaining({ method: 'PATCH' }));
@@ -67,6 +67,6 @@ it('shows a localized fallback when the server gives no message or cannot be rea
     if (init?.method === 'PATCH') throw new TypeError('Failed to fetch');
     return json(users);
   });
-  await userEvent.click(within(row).getByRole('button', { name: 'Switch off Ploy' }));
+  await userEvent.click(within(row).getByRole('button', { name: 'Active — Switch off Ploy' }));
   expect(await screen.findByRole('alert')).toHaveTextContent('Could not reach the Glasshouse server');
 });

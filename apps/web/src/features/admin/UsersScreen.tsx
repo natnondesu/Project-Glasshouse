@@ -85,7 +85,7 @@ export function UsersScreen() {
                 </td>
                 <td>{u.source === 'oidc' ? m.users.sso : m.users.local}</td>
                 <td>
-                  <button type="button" className={`btn btn--sm btn--quiet users__status users__status--${u.active ? 'on' : 'off'}`} aria-label={m.users.toggleFor(u.displayName, u.active)} onClick={() => void run(async () => replace(await updateUser(u.id, { active: !u.active })))}>
+                  <button type="button" className={`btn btn--sm btn--quiet users__status users__status--${u.active ? 'on' : 'off'}`} aria-label={`${u.active ? m.users.active : m.users.off} — ${m.users.toggleFor(u.displayName, u.active)}`} onClick={() => void run(async () => replace(await updateUser(u.id, { active: !u.active })))}>
                     {u.active ? m.users.active : m.users.off}
                   </button>
                 </td>
