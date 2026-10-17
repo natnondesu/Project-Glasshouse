@@ -1,7 +1,8 @@
-import { parseWorkspace } from '@glasshouse/domain';
+import { parseWorkspace, type WorkspaceCommand } from '@glasshouse/domain';
 import { apply } from '@glasshouse/domain';
 import { useAuthStore } from '../auth/authStore';
-import type { AuthUser } from '../auth/authApi';
+import { AuthError, type AuthUser } from '../auth/authApi';
+import { messagesFor, useLangStore } from '../i18n';
 import { useWorkspaceStore, setCommit } from '../store/workspaceStore';
 import { httpTransport } from './httpTransport';
 import { saveStash, takeStash } from './pendingStash';
@@ -16,18 +17,36 @@ export const OFFLINE_GRACE_MS = 3000;
 
 const describe = (e: unknown): string => (e instanceof Error ? e.message : String(e));
 
+/** The running sync, so the sign-out button can send or keep what is still unsent. */
+export interface ActiveSync {
+  clientId: string;
+  pendingCommands(): { commandId: string; command: WorkspaceCommand }[];
+  flush(): Promise<void>;
+}
+let activeSync: ActiveSync | null = null;
+export const getActiveSync = (): ActiveSync | null => activeSync;
+
 export async function startServerSync(transport: Transport = httpTransport(), isCancelled: () => boolean = () => false, me: AuthUser | null = null): Promise<() => void> {
   const store = useWorkspaceStore.getState();
   if (me) {
     const stash = takeStash(me.id);
     if (stash && stash.commands.length > 0) {
+      const keep = (commands: typeof stash.commands): void => saveStash({ userId: me.id, clientId: stash.clientId, commands });
+      const t = messagesFor(useLangStore.getState().lang).auth;
       try {
         const outcome = await transport.postCommands(stash.clientId, stash.commands);
-        if (outcome.rejected) store.setNotice(outcome.rejected.error.message);
+        const skipped = stash.commands.filter((c) => outcome.skipped.includes(c.commandId));
+        const notes = [outcome.rejected?.error.message, skipped.length > 0 ? t.skippedBefore(skipped.length) : null].filter((n): n is string => !!n);
+        if (skipped.length > 0) keep(skipped);
+        if (notes.length > 0) store.setNotice(notes.join(' '));
       } catch (e) {
         // Couldn't send them: keep them for the next try rather than lose them.
-        saveStash({ userId: me.id, clientId: stash.clientId, commands: stash.commands });
-        store.setNotice(`Some changes from before you signed in aren't sent yet: ${describe(e)}`);
+        keep(stash.commands);
+        if (e instanceof AuthError) {
+          useAuthStore.getState().signedOut(true);
+          return () => {};
+        }
+        store.setNotice(t.unsentBefore(describe(e)));
       }
     }
   }
@@ -36,6 +55,10 @@ export async function startServerSync(transport: Transport = httpTransport(), is
     snapshot = await transport.fetchWorkspace();
   } catch (e) {
     if (isCancelled()) return () => {};
+    if (e instanceof AuthError) {
+      useAuthStore.getState().signedOut(true);
+      return () => {};
+    }
     store.setLoad({ kind: 'failed', reason: describe(e), raw: null });
     return () => {};
   }
@@ -77,6 +100,7 @@ export async function startServerSync(transport: Transport = httpTransport(), is
       }, OFFLINE_GRACE_MS);
     },
   });
+  activeSync = client;
   setCommit((_ws, command) => client.dispatch(command));
   store.replace(parsed.value);
   store.setLoad({ kind: 'ready' });
@@ -84,6 +108,7 @@ export async function startServerSync(transport: Transport = httpTransport(), is
   return () => {
     if (offlineTimer !== null) clearTimeout(offlineTimer);
     client.stop();
+    if (activeSync === client) activeSync = null;
     unloadGuard.dispose();
     setCommit(apply);
     useWorkspaceStore.getState().setConnection('local');

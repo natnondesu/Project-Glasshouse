@@ -2,11 +2,14 @@ import { createWorkspace } from '@glasshouse/domain';
 import { beforeEach, expect, it, vi } from 'vitest';
 import { resetWorkspaceStore, useWorkspaceStore } from '../store/workspaceStore';
 import type { EventHandlers, Transport } from './syncClient';
-import { saveStash } from './pendingStash';
+import { AuthError } from '../auth/authApi';
+import { resetAuthStore, useAuthStore } from '../auth/authStore';
+import { saveStash, takeStash } from './pendingStash';
 import { startServerSync } from './serverMode';
 
 beforeEach(() => {
   resetWorkspaceStore();
+  resetAuthStore();
   sessionStorage.clear();
 });
 
@@ -100,5 +103,38 @@ it('keeps unsent edits across a sign-in: sends them first, with the old tab id, 
   });
   const stop = await startServerSync(t, () => false, { id: 'u1', name: 'Ploy', email: 'p@x', role: 'editor', mustChangePassword: false });
   expect(order.slice(0, 2)).toEqual(['post:old-tab:c9', 'fetch']);
+  stop();
+});
+
+const me = { id: 'u1', name: 'Ploy', email: 'p@x', role: 'editor' as const, mustChangePassword: false };
+const kept = [{ commandId: 'c1', command: { type: 'project/create' as const, id: 'p', name: 'A' } }, { commandId: 'c2', command: { type: 'project/create' as const, id: 'q', name: 'B' } }];
+
+it('goes to sign-in, not a dead-end error, when the first load says the session is gone', async () => {
+  useAuthStore.setState({ status: 'signed-in' });
+  await startServerSync(transport({ fetchWorkspace: vi.fn(async () => Promise.reject(new AuthError('unauthorised', 'gone'))) }), () => false, me);
+  expect(useAuthStore.getState()).toMatchObject({ status: 'signed-out', sessionEnded: true });
+  expect(useWorkspaceStore.getState().load.kind).toBe('loading');
+});
+
+it('keeps the stash and goes to sign-in when sending it hits an ended session', async () => {
+  useAuthStore.setState({ status: 'signed-in' });
+  saveStash({ userId: 'u1', clientId: 'old-tab', commands: kept });
+  const t = transport({ postCommands: vi.fn(async () => Promise.reject(new AuthError('unauthorised', 'gone'))) });
+  await startServerSync(t, () => false, me);
+  expect(useAuthStore.getState().status).toBe('signed-out');
+  expect(useWorkspaceStore.getState().notice).toBeNull();
+  expect(takeStash('u1')).toEqual({ clientId: 'old-tab', commands: kept });
+  expect(t.fetchWorkspace).not.toHaveBeenCalled();
+});
+
+it('keeps the edits the server skipped, and says how many', async () => {
+  saveStash({ userId: 'u1', clientId: 'old-tab', commands: kept });
+  const t = transport({
+    postCommands: vi.fn<Transport['postCommands']>(async () => ({ accepted: [], rejected: { commandId: 'c1', error: { code: 'invalid_value', message: 'Name is taken.', targets: [] } }, skipped: ['c2'] })),
+  });
+  const stop = await startServerSync(t, () => false, me);
+  expect(useWorkspaceStore.getState().notice).toContain('Name is taken.');
+  expect(useWorkspaceStore.getState().notice).toContain('1 change from before you signed in');
+  expect(takeStash('u1')).toEqual({ clientId: 'old-tab', commands: [kept[1]] });
   stop();
 });

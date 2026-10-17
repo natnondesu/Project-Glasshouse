@@ -1,5 +1,6 @@
 import type { WorkspaceCommand } from '@glasshouse/domain';
 import { AuthError } from '../auth/authApi';
+import { messagesFor, useLangStore } from '../i18n';
 import { NetworkError, type BatchOutcome, type EventHandlers, type Transport } from './syncClient';
 import type { ServerEvent } from './syncEngine';
 
@@ -8,10 +9,10 @@ const REQUEST_TIMEOUT_MS = 30_000;
 const describe = (e: unknown): string => (e instanceof Error ? e.message : String(e));
 
 async function authFailure(res: Response): Promise<AuthError | null> {
-  if (res.status === 401) return new AuthError('unauthorised', 'Your session has ended.');
+  if (res.status === 401) return new AuthError('unauthorised', messagesFor(useLangStore.getState().lang).auth.sessionGone);
   if (res.status === 403) {
     const body = (await res.clone().json().catch(() => null)) as { error?: { code?: string } } | null;
-    if (body?.error?.code === 'password_change_required') return new AuthError('password_change_required', 'Change your temporary password first.');
+    if (body?.error?.code === 'password_change_required') return new AuthError('password_change_required', messagesFor(useLangStore.getState().lang).auth.passwordFirst);
   }
   return null;
 }

@@ -1,24 +1,37 @@
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { useT } from '../i18n';
 import { LanguageSwitch } from '../i18n/LanguageSwitch';
 import { GlasshouseMark } from '../ui/icons';
 import '../ui/fields.css';
+import { stashCount } from '../sync/pendingStash';
 import { login, ssoUrl } from './authApi';
 import { useAuthStore } from './authStore';
 import './auth.css';
+
+function pathWithoutSigninError(): string {
+  const url = new URL(window.location.href);
+  url.searchParams.delete('signin_error');
+  return `${url.pathname}${url.search}${url.hash}`;
+}
 
 export function SignInScreen() {
   const m = useT();
   const config = useAuthStore((s) => s.config);
   const sessionEnded = useAuthStore((s) => s.sessionEnded);
   const init = useAuthStore((s) => s.init);
+  const startupError = useAuthStore((s) => s.error);
+  const [unsent] = useState(stashCount);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(() => new URLSearchParams(window.location.search).get('signin_error'));
-  const here = `${window.location.pathname}${window.location.search.replace(/[?&]signin_error=[^&]*/, '')}` || '/';
+  const here = pathWithoutSigninError();
   const sso = config?.mode === 'on' && config.sso;
   const local = config?.mode === 'on' && config.localLogin;
+  useEffect(() => {
+    // The refusal is shown once; reloading or sharing this address shouldn't bring it back.
+    if (new URLSearchParams(window.location.search).has('signin_error')) window.history.replaceState(null, '', here);
+  }, [here]);
   const submit = async (e: FormEvent): Promise<void> => {
     e.preventDefault();
     setBusy(true);
@@ -41,10 +54,16 @@ export function SignInScreen() {
           <LanguageSwitch />
         </header>
         {sessionEnded ? <p className="signin__note">{m.auth.sessionEnded}</p> : null}
-        {error ? (
+        {unsent > 0 ? <p className="signin__note">{m.auth.unsent(unsent)}</p> : null}
+        {error ?? startupError ? (
           <p role="alert" className="field__error">
-            {error}
+            {error ?? startupError}
           </p>
+        ) : null}
+        {startupError ? (
+          <button type="button" className="btn" onClick={() => void init()}>
+            {m.auth.tryAgain}
+          </button>
         ) : null}
         {sso ? (
           <a className="btn btn--ink signin__sso" href={ssoUrl(here)}>

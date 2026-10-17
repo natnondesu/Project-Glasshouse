@@ -38,3 +38,14 @@ export function takeStash(userId: string, now = Date.now()): { clientId: string;
     return null;
   }
 }
+
+/** How many unsent edits are waiting for a sign-in in this tab (the sign-in screen mentions them). */
+export function stashCount(): number {
+  try {
+    const raw = sessionStorage.getItem(KEY);
+    const s = raw ? (JSON.parse(raw) as Partial<Stash>) : null;
+    return Array.isArray(s?.commands) ? s.commands.length : 0;
+  } catch {
+    return 0;
+  }
+}

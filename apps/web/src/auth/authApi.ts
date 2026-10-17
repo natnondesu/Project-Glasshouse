@@ -1,3 +1,5 @@
+import { messagesFor, useLangStore } from '../i18n';
+
 export type Role = 'viewer' | 'editor' | 'reviewer' | 'admin';
 export type AuthConfig = { mode: 'dev' } | { mode: 'on'; localLogin: boolean; sso: boolean };
 export interface AuthUser {
@@ -18,6 +20,7 @@ export class AuthError extends Error {
   }
 }
 
+const text = () => messagesFor(useLangStore.getState().lang).auth;
 const JSON_HEADERS = { 'content-type': 'application/json', 'x-glasshouse': '1' };
 const messageOf = async (res: Response, fallback: string): Promise<string> => {
   const body = (await res.json().catch(() => null)) as { error?: { message?: string } } | null;
@@ -26,31 +29,31 @@ const messageOf = async (res: Response, fallback: string): Promise<string> => {
 
 export async function getAuthConfig(): Promise<AuthConfig> {
   const res = await fetch('/auth/config');
-  if (!res.ok) throw new Error(`The Glasshouse server answered ${res.status}`);
+  if (!res.ok) throw new Error(text().serverAnswered(res.status));
   return (await res.json()) as AuthConfig;
 }
 
 export async function getMe(): Promise<AuthUser | null> {
   const res = await fetch('/auth/me');
   if (res.status === 401) return null;
-  if (!res.ok) throw new Error(`The Glasshouse server answered ${res.status}`);
+  if (!res.ok) throw new Error(text().serverAnswered(res.status));
   return (await res.json()) as AuthUser;
 }
 
 export async function login(email: string, password: string): Promise<{ mustChangePassword: boolean }> {
   const res = await fetch('/auth/login', { method: 'POST', headers: JSON_HEADERS, body: JSON.stringify({ email, password }) });
-  if (!res.ok) throw new Error(await messageOf(res, 'Sign-in failed. Try again.'));
+  if (!res.ok) throw new Error(await messageOf(res, text().signInFailed));
   return (await res.json()) as { mustChangePassword: boolean };
 }
 
 export async function changePassword(current: string, next: string): Promise<void> {
   const res = await fetch('/auth/password', { method: 'POST', headers: JSON_HEADERS, body: JSON.stringify({ current, next }) });
-  if (!res.ok) throw new Error(await messageOf(res, 'The password could not be changed.'));
+  if (!res.ok) throw new Error(await messageOf(res, text().passwordFailed));
 }
 
 export async function logout(): Promise<void> {
   const res = await fetch('/auth/logout', { method: 'POST', headers: { 'x-glasshouse': '1' } });
-  if (!res.ok && res.status !== 401) throw new Error(await messageOf(res, 'Sign-out failed.'));
+  if (!res.ok && res.status !== 401) throw new Error(await messageOf(res, text().signOutFailed));
 }
 
 export const ssoUrl = (returnTo: string): string => `/auth/oidc/start?returnTo=${encodeURIComponent(returnTo)}`;
