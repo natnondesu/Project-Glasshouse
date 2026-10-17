@@ -24,13 +24,13 @@ export async function provisionOidcUser(
       const isBootstrap = bootstrapAdmin !== null && claims.emailVerified && claims.email !== null && claims.email.toLowerCase() === bootstrapAdmin.toLowerCase();
       const created: User = {
         id: randomUUID(), email: claims.email ?? `${claims.sub}@sso.invalid`, displayName, role: isBootstrap ? 'admin' : defaultRole, source: 'oidc',
-        oidcSubject: claims.sub, passwordHash: null, mustChangePassword: false, active: true, createdAt: now, lastLoginAt: now,
+        oidcSubject: claims.sub, passwordHash: null, mustChangePassword: false, nameLocked: false, active: true, createdAt: now, lastLoginAt: now,
       };
       await store.createUser(created);
       return { user: created };
     }
     if (!user.active) return { refused: 'switched_off' };
-    const updated = await store.updateUser(user.id, { displayName, ...(claims.email && claims.emailVerified ? { email: claims.email } : {}), lastLoginAt: now });
+    const updated = await store.updateUser(user.id, { ...(user.nameLocked ? {} : { displayName }), ...(claims.email && claims.emailVerified ? { email: claims.email } : {}), lastLoginAt: now });
     return updated ? { user: updated } : { refused: 'generic' };
   } catch (e) {
     if (e instanceof DuplicateUserError) return { refused: 'exists' };

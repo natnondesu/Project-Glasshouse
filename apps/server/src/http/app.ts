@@ -29,6 +29,8 @@ export interface AppDeps {
   publicOrigin: string | null;
   /** Admin-only API routes, registered inside the authenticated plugin. */
   admin?: (api: FastifyInstance) => void;
+  /** Names and emails of everyone, for any signed-in role. */
+  people?: (api: FastifyInstance) => void;
   /** Fastify's trustProxy, so request.ip is the client behind a reverse proxy. */
   trustProxy?: boolean | number | string;
   webDir?: string | null;
@@ -66,7 +68,7 @@ const serializeRequest = (request: FastifyRequest) => ({
   remotePort: request.socket?.remotePort,
 });
 
-export async function buildApp({ service, authenticate, authRoutes, publicOrigin, admin, trustProxy = false, webDir = null, logger = false, logStream, heartbeatMs, claims }: AppDeps): Promise<FastifyInstance> {
+export async function buildApp({ service, authenticate, authRoutes, publicOrigin, admin, people, trustProxy = false, webDir = null, logger = false, logStream, heartbeatMs, claims }: AppDeps): Promise<FastifyInstance> {
   // Force-close: open event streams would otherwise keep shutdown waiting forever.
   const app = Fastify({ logger: logger || logStream ? { ...(logStream ? { stream: logStream } : {}), serializers: { req: serializeRequest } } : false, trustProxy: typeof trustProxy === 'number' ? hopsTrusted(trustProxy) : trustProxy, bodyLimit: BODY_LIMIT, forceCloseConnections: true });
   await app.register(fastifyCookie);
@@ -96,6 +98,7 @@ export async function buildApp({ service, authenticate, authRoutes, publicOrigin
     if (claims) registerClaims(api, { service, claims });
     registerEvents(api, service, authenticate, { heartbeatMs, claims });
     admin?.(api);
+    people?.(api);
   });
   if (webDir) {
     await app.register(fastifyStatic, { root: webDir, wildcard: false });

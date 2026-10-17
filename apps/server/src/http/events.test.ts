@@ -140,7 +140,7 @@ describe('a stream ends when the person behind it no longer has access', () => {
 
   async function signedIn() {
     const store = new MemoryIdentityStore();
-    await store.createUser({ id: 'u1', email: 'u1@company.test', displayName: 'U One', role: 'editor', source: 'local', oidcSubject: null, passwordHash: 'x', mustChangePassword: false, active: true, createdAt: NOW, lastLoginAt: null });
+    await store.createUser({ id: 'u1', email: 'u1@company.test', displayName: 'U One', role: 'editor', source: 'local', oidcSubject: null, passwordHash: 'x', mustChangePassword: false, nameLocked: false, active: true, createdAt: NOW, lastLoginAt: null });
     const sessions = createSessionAuth(store, { secure: false });
     const service = await WorkspaceService.open(new MemoryCommandStore());
     app = await buildApp({

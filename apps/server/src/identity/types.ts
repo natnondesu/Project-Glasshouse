@@ -15,12 +15,14 @@ export interface User {
   oidcSubject: string | null;
   passwordHash: string | null;
   mustChangePassword: boolean;
+  /** An admin set the name: company sign-ins stop overwriting it. */
+  nameLocked: boolean;
   active: boolean;
   createdAt: string;
   lastLoginAt: string | null;
 }
 
-export type UserPatch = Partial<Pick<User, 'email' | 'displayName' | 'role' | 'active' | 'passwordHash' | 'mustChangePassword' | 'lastLoginAt' | 'oidcSubject'>>;
+export type UserPatch = Partial<Pick<User, 'email' | 'displayName' | 'role' | 'active' | 'passwordHash' | 'mustChangePassword' | 'nameLocked' | 'lastLoginAt' | 'oidcSubject'>>;
 
 /** Only a hash of the cookie token is stored, so a database leak doesn't hand out live sessions. */
 export interface Session {

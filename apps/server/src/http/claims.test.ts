@@ -13,7 +13,7 @@ afterEach(async () => {
   await Promise.all(apps.splice(0).map((a) => a.close()));
 });
 const NOW = '2026-10-18T09:00:00.000Z';
-const user = (id: string, role: Role, displayName: string): User => ({ id, email: `${id}@company.test`, displayName, role, source: 'local', oidcSubject: null, passwordHash: 'x', mustChangePassword: false, active: true, createdAt: NOW, lastLoginAt: null });
+const user = (id: string, role: Role, displayName: string): User => ({ id, email: `${id}@company.test`, displayName, role, source: 'local', oidcSubject: null, passwordHash: 'x', mustChangePassword: false, nameLocked: false, active: true, createdAt: NOW, lastLoginAt: null });
 
 async function setup() {
   const store = new MemoryIdentityStore();

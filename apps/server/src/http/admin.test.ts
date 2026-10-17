@@ -4,6 +4,7 @@ import { MemoryIdentityStore } from '../identity/memoryIdentityStore';
 import type { Role, User } from '../identity/types';
 import { MemoryCommandStore } from '../store/memoryStore';
 import { WorkspaceService } from '../workspaceService';
+import { BACKUP_FORMAT, parseBackup } from '@glasshouse/domain';
 import { registerAdmin } from './admin';
 import { buildApp } from './app';
 import { registerDevAuthRoutes } from './devAuth';
@@ -13,7 +14,7 @@ afterEach(async () => {
   await Promise.all(apps.splice(0).map((a) => a.close()));
 });
 const NOW = '2026-10-18T09:00:00.000Z';
-const user = (id: string, role: Role, over: Partial<User> = {}): User => ({ id, email: `${id}@company.test`, displayName: id, role, source: 'local', oidcSubject: null, passwordHash: 'x', mustChangePassword: false, active: true, createdAt: NOW, lastLoginAt: null, ...over });
+const user = (id: string, role: Role, over: Partial<User> = {}): User => ({ id, email: `${id}@company.test`, displayName: id, role, source: 'local', oidcSubject: null, passwordHash: 'x', mustChangePassword: false, nameLocked: false, active: true, createdAt: NOW, lastLoginAt: null, ...over });
 
 /** A real database yields between the count and the write; give the memory store the same gap. */
 class SlowCountStore extends MemoryIdentityStore {
@@ -31,7 +32,7 @@ async function setup(as: User, others: User[] = []) {
   const app = await buildApp({
     service, publicOrigin: null, authRoutes: registerDevAuthRoutes,
     authenticate: async (request) => { const u = await store.findUserById(String(request.headers['x-test-user'] ?? as.id)); return u && u.active ? { id: u.id, name: u.displayName, role: u.role, verified: true } : null; },
-    admin: (api) => registerAdmin(api, { store, localLogin: true, now: () => new Date(NOW) }),
+    admin: (api) => registerAdmin(api, { store, service, localLogin: true, now: () => new Date(NOW) }),
   });
   apps.push(app);
   const call = (method: 'GET' | 'POST' | 'PATCH', url: string, payload?: object, asUser?: string) => app.inject({ method, url, headers: { 'x-glasshouse': '1', ...(asUser ? { 'x-test-user': asUser } : {}) }, ...(payload ? { payload } : {}) });
@@ -90,5 +91,24 @@ describe('admin users API', () => {
     const withType = await app.inject({ method: 'POST', url: '/api/admin/users/ed/reset-password', headers: { 'x-glasshouse': '1', 'content-type': 'application/json' } });
     expect(withType.statusCode).toBe(400);
     expect(withType.json()).toMatchObject({ code: 'FST_ERR_CTP_EMPTY_JSON_BODY' });
+  });
+  it('setting a name locks it; a role-only change leaves the lock alone', async () => {
+    const { call, store } = await setup(user('ad', 'admin'), [user('ed', 'editor')]);
+    const named = await call('PATCH', '/api/admin/users/ed', { displayName: 'Ploy Sriwan' });
+    expect(named.statusCode).toBe(200);
+    expect(named.json()).toMatchObject({ displayName: 'Ploy Sriwan', nameLocked: true });
+    await store.updateUser('ed', { nameLocked: false });
+    const roleOnly = await call('PATCH', '/api/admin/users/ed', { role: 'reviewer' });
+    expect(roleOnly.json()).toMatchObject({ role: 'reviewer', nameLocked: false });
+  });
+
+  it('downloads a workspace backup as an attachment, for admins only', async () => {
+    const { call } = await setup(user('ad', 'admin'), [user('ed', 'editor')]);
+    const res = await call('GET', '/api/admin/backup');
+    expect(res.statusCode).toBe(200);
+    expect(res.headers['content-disposition']).toMatch(/attachment; filename="glasshouse-backup-\d{4}-\d{2}-\d{2}\.json"/);
+    expect(res.json().format).toBe(BACKUP_FORMAT);
+    expect(parseBackup(res.json()).ok).toBe(true);
+    expect((await call('GET', '/api/admin/backup', undefined, 'ed')).statusCode).toBe(403);
   });
 });

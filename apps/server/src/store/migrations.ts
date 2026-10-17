@@ -71,6 +71,10 @@ export const MIGRATIONS: { name: string; sql: string }[] = [
       create trigger approvals_append_only before update or delete on approvals for each row execute function glasshouse_append_only();
       create trigger approvals_no_truncate before truncate on approvals for each statement execute function glasshouse_append_only();`,
   },
+  {
+    name: '004_user_names',
+    sql: `alter table users add column name_locked boolean not null default false;`,
+  },
 ];
 
 const LOCK_KEY = 727274;

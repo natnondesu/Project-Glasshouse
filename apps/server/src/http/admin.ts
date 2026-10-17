@@ -1,15 +1,17 @@
 import { randomUUID } from 'node:crypto';
 import type { FastifyInstance, FastifyReply } from 'fastify';
 import { z } from 'zod';
+import { exportBackup } from '@glasshouse/domain';
 import { hashPassword, temporaryPassword } from '../identity/passwords';
 import { DuplicateUserError, ROLES, type IdentityStore, type User } from '../identity/types';
+import type { WorkspaceService } from '../workspaceService';
 
 const toAdminUser = ({ passwordHash: _hash, oidcSubject: _sub, ...rest }: User) => rest;
 const createBody = z.object({ email: z.string().email().max(200), displayName: z.string().trim().min(1).max(80), role: z.enum(ROLES) });
 const patchBody = z.object({ role: z.enum(ROLES).optional(), active: z.boolean().optional(), displayName: z.string().trim().min(1).max(80).optional() });
 const refuse = (reply: FastifyReply, status: number, code: string, message: string) => reply.code(status).send({ error: { code, message, targets: [] } });
 
-export function registerAdmin(api: FastifyInstance, { store, localLogin, now }: { store: IdentityStore; localLogin: boolean; now: () => Date }): void {
+export function registerAdmin(api: FastifyInstance, { store, service, localLogin, now }: { store: IdentityStore; service: WorkspaceService; localLogin: boolean; now: () => Date }): void {
   // One instance by design (see the P1 design doc), so an in-process queue is enough to make
   // "count the admins, then change one" atomic.
   let queue: Promise<unknown> = Promise.resolve();
@@ -26,6 +28,12 @@ export function registerAdmin(api: FastifyInstance, { store, localLogin, now }: 
 
     admin.get('/api/admin/users', async () => (await store.listUsers()).map(toAdminUser));
 
+    admin.get('/api/admin/backup', async (_request, reply) => {
+      const at = now();
+      reply.header('content-disposition', `attachment; filename="glasshouse-backup-${at.toISOString().slice(0, 10)}.json"`);
+      return exportBackup(service.state.workspace, at.toISOString());
+    });
+
     admin.post('/api/admin/users', (request, reply) => serialized(async () => {
       if (!localLogin) return refuse(reply, 400, 'invalid_value', 'Sign-in with a password is switched off; people join through the company account.');
       const body = createBody.safeParse(request.body);
@@ -33,7 +41,7 @@ export function registerAdmin(api: FastifyInstance, { store, localLogin, now }: 
       const temp = temporaryPassword();
       const user: User = {
         id: randomUUID(), email: body.data.email, displayName: body.data.displayName, role: body.data.role, source: 'local', oidcSubject: null,
-        passwordHash: await hashPassword(temp), mustChangePassword: true, active: true, createdAt: now().toISOString(), lastLoginAt: null,
+        passwordHash: await hashPassword(temp), mustChangePassword: true, nameLocked: false, active: true, createdAt: now().toISOString(), lastLoginAt: null,
       };
       try {
         await store.createUser(user);
@@ -53,7 +61,7 @@ export function registerAdmin(api: FastifyInstance, { store, localLogin, now }: 
       const losesAdmin = target.role === 'admin' && target.active && ((body.data.role !== undefined && body.data.role !== 'admin') || body.data.active === false);
       if (id === request.actor!.id && (losesAdmin || body.data.active === false)) return refuse(reply, 409, 'invalid_value', 'You can’t remove your own admin access or switch yourself off. Ask another admin.');
       if (losesAdmin && (await store.countActiveAdmins()) <= 1) return refuse(reply, 409, 'invalid_value', 'This is the last admin. Make someone else an admin first.');
-      const updated = await store.updateUser(id, body.data);
+      const updated = await store.updateUser(id, { ...body.data, ...(body.data.displayName !== undefined ? { nameLocked: true } : {}) });
       if (body.data.active === false) await store.deleteUserSessions(id);
       return updated ? toAdminUser(updated) : refuse(reply, 404, 'not_found', 'That user no longer exists.');
     }));

@@ -31,7 +31,7 @@ async function setup(users: Partial<User>[] = [{}]) {
   for (const [i, over] of users.entries()) {
     await store.createUser({
       id: `u${i}`, email: `user${i}@company.test`, displayName: `User ${i}`, role: 'editor', source: 'local', oidcSubject: null,
-      passwordHash: await hashPassword('password-123456'), mustChangePassword: false, active: true, createdAt: clock.toISOString(), lastLoginAt: null, ...over,
+      passwordHash: await hashPassword('password-123456'), mustChangePassword: false, nameLocked: false, active: true, createdAt: clock.toISOString(), lastLoginAt: null, ...over,
     });
   }
   const sessions = createSessionAuth(store, { secure: true, now: () => clock });
