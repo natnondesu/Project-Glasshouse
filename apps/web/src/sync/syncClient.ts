@@ -12,6 +12,8 @@ export interface BatchOutcome {
 
 export interface EventHandlers {
   onOpen(): void;
+  /** The first frame of every stream: which server process this is. A different one than the snapshot's means a restart or restore. */
+  onHello(generation: string): void;
   onCommand(event: ServerEvent): void;
   onResync(): void;
   /** The server's periodic `ping` event: proof the stream is alive even when no edits flow. */
@@ -23,7 +25,7 @@ export interface EventHandlers {
 }
 
 export interface Transport {
-  fetchWorkspace(): Promise<{ seq: number; workspace: unknown; claims?: Claim[] }>;
+  fetchWorkspace(): Promise<{ seq: number; workspace: unknown; claims?: Claim[]; generation?: string }>;
   /** Throws NetworkError when the server can't be reached or fails (5xx); the batch is then retried as is. */
   postCommands(clientId: string, commands: { commandId: string; command: WorkspaceCommand }[]): Promise<BatchOutcome>;
   openEvents(after: number, handlers: EventHandlers): () => void;
@@ -73,16 +75,18 @@ export class SyncClient {
   private stopped = false;
   private authLost = false;
   private watchdog: ReturnType<typeof setTimeout> | null = null;
+  private generation: string | undefined;
 
   constructor(
     private readonly transport: Transport,
-    start: { seq: number; workspace: Workspace },
+    start: { seq: number; workspace: Workspace; generation?: string },
     private readonly callbacks: SyncCallbacks,
     ids: { clientId?: string; newId?: () => string } = {},
   ) {
     this.id = ids.clientId ?? newId();
     this.newId = ids.newId ?? newId;
     this.engine = new SyncEngine(start, this.id);
+    this.generation = start.generation;
   }
 
   get workspace(): Workspace {
@@ -199,6 +203,13 @@ export class SyncClient {
         this.reconnectMs = RETRY_MIN_MS;
         this.callbacks.onConnection('live');
       },
+      onHello: (generation) => {
+        this.resetWatchdog();
+        const known = this.generation;
+        this.generation = generation;
+        // A restored or restarted server may hold different history under the same seq numbers: start over from its snapshot.
+        if (known !== undefined && known !== generation) void this.resync('server');
+      },
       onCommand: (event) => {
         this.resetWatchdog();
         const result = this.engine.remote(event);
@@ -270,6 +281,7 @@ export class SyncClient {
         const parsed = parseWorkspace(snapshot.workspace);
         if (!parsed.ok) throw new Error(parsed.error.message);
         this.report(this.engine.reset({ seq: snapshot.seq, workspace: parsed.value }));
+        this.generation = snapshot.generation ?? this.generation;
         this.callbacks.onClaims?.(snapshot.claims ?? []);
         this.paused = false;
         break;

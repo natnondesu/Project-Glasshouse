@@ -227,3 +227,20 @@ describe('a stream ends when the person behind it no longer has access', () => {
     expect(ended).toBe(true);
   });
 });
+
+it('opens every stream with a hello frame carrying the server generation, before the backlog', async () => {
+  const service = await WorkspaceService.open(new MemoryCommandStore());
+  await service.submit(create(1), actor);
+  const base = await start(service);
+  const text = await readEvents(`${base}/api/events?after=0`, (t) => t.includes('id: 1'));
+  expect(text.startsWith(`event: hello\ndata: ${JSON.stringify({ generation: service.generation })}\n\n`)).toBe(true);
+  expect(text.indexOf('event: hello')).toBeLessThan(text.indexOf('event: command'));
+});
+
+it('gives each server process its own generation', async () => {
+  const store = new MemoryCommandStore();
+  const first = await WorkspaceService.open(store);
+  const second = await WorkspaceService.open(store);
+  expect(first.generation).toMatch(/^[0-9a-f-]{36}$/);
+  expect(second.generation).not.toBe(first.generation);
+});

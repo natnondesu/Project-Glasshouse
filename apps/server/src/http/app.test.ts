@@ -92,3 +92,10 @@ it('serves readiness without auth, and 503 when the database does not answer', a
   expect(res.statusCode).toBe(503);
   expect(res.json()).toEqual({ ok: false, reason: 'The database is not answering.' });
 });
+
+it('puts the server generation in the workspace snapshot', async () => {
+  const { app, service } = await setup();
+  const body = (await app.inject({ url: '/api/workspace' })).json<{ generation: string }>();
+  expect(typeof body.generation).toBe('string');
+  expect(body.generation).toBe(service.generation);
+});

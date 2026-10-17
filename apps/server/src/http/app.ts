@@ -97,7 +97,7 @@ export async function buildApp({ service, authenticate, recheck, authRoutes, pub
       if (csrf) return reply.code(403).send({ error: { code: 'csrf', message: csrf, targets: [] } });
       request.actor = actor;
     });
-    api.get('/api/workspace', async () => ({ ...service.state, claims: claims?.list() ?? [] }));
+    api.get('/api/workspace', async () => ({ ...service.state, generation: service.generation, claims: claims?.list() ?? [] }));
     registerCommands(api, service);
     if (claims) registerClaims(api, { service, claims });
     registerEvents(api, service, recheck ?? authenticate, { heartbeatMs, claims });

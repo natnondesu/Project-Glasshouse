@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { apply, approvedRevisionChanges, createWorkspace, currentRevision, draftEditRoom, err, findRoom, newlyApprovedRevisions, parseWorkspace, withSample, type DomainError, type Workspace, type WorkspaceCommand } from '@glasshouse/domain';
 import type { ClaimRegistry } from './claims';
 import { atLeast } from './identity/types';
@@ -77,6 +78,8 @@ async function replayAfter(store: CommandStore, from: { seq: number; workspace: 
  * validates the result, logs it, then tells subscribers. Single instance by design (see the P1 design doc).
  */
 export class WorkspaceService {
+  /** Changes with every process start, so a tab can tell that the server it knew was restarted (e.g. restored from a backup). */
+  readonly generation = randomUUID();
   private queue: Promise<unknown> = Promise.resolve();
   private readonly listeners = new Set<Listener>();
   private sinceSnapshot = 0;

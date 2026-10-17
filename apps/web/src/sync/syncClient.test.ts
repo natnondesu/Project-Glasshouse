@@ -106,6 +106,40 @@ describe('SyncClient', () => {
     expect(server.transport.fetchWorkspace).toHaveBeenCalled();
     expect(server.transport.openEvents).toHaveBeenCalledTimes(2);
   });
+  describe('server generation', () => {
+    const handlersOf = (server: ReturnType<typeof fakeServer>, n = 0) => (server.transport.openEvents as ReturnType<typeof vi.fn>).mock.calls[n]![1] as EventHandlers;
+
+    it('does nothing when hello carries the generation the snapshot had', async () => {
+      const server = fakeServer();
+      const client = new SyncClient(server.transport, { seq: 0, workspace: createWorkspace(), generation: 'g1' }, callbacks(), { clientId: 'me' });
+      client.start();
+      handlersOf(server).onHello('g1');
+      await vi.advanceTimersByTimeAsync(5_000);
+      expect(server.transport.fetchWorkspace).not.toHaveBeenCalled();
+    });
+
+    it('reloads the workspace, replaying unsent edits, when hello carries a different generation', async () => {
+      const server = fakeServer();
+      const cb = callbacks();
+      let n = 0;
+      const client = new SyncClient(server.transport, { seq: 0, workspace: createWorkspace(), generation: 'g1' }, cb, { clientId: 'me', newId: () => String(++n) });
+      client.start();
+      (server.transport.fetchWorkspace as ReturnType<typeof vi.fn>).mockResolvedValueOnce({ seq: 0, workspace: createWorkspace(), generation: 'g2' });
+      server.failOnce();
+      client.dispatch(create('p', 'Riverside'));
+      handlersOf(server).onHello('g2');
+      await vi.advanceTimersByTimeAsync(20_000);
+      expect(server.transport.fetchWorkspace).toHaveBeenCalledTimes(1);
+      expect(server.transport.openEvents).toHaveBeenCalledTimes(2);
+      // The unsent edit is not lost by the reload: it is sent again (same id) before the snapshot is read.
+      expect(server.posts).toEqual([['1'], ['1']]);
+      // The reconnected stream says hello with the new generation: no second reload.
+      handlersOf(server, 1).onHello('g2');
+      await vi.advanceTimersByTimeAsync(5_000);
+      expect(server.transport.fetchWorkspace).toHaveBeenCalledTimes(1);
+    });
+  });
+
   it('reconnects through a resync when the browser gives up on the stream', async () => {
     const server = fakeServer();
     const client = new SyncClient(server.transport, { seq: 0, workspace: createWorkspace() }, callbacks(), { clientId: 'me' });

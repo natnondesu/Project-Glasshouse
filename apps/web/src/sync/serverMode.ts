@@ -54,7 +54,7 @@ export async function startServerSync(transport: Transport = httpTransport(), is
       }
     }
   }
-  let snapshot: { seq: number; workspace: unknown; claims?: Claim[] };
+  let snapshot: { seq: number; workspace: unknown; claims?: Claim[]; generation?: string };
   try {
     snapshot = await transport.fetchWorkspace();
   } catch (e) {
@@ -92,7 +92,7 @@ export async function startServerSync(transport: Transport = httpTransport(), is
   let hasBeenLive = false;
   let offlineTimer: ReturnType<typeof setTimeout> | null = null;
   const unloadGuard = createUnloadGuard(window);
-  const client = new SyncClient(transport, { seq: snapshot.seq, workspace: parsed.value }, {
+  const client = new SyncClient(transport, { seq: snapshot.seq, workspace: parsed.value, generation: snapshot.generation }, {
     onWorkspace: (ws) => useWorkspaceStore.getState().adopt(ws),
     onSave: (save) => useWorkspaceStore.getState().setSave(save),
     onUnsaved: (has) => unloadGuard.set(has),

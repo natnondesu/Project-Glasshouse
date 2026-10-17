@@ -39,7 +39,7 @@ export function httpTransport(base = ''): Transport {
       const auth = await authFailure(res);
       if (auth) throw auth;
       if (!res.ok) throw new NetworkError(`The Glasshouse server answered ${res.status}`);
-      return (await res.json()) as { seq: number; workspace: unknown; claims?: Claim[] };
+      return (await res.json()) as { seq: number; workspace: unknown; claims?: Claim[]; generation?: string };
     },
     async postCommands(clientId: string, commands: { commandId: string; command: WorkspaceCommand }[]): Promise<BatchOutcome> {
       let res: Response;
@@ -68,6 +68,10 @@ export function httpTransport(base = ''): Transport {
     openEvents(after: number, handlers: EventHandlers) {
       const source = new EventSource(`${base}/api/events?after=${after}`);
       source.addEventListener('open', () => handlers.onOpen());
+      source.addEventListener('hello', (e) => {
+        const generation = (JSON.parse((e as MessageEvent<string>).data) as { generation?: unknown }).generation;
+        if (typeof generation === 'string') handlers.onHello(generation);
+      });
       source.addEventListener('command', (e) => handlers.onCommand(JSON.parse((e as MessageEvent<string>).data) as ServerEvent));
       source.addEventListener('ping', () => handlers.onHeartbeat());
       source.addEventListener('claims', (e) => handlers.onClaims((JSON.parse((e as MessageEvent<string>).data) as { claims: Claim[] }).claims));

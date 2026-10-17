@@ -80,3 +80,22 @@ describe('httpTransport proxy errors never drop edits', () => {
     }
   });
 });
+
+describe('httpTransport event stream', () => {
+  it('hands the server generation of the hello frame to the page', () => {
+    const listeners = new Map<string, (e: MessageEvent<string>) => void>();
+    class FakeEventSource {
+      static CLOSED = 2;
+      readyState = 1;
+      addEventListener(type: string, fn: (e: MessageEvent<string>) => void) {
+        listeners.set(type, fn);
+      }
+      close() {}
+    }
+    vi.stubGlobal('EventSource', FakeEventSource);
+    const onHello = vi.fn();
+    httpTransport().openEvents(0, { onOpen: vi.fn(), onHello, onCommand: vi.fn(), onResync: vi.fn(), onHeartbeat: vi.fn(), onClaims: vi.fn(), onError: vi.fn() });
+    listeners.get('hello')!(new MessageEvent('hello', { data: JSON.stringify({ generation: 'g-7' }) }));
+    expect(onHello).toHaveBeenCalledWith('g-7');
+  });
+});

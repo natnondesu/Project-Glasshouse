@@ -24,6 +24,8 @@ export function registerEvents(app: FastifyInstance, service: WorkspaceService, 
     raw.writeHead(200, { 'content-type': 'text/event-stream', 'cache-control': 'no-cache, no-transform', connection: 'keep-alive', 'x-accel-buffering': 'no' });
     // Node holds headers until the first write; without this the browser's `open` waits for the first frame.
     raw.flushHeaders();
+    // First frame: lets the page notice a restart (a restore from backup keeps the seq but not the history).
+    raw.write(`event: hello\ndata: ${JSON.stringify({ generation: service.generation })}\n\n`);
 
     // Subscribe before reading the backlog and buffer live events until it is written, so nothing falls in between.
     let last = after;
