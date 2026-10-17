@@ -1,6 +1,7 @@
 import fastifyCookie from '@fastify/cookie';
 import fastifyStatic from '@fastify/static';
-import Fastify, { type FastifyInstance } from 'fastify';
+import Fastify, { type FastifyInstance, type FastifyRequest } from 'fastify';
+import type { Writable } from 'node:stream';
 import type { Actor } from '../store/commandStore';
 import type { WorkspaceService } from '../workspaceService';
 import { checkMutation } from './auth/csrf';
@@ -30,15 +31,40 @@ export interface AppDeps {
   trustProxy?: boolean | number | string;
   webDir?: string | null;
   logger?: boolean;
+  /** Where the log lines go instead of stdout (tests). Implies logging. */
+  logStream?: Writable;
   heartbeatMs?: number;
 }
 
 // Fastify's types take a function (not a hop count) for "trust the nearest N proxies".
 const hopsTrusted = (hops: number) => (_address: string, hop: number): boolean => hop < hops;
 
-export async function buildApp({ service, authenticate, authRoutes, publicOrigin, admin, trustProxy = false, webDir = null, logger = false, heartbeatMs }: AppDeps): Promise<FastifyInstance> {
+/** Sign-in callbacks carry the one-time code and state in the query string; keep those out of the logs. */
+function loggableUrl(url: string): string {
+  const [path = '', query] = url.split('?', 2);
+  if (query === undefined) return url;
+  let decoded = path;
+  try {
+    decoded = decodeURIComponent(path);
+  } catch {
+    // An undecodable path is logged by its raw form below.
+  }
+  return decoded.startsWith('/auth/') ? path : url;
+}
+
+// Same fields as Fastify's default request serializer, with the URL scrubbed.
+const serializeRequest = (request: FastifyRequest) => ({
+  method: request.method,
+  url: loggableUrl(request.url),
+  version: request.headers?.['accept-version'] as string | undefined,
+  host: request.host,
+  remoteAddress: request.ip,
+  remotePort: request.socket?.remotePort,
+});
+
+export async function buildApp({ service, authenticate, authRoutes, publicOrigin, admin, trustProxy = false, webDir = null, logger = false, logStream, heartbeatMs }: AppDeps): Promise<FastifyInstance> {
   // Force-close: open event streams would otherwise keep shutdown waiting forever.
-  const app = Fastify({ logger, trustProxy: typeof trustProxy === 'number' ? hopsTrusted(trustProxy) : trustProxy, bodyLimit: BODY_LIMIT, forceCloseConnections: true });
+  const app = Fastify({ logger: logger || logStream ? { ...(logStream ? { stream: logStream } : {}), serializers: { req: serializeRequest } } : false, trustProxy: typeof trustProxy === 'number' ? hopsTrusted(trustProxy) : trustProxy, bodyLimit: BODY_LIMIT, forceCloseConnections: true });
   await app.register(fastifyCookie);
   app.decorateRequest('actor', null);
   app.get('/api/health', async () => ({ ok: true, seq: service.state.seq }));

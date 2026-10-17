@@ -24,6 +24,8 @@ const passwordBody = z.object({ current: z.string().min(1).max(500), next: z.str
 /** Verified against when there is no account to check, so a missing account costs the same time as a wrong password. */
 let dummyHash: Promise<string> | null = null;
 const getDummyHash = (): Promise<string> => (dummyHash ??= hashPassword('glasshouse-dummy-password'));
+const OIDC_BINDING_COOKIE = 'gh_oidc';
+const OIDC_BINDING_MAX_AGE_S = 600;
 const TOO_MANY = 'Too many tries. Wait 15 minutes and try again.';
 const refuse = (reply: FastifyReply, status: number, code: string, message: string) => reply.code(status).send({ error: { code, message, targets: [] } });
 
@@ -36,14 +38,20 @@ export function registerAuthRoutes(app: FastifyInstance, deps: AuthRouteDeps): v
   if (deps.oidc) {
     const oidc = deps.oidc;
     const failTo = (reply: FastifyReply, message: string) => reply.redirect(`/?signin_error=${encodeURIComponent(message)}`);
+    // Ties the sign-in to this browser, so a callback link sent to someone else signs nobody in.
+    const bindingCookie = { httpOnly: true, sameSite: 'lax' as const, secure: config.secureCookies, path: '/auth/oidc' };
     app.get('/auth/oidc/start', async (request, reply) => {
       const returnTo = safeReturnTo((request.query as { returnTo?: unknown }).returnTo);
-      return reply.redirect(await oidc.start(returnTo));
+      const { url, binding } = await oidc.start(returnTo);
+      reply.setCookie(OIDC_BINDING_COOKIE, binding, { ...bindingCookie, maxAge: OIDC_BINDING_MAX_AGE_S });
+      return reply.redirect(url);
     });
     app.get('/auth/oidc/callback', async (request, reply) => {
+      const binding = request.cookies[OIDC_BINDING_COOKIE];
+      reply.clearCookie(OIDC_BINDING_COOKIE, bindingCookie);
       let result: Awaited<ReturnType<OidcLogin['finish']>>;
       try {
-        result = await oidc.finish(new URL(request.url, config.publicUrl));
+        result = await oidc.finish(new URL(request.url, config.publicUrl), typeof binding === 'string' && binding !== '' ? binding : null);
       } catch (e) {
         if (e instanceof OidcError) return failTo(reply, e.message);
         request.log.error(e, 'Company sign-in failed');
