@@ -375,6 +375,21 @@ describe('recovery and readiness', () => {
     expect(onError).toHaveBeenCalledWith(expect.stringContaining('not answering'), expect.objectContaining({ message: 'connect ECONNREFUSED' }));
   });
 
+  it('ready() answers while a submit is stuck in the store, because nothing needs recovering', async () => {
+    class Stuck extends MemoryCommandStore {
+      stuck = false;
+      override async append(): Promise<void> {
+        if (this.stuck) await new Promise<never>(() => undefined);
+      }
+    }
+    const store = new Stuck();
+    const svc = await WorkspaceService.open(store, { onError: () => {} });
+    store.stuck = true;
+    void submit(svc, '1', create('p'));
+    const result = await Promise.race([svc.ready(), new Promise<'hung'>((resolve) => setTimeout(() => resolve('hung'), 500))]);
+    expect(result).toEqual({ ok: true, seq: 0 });
+  });
+
   it('applies and announces each recovered command once even when the trailing log read fails', async () => {
     class TrailingReadFails extends AmbiguousOnce {
       armed = false;

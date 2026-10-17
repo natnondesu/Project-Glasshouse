@@ -7,6 +7,20 @@ const SNAPSHOTS_KEPT = 3;
 /** Distinct from the migration lock (727274): held for the whole life of the process. */
 const INSTANCE_LOCK_KEY = 727275;
 
+/**
+ * A query that hangs (a stuck lock, a half-dead connection) fails after this instead of blocking the command queue forever.
+ * Every statement is far below it: a snapshot write or a log replay is a single indexed statement or a bounded read.
+ */
+export const STATEMENT_TIMEOUT_MS = 30_000;
+
+export const poolConfig = (url: string, statementTimeoutMs = STATEMENT_TIMEOUT_MS): pg.PoolConfig => ({
+  connectionString: url,
+  max: 6,
+  // A readiness ping must fail rather than hang when the pool cannot get a connection.
+  connectionTimeoutMillis: 5000,
+  statement_timeout: statementTimeoutMs,
+});
+
 export class InstanceLockError extends Error {}
 
 const defaultLockLost = (error: unknown): void => {
@@ -37,8 +51,7 @@ export class PgCommandStore implements CommandStore {
   private constructor(private readonly pool: pg.Pool, private readonly lock: pg.PoolClient) {}
 
   static async connect(url: string, { onLockLost = defaultLockLost }: { onLockLost?: (error: unknown) => void } = {}): Promise<PgCommandStore> {
-    // connectionTimeoutMillis: a readiness ping must fail rather than hang when the pool cannot get a connection.
-    const pool = new pg.Pool({ connectionString: url, max: 6, connectionTimeoutMillis: 5000 });
+    const pool = new pg.Pool(poolConfig(url));
     pool.on('error', (e) => console.error('Postgres connection error', e));
     let lock: pg.PoolClient | undefined;
     try {

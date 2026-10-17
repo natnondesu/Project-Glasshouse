@@ -157,13 +157,16 @@ export class WorkspaceService {
 
   async ready(): Promise<{ ok: true; seq: number } | { ok: false; reason: string }> {
     // The healthcheck is what notices a broken database first, so it also finishes any recovery the next edit would.
-    try {
-      await this.enqueue(async () => {
-        if (this.recovering) await this.recover();
-      });
-    } catch (e) {
-      this.onError('Catching up with the command log failed', e);
-      return { ok: false, reason: 'Catching up with the database log failed.' };
+    // Without a pending recovery it only pings: queued behind a stuck submit it would hang and the container would be restarted for nothing.
+    if (this.recovering) {
+      try {
+        await this.enqueue(async () => {
+          if (this.recovering) await this.recover();
+        });
+      } catch (e) {
+        this.onError('Catching up with the command log failed', e);
+        return { ok: false, reason: 'Catching up with the database log failed.' };
+      }
     }
     try {
       await this.store.ping();

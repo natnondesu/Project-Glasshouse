@@ -2,7 +2,7 @@ import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testconta
 import pg from 'pg';
 import { afterAll, beforeAll, expect, it } from 'vitest';
 import { WorkspaceService } from '../workspaceService';
-import { InstanceLockError, PgCommandStore } from './pgStore';
+import { InstanceLockError, PgCommandStore, STATEMENT_TIMEOUT_MS, poolConfig } from './pgStore';
 
 let container: StartedPostgreSqlContainer;
 // The log stores only id and name; read-back entries carry role viewer and verified true (a record, not a credential).
@@ -103,4 +103,20 @@ it('a refused server does not migrate the database it was refused', async () => 
   await expect(PgCommandStore.connect(url)).rejects.toBeInstanceOf(InstanceLockError);
   expect((await holder.query("select to_regclass('commands') as t")).rows[0].t).toBeNull();
   await holder.end();
+});
+
+it('fails a query that outlives the statement timeout instead of blocking forever', async () => {
+  const pool = new pg.Pool(poolConfig(container.getConnectionUri(), 300));
+  try {
+    await expect(pool.query('select pg_sleep(5)')).rejects.toThrow(/statement timeout/);
+    // The connection is still usable afterwards.
+    expect((await pool.query('select 1 as one')).rows[0]).toEqual({ one: 1 });
+  } finally {
+    await pool.end();
+  }
+});
+
+it('uses a 30 second statement timeout by default', () => {
+  expect(STATEMENT_TIMEOUT_MS).toBe(30_000);
+  expect(poolConfig('postgres://x')).toMatchObject({ statement_timeout: 30_000, connectionTimeoutMillis: 5000 });
 });
