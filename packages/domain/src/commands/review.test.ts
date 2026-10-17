@@ -6,6 +6,7 @@ import { currentRevision, findRoom } from '../lookup';
 import type { Rack, Template, Workspace } from '../model/types';
 import { createObject } from '../objects';
 import { approvalBlockers, isSelfApproved } from '../readiness';
+import { parseWorkspace } from '../schema';
 import { apply, type WorkspaceCommand } from './workspace';
 
 const AT = '2026-10-14T09:00:00.000Z';
@@ -150,5 +151,47 @@ describe('approval blockers', () => {
     const approved = run(ws, review({ type: 'review/submit', designedBy: '', at: AT }), review({ type: 'review/approve', reviewer: 'S', at: AT }));
     expect(fail(approved, review({ type: 'review/acknowledge', reservedRangeId: 'rsv', reason: 'x', by: 'S', at: AT }))).toBe('Revision 1 is approved. Start a new draft to change it.');
     expect(fail(ws, review({ type: 'note/add', id: 'n', text: '  ', at: AT }))).toBe('Write the note first.');
+  });
+});
+
+describe('verified people (server mode)', () => {
+  // `review`, `plan`, `run`, `ready` and `AT` are the file's existing helpers.
+  const revOf = (ws: Workspace) => currentRevision(plan(ws));
+
+  it('records who submitted and approved with their user ids, and drops "(unverified)"', () => {
+    let ws = run(ready(), review({ type: 'review/submit', designedBy: 'Ploy S.', at: AT, byId: 'u-ploy' }));
+    ws = run(ws, review({ type: 'review/approve', reviewer: 'Nok P.', at: AT, byId: 'u-nok' }));
+    expect(revOf(ws).designedBy).toEqual({ name: 'Ploy S.', at: AT, userId: 'u-ploy' });
+    expect(revOf(ws).approvedBy).toEqual({ name: 'Nok P.', at: AT, userId: 'u-nok' });
+    const history = findRoom(ws, 'r')!.room.plan.history.slice(-2);
+    expect(history.map((h) => h.action)).toEqual(['Submitted for review by Ploy S.', 'Approved by Nok P.']);
+    expect(history[1]!.params).toMatchObject({ by: 'Nok P.', verified: 1 });
+  });
+
+  it('refuses an approval by the person who submitted', () => {
+    const ws = run(ready(), review({ type: 'review/submit', designedBy: 'Ploy S.', at: AT, byId: 'u-ploy' }));
+    const r = apply(ws, review({ type: 'review/approve', reviewer: 'Ploy S.', at: AT, byId: 'u-ploy' }));
+    expect(r).toMatchObject({ ok: false, error: { code: 'forbidden' } });
+  });
+
+  it('keeps local mode as it was: typed names are flagged, not refused', () => {
+    let ws = run(ready(), review({ type: 'review/submit', designedBy: 'Ploy', at: AT }));
+    ws = run(ws, review({ type: 'review/approve', reviewer: 'ploy', at: AT }));
+    expect(isSelfApproved(revOf(ws))).toBe(true);
+    expect(findRoom(ws, 'r')!.room.plan.history.at(-1)!.action).toBe('Approved by ploy (unverified)');
+  });
+
+  it('compares user ids, not names, when both are known', () => {
+    let ws = run(ready(), review({ type: 'review/submit', designedBy: 'Sam', at: AT, byId: 'u-1' }));
+    ws = run(ws, review({ type: 'review/approve', reviewer: 'Sam', at: AT, byId: 'u-2' }));
+    expect(isSelfApproved(revOf(ws))).toBe(false);
+  });
+
+  it('records the note author id and keeps ids through save and load', () => {
+    const ws = run(ready(), review({ type: 'note/add', id: 'n1', text: 'Check the column', at: AT, by: 'Nok P.', byId: 'u-nok' }));
+    const plan = findRoom(ws, 'r')!.room.plan;
+    expect(plan.notes.at(-1)).toMatchObject({ by: 'Nok P.', byId: 'u-nok' });
+    const loaded = parseWorkspace(JSON.parse(JSON.stringify(ws)));
+    expect(loaded.ok && findRoom(loaded.value, 'r')!.room.plan.notes.at(-1)).toMatchObject({ byId: 'u-nok' });
   });
 });

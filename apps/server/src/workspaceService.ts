@@ -1,4 +1,6 @@
 import { apply, createWorkspace, err, parseWorkspace, withSample, type DomainError, type Workspace, type WorkspaceCommand } from '@glasshouse/domain';
+import { atLeast } from './identity/types';
+import { ROLE_LABEL, requiredRole, stampCommand } from './permissions';
 import type { Actor, CommandStore, LoggedCommand } from './store/commandStore';
 
 export const SNAPSHOT_EVERY = 200;
@@ -49,10 +51,12 @@ export class WorkspaceService {
     private current: { seq: number; workspace: Workspace },
     private readonly snapshotEvery: number,
     private readonly onError: (message: string, error: unknown) => void,
+    private readonly now: () => string,
   ) {}
 
   static async open(store: CommandStore, options: OpenOptions = {}): Promise<WorkspaceService> {
     const onError = options.onError ?? ((message, error) => console.error(message, error));
+    const now = options.now ?? (() => new Date().toISOString());
     const snapshot = await store.latestSnapshot();
     let seq = 0;
     let workspace: Workspace;
@@ -64,7 +68,7 @@ export class WorkspaceService {
     } else {
       workspace = createWorkspace();
       if (options.seedSample) {
-        const seeded = withSample(workspace, (options.now ?? (() => new Date().toISOString()))());
+        const seeded = withSample(workspace, now());
         if (!seeded.ok) throw new Error(`The sample projects could not be built: ${seeded.error.message}`);
         workspace = seeded.value;
       }
@@ -83,7 +87,7 @@ export class WorkspaceService {
     }
     // Always snapshot after boot: keeps the replay tail short and pins a seeded sample's IDs.
     await store.saveSnapshot(seq, workspace);
-    return new WorkspaceService(store, { seq, workspace }, options.snapshotEvery ?? SNAPSHOT_EVERY, onError);
+    return new WorkspaceService(store, { seq, workspace }, options.snapshotEvery ?? SNAPSHOT_EVERY, onError, now);
   }
 
   get state(): { seq: number; workspace: Workspace } {
@@ -136,18 +140,27 @@ export class WorkspaceService {
     const previous = await this.store.findCommand(clientId, commandId);
     if (previous) return { kind: 'accepted', seq: previous.seq, duplicate: true };
     if (BROWSER_ONLY.has(command.type)) return rejected(`"${command.type}" only applies to a workspace stored in one browser.`);
+    if (command.type === 'review' && !(isRecord(command.command) && isNonEmptyString(command.command.type))) return rejected('Each review change needs a command with a type.');
+    if (actor.verified && actor.name.trim() === '') {
+      return { kind: 'rejected', error: err('forbidden', 'Your account has no name. Ask an admin to set one.').error };
+    }
+    const needed = requiredRole(command);
+    if (!atLeast(actor.role, needed)) {
+      return { kind: 'rejected', error: err('forbidden', `${ROLE_LABEL[actor.role]}s can't make this change. Ask an admin for ${ROLE_LABEL[needed]} access.`).error };
+    }
+    const toApply = actor.verified ? stampCommand(command, actor, this.now()) : command;
     let result: ReturnType<typeof apply> | undefined;
     try {
-      result = apply(this.current.workspace, command);
+      result = apply(this.current.workspace, toApply);
     } catch (e) {
       return rejected(`That change could not be applied: ${describe(e)}`);
     }
     // apply() returns undefined for a command type its switch does not know.
-    if (result === undefined) return rejected(`Unknown change type "${command.type}".`);
+    if (result === undefined) return rejected(`Unknown change type "${toApply.type}".`);
     if (!result.ok) return { kind: 'rejected', error: result.error };
     const checked = parseWorkspace(result.value);
     if (!checked.ok) return rejected(`That change would leave the workspace invalid: ${checked.error.message}`);
-    const entry: LoggedCommand = { seq: this.current.seq + 1, clientId, commandId, actor, command };
+    const entry: LoggedCommand = { seq: this.current.seq + 1, clientId, commandId, actor, command: toApply };
     await this.store.append(entry);
     this.current = { seq: entry.seq, workspace: result.value };
     for (const listener of this.listeners) {

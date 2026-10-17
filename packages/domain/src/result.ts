@@ -1,6 +1,6 @@
 import type { Id } from './model/types';
 
-export type DomainErrorCode = 'not_found' | 'not_draft' | 'invalid_value' | 'out_of_bounds' | 'stale';
+export type DomainErrorCode = 'not_found' | 'not_draft' | 'invalid_value' | 'out_of_bounds' | 'stale' | 'forbidden';
 
 export interface DomainError {
   code: DomainErrorCode;

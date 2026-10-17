@@ -1,4 +1,5 @@
 import { Navigate, type RouteObject } from 'react-router';
+import { UsersScreen } from '../features/admin/UsersScreen';
 import { CatalogScreen } from '../features/catalog/CatalogScreen';
 import { InstallSheet } from '../features/sheet/InstallSheet';
 import { Home } from './Home';
@@ -17,6 +18,7 @@ export const routes: RouteObject[] = [
       { path: 'rooms/:roomId', element: <Navigate to="plan" replace /> },
       { path: 'rooms/:roomId/:view', element: <RoomScreen /> },
       { path: 'catalog', element: <CatalogScreen /> },
+      { path: 'admin/users', element: <UsersScreen /> },
       { path: '*', element: <NotFound /> },
     ],
   },

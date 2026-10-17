@@ -1,5 +1,6 @@
 import { currentRevision, exportProjectFile } from '@glasshouse/domain';
 import { useState, type ReactNode } from 'react';
+import { UserMenu } from '../auth/UserMenu';
 import { SERVER_MODE } from '../sync/serverMode';
 import { NavLink, Link } from 'react-router';
 import { LanguageSwitch } from '../i18n/LanguageSwitch';
@@ -103,6 +104,7 @@ export function TitleBlock({ roomId }: { roomId: string | null }) {
             <IconCatalog />
             <span className="title-block__catalog-label">{m.shell.catalog}</span>
           </NavLink>
+          {SERVER_MODE ? <UserMenu /> : null}
         </span>
       </div>
     </header>

@@ -1,9 +1,14 @@
 import type { FastifyInstance } from 'fastify';
-import { afterEach, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import type { AuthConfig } from '../config';
+import { MemoryIdentityStore } from '../identity/memoryIdentityStore';
 import { MemoryCommandStore } from '../store/memoryStore';
 import { WorkspaceService } from '../workspaceService';
 import { buildApp } from './app';
-import { devAuthenticate } from './devAuth';
+import { registerAuthRoutes } from './auth/authRoutes';
+import { LoginThrottle } from './auth/loginThrottle';
+import { createSessionAuth, SESSION_COOKIE } from './auth/sessionAuth';
+import { devAuthenticate, registerDevAuthRoutes } from './devAuth';
 import { MAX_CATCH_UP } from './events';
 
 let app: FastifyInstance | null = null;
@@ -12,10 +17,10 @@ afterEach(async () => {
   app = null;
 });
 
-const actor = { id: 'dev:t', name: 't' };
+const actor = { id: 'dev:t', name: 't', role: 'editor' as const, verified: false };
 
 async function start(service: WorkspaceService, heartbeatMs?: number): Promise<string> {
-  app = await buildApp({ service, authenticate: devAuthenticate, heartbeatMs });
+  app = await buildApp({ service, authenticate: devAuthenticate, authRoutes: registerDevAuthRoutes, publicOrigin: null, heartbeatMs });
   await app.listen({ port: 0, host: '127.0.0.1' });
   const address = app.server.address();
   if (address === null || typeof address === 'string') throw new Error('no port');
@@ -111,4 +116,70 @@ it('sends ping events as a heartbeat the browser can see', async () => {
   const base = await start(service, 50);
   const text = await readEvents(`${base}/api/events?after=0`, (t) => (t.match(/event: ping\ndata: \{\}\n\n/g) ?? []).length >= 2);
   expect(text).toContain('event: ping\ndata: {}\n\n');
+});
+
+describe('a stream ends when the person behind it no longer has access', () => {
+  const NOW = '2026-10-18T09:00:00.000Z';
+  const PUBLIC = 'https://glasshouse.company.test';
+  const config: AuthConfig = { mode: 'on', publicUrl: new URL(PUBLIC), localLogin: true, oidc: null, bootstrapAdmin: null, defaultRole: 'viewer', secureCookies: true, seedUsers: [] };
+
+  async function signedIn() {
+    const store = new MemoryIdentityStore();
+    await store.createUser({ id: 'u1', email: 'u1@company.test', displayName: 'U One', role: 'editor', source: 'local', oidcSubject: null, passwordHash: 'x', mustChangePassword: false, active: true, createdAt: NOW, lastLoginAt: null });
+    const sessions = createSessionAuth(store, { secure: false });
+    const service = await WorkspaceService.open(new MemoryCommandStore());
+    app = await buildApp({
+      service, authenticate: sessions.authenticate, publicOrigin: PUBLIC, heartbeatMs: 30,
+      authRoutes: (a) => registerAuthRoutes(a, { store, sessions, config, oidc: null, throttle: new LoginThrottle(), now: () => new Date() }),
+    });
+    // The cookie is minted through the real session code; the stream is read over a real socket.
+    await app.listen({ port: 0, host: '127.0.0.1' });
+    const address = app.server.address();
+    if (address === null || typeof address === 'string') throw new Error('no port');
+    let token = '';
+    const reply = { setCookie: (_name: string, value: string) => (token = value) } as never;
+    await sessions.startSession(reply, (await store.findUserById('u1'))!);
+    return { store, base: `http://127.0.0.1:${address.port}`, cookie: `${SESSION_COOKIE}=${token}`, logout: () => app!.inject({ method: 'POST', url: '/auth/logout', headers: { 'x-glasshouse': '1', origin: PUBLIC, cookie: `${SESSION_COOKIE}=${token}` } }) };
+  }
+
+  /** Resolves true when the server closes the stream, false if it is still open after `ms`. */
+  async function endsWithin(res: Response, ms: number): Promise<boolean> {
+    const reader = res.body!.getReader();
+    const deadline = Date.now() + ms;
+    while (Date.now() < deadline) {
+      const next = await Promise.race([reader.read(), new Promise<'wait'>((r) => setTimeout(() => r('wait'), deadline - Date.now()))]);
+      if (next !== 'wait' && next.done) return true;
+    }
+    return false;
+  }
+
+  it('keeps streaming while the session is good', async () => {
+    const { base, cookie } = await signedIn();
+    const res = await fetch(`${base}/api/events?after=0`, { headers: { cookie } });
+    expect(res.status).toBe(200);
+    expect(await endsWithin(res, 300)).toBe(false);
+  });
+
+  it('ends within a couple of heartbeats once the user is switched off', async () => {
+    const { base, cookie, store } = await signedIn();
+    const res = await fetch(`${base}/api/events?after=0`, { headers: { cookie } });
+    expect(res.status).toBe(200);
+    await store.updateUser('u1', { active: false });
+    expect(await endsWithin(res, 1000)).toBe(true);
+  });
+
+  it('ends once the person signs out', async () => {
+    const { base, cookie, logout } = await signedIn();
+    const res = await fetch(`${base}/api/events?after=0`, { headers: { cookie } });
+    expect(res.status).toBe(200);
+    expect((await logout()).statusCode).toBeLessThan(300);
+    expect(await endsWithin(res, 1000)).toBe(true);
+  });
+
+  it('ends when the user must now change their password', async () => {
+    const { base, cookie, store } = await signedIn();
+    const res = await fetch(`${base}/api/events?after=0`, { headers: { cookie } });
+    await store.updateUser('u1', { mustChangePassword: true });
+    expect(await endsWithin(res, 1000)).toBe(true);
+  });
 });

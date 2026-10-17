@@ -1,10 +1,10 @@
-import { type WorkspaceCommand } from '@glasshouse/domain';
+import { createObject, createWorkspace, type Rack, type Template, type WorkspaceCommand } from '@glasshouse/domain';
 import { describe, expect, it, vi } from 'vitest';
 import type { LoggedCommand } from './store/commandStore';
 import { MemoryCommandStore } from './store/memoryStore';
 import { WorkspaceService, type Submission } from './workspaceService';
 
-const ploy = { id: 'dev:Ploy', name: 'Ploy' };
+const ploy = { id: 'dev:Ploy', name: 'Ploy', role: 'admin' as const, verified: false };
 const create = (id: string, name = id): WorkspaceCommand => ({ type: 'project/create', id, name });
 const submit = (svc: WorkspaceService, commandId: string, command: WorkspaceCommand, clientId = 'a') => svc.submit({ clientId, commandId, command }, ploy);
 
@@ -162,5 +162,73 @@ describe('WorkspaceService', () => {
     const svc = await WorkspaceService.open(new SnapshotFails(), { snapshotEvery: 1, onError });
     expect(await submit(svc, '1', create('p'))).toMatchObject({ kind: 'accepted', seq: 1 });
     expect(onError).toHaveBeenCalledWith(expect.stringContaining('snapshot'), expect.any(Error));
+  });
+});
+
+/** Room "r" ready for approval: one rack with one 2U server of known demand. */
+function readyRoomCommands(): WorkspaceCommand[] {
+  const rack = { ...(createObject('rack', { x: 1, y: 0.6 }, []) as Rack), id: 'rk', name: 'RK-01' };
+  const template = createWorkspace().catalog.find((t) => t.id === 'tpl-server-2u') as Template;
+  return [
+    { type: 'project/create', id: 'p', name: 'P' },
+    { type: 'site/create', projectId: 'p', id: 's', name: 'S' },
+    { type: 'room/create', siteId: 's', id: 'r', floorAreaId: 'fa-r', name: 'MDF-1' },
+    { type: 'plan', roomId: 'r', command: { type: 'object/add', object: rack } },
+    { type: 'plan', roomId: 'r', command: { type: 'device/place', id: 'srv', rackId: 'rk', bottomU: 1, template } },
+  ];
+}
+
+describe('roles and stamped names', () => {
+  const NOW = '2026-10-18T09:00:00.000Z';
+  const viewer = { id: 'u-v', name: 'Vee', role: 'viewer' as const, verified: true };
+  const editor = { id: 'u-e', name: 'Eddie', role: 'editor' as const, verified: true };
+  const reviewer = { id: 'u-r', name: 'Rae', role: 'reviewer' as const, verified: true };
+  const open = () => WorkspaceService.open(new MemoryCommandStore(), { now: () => NOW });
+  const go = (svc: WorkspaceService, actor: typeof editor | typeof viewer | typeof reviewer, id: string, command: WorkspaceCommand) => svc.submit({ clientId: actor.id, commandId: id, command }, actor);
+
+  it('refuses a change above the actor’s role, with a clear reason', async () => {
+    const svc = await open();
+    expect(await go(svc, viewer, '1', { type: 'project/create', id: 'p', name: 'P' })).toMatchObject({ kind: 'rejected', error: { code: 'forbidden', message: expect.stringMatching(/Viewer/) } });
+    expect(await go(svc, editor, '2', { type: 'project/create', id: 'p', name: 'P' })).toMatchObject({ kind: 'accepted' });
+    expect(await go(svc, editor, '3', { type: 'project/delete', projectId: 'p' })).toMatchObject({ kind: 'rejected', error: { code: 'forbidden' } });
+  });
+
+  it('a reviewer can’t approve their own submission, whatever name they send', async () => {
+    const svc = await open();
+    for (const [i, c] of readyRoomCommands().entries()) await go(svc, reviewer, `s${i}`, c);
+    await go(svc, reviewer, 'sub', { type: 'review', roomId: 'r', command: { type: 'review/submit', designedBy: 'Not Me', at: 'x' } });
+    const own = await go(svc, reviewer, 'app', { type: 'review', roomId: 'r', command: { type: 'review/approve', reviewer: 'Someone Else', at: 'x', byId: 'u-other' } });
+    expect(own).toMatchObject({ kind: 'rejected', error: { code: 'forbidden' } });
+    const logged = (await svc.commandsAfter(0, 100)).find((e) => e.commandId === 'sub')!;
+    expect(logged.command).toMatchObject({ command: { designedBy: 'Rae', byId: 'u-r', at: NOW } });
+  });
+
+  it('stamps nothing for the dev stand-in', async () => {
+    const svc = await open();
+    const dev = { id: 'dev:Dev', name: 'Dev', role: 'admin' as const, verified: false };
+    await go(svc, dev as never, '1', { type: 'project/create', id: 'p', name: 'P' });
+    expect((await svc.commandsAfter(0, 1))[0]!.command).toEqual({ type: 'project/create', id: 'p', name: 'P' });
+  });
+
+  it('refuses a verified account with no name, so self-approval can’t slip past the guard', async () => {
+    const svc = await open();
+    const nameless = { id: 'u-n', name: '  ', role: 'admin' as const, verified: true };
+    expect(await svc.submit({ clientId: 'c', commandId: '1', command: { type: 'project/create', id: 'p', name: 'P' } }, nameless)).toMatchObject({ kind: 'rejected', error: { code: 'forbidden', message: 'Your account has no name. Ask an admin to set one.' } });
+    expect(svc.state.seq).toBe(0);
+  });
+
+  it('rejects a malformed review command without throwing, and skips the rest of the batch', async () => {
+    const svc = await open();
+    const items = [
+      { commandId: '1', command: { type: 'project/create', id: 'p', name: 'P' } as WorkspaceCommand },
+      { commandId: '2', command: { type: 'review' } as unknown as WorkspaceCommand },
+      { commandId: '3', command: { type: 'project/create', id: 'q', name: 'Q' } as WorkspaceCommand },
+    ];
+    const outcome = await svc.submitBatch('c', items, editor);
+    expect(outcome.accepted).toHaveLength(1);
+    expect(outcome.rejected).toMatchObject({ commandId: '2', error: { code: 'invalid_value' } });
+    expect(outcome.skipped).toEqual(['3']);
+    const nullCmd = await svc.submit({ clientId: 'c', commandId: '4', command: { type: 'review', roomId: 'r', command: null } as unknown as WorkspaceCommand }, editor);
+    expect(nullCmd).toMatchObject({ kind: 'rejected' });
   });
 });

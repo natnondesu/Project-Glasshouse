@@ -4,7 +4,8 @@ import { createWorkspace } from './factories';
 import { currentRevision, findRoom } from './lookup';
 import type { Rack, Template, Workspace } from './model/types';
 import { createObject } from './objects';
-import { applyImport, createCopyIds, exportProjectFile, parseProjectFile, previewImport, type ProjectFile } from './projectFile';
+import { isSelfApproved } from './readiness';
+import { applyImport, createCopyIds, exportProjectFile, parseProjectFile, previewImport, type ImportResolution, type ProjectFile } from './projectFile';
 
 const AT = '2026-10-14T09:00:00.000Z';
 function run(ws: Workspace, ...cmds: WorkspaceCommand[]): Workspace {
@@ -35,6 +36,11 @@ const fileOf = (ws: Workspace): ProjectFile => {
   if (!parsed.ok) throw new Error(parsed.error.message);
   return parsed.value;
 };
+function applyOk(ws: Workspace, file: ProjectFile, resolution: ImportResolution): Workspace {
+  const r = applyImport(ws, file, resolution);
+  if (!r.ok) throw new Error(r.error.message);
+  return r.value;
+}
 const width = (ws: Workspace, roomId: string) => currentRevision(findRoom(ws, roomId)!.room.plan).content.survey.width;
 
 describe('project file', () => {
@@ -104,5 +110,64 @@ describe('template versions on import', () => {
     const bumped: ProjectFile = { ...file, templates: file.templates.map((t) => (t.id === 'tpl-server-2u' ? { ...t, version: t.version + 2, label: 'Server 2U (site)' } : t)) };
     expect(previewImport(createWorkspace(), bumped).differingTemplates).toEqual(['Server 2U (site)']);
     expect(previewImport(createWorkspace(), file).differingTemplates).toEqual([]);
+  });
+
+  describe('people in an imported file are never verified', () => {
+    const signedFile = (): ProjectFile => {
+      const ws = run(
+        source(),
+        { type: 'review', roomId: 'r1', command: { type: 'review/submit', designedBy: 'Dana', at: AT, byId: 'u-dana' } },
+        { type: 'review', roomId: 'r1', command: { type: 'note/add', id: 'n1', text: 'check the PDU', at: AT, by: 'Dana', byId: 'u-dana' } },
+        { type: 'review', roomId: 'r1', command: { type: 'review/approve', reviewer: 'Ada', at: AT, byId: 'u-ada' } },
+      );
+      const file = fileOf(ws);
+      const ack = { reservedRangeId: 'rr', reason: 'known', by: { name: 'Dana', at: AT, userId: 'u-dana' } };
+      return {
+        ...file,
+        project: { ...file.project, sites: file.project.sites.map((s) => ({ ...s, rooms: s.rooms.map((r) => ({ ...r, plan: { ...r.plan, revisions: r.plan.revisions.map((v) => ({ ...v, acknowledgements: [ack] })) } })) })) },
+      };
+    };
+    const firstPlan = (ws: Workspace, id = 'r1') => findRoom(ws, id)!.room.plan;
+    const resolutions = (file: ProjectFile): Record<string, ImportResolution> => ({
+      new: { mode: 'merge', takeIncoming: [] },
+      copy: { mode: 'copy', ids: createCopyIds(file) },
+    });
+
+    it.each(['new', 'copy'])('strips user ids from revisions, acknowledgements, notes and history (%s)', (kind) => {
+      const file = signedFile();
+      const ws = applyOk(createWorkspace(), file, resolutions(file)[kind]!);
+      const room = ws.projects.flatMap((p) => p.sites.flatMap((s) => s.rooms))[0]!;
+      const rev = room.plan.revisions[0]!;
+      expect(rev.designedBy).toEqual({ name: 'Dana', at: AT });
+      expect(rev.approvedBy).toEqual({ name: 'Ada', at: AT });
+      expect(rev.acknowledgements[0]!.by).toEqual({ name: 'Dana', at: AT });
+      expect(room.plan.notes[0]).not.toHaveProperty('byId');
+      expect(room.plan.notes[0]!.by).toBe('Dana');
+      expect(room.plan.history.length).toBeGreaterThan(0);
+      for (const e of room.plan.history) expect(e.params ?? {}).not.toHaveProperty('verified');
+      expect(JSON.stringify(ws)).not.toMatch(/u-dana|u-ada/);
+    });
+
+    it('strips ids from incoming rooms taken in a merge, and leaves local rooms alone', () => {
+      const file = signedFile();
+      const local = run(source(), { type: 'review', roomId: 'r2', command: { type: 'review/submit', designedBy: 'Lee', at: AT, byId: 'u-lee' } });
+      const ws = applyOk(local, file, { mode: 'merge', takeIncoming: ['r1'] });
+      expect(firstPlan(ws).revisions[0]!.designedBy).toEqual({ name: 'Dana', at: AT });
+      expect(firstPlan(ws, 'r2').revisions[0]!.designedBy).toEqual({ name: 'Lee', at: AT, userId: 'u-lee' });
+    });
+
+    it('does not let a reviewer launder self-approval through an imported in_review revision', () => {
+      const file = signedFile();
+      const inReview = {
+        ...file,
+        project: { ...file.project, sites: file.project.sites.map((s) => ({ ...s, rooms: s.rooms.map((r) => ({ ...r, plan: { ...r.plan, revisions: r.plan.revisions.map((v) => ({ ...v, state: 'in_review' as const, approvedBy: null, approvedAt: null })) } })) })) },
+      };
+      const ws = applyOk(createWorkspace(), inReview, { mode: 'merge', takeIncoming: [] });
+      const approved = run(ws, { type: 'review', roomId: 'r1', command: { type: 'review/approve', reviewer: 'Dana', at: AT, byId: 'u-dana' } });
+      const rev = firstPlan(approved).revisions[0]!;
+      expect(rev.designedBy?.userId).toBeUndefined();
+      expect(rev.approvedBy?.userId).toBe('u-dana');
+      expect(isSelfApproved(rev)).toBe(true);
+    });
   });
 });

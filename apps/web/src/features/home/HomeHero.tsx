@@ -3,6 +3,7 @@ import { lazy, Suspense } from 'react';
 import { Link } from 'react-router';
 import { useT } from '../../i18n';
 import { IconArrowRight } from '../../ui/icons';
+import { personLabel } from '../../ui/person';
 import { pad2 } from '../../ui/StatusStamp';
 import { holdsTotal, RoomStatus } from './RoomCard';
 import type { RoomSummary } from './rooms';
@@ -16,7 +17,8 @@ export function HomeHero({ summary, lastOpened }: { summary: RoomSummary; lastOp
   const m = useT();
   const { room, site, project, revision } = summary;
   const approved = latestApproved(room.plan);
-  const by = revision.state === 'approved' ? revision.approvedBy?.name : revision.designedBy?.name;
+  const person = revision.state === 'approved' ? revision.approvedBy : revision.designedBy;
+  const by = person ? personLabel(m, person) : undefined;
   const when = (revision.state === 'approved' ? revision.approvedAt : revision.submittedAt)?.slice(0, 10);
   // Something holds approval: the way to it leads; opening the room is still one step aside.
   const holds = revision.state === 'approved' ? 0 : holdsTotal(summary);

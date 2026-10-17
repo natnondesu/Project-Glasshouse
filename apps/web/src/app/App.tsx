@@ -10,18 +10,28 @@ import { RecoveryScreen } from './RecoveryScreen';
 import { routes } from './routes';
 import { messagesFor, useLangStore } from '../i18n';
 import { SERVER_MODE, startServerSync } from '../sync/serverMode';
+import { ChangePasswordScreen } from '../auth/ChangePasswordScreen';
+import { SignInScreen } from '../auth/SignInScreen';
+import { useAuthStore } from '../auth/authStore';
 
 const router = createBrowserRouter(routes);
 
 export function App({ repository = idbRepository }: { repository?: Repository }) {
   const load = useWorkspaceStore((s) => s.load);
+  const authStatus = useAuthStore((s) => s.status);
+  const me = useAuthStore((s) => s.user);
+
+  useEffect(() => {
+    if (SERVER_MODE) void useAuthStore.getState().init();
+  }, []);
 
   useEffect(() => {
     if (SERVER_MODE) {
+      if (authStatus !== 'dev' && authStatus !== 'signed-in') return;
       // StrictMode runs this twice: a cancelled start stops itself as soon as it finishes.
       let stop: (() => void) | null = null;
       let cancelled = false;
-      void startServerSync(undefined, () => cancelled).then((s) => (cancelled ? s() : (stop = s)));
+      void startServerSync(undefined, () => cancelled, me).then((s) => (cancelled ? s() : (stop = s)));
       return () => {
         cancelled = true;
         stop?.();
@@ -32,8 +42,11 @@ export function App({ repository = idbRepository }: { repository?: Repository })
       .then((isWriter) => useWorkspaceStore.getState().setReadOnly(!isWriter))
       .then(() => hydrate(repository));
     return startPersistence(repository);
-  }, [repository]);
+  }, [repository, authStatus, me]);
 
+  if (SERVER_MODE && authStatus === 'unknown') return <p className="app-loading" role="status">{messagesFor(useLangStore.getState().lang).shell.opening}</p>;
+  if (SERVER_MODE && authStatus === 'signed-out') return <SignInScreen />;
+  if (SERVER_MODE && authStatus === 'must-change') return <ChangePasswordScreen />;
   if (load.kind === 'loading') {
     return (
       <p className="app-loading" role="status">

@@ -1,0 +1,120 @@
+.signin {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: var(--gap);
+}
+
+.signin__card {
+  width: 100%;
+  max-width: 420px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 24px 22px 26px;
+}
+
+.signin__card h1 {
+  margin: 0;
+  font-size: var(--text-xl);
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+.signin__head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.signin__head h1 {
+  flex: 1;
+  min-width: 0;
+}
+
+.signin__note {
+  margin: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--warn-border);
+  border-radius: var(--radius-field);
+  background: var(--warn-bg);
+  color: var(--warn);
+  font-size: var(--text-sm);
+}
+
+.signin .review-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.signin__sso {
+  width: 100%;
+  height: 40px;
+  text-decoration: none;
+}
+
+.signin__or {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  font-size: var(--text-xs);
+  color: var(--ink-3);
+}
+
+.signin__or::before,
+.signin__or::after {
+  content: '';
+  flex: 1;
+  border-top: 1px solid var(--line);
+}
+
+.user-menu {
+  position: relative;
+  display: inline-flex;
+}
+
+.user-menu__name {
+  max-width: 14ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.user-menu__panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 30;
+  min-width: 200px;
+  max-width: calc(100vw - 2 * var(--gap));
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+  padding: 12px;
+  box-shadow: var(--glass-shadow), var(--shadow-float);
+}
+
+.user-menu__who {
+  font-size: var(--text-sm);
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+
+.user-menu__role {
+  align-self: flex-start;
+  padding: 1px 7px;
+  border: 1px solid var(--line-strong);
+  border-radius: 4px;
+  font-size: var(--text-2xs);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+}
+
+.user-menu__panel .btn {
+  justify-content: flex-start;
+  text-decoration: none;
+}

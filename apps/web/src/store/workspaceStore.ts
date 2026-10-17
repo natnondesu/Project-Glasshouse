@@ -11,7 +11,9 @@ import {
   type WorkspaceCommand,
 } from '@glasshouse/domain';
 import { create } from 'zustand';
+import { messagesFor, useLangStore } from '../i18n';
 import type { ConnectionStatus } from '../sync/syncClient';
+import { readOnlyMessage } from './readOnlyMessage';
 
 export type SaveState = { kind: 'idle' } | { kind: 'saving' } | { kind: 'saved'; at: Date } | { kind: 'failed'; reason: string };
 type LoadState = { kind: 'loading' } | { kind: 'ready' } | { kind: 'failed'; reason: string; raw: unknown };
@@ -31,11 +33,11 @@ interface RoomHistory {
 
 const HISTORY_LIMIT = 100;
 const COALESCE_WINDOW_MS = 1000;
-const READ_ONLY_ERROR: DomainError = {
+const readOnlyError = (reason: ReadOnlyReason | null): DomainError => ({
   code: 'invalid_value',
-  message: 'This tab is read-only because Glasshouse is open in another tab.',
+  message: readOnlyMessage(messagesFor(useLangStore.getState().lang), reason),
   targets: [],
-};
+});
 
 type Commit = (ws: Workspace, command: WorkspaceCommand) => Result<Workspace>;
 let commit: Commit = apply;
@@ -44,11 +46,14 @@ export function setCommit(next: Commit): void {
   commit = next;
 }
 
+export type ReadOnlyReason = 'other-tab' | 'offline' | 'view-only';
+
 interface Data {
   workspace: Workspace;
   load: LoadState;
   save: SaveState;
   readOnly: boolean;
+  readOnlyReason: ReadOnlyReason | null;
   history: Record<Id, RoomHistory>;
   lastEdit: { key: string; roomId: Id; at: number } | null;
   connection: 'local' | ConnectionStatus;
@@ -62,7 +67,7 @@ interface WorkspaceState extends Data {
   replace: (workspace: Workspace) => void;
   setLoad: (load: LoadState) => void;
   setSave: (save: SaveState) => void;
-  setReadOnly: (readOnly: boolean) => void;
+  setReadOnly: (readOnly: boolean, reason?: ReadOnlyReason) => void;
   adopt: (workspace: Workspace) => void;
   setConnection: (c: Data['connection']) => void;
   setNotice: (n: string | null) => void;
@@ -73,6 +78,7 @@ const initialData = (): Data => ({
   load: { kind: 'loading' },
   save: { kind: 'idle' },
   readOnly: false,
+  readOnlyReason: null,
   history: {},
   lastEdit: null,
   connection: 'local',
@@ -100,7 +106,7 @@ export const useWorkspaceStore = create<WorkspaceState>()((set, get) => ({
   ...initialData(),
   dispatch: (command, options = {}) => {
     const state = get();
-    if (state.readOnly) return READ_ONLY_ERROR;
+    if (state.readOnly) return readOnlyError(state.readOnlyReason);
     const result = commit(state.workspace, command);
     if (!result.ok) return result.error;
     if (command.type !== 'plan') {
@@ -164,7 +170,7 @@ export const useWorkspaceStore = create<WorkspaceState>()((set, get) => ({
   replace: (workspace) => set({ workspace, history: {}, lastEdit: null }),
   setLoad: (load) => set({ load }),
   setSave: (save) => set({ save }),
-  setReadOnly: (readOnly) => set({ readOnly }),
+  setReadOnly: (readOnly, reason) => set((s) => ({ readOnly, readOnlyReason: readOnly ? (reason ?? s.readOnlyReason ?? 'other-tab') : null })),
 }));
 
 export const resetWorkspaceStore = (): void => {

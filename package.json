@@ -12,6 +12,7 @@
     "typecheck": "pnpm -r typecheck",
     "e2e": "pnpm --filter @glasshouse/web e2e",
     "e2e:server": "pnpm --filter @glasshouse/web e2e:server",
+    "e2e:auth": "pnpm --filter @glasshouse/web e2e:auth",
     "dev:server": "pnpm --filter @glasshouse/server dev",
     "test:db": "pnpm --filter @glasshouse/server test:db"
   },

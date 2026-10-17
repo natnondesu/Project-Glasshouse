@@ -4,6 +4,7 @@ import { isSelfApproved, type Plan } from '@glasshouse/domain';
 import { pad2, StatusStamp } from '../../ui/StatusStamp';
 import { formatTime } from '../../ui/time';
 import { useT } from '../../i18n';
+import { personLabel } from '../../ui/person';
 import { historyText } from '../plan/issueText';
 
 /** Events per page, newest first. */
@@ -31,9 +32,8 @@ export function HistoryPanel({ plan, roomId }: { plan: Plan; roomId: string }) {
             <span className="mono revisions__n">{`R${pad2(r.number)}`}</span>
             <StatusStamp state={r.state} />
             <span className="revisions__who">
-              {r.designedBy ? m.review.designedByName(r.designedBy.name) : m.review.designerNotRecorded}
-              {r.approvedBy ? m.review.approvedByName(r.approvedBy.name, formatTime(r.approvedAt)) : ''}
-              {r.designedBy || r.approvedBy ? m.review.unverifiedTail : ''}
+              {r.designedBy ? m.review.designedByName(personLabel(m, r.designedBy)) : m.review.designerNotRecorded}
+              {r.approvedBy ? m.review.approvedByName(personLabel(m, r.approvedBy), formatTime(r.approvedAt)) : ''}
               {isSelfApproved(r) ? m.review.selfApprovedTail : ''}
             </span>
             {r.number !== currentNumber ? (

@@ -1,8 +1,10 @@
 import { approvalBlockerItems, currentRevision, isSelfApproved, type Plan } from '@glasshouse/domain';
 import { useState, type FormEvent } from 'react';
 import { Link } from 'react-router';
+import { useCan } from '../../auth/useCan';
 import { useT } from '../../i18n';
 import { useReviewCommit } from '../../store/hooks';
+import { personLabel } from '../../ui/person';
 import { pad2, StatusStamp } from '../../ui/StatusStamp';
 import { formatTime } from '../../ui/time';
 import { blockerText } from '../plan/issueText';
@@ -15,11 +17,16 @@ export function ApprovalPanel({ roomId, plan }: { roomId: string; plan: Plan }) 
   const review = useReviewCommit(roomId);
   const blockers = approvalBlockerItems(plan);
   const m = useT();
+  const can = useCan();
   const [name, setName] = useState('');
   const [error, setError] = useState<string | null>(null);
   // Submit and Approve freeze the plan for good, so each asks once, in place, with what it will do.
   const [confirming, setConfirming] = useState(false);
   const rev = pad2(revision.number);
+  // On the shared server the name and id are the signed-in user's, so the screen is right at once; the server stamps them again regardless.
+  const who = can.me?.name ?? name;
+  const byId = can.me ? { byId: can.me.id } : {};
+  const ownSubmission = !!can.me && !!revision.designedBy?.userId && revision.designedBy.userId === can.me.id;
 
   const act = (problem: string | null): void => {
     setError(problem);
@@ -29,12 +36,12 @@ export function ApprovalPanel({ roomId, plan }: { roomId: string; plan: Plan }) 
   const submit = (e: FormEvent): void => {
     e.preventDefault();
     if (!confirming) return setConfirming(true);
-    act(review({ type: 'review/submit', designedBy: name, at: now() }));
+    act(review({ type: 'review/submit', designedBy: who, ...byId, at: now() }));
   };
   const approve = (e: FormEvent): void => {
     e.preventDefault();
     if (!confirming) return setConfirming(true);
-    act(review({ type: 'review/approve', reviewer: name, at: now() }));
+    act(review({ type: 'review/approve', reviewer: who, ...byId, at: now() }));
   };
   const newDraft = (): void => act(review({ type: 'review/new-draft', at: now() }));
   const cancel = (
@@ -53,12 +60,12 @@ export function ApprovalPanel({ roomId, plan }: { roomId: string; plan: Plan }) 
           <span className="approval-stamp__word">{m.review.stamp}</span>
           <span className="approval-stamp__rev mono">{m.review.stampRev(rev)}</span>
           <span className="approval-stamp__when mono">{formatTime(revision.approvedAt)}</span>
-          {revision.approvedBy ? <span className="approval-stamp__by">{m.review.stampBy(revision.approvedBy.name)}</span> : null}
+          {revision.approvedBy ? <span className="approval-stamp__by">{m.review.stampBy(personLabel(m, revision.approvedBy))}</span> : null}
           {isSelfApproved(revision) ? <span className="stamp stamp--warn">{m.review.selfApproved}</span> : null}
         </div>
         <dl className="review-facts">
           <dt>{m.review.designedBy}</dt>
-          <dd>{revision.designedBy ? m.review.unverified(revision.designedBy.name) : '—'}</dd>
+          <dd>{revision.designedBy ? personLabel(m, revision.designedBy) : '—'}</dd>
           <dt>{m.review.submitted}</dt>
           <dd>{formatTime(revision.submittedAt)}</dd>
         </dl>
@@ -67,9 +74,11 @@ export function ApprovalPanel({ roomId, plan }: { roomId: string; plan: Plan }) 
           <Link to={`/rooms/${roomId}/install-sheet`} className="btn btn--ink">
             {m.review.openSheet}
           </Link>
-          <button type="button" className="btn" onClick={newDraft}>
-            {m.review.startDraft}
-          </button>
+          {can.edit ? (
+            <button type="button" className="btn" onClick={newDraft}>
+              {m.review.startDraft}
+            </button>
+          ) : null}
         </div>
         {error ? (
           <p role="alert" className="field__error">
@@ -88,21 +97,23 @@ export function ApprovalPanel({ roomId, plan }: { roomId: string; plan: Plan }) 
       </header>
       <dl className="review-facts">
         <dt>{m.review.designedBy}</dt>
-        <dd>{revision.designedBy ? m.review.unverified(revision.designedBy.name) : '—'}</dd>
+        <dd>{revision.designedBy ? personLabel(m, revision.designedBy) : '—'}</dd>
         <dt>{m.review.submitted}</dt>
         <dd>{formatTime(revision.submittedAt)}</dd>
       </dl>
 
-      {revision.state === 'draft' ? (
+      {revision.state === 'draft' && can.edit ? (
         <form className="review-form" onSubmit={submit}>
-          <div className="field">
-            <label htmlFor="designer" className="field__label">
-              {m.review.designerField}
-            </label>
-            <div className="field__box">
-              <input id="designer" className="field__input" value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" />
+          {can.verifiedNames ? null : (
+            <div className="field">
+              <label htmlFor="designer" className="field__label">
+                {m.review.designerField}
+              </label>
+              <div className="field__box">
+                <input id="designer" className="field__input" value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" />
+              </div>
             </div>
-          </div>
+          )}
           {confirming ? (
             <div className="review-confirm" role="group" aria-label={m.review.confirmSubmit}>
               <p>{m.review.submitConfirm(rev, blockers.length)}</p>
@@ -124,20 +135,35 @@ export function ApprovalPanel({ roomId, plan }: { roomId: string; plan: Plan }) 
         </form>
       ) : null}
 
-      {revision.state === 'in_review' ? (
-        <form className="review-form" onSubmit={approve}>
-          <div className="field">
-            <label htmlFor="reviewer" className="field__label">
-              {m.review.reviewerField}
-            </label>
-            <div className="field__box">
-              <input id="reviewer" className="field__input" value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" />
+      {revision.state === 'in_review' && !can.review ? (
+        <div className="review-form">
+          <p className="review-note">{m.review.reviewersOnly}</p>
+          {can.edit ? (
+            <div className="review-form__actions">
+              <button type="button" className="btn" onClick={newDraft}>
+                {m.review.startDraft}
+              </button>
             </div>
-          </div>
+          ) : null}
+        </div>
+      ) : null}
+
+      {revision.state === 'in_review' && can.review ? (
+        <form className="review-form" onSubmit={approve}>
+          {can.verifiedNames ? null : (
+            <div className="field">
+              <label htmlFor="reviewer" className="field__label">
+                {m.review.reviewerField}
+              </label>
+              <div className="field__box">
+                <input id="reviewer" className="field__input" value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" />
+              </div>
+            </div>
+          )}
           {confirming ? (
             <div className="review-confirm" role="group" aria-label={m.review.confirmApprove}>
-              <p>{m.review.approveConfirm(rev, name.trim() || m.review.unnamedReviewer)}</p>
-              {revision.designedBy && sameName(revision.designedBy.name, name) ? <p className="review-confirm__warn">{m.review.selfApproveWarn}</p> : null}
+              <p>{m.review.approveConfirm(rev, who.trim() || m.review.unnamedReviewer)}</p>
+              {revision.designedBy && sameName(revision.designedBy.name, who) ? <p className="review-confirm__warn">{m.review.selfApproveWarn}</p> : null}
               <div className="review-form__actions">
                 <button type="submit" className="btn btn--ink">
                   {m.review.confirmApprove}
@@ -147,14 +173,17 @@ export function ApprovalPanel({ roomId, plan }: { roomId: string; plan: Plan }) 
             </div>
           ) : (
             <div className="review-form__actions">
-              <button type="submit" className="btn btn--ink" disabled={blockers.length > 0} aria-describedby={blockers.length > 0 ? 'approve-blocked' : undefined}>
+              <button type="submit" className="btn btn--ink" disabled={blockers.length > 0 || ownSubmission} aria-describedby={blockers.length > 0 ? 'approve-blocked' : undefined}>
                 {m.review.approve}
               </button>
-              <button type="button" className="btn" onClick={newDraft}>
-                {m.review.startDraft}
-              </button>
+              {can.edit ? (
+                <button type="button" className="btn" onClick={newDraft}>
+                  {m.review.startDraft}
+                </button>
+              ) : null}
             </div>
           )}
+          {ownSubmission && !confirming ? <p className="review-note">{m.review.ownSubmission}</p> : null}
           {blockers.length > 0 && !confirming ? (
             <p id="approve-blocked" className="review-note">
               {m.review.approveBlocked(blockers.length)}
@@ -180,7 +209,7 @@ export function ApprovalPanel({ roomId, plan }: { roomId: string; plan: Plan }) 
           {error}
         </p>
       ) : null}
-      {revision.state === 'draft' ? <DiscardDraft roomId={roomId} plan={plan} /> : null}
+      {revision.state === 'draft' && can.edit ? <DiscardDraft roomId={roomId} plan={plan} /> : null}
     </section>
   );
 }

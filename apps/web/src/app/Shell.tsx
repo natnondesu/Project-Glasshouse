@@ -21,6 +21,7 @@ export function Shell() {
   const undo = useWorkspaceStore((s) => s.undo);
   const redo = useWorkspaceStore((s) => s.redo);
   const readOnly = useWorkspaceStore((s) => s.readOnly);
+  const readOnlyReason = useWorkspaceStore((s) => s.readOnlyReason);
   const connection = useWorkspaceStore((s) => s.connection);
   const viewingPast = useViewedRevisionNumber() !== null;
   const [treeOpen, setTreeOpen] = usePersistentState('glasshouse:tree-open', true);
@@ -48,7 +49,11 @@ export function Shell() {
       </a>
       <HintLayer />
       <TitleBlock roomId={roomId} />
-      {connection === 'offline' || (readOnly && connection !== 'local') ? (
+      {readOnly && readOnlyReason === 'view-only' && connection !== 'offline' ? (
+        <p className="read-only-banner" role="status">
+          {m.shell.viewOnly}
+        </p>
+      ) : connection === 'offline' || (readOnly && connection !== 'local') ? (
         <p className="read-only-banner" role="alert">
           {m.shell.offline}
         </p>

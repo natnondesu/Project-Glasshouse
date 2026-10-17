@@ -7,6 +7,7 @@ import { usePersistentState } from '../../ui/usePersistentState';
 import { IconChevronLeft, IconPlus, IconUpload } from '../../ui/icons';
 import { ImportDialog } from '../handoff/ImportDialog';
 import { pad2 } from '../../ui/StatusStamp';
+import { useCan } from '../../auth/useCan';
 import { useT } from '../../i18n';
 import { SERVER_MODE } from '../../sync/serverMode';
 import { sampleCommands } from './sampleLoad';
@@ -22,6 +23,7 @@ export function ProjectTree({ activeRoomId, onCollapse }: { activeRoomId: string
   const dispatch = useWorkspaceStore((s) => s.dispatch);
   const navigate = useNavigate();
   const m = useT();
+  const can = useCan();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
@@ -81,12 +83,16 @@ export function ProjectTree({ activeRoomId, onCollapse }: { activeRoomId: string
       <div className="tree__head">
         <h2>{m.tree.title}</h2>
         <span className="tree__head-actions">
-          <button type="button" className="icon-btn" aria-label={m.tree.importFile} title={m.tree.importFile} onClick={() => fileInput.current?.click()}>
-            <IconUpload />
-          </button>
-          <button type="button" className="icon-btn" aria-label={m.tree.newProject} title={m.tree.newProject} onClick={addProject}>
-            <IconPlus />
-          </button>
+          {can.edit ? (
+            <>
+              <button type="button" className="icon-btn" aria-label={m.tree.importFile} title={m.tree.importFile} onClick={() => fileInput.current?.click()}>
+                <IconUpload />
+              </button>
+              <button type="button" className="icon-btn" aria-label={m.tree.newProject} title={m.tree.newProject} onClick={addProject}>
+                <IconPlus />
+              </button>
+            </>
+          ) : null}
           {onCollapse ? (
             <button type="button" className="icon-btn" aria-label={m.tree.hide} aria-expanded title={m.tree.hide} onClick={onCollapse}>
               <IconChevronLeft />
@@ -118,11 +124,13 @@ export function ProjectTree({ activeRoomId, onCollapse }: { activeRoomId: string
             onToggle={() => toggle(project.id)}
             badge={project.isSample ? <span className="stamp stamp--sample">{m.common.sample}</span> : undefined}
             {...editing(project.id)}
+            canEdit={can.edit}
+            canDelete={can.admin}
             onRename={(name) => rename({ type: 'project/rename', projectId: project.id, name })}
-            onAdd={() => {
+            onAdd={can.edit ? () => {
               const id = newId();
               if (run({ type: 'site/create', projectId: project.id, id, name: m.tree.newSite })) setEditingId(id);
-            }}
+            } : undefined}
             addLabel={m.tree.addSite(project.name)}
             onDelete={() => {
               const hadActive = project.sites.some((s) => s.rooms.some((r) => r.id === activeRoomId));
@@ -140,14 +148,15 @@ export function ProjectTree({ activeRoomId, onCollapse }: { activeRoomId: string
                     expanded={isOpen(site.id)}
                     onToggle={() => toggle(site.id)}
                     {...editing(site.id)}
+                    canEdit={can.edit}
                     onRename={(name) => rename({ type: 'site/rename', siteId: site.id, name })}
-                    onAdd={() => {
+                    onAdd={can.edit ? () => {
                       const id = newId();
                       if (run({ type: 'room/create', siteId: site.id, id, floorAreaId: newId(), name: m.tree.newRoom })) {
                         setEditingId(id);
                         navigate(`/rooms/${id}/plan`);
                       }
-                    }}
+                    } : undefined}
                     addLabel={m.tree.addRoom(site.name)}
                     onDelete={() => {
                       const hadActive = site.rooms.some((r) => r.id === activeRoomId);
@@ -168,6 +177,7 @@ export function ProjectTree({ activeRoomId, onCollapse }: { activeRoomId: string
                               active={room.id === activeRoomId}
                               badge={<span className={`stamp stamp--${revision.state}`}>{`R${pad2(revision.number)} ${m.revision.stamp[revision.state]}`}</span>}
                               {...editing(room.id)}
+                              canEdit={can.edit}
                               onRename={(name) => rename({ type: 'room/rename', roomId: room.id, name })}
                               onDelete={() => {
                                 if (run({ type: 'room/delete', roomId: room.id }) && room.id === activeRoomId) navigate('/');
@@ -190,7 +200,7 @@ export function ProjectTree({ activeRoomId, onCollapse }: { activeRoomId: string
           {error}
         </p>
       ) : null}
-      {missing.length === 0 ? null : (
+      {missing.length === 0 || !can.edit ? null : (
         <button type="button" className="btn btn--sm btn--quiet tree__sample" onClick={loadSample}>
           {missing.length === 1 ? m.tree.loadOneSample(missing[0]!) : m.tree.loadSample}
         </button>

@@ -58,6 +58,16 @@ describe('workspace store', () => {
     expect(setWidth('a', 6)?.message).toBe('This tab is read-only because Glasshouse is open in another tab.');
     expect(width('a')).toBe(5);
   });
+
+  it('remembers why the tab is read-only, and forgets when it is not', () => {
+    store().setReadOnly(true);
+    expect(store().readOnlyReason).toBe('other-tab');
+    store().setReadOnly(true, 'view-only');
+    store().setReadOnly(true);
+    expect(store().readOnlyReason).toBe('view-only');
+    store().setReadOnly(false);
+    expect(store().readOnlyReason).toBeNull();
+  });
 });
 
 describe('review boundaries', () => {
@@ -96,5 +106,22 @@ describe('review boundaries', () => {
     setWidth('a', 7);
     store().undo('a');
     expect(seen).toEqual(['plan', 'draft/replace']);
+  });
+});
+
+describe('refusing edits while read-only', () => {
+  beforeEach(() => {
+    resetWorkspaceStore();
+    seed();
+  });
+
+  it.each([
+    ['view-only', 'You can view this workspace. Ask an admin for edit access.'],
+    ['offline', "You're offline. Edits come back when the connection does."],
+    ['other-tab', 'This tab is read-only because Glasshouse is open in another tab.'],
+  ] as const)('says why for %s', (reason, message) => {
+    store().setReadOnly(true, reason);
+    expect(setWidth('a', 6)?.message).toBe(message);
+    expect(width('a')).toBe(5);
   });
 });

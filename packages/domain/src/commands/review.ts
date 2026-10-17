@@ -3,20 +3,20 @@ import { findReserved } from '../devices';
 import { createDraftRevision } from '../factories';
 import { currentRevision } from '../lookup';
 import { LIMITS } from '../model/defaults';
-import type { Id, Plan, Revision } from '../model/types';
+import type { Id, Plan, Revision, UnverifiedName } from '../model/types';
 import { approvalBlockers } from '../readiness';
 import { err, ok, type Failure, type Result } from '../result';
 import { validateName } from '../validation';
 
 export type ReviewCommand =
-  | { type: 'review/submit'; designedBy: string; at: string }
-  | { type: 'review/approve'; reviewer: string; at: string }
+  | { type: 'review/submit'; designedBy: string; at: string; byId?: Id }
+  | { type: 'review/approve'; reviewer: string; at: string; byId?: Id }
   | { type: 'review/new-draft'; at: string }
   | { type: 'review/discard-draft'; at: string }
-  | { type: 'review/acknowledge'; reservedRangeId: Id; reason: string; by: string; at: string }
+  | { type: 'review/acknowledge'; reservedRangeId: Id; reason: string; by: string; at: string; byId?: Id }
   | { type: 'review/unacknowledge'; reservedRangeId: Id; at: string }
   /** A note on a revision (the current one unless named), on any revision, frozen or not: notes never change the design. */
-  | { type: 'note/add'; id: Id; text: string; at: string; revision?: number; by?: string };
+  | { type: 'note/add'; id: Id; text: string; at: string; revision?: number; by?: string; byId?: Id };
 
 const STATE_TEXT: Record<Revision['state'], string> = { draft: 'a Draft', in_review: 'In review', approved: 'approved' };
 
@@ -28,6 +28,11 @@ const lastRevision = (d: Draft<Plan>): Draft<Revision> => {
 
 const NAME_MAX_NOTE = 60;
 const frozen = (rev: Revision): Failure => err('invalid_value', `Revision ${rev.number} is approved. Start a new draft to change it.`);
+
+/** On the shared server the person is a signed-in user: their id is kept and "(unverified)" goes. */
+const person = (name: string, at: string, byId?: Id): UnverifiedName => (byId ? { name, at, userId: byId } : { name, at });
+const tail = (byId?: Id): string => (byId ? '' : ' (unverified)');
+const verified = (byId?: Id): { verified?: number } => (byId ? { verified: 1 } : {});
 
 function validateText(raw: string, empty: string, label: string): Result<string> {
   const text = raw.trim();
@@ -49,14 +54,17 @@ export function applyReviewCommand(plan: Plan, cmd: ReviewCommand): Result<Plan>
           const r = lastRevision(d);
           r.state = 'in_review';
           r.submittedAt = cmd.at;
-          r.designedBy = name.value ? { name: name.value, at: cmd.at } : null;
-          d.history.push({ revision: r.number, action: name.value ? `Submitted for review by ${name.value} (unverified)` : 'Submitted for review', at: cmd.at, code: 'submitted', params: name.value ? { by: name.value } : {} });
+          r.designedBy = name.value ? person(name.value, cmd.at, cmd.byId) : null;
+          d.history.push({ revision: r.number, action: name.value ? `Submitted for review by ${name.value}${tail(cmd.byId)}` : 'Submitted for review', at: cmd.at, code: 'submitted', params: name.value ? { by: name.value, ...verified(cmd.byId) } : {} });
         }),
       );
     }
     case 'review/approve': {
       if (rev.state === 'draft') return err('invalid_value', 'Submit the Draft for review before approving it.');
       if (rev.state === 'approved') return err('invalid_value', `Revision ${rev.number} is already approved.`);
+      if (cmd.byId && rev.designedBy?.userId === cmd.byId) {
+        return err('forbidden', `You submitted revision ${rev.number}, so another reviewer has to approve it.`);
+      }
       const reviewer = validateName(cmd.reviewer, "Reviewer's name");
       if (!reviewer.ok) return reviewer;
       const blockers = approvalBlockers(plan);
@@ -68,8 +76,8 @@ export function applyReviewCommand(plan: Plan, cmd: ReviewCommand): Result<Plan>
           const r = lastRevision(d);
           r.state = 'approved';
           r.approvedAt = cmd.at;
-          r.approvedBy = { name: reviewer.value, at: cmd.at };
-          d.history.push({ revision: r.number, action: `Approved by ${reviewer.value} (unverified)`, at: cmd.at, code: 'approved', params: { by: reviewer.value } });
+          r.approvedBy = person(reviewer.value, cmd.at, cmd.byId);
+          d.history.push({ revision: r.number, action: `Approved by ${reviewer.value}${tail(cmd.byId)}`, at: cmd.at, code: 'approved', params: { by: reviewer.value, ...verified(cmd.byId) } });
         }),
       );
     }
@@ -107,9 +115,9 @@ export function applyReviewCommand(plan: Plan, cmd: ReviewCommand): Result<Plan>
           const r = lastRevision(d);
           r.acknowledgements = [
             ...r.acknowledgements.filter((a) => a.reservedRangeId !== cmd.reservedRangeId),
-            { reservedRangeId: cmd.reservedRangeId, reason: reason.value, by: { name: by.value, at: cmd.at } },
+            { reservedRangeId: cmd.reservedRangeId, reason: reason.value, by: person(by.value, cmd.at, cmd.byId) },
           ];
-          d.history.push({ revision: r.number, action: `${by.value} (unverified) acknowledged unknown demand for ${found.range.label}`, at: cmd.at, code: 'acknowledged', params: { by: by.value, range: found.range.label } });
+          d.history.push({ revision: r.number, action: `${by.value}${tail(cmd.byId)} acknowledged unknown demand for ${found.range.label}`, at: cmd.at, code: 'acknowledged', params: { by: by.value, range: found.range.label, ...verified(cmd.byId) } });
         }),
       );
     }
@@ -133,8 +141,8 @@ export function applyReviewCommand(plan: Plan, cmd: ReviewCommand): Result<Plan>
       if (by.length > NAME_MAX_NOTE) return err('invalid_value', `Names are up to ${NAME_MAX_NOTE} characters.`, []);
       return ok(
         produce(plan, (d) => {
-          d.notes.push({ id: cmd.id, text: text.value, revision: on, createdAt: cmd.at, ...(by ? { by } : {}) });
-          d.history.push({ revision: on, action: by ? `${by} (unverified) added a note` : 'Added a note', at: cmd.at, code: 'note_added', ...(by ? { params: { by } } : {}) });
+          d.notes.push({ id: cmd.id, text: text.value, revision: on, createdAt: cmd.at, ...(by ? { by } : {}), ...(by && cmd.byId ? { byId: cmd.byId } : {}) });
+          d.history.push({ revision: on, action: by ? `${by}${tail(cmd.byId)} added a note` : 'Added a note', at: cmd.at, code: 'note_added', ...(by ? { params: { by, ...verified(cmd.byId) } } : {}) });
         }),
       );
     }

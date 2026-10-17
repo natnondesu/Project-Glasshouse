@@ -71,6 +71,11 @@ export class SyncEngine {
     return this.pending.some((p) => p.ackedSeq === undefined);
   }
 
+  /** Every edit the server hasn't confirmed yet, oldest first (kept across a sign-in). */
+  pendingList(): { commandId: string; command: WorkspaceCommand }[] {
+    return this.pending.map(({ commandId, command }) => ({ commandId, command }));
+  }
+
   markUnsent(ids: string[]): void {
     const set = new Set(ids);
     this.pending = this.pending.map((p) => (set.has(p.commandId) ? { ...p, sent: false } : p));

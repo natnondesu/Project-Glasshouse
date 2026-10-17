@@ -18,7 +18,7 @@ const toLogged = (r: CommandRow): LoggedCommand => ({
   seq: Number(r.seq),
   clientId: r.client_id,
   commandId: r.command_id,
-  actor: { id: r.actor_id, name: r.actor_name },
+  actor: { id: r.actor_id, name: r.actor_name, role: 'viewer', verified: true },
   command: r.command,
 });
 

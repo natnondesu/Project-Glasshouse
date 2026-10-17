@@ -38,7 +38,7 @@ browser (React app, server mode)                    apps/server (Node, Fastify) 
 ## Identity and access (Plan B)
 
 - **Authelia as OIDC provider**; the server is a confidential client (authorization code + PKCE, library `openid-client`). Users are provisioned on first sign-in by OIDC `sub`.
-- **Local accounts**: created by an admin with a temporary password (argon2id), changed on first sign-in. No email reset flow — an admin resets. `GLASSHOUSE_LOCAL_LOGIN=off` disables local sign-in entirely.
+- **Local accounts**: created by an admin with a temporary password (scrypt, see below), changed on first sign-in. No email reset flow — an admin resets. `GLASSHOUSE_LOCAL_LOGIN=off` disables local sign-in entirely.
 - **One users table** for both sources; roles are managed in the app (not from Authelia groups — YAGNI until asked).
 - **Sessions** server-side in Postgres, cookie `gh_session` (HttpOnly, Secure, SameSite=Lax), 12 h idle / 7 d absolute. Mutating requests also require the `X-Glasshouse: 1` header and a same-origin `Origin`.
 - **Bootstrap**: `GLASSHOUSE_BOOTSTRAP_ADMIN=<email>` makes that person admin on first sign-in; afterwards admins manage users in the app.
@@ -56,6 +56,56 @@ Each user has exactly **one** role. Roles are cumulative: each tier includes eve
 | Admin | yes | yes | yes | yes |
 
 The spec's "Onsite editor / IT editor" split is merged into Editor until there is a rule that differs between them. Access is global, not per project, for a single team; project membership is deferred until a second team uses the same server.
+
+### Running with sign-in (Plan B, shipped)
+
+Environment:
+
+| Variable | Value |
+| --- | --- |
+| `GLASSHOUSE_AUTH` | `on` |
+| `GLASSHOUSE_PUBLIC_URL` | `https://glasshouse.<company>` (the Origin check and the OIDC redirect are built from it) |
+| `DATABASE_URL` | the Postgres connection string (`GLASSHOUSE_STORE=postgres`) |
+| `GLASSHOUSE_OIDC_ISSUER` | `https://auth.<company>` |
+| `GLASSHOUSE_OIDC_CLIENT_ID` | `glasshouse` |
+| `GLASSHOUSE_OIDC_CLIENT_SECRET` | the plain secret (Authelia holds its hash) |
+| `GLASSHOUSE_BOOTSTRAP_ADMIN` | your email: that person becomes Admin on first company sign-in |
+| `GLASSHOUSE_DEFAULT_ROLE` | `viewer` (what a new company sign-in gets) |
+| `GLASSHOUSE_LOCAL_LOGIN` | optional; `off` removes the email-and-password form |
+| `GLASSHOUSE_TRUST_PROXY` | `off` (default), `on` (one proxy hop), or a comma list of proxy IPs/CIDRs; see below |
+
+Authelia client, in Authelia's `configuration.yml`:
+
+```yaml
+identity_providers:
+  oidc:
+    clients:
+      - client_id: 'glasshouse'
+        client_name: 'Glasshouse'
+        client_secret: '$pbkdf2-sha512$310000$...'   # hash of the plain secret; the plain one goes in GLASSHOUSE_OIDC_CLIENT_SECRET
+        public: false
+        authorization_policy: 'two_factor'
+        require_pkce: true
+        pkce_challenge_method: 'S256'
+        redirect_uris:
+          - 'https://glasshouse.<company>/auth/oidc/callback'
+        scopes: ['openid', 'profile', 'email']
+        token_endpoint_auth_method: 'client_secret_basic'
+```
+
+Generate the hash with `authelia crypto hash generate pbkdf2 --password '<secret>'`. The client must use `client_secret_basic` (the server authenticates that way). Email and name are read from the ID token and, when the token omits them, from the userinfo endpoint; both are supported.
+
+Behind the company reverse proxy:
+
+- **Set `GLASSHOUSE_TRUST_PROXY`.** Without it every client appears to come from the proxy's address, the sign-in rate limit counts them all together, and 20 failed sign-ins from anyone lock everyone out for 15 minutes. Use `on` for exactly one proxy in front, or list the proxy IPs/CIDRs.
+- **With `on`, the app must be reachable only through the proxy** (firewall or private network). Otherwise a client can reach it directly and spoof `X-Forwarded-For` to dodge the limit or lock others out.
+- **Sign-in state for company sign-in is held in memory**, which is fine for the single instance this design requires. Restarting the server in the middle of someone's sign-in means they try again.
+
+First admin without SSO: `DATABASE_URL=… node dist/cli.js create-admin few@company.test "Few"` (prints a temporary password; the person must choose their own at first sign-in). `reset-password <email>` does the same for someone locked out.
+
+Password storage: scrypt (`node:crypto`) rather than argon2id, so the image needs no native module; parameters N=32768, r=8, p=1.
+
+Role defaults, now shipped: new company sign-ins are Viewers; deleting a project is Admin-only; accepting unknown demand is Reviewer-only; notes need Editor.
 
 ## Approvals, import, operations (Plan C)
 
@@ -81,6 +131,8 @@ The spec's "Onsite editor / IT editor" split is merged into Editor until there i
 Plans B and C are written in detail once Plan A lands, against the interfaces it actually ships.
 
 Plan A shipped 2026-10-17 (branch `feat/p1a-shared-workspace`). Lessons carried forward: every command must carry the IDs it creates (a domain test enforces it; `sample/load` is browser-only); a lost connection is detected by an `event: ping` heartbeat within ~35 s (a half-open stream can't be seen sooner). Plan C hardening list adds: recover from an ambiguous log append (insert committed but the client saw an error) by re-reading the log tail instead of wedging; enforce the single-instance rule with a session-level Postgres advisory lock held for the process lifetime; a dev database written before Plan A's final fixes must be reset (old `room/create` commands lack `floorAreaId`).
+
+Plan B shipped 2026-10-18 (branch `feat/p1b-identity-roles`). Carried into Plan C: re-check event streams without refreshing the session's idle timer (today an open live tab counts as activity, 7-day cap); refresh the web role after a `forbidden` refusal or reconnect; a CLI `set-role` for bootstrap-admin recovery; OIDC discovery must not stop local sign-in at boot; errors after the OIDC token exchange redirect with a code instead of a 500; a smoke test against the real Authelia (claims via userinfo, `iss` parameter, exact issuer string, Secure cookies behind the proxy with `GLASSHOUSE_TRUST_PROXY`); a native read of the Thai sign-in strings.
 
 Plan C also fixes a known import gap: a hand-edited Project file that moves a Room between Sites can duplicate the Room ID on merge; the server import must refuse it.
 

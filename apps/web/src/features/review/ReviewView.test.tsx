@@ -1,9 +1,10 @@
-import { createObject, currentRevision, findRoom, type Rack, type Template } from '@glasshouse/domain';
+import { createObject, currentRevision, findRoom, type Rack, type ReviewCommand, type Template } from '@glasshouse/domain';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { createMemoryRouter, RouterProvider } from 'react-router';
-import { beforeEach, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 import { routes } from '../../app/routes';
+import { resetAuthStore, useAuthStore } from '../../auth/authStore';
 import { resetWorkspaceStore, useWorkspaceStore } from '../../store/workspaceStore';
 
 const revision = () => currentRevision(findRoom(useWorkspaceStore.getState().workspace, 'r')!.room.plan);
@@ -24,7 +25,18 @@ function seed({ device = true, reserved = false } = {}): void {
 }
 const open = () => render(<RouterProvider router={createMemoryRouter(routes, { initialEntries: ['/rooms/r/review'] })} />);
 
-beforeEach(() => seed());
+const AT = '2026-10-15T09:00:00.000Z';
+const signInAs = (role: 'viewer' | 'editor' | 'reviewer' | 'admin', id = 'me'): void =>
+  useAuthStore.setState({ status: 'signed-in', user: { id, name: 'Nok R.', email: 'n@x', role, mustChangePassword: false } });
+const review = (command: ReviewCommand): void => {
+  const problem = useWorkspaceStore.getState().dispatch({ type: 'review', roomId: 'r', command });
+  if (problem) throw new Error(problem.message);
+};
+
+beforeEach(() => {
+  resetAuthStore();
+  seed();
+});
 
 it('AC13/AC16: submits and approves after confirming, flags self-approval, and stamps the approval', async () => {
   const user = userEvent.setup();
@@ -132,4 +144,106 @@ it('pages a long history 20 at a time, newest first', async () => {
   await user.click(screen.getByRole('button', { name: 'Older' }));
   expect(events()).toHaveLength(5);
   expect(screen.getByRole('button', { name: 'Older' })).toBeDisabled();
+});
+
+describe('signed in on the shared server', () => {
+  it('approves as the signed-in reviewer without asking for a name', async () => {
+    const user = userEvent.setup();
+    review({ type: 'review/submit', designedBy: 'Ploy S.', byId: 'other', at: AT });
+    signInAs('reviewer');
+    open();
+    expect(screen.queryByLabelText('Reviewer name (unverified)')).toBeNull();
+    expect(screen.getByText('Ploy S.')).toBeInTheDocument();
+    expect(screen.queryByText(/unverified/)).toBeNull();
+    await user.click(screen.getByRole('button', { name: 'Approve revision' }));
+    expect(screen.getByRole('group', { name: 'Confirm approval' })).toHaveTextContent('Approve R01 as Nok R.');
+    await user.click(screen.getByRole('button', { name: 'Confirm approval' }));
+    expect(revision()).toMatchObject({ state: 'approved', approvedBy: { name: 'Nok R.' } });
+  });
+
+  it('submits as the signed-in editor without asking for a name', async () => {
+    const user = userEvent.setup();
+    signInAs('editor');
+    open();
+    expect(screen.queryByLabelText('Designed by (optional, unverified)')).toBeNull();
+    await user.click(screen.getByRole('button', { name: 'Submit for review' }));
+    await user.click(screen.getByRole('button', { name: 'Confirm submit' }));
+    expect(revision()).toMatchObject({ state: 'in_review', designedBy: { name: 'Nok R.' } });
+  });
+
+  it('keeps a reviewer from approving their own submission', () => {
+    review({ type: 'review/submit', designedBy: 'Nok R.', byId: 'me', at: AT });
+    signInAs('reviewer');
+    open();
+    expect(screen.getByRole('button', { name: 'Approve revision' })).toBeDisabled();
+    expect(screen.getByText('You submitted this revision. Another reviewer has to approve it.')).toBeInTheDocument();
+  });
+
+  it('tells an editor only reviewers approve, and offers no approve button', () => {
+    review({ type: 'review/submit', designedBy: 'Ploy S.', byId: 'other', at: AT });
+    signInAs('editor');
+    open();
+    expect(screen.getByText('Only reviewers can approve.')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Approve revision' })).toBeNull();
+  });
+
+  it('gives a viewer no way to submit, add notes or start a draft', () => {
+    signInAs('viewer');
+    open();
+    expect(screen.queryByRole('button', { name: 'Submit for review' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Add note' })).toBeNull();
+  });
+
+  it('shows who accepted unknown demand, without "(unverified)", and asks no name from a reviewer', async () => {
+    const user = userEvent.setup();
+    seed({ reserved: true });
+    signInAs('reviewer');
+    open();
+    expect(screen.queryByLabelText('Your name (unverified)')).toBeNull();
+    await user.type(screen.getByLabelText('Why is it acceptable?'), 'Customer will not share figures');
+    await user.click(screen.getByRole('button', { name: 'Acknowledge' }));
+    expect(revision().acknowledgements[0]).toMatchObject({ by: { name: 'Nok R.' } });
+  });
+
+  it('replaces the acknowledge form with a note for an editor', () => {
+    seed({ reserved: true });
+    signInAs('editor');
+    open();
+    expect(screen.getByText('Only reviewers can accept unknown demand.')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Acknowledge' })).toBeNull();
+  });
+
+  it('adds notes without a name field and shows verified authors plainly', async () => {
+    const user = userEvent.setup();
+    review({ type: 'note/add', id: 'n0', text: 'From a colleague', by: 'Ploy S.', byId: 'other', at: AT });
+    signInAs('editor');
+    open();
+    expect(screen.queryByLabelText('Your name (optional, unverified)')).toBeNull();
+    await user.type(screen.getByLabelText('New note'), 'Confirm the PDU model');
+    await user.click(screen.getByRole('button', { name: 'Add note' }));
+    const notes = screen.getByRole('region', { name: 'Notes on R01' });
+    expect(notes).toHaveTextContent('Ploy S. ·');
+    expect(notes).toHaveTextContent('Nok R. ·');
+    expect(notes).not.toHaveTextContent('unverified');
+  });
+
+  it('leaves "(unverified)" off history lines for verified people', () => {
+    review({ type: 'review/submit', designedBy: 'Ploy S.', byId: 'other', at: AT });
+    review({ type: 'review/approve', reviewer: 'Nok R.', byId: 'me', at: AT });
+    signInAs('viewer');
+    open();
+    const history = screen.getByRole('region', { name: 'Revisions and history' });
+    expect(history).toHaveTextContent('Approved by Nok R.');
+    expect(history).not.toHaveTextContent('unverified');
+  });
+
+  it('labels each person on the revision list on their own', () => {
+    review({ type: 'review/submit', designedBy: 'Ploy', at: AT });
+    review({ type: 'review/approve', reviewer: 'Nok P.', byId: 'me', at: AT });
+    signInAs('viewer');
+    open();
+    const row = within(screen.getByRole('region', { name: 'Revisions and history' })).getAllByRole('listitem')[0]!;
+    expect(row).toHaveTextContent('Designed by Ploy (unverified) · approved by Nok P.');
+    expect(row).not.toHaveTextContent('Nok P. (unverified)');
+  });
 });

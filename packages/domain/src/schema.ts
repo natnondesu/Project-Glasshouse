@@ -99,7 +99,7 @@ const simpleObject = z.object({ ...objectBase, type: z.enum(['existing_rack', 'd
   opening: z.enum(['swing', 'slide']).optional(),
   panel: z.object({ phase: z.enum(['single', 'three']), ways: z.array(z.object({ ratingA: num, label: text })) }).optional(),
 });
-const unverifiedName = z.object({ name: text, at: text });
+const unverifiedName = z.object({ name: text, at: text, userId: text.optional() });
 const anchor = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('point'), x: num, y: num }),
   z.object({ kind: z.literal('object'), objectId: id, u: num, v: num }),
@@ -118,7 +118,7 @@ const revision = z.object({
 });
 const plan = z.object({
   revisions: z.array(revision).min(1),
-  notes: z.array(z.object({ id, text: text, revision: int, createdAt: text, by: text.optional() })),
+  notes: z.array(z.object({ id, text: text, revision: int, createdAt: text, by: text.optional(), byId: text.optional() })),
   history: z.array(
     z.object({
       revision: int,
