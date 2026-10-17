@@ -35,7 +35,7 @@ test('AC13/AC16: submit, freeze, self-approve, start a new draft', async ({ page
   await page.getByRole('button', { name: 'Confirm approval' }).click();
   await expect(page.getByText('Self-approved', { exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Start new draft' }).click();
-  await expect(page.getByText('R02 DRAFT')).toBeVisible();
+  await expect(page.getByRole('link', { name: 'MDF-1 R02 DRAFT' })).toBeVisible();
 });
 
 test('AC14: an unknown reserved range blocks approval until acknowledged', async ({ page }) => {
