@@ -1,4 +1,5 @@
 import { useLayoutEffect, useRef, useState } from 'react';
+import { useAuthStore } from '../auth/authStore';
 import { useT } from '../i18n';
 import { downloadJson } from '../ui/files';
 import { useClaimsStore } from './claimsStore';
@@ -8,7 +9,9 @@ import './claims.css';
 /** Shown to the person whose unsent edits to a room were refused because someone took it over: their version is theirs to keep. */
 export function ClaimLostDialog() {
   const m = useT();
-  const lost = useClaimsStore((s) => s.lost[0]);
+  const me = useAuthStore((s) => s.user?.id ?? null);
+  // Another person who signs in on this tab never sees (or discards) versions that are not theirs.
+  const lost = useClaimsStore((s) => s.lost.find((l) => l.userId === me));
   const ref = useRef<HTMLDialogElement>(null);
   // Both are tied to one copy, so a new head of the queue starts from the normal view.
   const [downloaded, setDownloaded] = useState<typeof lost>(undefined);
@@ -28,14 +31,18 @@ export function ClaimLostDialog() {
   const close = () => {
     // The next loss in the queue, if any, re-opens the dialog from the effect above.
     if (ref.current?.open && typeof ref.current.close === 'function') ref.current.close();
-    useClaimsStore.getState().shiftLost();
+    useClaimsStore.getState().dropLost(lost);
   };
   const dismiss = () => (downloaded === lost ? close() : setWarned(lost));
   const fileName = `${lost.file.project.name} - ${lost.roomName} - my version.json`.replace(/[\\/:*?"<>|]/g, '-');
   // The browser can close a modal on a repeated Escape despite preventDefault; the copy isn't dealt with yet.
   const reopen = () => {
     const dialog = ref.current;
-    if (useClaimsStore.getState().lost.length > 0 && dialog && !dialog.open && typeof dialog.showModal === 'function') dialog.showModal();
+    if (useClaimsStore.getState().lost.some((l) => l === lost) && dialog && !dialog.open && typeof dialog.showModal === 'function') {
+      dialog.showModal();
+      // A re-opened modal focuses its first control, which is Dismiss.
+      dialog.querySelector<HTMLElement>('.btn--ink')?.focus();
+    }
   };
   return (
     <dialog ref={ref} className="dialog glass claim-lost" aria-labelledby="claim-lost-title" onCancel={(e) => e.preventDefault()} onClose={reopen}>

@@ -5,6 +5,7 @@ import { beforeEach, expect, it, vi } from 'vitest';
 import { downloadJson } from '../ui/files';
 import { ClaimLostDialog } from './ClaimLostDialog';
 import { useConfirmStore } from '../ui/confirm/confirmStore';
+import { resetAuthStore, useAuthStore } from '../auth/authStore';
 import { clearClaimsStore, useClaimsStore, type ClaimLost } from './claimsStore';
 
 vi.mock('../ui/files', () => ({ downloadJson: vi.fn() }));
@@ -17,10 +18,12 @@ const projectFile = () => {
   return file.value;
 };
 
-const lostOf = (patch: Partial<ClaimLost> = {}): ClaimLost => ({ roomId: 'r', roomName: 'MDF-1', holderName: 'Ada', changes: 2, file: projectFile(), ...patch });
+const lostOf = (patch: Partial<ClaimLost> = {}): ClaimLost => ({ userId: 'u1', roomId: 'r', roomName: 'MDF-1', holderName: 'Ada', changes: 2, file: projectFile(), ...patch });
 const queue = () => useClaimsStore.getState().lost;
 beforeEach(() => {
   clearClaimsStore();
+  resetAuthStore();
+  useAuthStore.setState({ status: 'signed-in', user: { id: 'u1', name: 'Ploy', email: 'p@x', role: 'editor', mustChangePassword: false } });
   useConfirmStore.setState({ request: null, resolve: null });
   vi.mocked(downloadJson).mockClear();
   // jsdom has no <dialog> modal support; the component falls back to the open attribute.
@@ -130,4 +133,39 @@ it('queues a loss that arrives while the dialog is open', () => {
   act(() => useClaimsStore.getState().pushLost(lostOf({ roomId: 'q', roomName: 'IDF-2' })));
   expect(screen.getByRole('dialog', { name: 'MDF-1 is being edited by someone else' })).toBeInTheDocument();
   expect(queue()).toHaveLength(2);
+});
+
+it('puts focus back on the safe button when the browser closes and re-opens the dialog', async () => {
+  HTMLDialogElement.prototype.showModal = function (this: HTMLDialogElement) {
+    this.setAttribute('open', '');
+  };
+  render(<ClaimLostDialog />);
+  const dialog = document.querySelector('dialog')!;
+  const stray = () => {
+    (document.activeElement as HTMLElement | null)?.blur();
+    dialog.removeAttribute('open');
+    fireEvent(dialog, new Event('close'));
+  };
+  stray();
+  expect(screen.getByRole('button', { name: 'Download my version' })).toHaveFocus();
+  await userEvent.click(screen.getByRole('button', { name: 'Dismiss' }));
+  stray();
+  expect(screen.getByRole('button', { name: 'Keep it' })).toHaveFocus();
+});
+
+it('shows only the signed-in person’s versions and leaves another person’s untouched', () => {
+  useClaimsStore.setState({ lost: [lostOf({ userId: 'u2', roomName: 'IDF-2' })] });
+  render(<ClaimLostDialog />);
+  expect(screen.queryByRole('dialog')).toBeNull();
+  expect(queue()).toHaveLength(1);
+});
+
+it('skips another person’s version at the head of the queue', async () => {
+  useClaimsStore.setState({ lost: [lostOf({ userId: 'u2', roomName: 'IDF-2' }), lostOf({ roomName: 'MDF-1' })] });
+  render(<ClaimLostDialog />);
+  expect(screen.getByRole('dialog', { name: 'MDF-1 is being edited by someone else' })).toBeInTheDocument();
+  await userEvent.click(screen.getByRole('button', { name: 'Download my version' }));
+  await userEvent.click(screen.getByRole('button', { name: 'Dismiss' }));
+  expect(queue().map((l) => l.roomName)).toEqual(['IDF-2']);
+  expect(screen.queryByRole('dialog')).toBeNull();
 });

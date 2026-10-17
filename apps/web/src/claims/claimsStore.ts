@@ -15,6 +15,8 @@ export interface Claim {
 }
 
 export interface ClaimLost {
+  /** Whose work this is. Only that person sees it; it stays in memory when someone else signs in on this tab. */
+  userId: string | null;
   roomId: string;
   roomName: string;
   holderName: string | null;
@@ -24,11 +26,11 @@ export interface ClaimLost {
 
 interface ClaimsState {
   byRoom: Record<string, Claim>;
-  /** Versions waiting to be kept or discarded; the dialog shows the first. */
+  /** Versions waiting to be kept or discarded; the dialog shows the signed-in person's first. */
   lost: ClaimLost[];
   setClaims: (list: Claim[]) => void;
   pushLost: (lost: ClaimLost) => void;
-  shiftLost: () => void;
+  dropLost: (lost: ClaimLost) => void;
 }
 
 export const useClaimsStore = create<ClaimsState>()((set) => ({
@@ -36,7 +38,7 @@ export const useClaimsStore = create<ClaimsState>()((set) => ({
   lost: [],
   setClaims: (list) => set({ byRoom: Object.fromEntries(list.map((c) => [c.roomId, c])) }),
   pushLost: (lost) => set((s) => ({ lost: [...s.lost, lost] })),
-  shiftLost: () => set((s) => ({ lost: s.lost.slice(1) })),
+  dropLost: (lost) => set((s) => ({ lost: s.lost.filter((l) => l !== lost) })),
 }));
 
 // A copy nobody has kept yet is the only one: leaving the page would lose it.

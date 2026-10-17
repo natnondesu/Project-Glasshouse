@@ -81,8 +81,12 @@ export async function startServerSync(transport: Transport = httpTransport(), is
   // Dev mode has nobody to re-check, so only a signed-in tab asks the server who it is now.
   const recheckRole = (): void => {
     if (!me) return;
+    // A second request replaces the pending retry instead of leaving it to fire on its own.
+    if (roleRetryTimer !== null) clearTimeout(roleRetryTimer);
+    roleRetryTimer = null;
     const refresh = (): Promise<void> => useAuthStore.getState().refresh();
     refresh().catch(() => {
+      if (roleRetryTimer !== null) clearTimeout(roleRetryTimer);
       roleRetryTimer = setTimeout(() => {
         roleRetryTimer = null;
         refresh().catch((e: unknown) => console.warn('Could not re-check your role.', e));
@@ -92,15 +96,18 @@ export async function startServerSync(transport: Transport = httpTransport(), is
   let hasBeenLive = false;
   let offlineTimer: ReturnType<typeof setTimeout> | null = null;
   const unloadGuard = createUnloadGuard(window);
+  // Saving an empty list would replace another person's unsent edits waiting in this tab.
+  const stashUnsent = (): void => {
+    const pending = client.pendingCommands();
+    if (me && pending.length > 0) saveStash({ userId: me.id, clientId: client.clientId, commands: pending });
+    unloadGuard.set(false);
+  };
   const client = new SyncClient(transport, { seq: snapshot.seq, workspace: parsed.value, generation: snapshot.generation }, {
     onWorkspace: (ws) => useWorkspaceStore.getState().adopt(ws),
     onSave: (save) => useWorkspaceStore.getState().setSave(save),
     onUnsaved: (has) => unloadGuard.set(has),
     onAuthLost: () => {
-      // Saving an empty list would replace another person's unsent edits waiting in this tab.
-      const pending = client.pendingCommands();
-      if (me && pending.length > 0) saveStash({ userId: me.id, clientId: client.clientId, commands: pending });
-      unloadGuard.set(false);
+      stashUnsent();
       useAuthStore.getState().signedOut(true);
     },
     onClaims: (claims) => useClaimsStore.getState().setClaims(claims),
@@ -111,7 +118,10 @@ export async function startServerSync(transport: Transport = httpTransport(), is
         useWorkspaceStore.getState().setNotice(messagesFor(useLangStore.getState().lang).claims.lostNoCopy);
         return;
       }
-      useClaimsStore.getState().pushLost({ roomId, roomName: loc.room.name, holderName: useClaimsStore.getState().byRoom[roomId]?.name ?? null, changes, file: file.value });
+      // The holder can be this very person (their other tab, or a claim that changed hands back): "<me> took over" would be nonsense.
+      const holder = useClaimsStore.getState().byRoom[roomId];
+      const holderName = holder && holder.userId !== me?.id ? holder.name : null;
+      useClaimsStore.getState().pushLost({ userId: me?.id ?? null, roomId, roomName: loc.room.name, holderName, changes, file: file.value });
     },
     onDropped: (dropped) => {
       useWorkspaceStore.getState().setNotice(dropped.map((d) => d.error.message).join(' '));
@@ -150,6 +160,8 @@ export async function startServerSync(transport: Transport = httpTransport(), is
   if (viewOnly()) store.setReadOnly(true, 'view-only');
   if (me) loadPeople();
   const unsubscribeAuth = useAuthStore.subscribe((s, prev) => {
+    // The session can also end outside the sync (the role re-check gets a 401): the unsent edits are kept just the same.
+    if (prev.user && !s.user) stashUnsent();
     if (s.user?.role === prev.user?.role) return;
     const ws = useWorkspaceStore.getState();
     if (s.user?.role === 'viewer') ws.setReadOnly(true, 'view-only');

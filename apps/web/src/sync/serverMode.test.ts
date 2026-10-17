@@ -1,5 +1,5 @@
 import { apply, createWorkspace, parseProjectFile, type WorkspaceCommand } from '@glasshouse/domain';
-import { afterEach, beforeEach, expect, it, vi, type MockInstance } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi, type MockInstance } from 'vitest';
 import { resetWorkspaceStore, useWorkspaceStore } from '../store/workspaceStore';
 import type { EventHandlers, Transport } from './syncClient';
 import { AuthError } from '../auth/authApi';
@@ -236,7 +236,7 @@ it('offers the person their own version when their edits to a room were refused'
   useWorkspaceStore.getState().dispatch({ type: 'plan', roomId: 'r', command: { type: 'survey/update', patch: { width: 9.4 } } });
   await vi.waitFor(() => expect(useClaimsStore.getState().lost).toHaveLength(1));
   const [lost] = useClaimsStore.getState().lost;
-  expect(lost).toMatchObject({ roomId: 'r', roomName: 'MDF-1', holderName: 'Ada', changes: 1 });
+  expect(lost).toMatchObject({ roomId: 'r', roomName: 'MDF-1', holderName: 'Ada', changes: 1, userId: null });
   expect(lost!.file.format).toBe('glasshouse.project');
   // The file is this tab's version: it holds the edit the server refused.
   const room = lost!.file.project.sites[0]!.rooms[0]!;
@@ -359,4 +359,73 @@ it('tries the role re-check once more after a short wait before warning', async 
   } finally {
     vi.useRealTimers();
   }
+});
+
+it('stashes unsent edits when the role re-check finds the session gone, like any other lost session', async () => {
+  useAuthStore.setState({ status: 'signed-in', user: person('editor') });
+  fetchSpy.mockImplementation(async (input) => (String(input) === '/auth/me' ? json({}, 401) : json({ people: [] })));
+  const t = transport({ postCommands: vi.fn<Transport['postCommands']>(() => new Promise(() => {})) });
+  const stop = await startServerSync(t, () => false, person('editor'));
+  useWorkspaceStore.getState().dispatch({ type: 'project/create', id: 'q', name: 'Unsent' });
+  await useAuthStore.getState().refresh();
+  expect(useAuthStore.getState().status).toBe('signed-out');
+  expect(takeStash('u1')?.commands).toHaveLength(1);
+  stop();
+});
+
+it('does not orphan the role retry timer when the re-check is asked for twice', async () => {
+  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+  try {
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    useAuthStore.setState({ status: 'signed-in', user: person('editor') });
+    let meCalls = 0;
+    fetchSpy.mockImplementation(async (input) => {
+      if (String(input) !== '/auth/me') return json({ people: [] });
+      meCalls += 1;
+      return json({}, 500);
+    });
+    const stop = await startServerSync(transport(forbidding()), () => false, person('editor'));
+    useWorkspaceStore.getState().dispatch({ type: 'project/create', id: 'q', name: 'One' });
+    await vi.waitFor(() => expect(meCalls).toBe(1));
+    useWorkspaceStore.getState().dispatch({ type: 'project/create', id: 'r', name: 'Two' });
+    await vi.waitFor(() => expect(meCalls).toBe(2));
+    await vi.advanceTimersByTimeAsync(2500);
+    // One retry for the latest request, not one for each.
+    await vi.waitFor(() => expect(meCalls).toBe(3));
+    await vi.advanceTimersByTimeAsync(5000);
+    expect(meCalls).toBe(3);
+    stop();
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
+describe('a lost version', () => {
+  const lostSetup = async (signedInAs: ReturnType<typeof person> | null, holder: string | null) => {
+    const base = apply(createWorkspace(), { type: 'project/create', id: 'p', name: 'Riverside' });
+    if (!base.ok) throw new Error(base.error.message);
+    const site = apply(base.value, { type: 'site/create', projectId: 'p', id: 's', name: 'S' });
+    if (!site.ok) throw new Error(site.error.message);
+    const room = apply(site.value, { type: 'room/create', siteId: 's', id: 'r', floorAreaId: 'fa-r', name: 'MDF-1' });
+    if (!room.ok) throw new Error(room.error.message);
+    const t = transport({
+      fetchWorkspace: vi.fn(async () => ({ seq: 0, workspace: room.value, claims: holder ? [{ ...claimFor('r'), userId: holder, name: 'Holder' }] : [] })),
+      postCommands: vi.fn<Transport['postCommands']>(async (_c, commands) => ({ accepted: [], rejected: { commandId: commands[0]!.commandId, error: { code: 'claimed', message: 'x', targets: ['r'] } }, skipped: [] })),
+    });
+    const stop = await startServerSync(t, () => false, signedInAs);
+    useWorkspaceStore.getState().dispatch({ type: 'plan', roomId: 'r', command: { type: 'survey/update', patch: { width: 9.4 } } });
+    await vi.waitFor(() => expect(useClaimsStore.getState().lost).toHaveLength(1));
+    stop();
+    return useClaimsStore.getState().lost[0]!;
+  };
+
+  it('carries the id of the person whose work it is', async () => {
+    useAuthStore.setState({ status: 'signed-in', user: person('editor') });
+    expect((await lostSetup(person('editor'), null)).userId).toBe('u1');
+  });
+
+  it('does not name the person themself as the one who took over', async () => {
+    useAuthStore.setState({ status: 'signed-in', user: person('editor') });
+    expect((await lostSetup(person('editor'), 'u1')).holderName).toBeNull();
+  });
 });

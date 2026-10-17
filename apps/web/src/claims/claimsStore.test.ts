@@ -10,17 +10,17 @@ beforeEach(() => {
   clearClaimsStore();
 });
 
-const lostFor = (roomId: string): ClaimLost => ({ roomId, roomName: roomId, holderName: 'Ada', changes: 1, file: {} as ClaimLost['file'] });
+const lostFor = (roomId: string): ClaimLost => ({ userId: 'u', roomId, roomName: roomId, holderName: 'Ada', changes: 1, file: {} as ClaimLost['file'] });
 
 describe('lost queue', () => {
   afterEach(() => vi.restoreAllMocks());
 
-  it('keeps losses in order and shifts the first off', () => {
+  it('keeps losses in order and drops the one that was dealt with', () => {
     const s = useClaimsStore.getState();
     s.pushLost(lostFor('a'));
     s.pushLost(lostFor('b'));
     expect(useClaimsStore.getState().lost.map((l) => l.roomId)).toEqual(['a', 'b']);
-    useClaimsStore.getState().shiftLost();
+    useClaimsStore.getState().dropLost(useClaimsStore.getState().lost[0]!);
     expect(useClaimsStore.getState().lost.map((l) => l.roomId)).toEqual(['b']);
   });
 
@@ -38,9 +38,9 @@ describe('lost queue', () => {
     useClaimsStore.getState().pushLost(lostFor('a'));
     expect(add).toHaveBeenCalledWith('beforeunload', expect.any(Function));
     useClaimsStore.getState().pushLost(lostFor('b'));
-    useClaimsStore.getState().shiftLost();
+    useClaimsStore.getState().dropLost(useClaimsStore.getState().lost[0]!);
     expect(remove).not.toHaveBeenCalledWith('beforeunload', expect.any(Function));
-    useClaimsStore.getState().shiftLost();
+    useClaimsStore.getState().dropLost(useClaimsStore.getState().lost[0]!);
     expect(remove).toHaveBeenCalledWith('beforeunload', expect.any(Function));
   });
 });
