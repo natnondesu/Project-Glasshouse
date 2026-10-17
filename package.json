@@ -11,6 +11,7 @@
     "test": "pnpm -r test",
     "typecheck": "pnpm -r typecheck",
     "e2e": "pnpm --filter @glasshouse/web e2e",
+    "e2e:server": "pnpm --filter @glasshouse/web e2e:server",
     "dev:server": "pnpm --filter @glasshouse/server dev",
     "test:db": "pnpm --filter @glasshouse/server test:db"
   },
