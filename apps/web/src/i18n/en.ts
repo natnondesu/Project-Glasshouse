@@ -991,6 +991,21 @@ export const en = {
     menu: (name: string) => `Account menu for ${name}`,
     role: { viewer: 'Viewer', editor: 'Editor', reviewer: 'Reviewer', admin: 'Admin' },
   },
+  users: {
+    title: 'Users',
+    note: 'Everyone with access to Glasshouse. Roles build on each other: Viewer, Editor, Reviewer, Admin.',
+    adminsOnly: 'Only admins can manage users.',
+    name: 'Name', email: 'Email', role: 'Role', signIn: 'Sign-in', status: 'Status', lastSignIn: 'Last sign-in',
+    roleFor: (name: string) => `Role for ${name}`,
+    sso: 'Company account', local: 'Local',
+    active: 'Active', off: 'Switched off',
+    mustChange: 'Must change password',
+    reset: 'Reset password',
+    addTitle: 'Add someone with a password',
+    add: 'Add user',
+    tempFor: (who: string) => `Temporary password for ${who}:`,
+    shownOnce: 'Shown once. Give it to them directly; they choose their own at first sign-in.',
+  },
 };
 
 /** Same shape as `en`, with every string (and string-returning function) widened so other languages can differ. */
