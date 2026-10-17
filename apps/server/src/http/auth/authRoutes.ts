@@ -2,10 +2,11 @@ import type { FastifyInstance, FastifyReply } from 'fastify';
 import { z } from 'zod';
 import type { AuthConfig } from '../../config';
 import { hashPassword, passwordProblem, verifyPassword } from '../../identity/passwords';
+import { provisionOidcUser } from '../../identity/provision';
 import type { IdentityStore } from '../../identity/types';
 import { checkMutation } from './csrf';
 import { MAX_FAILURES_PER_IP, type LoginThrottle } from './loginThrottle';
-import type { OidcLogin } from './oidc';
+import { OidcError, safeReturnTo, type OidcLogin } from './oidc';
 import type { SessionAuth } from './sessionAuth';
 
 export interface AuthRouteDeps {
@@ -31,6 +32,29 @@ export function registerAuthRoutes(app: FastifyInstance, deps: AuthRouteDeps): v
   const origin = config.publicUrl.origin;
 
   app.get('/auth/config', async () => ({ mode: 'on', localLogin: config.localLogin, sso: deps.oidc !== null }));
+
+  if (deps.oidc) {
+    const oidc = deps.oidc;
+    const failTo = (reply: FastifyReply, message: string) => reply.redirect(`/?signin_error=${encodeURIComponent(message)}`);
+    app.get('/auth/oidc/start', async (request, reply) => {
+      const returnTo = safeReturnTo((request.query as { returnTo?: unknown }).returnTo);
+      return reply.redirect(await oidc.start(returnTo));
+    });
+    app.get('/auth/oidc/callback', async (request, reply) => {
+      let result: Awaited<ReturnType<OidcLogin['finish']>>;
+      try {
+        result = await oidc.finish(new URL(request.url, config.publicUrl));
+      } catch (e) {
+        if (e instanceof OidcError) return failTo(reply, e.message);
+        request.log.error(e, 'Company sign-in failed');
+        return failTo(reply, 'The company sign-in failed. Try again, or ask an admin.');
+      }
+      const outcome = await provisionOidcUser(store, result.claims, { defaultRole: config.defaultRole, bootstrapAdmin: config.bootstrapAdmin, now: now().toISOString() });
+      if ('refused' in outcome) return failTo(reply, outcome.refused);
+      await sessions.startSession(reply, outcome.user);
+      return reply.redirect(result.returnTo);
+    });
+  }
 
   app.get('/auth/me', async (request, reply) => {
     const actor = await sessions.authenticate(request);

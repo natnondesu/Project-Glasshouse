@@ -1,6 +1,7 @@
 import { loadConfig } from './config';
 import { registerAuthRoutes } from './http/auth/authRoutes';
 import { LoginThrottle } from './http/auth/loginThrottle';
+import { createOidcLogin } from './http/auth/oidc';
 import { createSessionAuth } from './http/auth/sessionAuth';
 import { buildApp } from './http/app';
 import { devAuthenticate, registerDevAuthRoutes } from './http/devAuth';
@@ -30,9 +31,11 @@ if (config.auth.mode === 'dev-insecure') {
   await seedUsers(idStore, auth.seedUsers, new Date().toISOString());
   const sessions = createSessionAuth(idStore, { secure: auth.secureCookies });
   const throttle = new LoginThrottle();
+  // Discovery failing at boot stops the server with the IdP's error: loud, as it should be.
+  const oidc = auth.oidc ? await createOidcLogin({ ...auth.oidc, redirectUri: new URL('/auth/oidc/callback', auth.publicUrl).href }) : null;
   const built = await buildApp({
     service, authenticate: sessions.authenticate, publicOrigin: auth.publicUrl.origin, trustProxy: config.trustProxy, webDir: config.webDir, logger: true,
-    authRoutes: (a) => registerAuthRoutes(a, { store: idStore, sessions, config: auth, oidc: null, throttle, now: () => new Date() }),
+    authRoutes: (a) => registerAuthRoutes(a, { store: idStore, sessions, config: auth, oidc, throttle, now: () => new Date() }),
   });
   app = built;
   // Expired sessions are swept hourly; a failure is logged and retried next hour.
