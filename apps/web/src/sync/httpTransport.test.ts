@@ -58,6 +58,17 @@ describe('httpTransport proxy errors never drop edits', () => {
     expect(out.skipped).toEqual(['2']);
   });
 
+  it.each([
+    [413, 'too_large', 'This is larger than the server accepts (25 MB).'],
+    [400, 'invalid_value', 'The request could not be read.'],
+    [415, 'invalid_value', 'The server only accepts JSON here.'],
+  ])("treats the server's %i envelope as a refusal of the first command, not a retry", async (status, code, message) => {
+    answer(JSON.stringify({ error: { code, message, targets: [] } }), status, 'application/json');
+    const out = await httpTransport().postCommands('c', batch);
+    expect(out.rejected).toMatchObject({ commandId: '1', error: { message } });
+    expect(out.skipped).toEqual(['2']);
+  });
+
   it('retries a workspace load answered with a non-JSON error', async () => {
     answer('404 page not found', 404);
     await expect(httpTransport().fetchWorkspace()).rejects.toBeInstanceOf(NetworkError);

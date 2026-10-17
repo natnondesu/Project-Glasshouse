@@ -1,6 +1,6 @@
 import fastifyCookie from '@fastify/cookie';
 import fastifyStatic from '@fastify/static';
-import Fastify, { type FastifyInstance, type FastifyRequest } from 'fastify';
+import Fastify, { type FastifyError, type FastifyInstance, type FastifyRequest } from 'fastify';
 import type { Writable } from 'node:stream';
 import type { ClaimRegistry } from '../claims';
 import type { Actor } from '../store/commandStore';
@@ -74,6 +74,19 @@ const serializeRequest = (request: FastifyRequest) => ({
 export async function buildApp({ service, authenticate, recheck, authRoutes, publicOrigin, admin, people, trustProxy = false, webDir = null, logger = false, logStream, heartbeatMs, claims }: AppDeps): Promise<FastifyInstance> {
   // Force-close: open event streams would otherwise keep shutdown waiting forever.
   const app = Fastify({ logger: logger || logStream ? { ...(logStream ? { stream: logStream } : {}), serializers: { req: serializeRequest } } : false, trustProxy: typeof trustProxy === 'number' ? hopsTrusted(trustProxy) : trustProxy, bodyLimit: BODY_LIMIT, forceCloseConnections: true });
+  // Fastify's own client errors (body too large, bad JSON, wrong media type) use its shape, not ours; the web app tells a
+  // refusal from a flaky proxy by the envelope, so without this it would retry them forever. Server errors stay Fastify's.
+  app.setErrorHandler((error: FastifyError, _request, reply) => {
+    const status = error.statusCode;
+    if (status === undefined || status < 400 || status > 499) return reply.send(error);
+    const tooLarge = status === 413;
+    const message = tooLarge
+      ? `This is larger than the server accepts (${BODY_LIMIT / 1024 / 1024} MB). Split it into smaller pieces, or import fewer projects at once.`
+      : status === 415
+        ? 'The server only accepts JSON here.'
+        : 'The request could not be read. If you typed or pasted JSON, check it is valid.';
+    return reply.code(status).send({ error: { code: tooLarge ? 'too_large' : 'invalid_value', message, targets: [] } });
+  });
   await app.register(fastifyCookie);
   await registerSecurityHeaders(app, { https: publicOrigin?.startsWith('https:') ?? false });
   app.decorateRequest('actor', null);

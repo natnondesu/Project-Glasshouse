@@ -12,6 +12,7 @@ export const en = {
     remove: 'Remove',
     sample: 'SAMPLE',
     none: '—',
+    fileTooBigForServer: (mb: number, limitMb: number) => `This file is ${mb} MB, but the server accepts at most ${limitMb} MB. Split it into smaller files or import fewer projects at once.`,
   },
   shell: {
     project: 'Project',

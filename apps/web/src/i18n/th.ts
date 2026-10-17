@@ -15,6 +15,7 @@ export const th: Messages = {
     remove: 'ลบ',
     sample: 'ตัวอย่าง',
     none: '—',
+    fileTooBigForServer: (mb: number, limitMb: number) => `ไฟล์นี้ขนาด ${mb} MB แต่เซิร์ฟเวอร์รับได้สูงสุด ${limitMb} MB ให้แบ่งเป็นไฟล์เล็กลง หรือนำเข้าทีละไม่กี่โปรเจกต์`,
   },
   shell: {
     project: 'โปรเจกต์',

@@ -99,3 +99,32 @@ it('puts the server generation in the workspace snapshot', async () => {
   expect(typeof body.generation).toBe('string');
   expect(body.generation).toBe(service.generation);
 });
+
+const envelope = (code: string) => ({ error: { code, message: expect.any(String), targets: [] } });
+const postRaw = (app: Awaited<ReturnType<typeof setup>>['app'], payload: string, contentType = 'application/json') =>
+  app.inject({ method: 'POST', url: '/api/commands', headers: { 'x-glasshouse': '1', 'content-type': contentType }, payload });
+
+it("answers Fastify's own client errors in the app's error envelope", async () => {
+  const { app } = await setup();
+  const tooBig = await postRaw(app, `{"clientId":"a","commands":[],"pad":"${'x'.repeat(26 * 1024 * 1024)}"}`);
+  expect(tooBig.statusCode).toBe(413);
+  expect(tooBig.json()).toEqual(envelope('too_large'));
+  expect(tooBig.json().error.message).toMatch(/larger than the server accepts \(25 MB\)/);
+
+  const malformed = await postRaw(app, '{"clientId":');
+  expect(malformed.statusCode).toBe(400);
+  expect(malformed.json()).toEqual(envelope('invalid_value'));
+
+  const wrongType = await postRaw(app, '<a/>', 'application/xml');
+  expect(wrongType.statusCode).toBe(415);
+  expect(wrongType.json()).toEqual(envelope('invalid_value'));
+});
+
+it('leaves server errors to Fastify: a 500 stays a 500', async () => {
+  const { app, service } = await setup();
+  service.submitBatch = async () => {
+    throw new Error('boom');
+  };
+  const res = await app.inject({ method: 'POST', url: '/api/commands', headers: { 'x-glasshouse': '1' }, payload: { clientId: 'a', commands: [{ commandId: '1', command: { type: 'project/create', id: 'p', name: 'P' } }] } });
+  expect(res.statusCode).toBe(500);
+});

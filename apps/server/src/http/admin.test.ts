@@ -90,7 +90,7 @@ describe('admin users API', () => {
     expect(bodiless.json()).toEqual({ temporaryPassword: expect.any(String) });
     const withType = await app.inject({ method: 'POST', url: '/api/admin/users/ed/reset-password', headers: { 'x-glasshouse': '1', 'content-type': 'application/json' } });
     expect(withType.statusCode).toBe(400);
-    expect(withType.json()).toMatchObject({ code: 'FST_ERR_CTP_EMPTY_JSON_BODY' });
+    expect(withType.json()).toMatchObject({ error: { code: 'invalid_value', targets: [] } });
   });
   it('setting a name locks it; a role-only change leaves the lock alone', async () => {
     const { call, store } = await setup(user('ad', 'admin'), [user('ed', 'editor')]);
