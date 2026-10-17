@@ -62,3 +62,14 @@ it('serves health with a query string without auth', async () => {
   const { app } = await setup(() => null);
   expect((await app.inject({ url: '/api/health?x=1' })).statusCode).toBe(200);
 });
+
+it('reads the client address from X-Forwarded-For only when a proxy is trusted', async () => {
+  const seen: string[] = [];
+  for (const trustProxy of [false, 1] as const) {
+    const service = await WorkspaceService.open(new MemoryCommandStore());
+    const app = await buildApp({ service, authenticate: devAuthenticate, authRoutes: (a) => { a.get('/auth/ip', async (request) => request.ip); }, publicOrigin: null, trustProxy });
+    apps.push(app);
+    seen.push((await app.inject({ url: '/auth/ip', remoteAddress: '10.0.0.1', headers: { 'x-forwarded-for': '203.0.113.9' } })).body);
+  }
+  expect(seen).toEqual(['10.0.0.1', '203.0.113.9']);
+});

@@ -4,7 +4,7 @@ import type { AuthConfig } from '../../config';
 import { hashPassword, passwordProblem, verifyPassword } from '../../identity/passwords';
 import type { IdentityStore } from '../../identity/types';
 import { checkMutation } from './csrf';
-import type { LoginThrottle } from './loginThrottle';
+import { MAX_FAILURES_PER_IP, type LoginThrottle } from './loginThrottle';
 import type { OidcLogin } from './oidc';
 import type { SessionAuth } from './sessionAuth';
 
@@ -20,6 +20,10 @@ export interface AuthRouteDeps {
 const WRONG = { error: { code: 'unauthorised', message: 'That email and password don’t match an account.', targets: [] } };
 const loginBody = z.object({ email: z.string().min(3).max(200), password: z.string().min(1).max(500) });
 const passwordBody = z.object({ current: z.string().min(1).max(500), next: z.string().max(500) });
+/** Verified against when there is no account to check, so a missing account costs the same time as a wrong password. */
+let dummyHash: Promise<string> | null = null;
+const getDummyHash = (): Promise<string> => (dummyHash ??= hashPassword('glasshouse-dummy-password'));
+const TOO_MANY = 'Too many tries. Wait 15 minutes and try again.';
 const refuse = (reply: FastifyReply, status: number, code: string, message: string) => reply.code(status).send({ error: { code, message, targets: [] } });
 
 export function registerAuthRoutes(app: FastifyInstance, deps: AuthRouteDeps): void {
@@ -43,11 +47,14 @@ export function registerAuthRoutes(app: FastifyInstance, deps: AuthRouteDeps): v
     const body = loginBody.safeParse(request.body);
     if (!body.success) return reply.code(401).send(WRONG);
     const key = `${request.ip}|${body.data.email.toLowerCase()}`;
-    if (throttle.blocked(key)) return refuse(reply, 429, 'too_many', 'Too many tries. Wait 15 minutes and try again.');
+    const ipKey = `ip:${request.ip}`;
+    if (throttle.blocked(key) || throttle.blocked(ipKey, MAX_FAILURES_PER_IP)) return refuse(reply, 429, 'too_many', TOO_MANY);
     const user = await store.findUserByEmail(body.data.email);
-    const ok = user !== null && user.active && user.source === 'local' && user.passwordHash !== null && (await verifyPassword(body.data.password, user.passwordHash));
-    if (!ok || !user) {
+    const verifiable = user !== null && user.active && user.source === 'local' && user.passwordHash !== null;
+    const ok = await verifyPassword(body.data.password, verifiable ? user.passwordHash! : await getDummyHash());
+    if (!ok || !verifiable) {
       throttle.fail(key);
+      throttle.fail(ipKey);
       return reply.code(401).send(WRONG);
     }
     throttle.clear(key);
@@ -65,9 +72,16 @@ export function registerAuthRoutes(app: FastifyInstance, deps: AuthRouteDeps): v
     if (!user || user.source !== 'local' || !user.passwordHash) return refuse(reply, 400, 'invalid_value', 'This account signs in through the company account; change the password there.');
     const body = passwordBody.safeParse(request.body);
     if (!body.success) return refuse(reply, 400, 'invalid_value', 'Fill in your current and new password.');
-    if (!(await verifyPassword(body.data.current, user.passwordHash))) return refuse(reply, 400, 'invalid_value', 'Your current password is not right.');
+    const key = `pw:${user.id}`;
+    if (throttle.blocked(key)) return refuse(reply, 429, 'too_many', TOO_MANY);
+    if (!(await verifyPassword(body.data.current, user.passwordHash))) {
+      throttle.fail(key);
+      return refuse(reply, 400, 'invalid_value', 'Your current password is not right.');
+    }
+    throttle.clear(key);
     const problem = passwordProblem(body.data.next);
     if (problem) return refuse(reply, 400, 'invalid_value', problem);
+    if (body.data.next === body.data.current) return refuse(reply, 400, 'invalid_value', 'Choose a password different from the current one.');
     await store.updateUser(user.id, { passwordHash: await hashPassword(body.data.next), mustChangePassword: false });
     // Every other session (and this one) ends; this browser gets a fresh one.
     await store.deleteUserSessions(user.id);

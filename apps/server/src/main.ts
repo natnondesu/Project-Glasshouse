@@ -21,7 +21,7 @@ const service = await WorkspaceService.open(store, { seedSample: config.seedSamp
 let identity: IdentityStore | null = null;
 let app;
 if (config.auth.mode === 'dev-insecure') {
-  app = await buildApp({ service, authenticate: devAuthenticate, authRoutes: registerDevAuthRoutes, publicOrigin: null, webDir: config.webDir, logger: true });
+  app = await buildApp({ service, authenticate: devAuthenticate, authRoutes: registerDevAuthRoutes, publicOrigin: null, trustProxy: config.trustProxy, webDir: config.webDir, logger: true });
   app.log.warn('GLASSHOUSE_AUTH=dev-insecure: anyone who can reach this server can edit everything. Local development only.');
 } else {
   const auth = config.auth;
@@ -31,7 +31,7 @@ if (config.auth.mode === 'dev-insecure') {
   const sessions = createSessionAuth(idStore, { secure: auth.secureCookies });
   const throttle = new LoginThrottle();
   const built = await buildApp({
-    service, authenticate: sessions.authenticate, publicOrigin: auth.publicUrl.origin, webDir: config.webDir, logger: true,
+    service, authenticate: sessions.authenticate, publicOrigin: auth.publicUrl.origin, trustProxy: config.trustProxy, webDir: config.webDir, logger: true,
     authRoutes: (a) => registerAuthRoutes(a, { store: idStore, sessions, config: auth, oidc: null, throttle, now: () => new Date() }),
   });
   app = built;

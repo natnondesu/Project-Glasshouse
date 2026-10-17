@@ -39,3 +39,12 @@ it('accepts seed users only with the memory store', () => {
   expect(loadConfig({ ...on, GLASSHOUSE_SEED_USERS: seed }).auth).toMatchObject({ seedUsers: [{ email: 'ed@company.test', role: 'editor', displayName: 'Ed Itor' }] });
   expect(() => loadConfig({ ...on, GLASSHOUSE_STORE: 'postgres', DATABASE_URL: 'postgres://x', GLASSHOUSE_SEED_USERS: seed })).toThrow(/memory/);
 });
+
+it('trusts no proxy unless told how many hops or which addresses', () => {
+  const env = { GLASSHOUSE_AUTH: 'dev-insecure', GLASSHOUSE_STORE: 'memory' };
+  expect(loadConfig(env).trustProxy).toBe(false);
+  expect(loadConfig({ ...env, GLASSHOUSE_TRUST_PROXY: 'off' }).trustProxy).toBe(false);
+  expect(loadConfig({ ...env, GLASSHOUSE_TRUST_PROXY: 'on' }).trustProxy).toBe(1);
+  expect(loadConfig({ ...env, GLASSHOUSE_TRUST_PROXY: '10.0.0.1, 10.0.0.0/8' }).trustProxy).toBe('10.0.0.1,10.0.0.0/8');
+  expect(() => loadConfig({ ...env, GLASSHOUSE_TRUST_PROXY: '10.0.0.1,,' })).toThrow(/GLASSHOUSE_TRUST_PROXY/);
+});

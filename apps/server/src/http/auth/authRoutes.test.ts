@@ -1,15 +1,21 @@
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { FastifyInstance } from 'fastify';
 import { MemoryCommandStore } from '../../store/memoryStore';
 import { WorkspaceService } from '../../workspaceService';
 import { MemoryIdentityStore } from '../../identity/memoryIdentityStore';
+import * as passwords from '../../identity/passwords';
 import { hashPassword } from '../../identity/passwords';
 import type { User } from '../../identity/types';
 import { buildApp } from '../app';
 import type { AuthConfig } from '../../config';
 import { createSessionAuth, SESSION_COOKIE, SESSION_IDLE_MS } from './sessionAuth';
-import { LoginThrottle, MAX_FAILURES } from './loginThrottle';
+import { LoginThrottle, MAX_FAILURES, MAX_FAILURES_PER_IP } from './loginThrottle';
 import { registerAuthRoutes } from './authRoutes';
+
+vi.mock('../../identity/passwords', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../identity/passwords')>();
+  return { ...actual, verifyPassword: vi.fn(actual.verifyPassword) };
+});
 
 const PUBLIC = 'https://glasshouse.company.test';
 const apps: FastifyInstance[] = [];
@@ -38,8 +44,8 @@ async function setup(users: Partial<User>[] = [{}]) {
   return { app, store, advance: (ms: number) => (clock = new Date(clock.getTime() + ms)) };
 }
 
-const login = (app: FastifyInstance, email: string, password: string) =>
-  app.inject({ method: 'POST', url: '/auth/login', headers: { 'x-glasshouse': '1', origin: PUBLIC }, payload: { email, password } });
+const login = (app: FastifyInstance, email: string, password: string, remoteAddress?: string) =>
+  app.inject({ method: 'POST', url: '/auth/login', headers: { 'x-glasshouse': '1', origin: PUBLIC }, payload: { email, password }, remoteAddress });
 const cookieOf = (res: { cookies: { name: string; value: string }[] }) => {
   const c = res.cookies.find((x) => x.name === SESSION_COOKIE);
   return c ? `${SESSION_COOKIE}=${c.value}` : '';
@@ -100,6 +106,41 @@ describe('local sign-in', () => {
     const { app } = await setup();
     for (let i = 0; i < MAX_FAILURES; i += 1) await login(app, 'user0@company.test', 'wrong-password-1');
     expect((await login(app, 'user0@company.test', 'password-123456')).statusCode).toBe(429);
+  });
+
+  it('stops one address spraying across many emails, without touching other addresses', async () => {
+    const { app } = await setup();
+    for (let i = 0; i < MAX_FAILURES_PER_IP; i += 1) await login(app, `nobody${i}@company.test`, 'wrong-password-1', '10.1.1.1');
+    expect((await login(app, 'user0@company.test', 'password-123456', '10.1.1.1')).statusCode).toBe(429);
+    expect((await login(app, 'user0@company.test', 'password-123456', '10.2.2.2')).statusCode).toBe(200);
+  });
+
+  it('still checks a password when there is no account to check, so timing does not give accounts away', async () => {
+    const { app, store } = await setup([{}, { source: 'oidc', passwordHash: null }, { active: false }]);
+    const verify = vi.mocked(passwords.verifyPassword);
+    for (const email of ['nobody@company.test', 'user1@company.test', 'user2@company.test']) {
+      verify.mockClear();
+      expect((await login(app, email, 'password-123456')).statusCode).toBe(401);
+      expect(verify).toHaveBeenCalledTimes(1);
+    }
+    expect(await store.findUserByEmail('user2@company.test')).toMatchObject({ active: false });
+  });
+
+  it('refuses a new password equal to the current one', async () => {
+    const { app } = await setup([{ mustChangePassword: true }]);
+    const cookie = cookieOf(await login(app, 'user0@company.test', 'password-123456'));
+    const same = await app.inject({ method: 'POST', url: '/auth/password', headers: { cookie, 'x-glasshouse': '1' }, payload: { current: 'password-123456', next: 'password-123456' } });
+    expect(same.statusCode).toBe(400);
+    expect(same.json()).toMatchObject({ error: { message: 'Choose a password different from the current one.' } });
+    expect((await app.inject({ url: '/api/workspace', headers: { cookie } })).statusCode).toBe(403);
+  });
+
+  it('slows down guessing the current password', async () => {
+    const { app } = await setup();
+    const cookie = cookieOf(await login(app, 'user0@company.test', 'password-123456'));
+    const change = (current: string) => app.inject({ method: 'POST', url: '/auth/password', headers: { cookie, 'x-glasshouse': '1' }, payload: { current, next: 'a-new-long-password' } });
+    for (let i = 0; i < MAX_FAILURES; i += 1) expect((await change('wrong-password-1')).statusCode).toBe(400);
+    expect((await change('password-123456')).statusCode).toBe(429);
   });
 
   it('a signed-out or expired session is refused', async () => {

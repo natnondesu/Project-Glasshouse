@@ -18,6 +18,7 @@ const schema = z.object({
   GLASSHOUSE_BOOTSTRAP_ADMIN: z.string().email().optional(),
   GLASSHOUSE_DEFAULT_ROLE: z.string().default('viewer'),
   GLASSHOUSE_SEED_USERS: z.string().min(1).optional(),
+  GLASSHOUSE_TRUST_PROXY: z.string().default('off'),
 });
 
 export interface AuthConfig {
@@ -37,6 +38,8 @@ export interface Config {
   store: 'postgres' | 'memory';
   databaseUrl: string | null;
   auth: { mode: 'dev-insecure' } | AuthConfig;
+  /** Fastify's trustProxy: false, one hop, or a list of proxy IPs/CIDRs. */
+  trustProxy: false | number | string;
   webDir: string | null;
   seedSample: boolean;
 }
@@ -72,6 +75,15 @@ function authConfig(c: z.infer<typeof schema>): AuthConfig {
   };
 }
 
+function trustProxy(value: string): false | number | string {
+  const text = value.trim();
+  if (text === 'off') return false;
+  if (text === 'on') return 1;
+  const list = text.split(',').map((x) => x.trim());
+  if (list.some((x) => x === '')) throw new Error('GLASSHOUSE_TRUST_PROXY is off, on (one proxy hop), or a comma-separated list of proxy IPs/CIDRs.');
+  return list.join(',');
+}
+
 export function loadConfig(env: Record<string, string | undefined>): Config {
   const parsed = schema.safeParse(env);
   if (!parsed.success) throw new Error(`Invalid Glasshouse server configuration: ${z.prettifyError(parsed.error)}`);
@@ -84,6 +96,7 @@ export function loadConfig(env: Record<string, string | undefined>): Config {
     store: c.GLASSHOUSE_STORE,
     databaseUrl: c.DATABASE_URL ?? null,
     auth: c.GLASSHOUSE_AUTH === 'on' ? authConfig(c) : { mode: 'dev-insecure' },
+    trustProxy: trustProxy(c.GLASSHOUSE_TRUST_PROXY),
     webDir: c.GLASSHOUSE_WEB_DIR ?? null,
     seedSample: c.GLASSHOUSE_SEED_SAMPLE === '1',
   };

@@ -26,14 +26,19 @@ export interface AppDeps {
   publicOrigin: string | null;
   /** Admin-only API routes, registered inside the authenticated plugin. */
   admin?: (api: FastifyInstance) => void;
+  /** Fastify's trustProxy, so request.ip is the client behind a reverse proxy. */
+  trustProxy?: boolean | number | string;
   webDir?: string | null;
   logger?: boolean;
   heartbeatMs?: number;
 }
 
-export async function buildApp({ service, authenticate, authRoutes, publicOrigin, admin, webDir = null, logger = false, heartbeatMs }: AppDeps): Promise<FastifyInstance> {
+// Fastify's types take a function (not a hop count) for "trust the nearest N proxies".
+const hopsTrusted = (hops: number) => (_address: string, hop: number): boolean => hop < hops;
+
+export async function buildApp({ service, authenticate, authRoutes, publicOrigin, admin, trustProxy = false, webDir = null, logger = false, heartbeatMs }: AppDeps): Promise<FastifyInstance> {
   // Force-close: open event streams would otherwise keep shutdown waiting forever.
-  const app = Fastify({ logger, bodyLimit: BODY_LIMIT, forceCloseConnections: true });
+  const app = Fastify({ logger, trustProxy: typeof trustProxy === 'number' ? hopsTrusted(trustProxy) : trustProxy, bodyLimit: BODY_LIMIT, forceCloseConnections: true });
   await app.register(fastifyCookie);
   app.decorateRequest('actor', null);
   app.get('/api/health', async () => ({ ok: true, seq: service.state.seq }));
