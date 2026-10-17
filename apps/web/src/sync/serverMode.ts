@@ -76,7 +76,9 @@ export async function startServerSync(transport: Transport = httpTransport(), is
     onSave: (save) => useWorkspaceStore.getState().setSave(save),
     onUnsaved: (has) => unloadGuard.set(has),
     onAuthLost: () => {
-      if (me) saveStash({ userId: me.id, clientId: client.clientId, commands: client.pendingCommands() });
+      // Saving an empty list would replace another person's unsent edits waiting in this tab.
+      const pending = client.pendingCommands();
+      if (me && pending.length > 0) saveStash({ userId: me.id, clientId: client.clientId, commands: pending });
       unloadGuard.set(false);
       useAuthStore.getState().signedOut(true);
     },

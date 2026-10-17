@@ -154,3 +154,24 @@ it('keeps the edits the server skipped, and says how many', async () => {
   expect(takeStash('u1')).toEqual({ clientId: 'old-tab', commands: [kept[1]] });
   stop();
 });
+
+it('does not overwrite another person’s unsent edits when the session ends with nothing pending', async () => {
+  useAuthStore.setState({ status: 'signed-in' });
+  saveStash({ userId: 'u2', clientId: 'their-tab', commands: kept });
+  let handlers: EventHandlers | null = null;
+  const fetchWorkspace = vi.fn<Transport['fetchWorkspace']>(async () => ({ seq: 0, workspace: createWorkspace() }));
+  await startServerSync(transport({ fetchWorkspace, openEvents: vi.fn((_a: number, h: EventHandlers) => ((handlers = h), h.onOpen(), () => {})) }), () => false, me);
+  fetchWorkspace.mockRejectedValueOnce(new AuthError('unauthorised', 'gone'));
+  handlers!.onResync();
+  await vi.waitFor(() => expect(useAuthStore.getState().status).toBe('signed-out'));
+  expect(takeStash('u2')).toEqual({ clientId: 'their-tab', commands: kept });
+});
+
+it('keeps this person’s pending edits when the session ends', async () => {
+  useAuthStore.setState({ status: 'signed-in' });
+  const t = transport({ postCommands: vi.fn(async () => Promise.reject(new AuthError('unauthorised', 'gone'))) });
+  await startServerSync(t, () => false, me);
+  useWorkspaceStore.getState().dispatch({ type: 'project/create', id: 'p', name: 'Mine' });
+  await vi.waitFor(() => expect(useAuthStore.getState().status).toBe('signed-out'));
+  expect(takeStash('u1')?.commands).toHaveLength(1);
+});
