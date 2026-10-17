@@ -44,7 +44,9 @@ browser (React app, server mode)                    apps/server (Node, Fastify) 
 - **Bootstrap**: `GLASSHOUSE_BOOTSTRAP_ADMIN=<email>` makes that person admin on first sign-in; afterwards admins manage users in the app.
 - **Server-stamped names and time**: on review commands the server overwrites `by`, `designedBy`, `reviewer` and `at` from the session, so names stop being "unverified". The UI drops the "(unverified)" label in server mode.
 
-### Proposed role matrix — product owner to confirm (spec §14 item 2)
+### Role matrix — confirmed by the product owner 2026-10-17
+
+Each user has exactly **one** role. Roles are cumulative: each tier includes everything below it (Admin ⊃ Reviewer ⊃ Editor ⊃ Viewer), so a permission check is one comparison. If a need appears that tiers can't express (e.g. catalog admin who must not approve), add a single permission flag rather than multiple roles.
 
 | Role | Read & export | Edit drafts, submit, notes, import project files | Approve (never own submission) | Catalog, users, claim override, restore |
 | --- | --- | --- | --- | --- |
@@ -74,9 +76,9 @@ The spec's "Onsite editor / IT editor" split is merged into Editor until there i
 
 Plans B and C are written in detail once Plan A lands, against the interfaces it actually ships.
 
-## Open decisions for the product owner
+## Decisions (product owner, 2026-10-17)
 
-1. Confirm the role matrix above (and whether Editor needs splitting).
-2. Global access vs per-project membership (proposed: global for now).
-3. Does the server start with the sample projects? (proposed: no; an admin can add them from the tree.)
-4. Retention of the command log (proposed: keep forever; it is the audit trail and is small).
+1. Role matrix as above: one cumulative role per user.
+2. Global access for now; per-project membership deferred until a second team shares the server.
+3. The server starts without sample projects; an admin can add them from the tree.
+4. The command log is kept forever as the audit trail.
