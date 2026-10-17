@@ -9,6 +9,7 @@
     "dev": "pnpm --filter @glasshouse/web dev",
     "build": "pnpm -r build",
     "test": "pnpm -r test",
+    "test:cov": "pnpm -r test:cov",
     "typecheck": "pnpm -r typecheck",
     "e2e": "pnpm --filter @glasshouse/web e2e",
     "e2e:server": "pnpm --filter @glasshouse/web e2e:server",

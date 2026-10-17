@@ -155,7 +155,45 @@ What to expect after the import:
   It asks you to type `yes` first (`FORCE=1` skips the question; the smoke test uses that). It stops `web`, loads the dump into `db`, and starts `web`, which replays the restored log. If the load fails it exits non-zero and leaves `web` stopped on purpose: the previous data may be partly replaced, so restore an earlier dump with the same script, or ask for help with the output in hand, before starting `web` again. Then open the app and check a few rooms. Use `sudo ./restore.sh ...` if the backups folder is not readable by you.
 - **Restore drill: before go-live and every quarter.** Take a backup now (`docker compose exec -T backup sh /backup.sh --once`), make a visible change, restore the backup, and confirm the change is gone and the rest is intact. Do it on the staging stack from section 6 if the real one already holds live work (`COMPOSE="$STAGING" ./restore.sh <dump>`). `pnpm smoke` from a laptop runs the same drill against a throwaway stack, including the second-instance refusal.
 
-## 8. Updating
+## 8. Releasing
+
+The pipeline in `bitbucket-pipelines.yml` runs on Bitbucket only. While the repository is still on GitHub nothing here runs: build with `pnpm docker:build` and move the image by hand, or move the repository first.
+
+**One-time setup**
+
+- The repository is on Bitbucket as `oxygenai/glasshouse` with Pipelines enabled.
+- Repository variables, with the same names as `rtsp-viewer-next`: `DOCKER_HUB_USER`, `DOCKER_HUB_ACCESS_TOKEN` (secured), `SONAR_HOST_URL` and `SONAR_TOKEN` (secured).
+- A deployment environment named `Production` (the Release stage uses it).
+- The SonarQube project key `Glasshouse` (see `sonar-project.properties`) exists in the company SonarQube. The product owner creates it, or gives us the key IT assigns and we change the file.
+
+**What runs when**
+
+| Event | Steps |
+| --- | --- |
+| Pull request | Unit tests, types and build; browser tests (local, shared server, sign-in); Postgres tests |
+| Push to `main` | The same three, then a SonarQube scan on the self-hosted runner |
+| Tag `v*.*.*` | The same three again (a tag can come from a commit that never went through `main`), then the Release stage: build `oxygenai/glasshouse:<tag>` and `:latest` and push both |
+
+**A release**
+
+1. From an up-to-date `main` that has passed the pipeline:
+
+   ```sh
+   git tag v2026.10.20 && git push origin v2026.10.20
+   ```
+
+2. Wait for the Release stage to go green in Bitbucket.
+3. On the host, from `deployment/`, take a backup and update (section 9):
+
+   ```sh
+   TAG=v2026.10.20 docker compose pull web && TAG=v2026.10.20 docker compose up -d --wait web
+   ```
+
+Deploying to the host stays manual, as for `rtsp-viewer-next`.
+
+**Rollback.** Deploy the previous tag the same way, but only if no migration ran in between: migrations only run forward, so otherwise restore a dump from before the update first (section 9).
+
+## 9. Updating
 
 1. Take a backup first: rolling back needs a dump from before the update.
 
@@ -175,7 +213,7 @@ The old container gets SIGTERM and writes a final snapshot before it exits (it h
 
 Migrations only run forward. Never put an older image back on a database a newer one has opened: restore a dump from before the update first (section 7), then start the older tag.
 
-## 9. Pilot checklist
+## 10. Pilot checklist
 
 One real site, one week.
 
@@ -193,7 +231,7 @@ One real site, one week.
 - [ ] The smoke test against the real Authelia: the email and the name arrive (from userinfo), the issuer string matches exactly (no trailing-slash difference), and the session cookie is `Secure`.
 - [ ] A native Thai reader checks the sign-in, claims and Users strings.
 
-## 10. Known limits
+## 11. Known limits
 
 - A single instance. There is no failover; a second instance refuses to start.
 - Claims are lost on restart, by design. The next edit claims the room.
