@@ -129,6 +129,7 @@ export const th: Messages = {
     deleteProject: (name) => `ลบ ${name} พร้อมไซต์และห้องทั้งหมด?`,
     deleteSite: (name) => `ลบ ${name} พร้อมห้องทั้งหมด?`,
     deleteRoom: (name) => `ลบ ${name} พร้อมแปลน?`,
+    loadOneSample: (name) => `เพิ่มโปรเจกต์ตัวอย่าง ${name.replace(/^Sample · /, '')}`,
     loadSample: 'โหลดโปรเจกต์ตัวอย่าง',
     catalog: (n) => `คลังอุปกรณ์ · ${n} เทมเพลต`,
     kind: { project: 'โปรเจกต์', site: 'ไซต์', room: 'ห้อง' },

@@ -129,6 +129,7 @@ export const en = {
     deleteProject: (name: string) => `Delete ${name} and all its sites and rooms?`,
     deleteSite: (name: string) => `Delete ${name} and its rooms?`,
     deleteRoom: (name: string) => `Delete ${name} and its plan?`,
+    loadOneSample: (name: string) => `Add the sample ${name.replace(/^Sample · /, '')}`,
     loadSample: 'Load sample project',
     catalog: (n: number) => `Device catalog · ${n} ${n === 1 ? 'template' : 'templates'}`,
     kind: { project: 'Project', site: 'Site', room: 'Room' },

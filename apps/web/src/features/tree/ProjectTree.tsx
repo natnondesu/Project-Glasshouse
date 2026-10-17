@@ -1,5 +1,5 @@
-import { currentRevision, newId, parseProjectFile, type ProjectFile, type WorkspaceCommand } from '@glasshouse/domain';
-import { useRef, useState } from 'react';
+import { currentRevision, newId, parseProjectFile, type ProjectFile, type WorkspaceCommand, missingSamples } from '@glasshouse/domain';
+import { useMemo, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { useWorkspaceStore } from '../../store/workspaceStore';
 import { readJsonFile } from '../../ui/files';
@@ -14,6 +14,9 @@ import './tree.css';
 
 export function ProjectTree({ activeRoomId, onCollapse }: { activeRoomId: string | null; onCollapse?: () => void }) {
   const projects = useWorkspaceStore((s) => s.workspace.projects);
+  const workspace = useWorkspaceStore((s) => s.workspace);
+  // Derived once per workspace change: a selector returning a new array each time would re-render forever.
+  const missing = useMemo(() => missingSamples(workspace), [workspace]);
   const templateCount = useWorkspaceStore((s) => s.workspace.catalog.length);
   const dispatch = useWorkspaceStore((s) => s.dispatch);
   const navigate = useNavigate();
@@ -175,9 +178,9 @@ export function ProjectTree({ activeRoomId, onCollapse }: { activeRoomId: string
           {error}
         </p>
       ) : null}
-      {projects.some((p) => p.isSample) ? null : (
+      {missing.length === 0 ? null : (
         <button type="button" className="btn btn--sm btn--quiet tree__sample" onClick={() => run({ type: 'sample/load', at: new Date().toISOString() })}>
-          {m.tree.loadSample}
+          {missing.length === 1 ? m.tree.loadOneSample(missing[0]!) : m.tree.loadSample}
         </button>
       )}
       {importing ? <ImportDialog file={importing} onClose={() => setImporting(null)} /> : null}

@@ -7,7 +7,7 @@ import { newId } from './ids';
 import { currentRevision, findRoom } from './lookup';
 import type { CableType, Id, Port, Project, Rack, Template, Workspace } from './model/types';
 import { err, ok, type Result } from './result';
-import { createShowcaseProject } from './sampleShowcase';
+import { createShowcaseProject, SHOWCASE_PROJECT_NAME } from './sampleShowcase';
 import { existingRack, mcb, portRun, rack, template, thing } from './sampleKit';
 
 export const SAMPLE_PROJECT_NAME = 'Sample · Northgate DC';
@@ -223,11 +223,28 @@ export function createSampleProject(at: string): Result<Project> {
   return ok({ ...project, isSample: true });
 }
 
-/** Both sample projects: the small Northgate one to start with, and the Riverside showcase of everything. */
+/** The sample projects a workspace doesn't have yet, by name (a renamed one counts as gone). */
+export function missingSamples(ws: Workspace): string[] {
+  const have = new Set(ws.projects.filter((p) => p.isSample).map((p) => p.name));
+  return [SAMPLE_PROJECT_NAME, SHOWCASE_PROJECT_NAME].filter((name) => !have.has(name));
+}
+
+/**
+ * Adds the sample projects the workspace lacks: the small Northgate one to start with, and the
+ * Riverside showcase of everything. A workspace that has one already gets only the other.
+ */
 export function withSample(ws: Workspace, at: string): Result<Workspace> {
-  const project = createSampleProject(at);
-  if (!project.ok) return project;
-  const showcase = createShowcaseProject(at);
-  if (!showcase.ok) return showcase;
-  return ok({ ...ws, projects: [...ws.projects, project.value, showcase.value] });
+  const missing = missingSamples(ws);
+  const added: Project[] = [];
+  if (missing.includes(SAMPLE_PROJECT_NAME)) {
+    const project = createSampleProject(at);
+    if (!project.ok) return project;
+    added.push(project.value);
+  }
+  if (missing.includes(SHOWCASE_PROJECT_NAME)) {
+    const showcase = createShowcaseProject(at);
+    if (!showcase.ok) return showcase;
+    added.push(showcase.value);
+  }
+  return ok({ ...ws, projects: [...ws.projects, ...added] });
 }
