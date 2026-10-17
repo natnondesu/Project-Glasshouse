@@ -30,6 +30,7 @@ interface OpenOptions {
 type Listener = (entry: LoggedCommand) => void;
 
 const describe = (e: unknown): string => (e instanceof Error ? e.message : String(e));
+const isNonEmptyString = (value: unknown): value is string => typeof value === 'string' && value.length > 0;
 const rejected = (message: string): SubmitOutcome => ({ kind: 'rejected', error: err('invalid_value', message).error });
 
 /**
@@ -72,6 +73,7 @@ export class WorkspaceService {
       for (const entry of page) {
         if (entry.seq !== seq + 1) throw new Error(`The command log has a gap after seq ${seq} (next is ${entry.seq}).`);
         const result = apply(workspace, entry.command);
+        if (result === undefined) throw new Error(`Replaying seq ${entry.seq} failed: unknown change type "${entry.command.type}".`);
         if (!result.ok) throw new Error(`Replaying seq ${entry.seq} failed: ${result.error.message}`);
         workspace = result.value;
         seq = entry.seq;
@@ -99,6 +101,7 @@ export class WorkspaceService {
     return this.enqueue(() => this.submitNow(submission, actor));
   }
 
+  /** Items interleave with other clients' commands on purpose: each takes its own place in the one global order; batching only saves round trips. */
   async submitBatch(clientId: string, items: { commandId: string; command: WorkspaceCommand }[], actor: Actor): Promise<BatchOutcome> {
     const accepted: BatchOutcome['accepted'] = [];
     for (const [i, item] of items.entries()) {
@@ -122,7 +125,10 @@ export class WorkspaceService {
     return run;
   }
 
-  private async submitNow({ clientId, commandId, command }: Submission, actor: Actor): Promise<SubmitOutcome> {
+  private async submitNow(submission: Submission, actor: Actor): Promise<SubmitOutcome> {
+    const { clientId, commandId, command } = submission;
+    if (!isNonEmptyString(clientId) || !isNonEmptyString(commandId)) return rejected('Each change needs a clientId and a commandId.');
+    if (typeof command !== 'object' || command === null || !isNonEmptyString(command.type)) return rejected('Each change needs a command with a type.');
     const previous = await this.store.findCommand(clientId, commandId);
     if (previous) return { kind: 'accepted', seq: previous.seq, duplicate: true };
     if (BROWSER_ONLY.has(command.type)) return rejected(`"${command.type}" only applies to a workspace stored in one browser.`);

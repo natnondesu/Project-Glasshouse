@@ -43,6 +43,25 @@ describe('WorkspaceService', () => {
     expect(await submit(svc, '3', create('p'))).toMatchObject({ kind: 'accepted', seq: 1 });
   });
 
+  it('rejects a null command envelope without throwing, and keeps the next command at seq 1', async () => {
+    const svc = await WorkspaceService.open(new MemoryCommandStore());
+    const nullCommand = { clientId: 'a', commandId: '1', command: null as unknown as WorkspaceCommand };
+    expect(await svc.submit(nullCommand, ploy)).toMatchObject({ kind: 'rejected' });
+    expect(await submit(svc, '2', create('p'))).toMatchObject({ kind: 'accepted', seq: 1 });
+  });
+
+  it('refuses to replay a logged command type this build does not know', async () => {
+    const store = new MemoryCommandStore();
+    await store.append({
+      seq: 1,
+      clientId: 'a',
+      commandId: '1',
+      actor: ploy,
+      command: { type: 'launch/rockets' } as unknown as WorkspaceCommand,
+    });
+    await expect(WorkspaceService.open(store)).rejects.toThrow(/seq 1.*unknown change type/);
+  });
+
   it('refuses browser-only commands', async () => {
     const svc = await WorkspaceService.open(new MemoryCommandStore());
     expect(await submit(svc, '1', { type: 'backup/mark', at: '2026-10-17T00:00:00.000Z' })).toMatchObject({ kind: 'rejected' });
