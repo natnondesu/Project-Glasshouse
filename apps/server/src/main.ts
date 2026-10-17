@@ -1,3 +1,4 @@
+import { ClaimRegistry } from './claims';
 import { loadConfig } from './config';
 import { registerAuthRoutes } from './http/auth/authRoutes';
 import { LoginThrottle } from './http/auth/loginThrottle';
@@ -19,7 +20,9 @@ const SESSION_SWEEP_MS = 60 * 60 * 1000;
 
 const config = loadConfig(process.env);
 const store: CommandStore = config.store === 'memory' ? new MemoryCommandStore() : await PgCommandStore.connect(config.databaseUrl!);
-const service = await WorkspaceService.open(store, { seedSample: config.seedSample });
+// Dev mode has nobody signed in, so no claims.
+const claims = config.auth.mode === 'dev-insecure' ? undefined : new ClaimRegistry();
+const service = await WorkspaceService.open(store, { seedSample: config.seedSample, claims });
 let identity: IdentityStore | null = null;
 let app;
 if (config.auth.mode === 'dev-insecure') {
@@ -35,7 +38,7 @@ if (config.auth.mode === 'dev-insecure') {
   // Discovery failing at boot stops the server with the IdP's error: loud, as it should be.
   const oidc = auth.oidc ? await createOidcLogin({ ...auth.oidc, redirectUri: new URL('/auth/oidc/callback', auth.publicUrl).href }) : null;
   const built = await buildApp({
-    service, authenticate: sessions.authenticate, publicOrigin: auth.publicUrl.origin, trustProxy: config.trustProxy, webDir: config.webDir, logger: true,
+    service, claims, authenticate: sessions.authenticate, publicOrigin: auth.publicUrl.origin, trustProxy: config.trustProxy, webDir: config.webDir, logger: true,
     admin: (api) => registerAdmin(api, { store: idStore, localLogin: auth.localLogin, now: () => new Date() }),
     authRoutes: (a) => registerAuthRoutes(a, { store: idStore, sessions, config: auth, oidc, throttle, now: () => new Date() }),
   });

@@ -1,4 +1,5 @@
-import { apply, approvedRevisionChanges, createWorkspace, currentRevision, err, findRoom, parseWorkspace, withSample, type DomainError, type Workspace, type WorkspaceCommand } from '@glasshouse/domain';
+import { apply, approvedRevisionChanges, createWorkspace, currentRevision, draftEditRoom, err, findRoom, parseWorkspace, withSample, type DomainError, type Workspace, type WorkspaceCommand } from '@glasshouse/domain';
+import type { ClaimRegistry } from './claims';
 import { atLeast } from './identity/types';
 import { ROLE_LABEL, requiredRole, stampCommand } from './permissions';
 import type { Actor, ApprovalRecord, CommandStore, LoggedCommand } from './store/commandStore';
@@ -26,6 +27,8 @@ interface OpenOptions {
   seedSample?: boolean;
   snapshotEvery?: number;
   now?: () => string;
+  /** One editor per room draft; omit in dev mode, where nobody is signed in. */
+  claims?: ClaimRegistry;
   onError?: (message: string, error: unknown) => void;
 }
 
@@ -86,6 +89,7 @@ export class WorkspaceService {
     private readonly snapshotEvery: number,
     private readonly onError: (message: string, error: unknown) => void,
     private readonly now: () => string,
+    private readonly claims: ClaimRegistry | null,
   ) {}
 
   static async open(store: CommandStore, options: OpenOptions = {}): Promise<WorkspaceService> {
@@ -110,11 +114,15 @@ export class WorkspaceService {
     ({ seq, workspace } = await replayAfter(store, { seq, workspace }));
     // Always snapshot after boot: keeps the replay tail short and pins a seeded sample's IDs.
     await store.saveSnapshot(seq, workspace);
-    return new WorkspaceService(store, { seq, workspace }, options.snapshotEvery ?? SNAPSHOT_EVERY, onError, now);
+    return new WorkspaceService(store, { seq, workspace }, options.snapshotEvery ?? SNAPSHOT_EVERY, onError, now, options.claims ?? null);
   }
 
   get state(): { seq: number; workspace: Workspace } {
     return this.current;
+  }
+
+  get claimRegistry(): ClaimRegistry | null {
+    return this.claims;
   }
 
   subscribe(listener: Listener): () => void {
@@ -192,6 +200,11 @@ export class WorkspaceService {
     if (!atLeast(actor.role, needed)) {
       return { kind: 'rejected', error: err('forbidden', `${ROLE_LABEL[actor.role]}s can't make this change. Ask an admin for ${ROLE_LABEL[needed]} access.`).error };
     }
+    const claimRoom = this.claims && actor.verified ? draftEditRoom(command) : null;
+    if (claimRoom && !this.claims!.canEdit(claimRoom, actor.id)) {
+      const held = this.claims!.holder(claimRoom)!;
+      return { kind: 'rejected', error: err('claimed', `${held.name} is editing this room, so your change wasn't saved.`, [claimRoom]).error };
+    }
     const toApply = actor.verified ? stampCommand(command, actor, this.now()) : command;
     let result: ReturnType<typeof apply> | undefined;
     try {
@@ -225,6 +238,12 @@ export class WorkspaceService {
       throw e;
     }
     this.current = { seq: entry.seq, workspace: result.value };
+    if (claimRoom) {
+      const step = command.type === 'review' ? command.command.type : null;
+      if (step === 'review/submit' || step === 'review/discard-draft') this.claims!.release(claimRoom, actor.id, { admin: false });
+      else this.claims!.touch(claimRoom, actor);
+    }
+    this.claims?.prune((roomId) => findRoom(this.current.workspace, roomId) !== null);
     this.notify(entry);
     this.sinceSnapshot += 1;
     if (this.sinceSnapshot >= this.snapshotEvery) {

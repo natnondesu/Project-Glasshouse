@@ -2,9 +2,11 @@ import fastifyCookie from '@fastify/cookie';
 import fastifyStatic from '@fastify/static';
 import Fastify, { type FastifyInstance, type FastifyRequest } from 'fastify';
 import type { Writable } from 'node:stream';
+import type { ClaimRegistry } from '../claims';
 import type { Actor } from '../store/commandStore';
 import type { WorkspaceService } from '../workspaceService';
 import { checkMutation } from './auth/csrf';
+import { registerClaims } from './claims';
 import { registerCommands } from './commands';
 import type { Authenticate } from './devAuth';
 import { registerEvents } from './events';
@@ -34,6 +36,8 @@ export interface AppDeps {
   /** Where the log lines go instead of stdout (tests). Implies logging. */
   logStream?: Writable;
   heartbeatMs?: number;
+  /** One editor per room draft; null/absent in dev mode. */
+  claims?: ClaimRegistry;
 }
 
 // Fastify's types take a function (not a hop count) for "trust the nearest N proxies".
@@ -62,7 +66,7 @@ const serializeRequest = (request: FastifyRequest) => ({
   remotePort: request.socket?.remotePort,
 });
 
-export async function buildApp({ service, authenticate, authRoutes, publicOrigin, admin, trustProxy = false, webDir = null, logger = false, logStream, heartbeatMs }: AppDeps): Promise<FastifyInstance> {
+export async function buildApp({ service, authenticate, authRoutes, publicOrigin, admin, trustProxy = false, webDir = null, logger = false, logStream, heartbeatMs, claims }: AppDeps): Promise<FastifyInstance> {
   // Force-close: open event streams would otherwise keep shutdown waiting forever.
   const app = Fastify({ logger: logger || logStream ? { ...(logStream ? { stream: logStream } : {}), serializers: { req: serializeRequest } } : false, trustProxy: typeof trustProxy === 'number' ? hopsTrusted(trustProxy) : trustProxy, bodyLimit: BODY_LIMIT, forceCloseConnections: true });
   await app.register(fastifyCookie);
@@ -87,9 +91,10 @@ export async function buildApp({ service, authenticate, authRoutes, publicOrigin
       if (csrf) return reply.code(403).send({ error: { code: 'csrf', message: csrf, targets: [] } });
       request.actor = actor;
     });
-    api.get('/api/workspace', async () => service.state);
+    api.get('/api/workspace', async () => ({ ...service.state, claims: claims?.list() ?? [] }));
     registerCommands(api, service);
-    registerEvents(api, service, authenticate, { heartbeatMs });
+    if (claims) registerClaims(api, { service, claims });
+    registerEvents(api, service, authenticate, { heartbeatMs, claims });
     admin?.(api);
   });
   if (webDir) {

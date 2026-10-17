@@ -1,4 +1,5 @@
 import type { FastifyInstance } from 'fastify';
+import type { ClaimRegistry } from '../claims';
 import type { Authenticate } from './devAuth';
 import type { LoggedCommand } from '../store/commandStore';
 import type { WorkspaceService } from '../workspaceService';
@@ -10,7 +11,7 @@ export const HEARTBEAT_MS = 15_000;
 const frame = (e: LoggedCommand): string =>
   `id: ${e.seq}\nevent: command\ndata: ${JSON.stringify({ seq: e.seq, clientId: e.clientId, commandId: e.commandId, command: e.command })}\n\n`;
 
-export function registerEvents(app: FastifyInstance, service: WorkspaceService, authenticate: Authenticate, { heartbeatMs = HEARTBEAT_MS }: { heartbeatMs?: number } = {}): void {
+export function registerEvents(app: FastifyInstance, service: WorkspaceService, authenticate: Authenticate, { heartbeatMs = HEARTBEAT_MS, claims }: { heartbeatMs?: number; claims?: ClaimRegistry } = {}): void {
   app.get('/api/events', async (request, reply) => {
     const header = request.headers['last-event-id'];
     const query = (request.query as { after?: string }).after;
@@ -36,10 +37,12 @@ export function registerEvents(app: FastifyInstance, service: WorkspaceService, 
     const unsubscribe = service.subscribe((e) => (live ? send(e) : buffered.push(e)));
     let ended = false;
     let checking = false;
+    let unsubscribeClaims: (() => void) | undefined;
     const cleanup = (): void => {
       ended = true;
       clearInterval(heartbeat);
       unsubscribe();
+      unsubscribeClaims?.();
     };
     // The session was checked once at connect. Re-check on every beat so switching a user off, signing out,
     // a password reset or an expired session cuts the stream; the client reconnects and meets the 401.
@@ -88,5 +91,11 @@ export function registerEvents(app: FastifyInstance, service: WorkspaceService, 
     missed.forEach(send);
     buffered.forEach(send);
     live = true;
+    if (claims) {
+      raw.write(`event: claims\ndata: ${JSON.stringify({ claims: claims.list() })}\n\n`);
+      unsubscribeClaims = claims.subscribe((list) => {
+        if (!ended && live) raw.write(`event: claims\ndata: ${JSON.stringify({ claims: list })}\n\n`);
+      });
+    }
   });
 }

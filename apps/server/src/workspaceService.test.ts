@@ -1,5 +1,6 @@
 import { createCopyIds, createObject, createWorkspace, exportProjectFile, type Rack, type Template, type WorkspaceCommand } from '@glasshouse/domain';
 import { describe, expect, it, vi } from 'vitest';
+import { ClaimRegistry } from './claims';
 import type { ApprovalRecord, LoggedCommand } from './store/commandStore';
 import { MemoryCommandStore } from './store/memoryStore';
 import { WorkspaceService, type Submission } from './workspaceService';
@@ -397,5 +398,69 @@ describe('recovery and readiness', () => {
     store.broken = true;
     expect(await svc.ready()).toEqual({ ok: false, reason: 'Catching up with the database log failed.' });
     expect(onError).toHaveBeenCalledWith(expect.stringContaining('Catching up'), expect.objectContaining({ message: 'secret host:5432 refused' }));
+  });
+});
+
+describe('room claims', () => {
+  const NOW = '2026-10-18T09:00:00.000Z';
+  const ploy = { id: 'u-p', name: 'Ploy', role: 'editor' as const, verified: true };
+  const eddie = { id: 'u-e', name: 'Eddie', role: 'editor' as const, verified: true };
+  const dev = { id: 'dev:Dev', name: 'Dev', role: 'admin' as const, verified: false };
+  const go = (svc: WorkspaceService, actor: typeof ploy | typeof dev, id: string, command: WorkspaceCommand) => svc.submit({ clientId: actor.id, commandId: id, command }, actor);
+  const vlan = (vid: number): WorkspaceCommand => ({ type: 'plan', roomId: 'r', command: { type: 'vlan/add', vlan: { vid, name: `V${vid}` } } });
+
+  async function room() {
+    const claims = new ClaimRegistry(() => new Date(NOW));
+    const svc = await WorkspaceService.open(new MemoryCommandStore(), { now: () => NOW, claims });
+    for (const [i, c] of readyRoomCommands().slice(0, 3).entries()) await go(svc, ploy, `s${i}`, c);
+    return { svc, claims };
+  }
+
+  it('the first draft edit claims the room; someone else’s edit is refused with the holder’s name', async () => {
+    const { svc, claims } = await room();
+    expect(await go(svc, ploy, 'e1', vlan(10))).toMatchObject({ kind: 'accepted' });
+    expect(claims.holder('r')).toMatchObject({ userId: 'u-p' });
+    expect(await go(svc, eddie, 'e2', vlan(11))).toMatchObject({ kind: 'rejected', error: { code: 'claimed', message: expect.stringMatching(/Ploy is editing/), targets: ['r'] } });
+  });
+
+  it('room-level changes and notes are not blocked by a claim', async () => {
+    const { svc } = await room();
+    await go(svc, ploy, 'e1', vlan(10));
+    expect(await go(svc, eddie, 'n1', { type: 'room/rename', roomId: 'r', name: 'MDF-9' })).toMatchObject({ kind: 'accepted' });
+    expect(await go(svc, eddie, 'n2', { type: 'review', roomId: 'r', command: { type: 'note/add', id: 'note-1', text: 'Check the door', at: 'x' } })).toMatchObject({ kind: 'accepted' });
+  });
+
+  it('submitting for review releases the claim', async () => {
+    const { svc, claims } = await room();
+    for (const [i, c] of readyRoomCommands().slice(3).entries()) await go(svc, ploy, `p${i}`, c);
+    expect(claims.holder('r')).not.toBeNull();
+    await go(svc, ploy, 'sub', { type: 'review', roomId: 'r', command: { type: 'review/submit', designedBy: '', at: 'x' } });
+    expect(claims.holder('r')).toBeNull();
+  });
+
+  it('a refused edit does not claim, and deleting the room forgets its claim', async () => {
+    const { svc, claims } = await room();
+    expect(await go(svc, ploy, 'bad', { type: 'plan', roomId: 'r', command: { type: 'vlan/add', vlan: { vid: -1, name: '' } } })).toMatchObject({ kind: 'rejected' });
+    expect(claims.holder('r')).toBeNull();
+    await go(svc, ploy, 'e1', vlan(10));
+    await go(svc, ploy, 'del', { type: 'room/delete', roomId: 'r' });
+    expect(claims.list()).toEqual([]);
+  });
+
+  it('dev mode (unverified) neither needs nor takes claims', async () => {
+    const { svc, claims } = await room();
+    await go(svc, ploy, 'e1', vlan(10));
+    expect(await go(svc, dev, 'd1', vlan(12))).toMatchObject({ kind: 'accepted' });
+    expect(claims.holder('r')).toMatchObject({ userId: 'u-p' });
+  });
+
+  it('a replayed (recovered) command does not touch claims', async () => {
+    const store = new MemoryCommandStore();
+    const claims = new ClaimRegistry(() => new Date(NOW));
+    const svc = await WorkspaceService.open(store, { now: () => NOW, claims });
+    for (const [i, c] of readyRoomCommands().slice(0, 3).entries()) await go(svc, ploy, `s${i}`, c);
+    const reopened = await WorkspaceService.open(store, { now: () => NOW, claims });
+    expect(reopened.state.seq).toBe(3);
+    expect(claims.list()).toEqual([]);
   });
 });

@@ -1,5 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { ClaimRegistry } from '../claims';
 import type { AuthConfig } from '../config';
 import { MemoryIdentityStore } from '../identity/memoryIdentityStore';
 import { MemoryCommandStore } from '../store/memoryStore';
@@ -19,8 +20,8 @@ afterEach(async () => {
 
 const actor = { id: 'dev:t', name: 't', role: 'editor' as const, verified: false };
 
-async function start(service: WorkspaceService, heartbeatMs?: number): Promise<string> {
-  app = await buildApp({ service, authenticate: devAuthenticate, authRoutes: registerDevAuthRoutes, publicOrigin: null, heartbeatMs });
+async function start(service: WorkspaceService, heartbeatMs?: number, claims?: ClaimRegistry): Promise<string> {
+  app = await buildApp({ service, authenticate: devAuthenticate, authRoutes: registerDevAuthRoutes, publicOrigin: null, heartbeatMs, claims });
   await app.listen({ port: 0, host: '127.0.0.1' });
   const address = app.server.address();
   if (address === null || typeof address === 'string') throw new Error('no port');
@@ -45,6 +46,20 @@ async function readEvents(url: string, until: (text: string) => boolean, init: R
 }
 
 const create = (i: number) => ({ clientId: 'a', commandId: String(i), command: { type: 'project/create' as const, id: `p${i}`, name: `P${i}` } });
+
+it('sends the current claims after the backlog, then again on every change', async () => {
+  const claims = new ClaimRegistry();
+  claims.touch('r', { id: 'p', name: 'Ploy' });
+  const service = await WorkspaceService.open(new MemoryCommandStore(), { claims });
+  const base = await start(service, undefined, claims);
+  const reading = readEvents(`${base}/api/events?after=0`, (t) => (t.match(/event: claims/g) ?? []).length >= 2);
+  await new Promise((r) => setTimeout(r, 100));
+  claims.touch('q', { id: 'u', name: 'U' });
+  const text = await reading;
+  const frames = [...text.matchAll(/event: claims\ndata: (.*)\n/g)].map((m) => JSON.parse(m[1]!) as { claims: { roomId: string; userId: string }[] });
+  expect(frames[0]!.claims.map((c) => c.userId)).toEqual(['p']);
+  expect(frames[1]!.claims.map((c) => c.userId)).toEqual(['p', 'u']);
+});
 
 it('sends what the client missed, then live commands, in order', async () => {
   const service = await WorkspaceService.open(new MemoryCommandStore());
