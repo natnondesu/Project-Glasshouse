@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
+import { messagesFor, useLangStore } from '../i18n';
 import { resetAuthStore, useAuthStore } from './authStore';
 import { SignInScreen } from './SignInScreen';
 
@@ -25,11 +26,38 @@ it('shows the server’s reason when a password sign-in fails, and why the sessi
   expect(await screen.findByRole('alert')).toHaveTextContent('don’t match');
 });
 
-it('shows a company sign-in refusal passed back in the URL', () => {
-  window.history.replaceState(null, '', '/?signin_error=Your%20Glasshouse%20account%20is%20switched%20off.');
+const CODES = ['cancelled', 'expired', 'unavailable', 'refused', 'exists', 'switched_off', 'generic'] as const;
+
+it.each(CODES)('words the company sign-in code %s itself, in English', (code) => {
+  window.history.replaceState(null, '', `/?signin_error=${code}`);
   useAuthStore.setState({ status: 'signed-out', config: { mode: 'on', localLogin: false, sso: true } });
   render(<SignInScreen />);
-  expect(screen.getByRole('alert')).toHaveTextContent('switched off');
+  expect(screen.getByRole('alert')).toHaveTextContent(messagesFor('en').auth.signinError[code]);
+  window.history.replaceState(null, '', '/');
+});
+
+it('words every code in Thai when the page is in Thai', async () => {
+  await useLangStore.getState().setLang('th');
+  const th = messagesFor('th').auth.signinError;
+  for (const code of CODES) {
+    window.history.replaceState(null, '', `/?signin_error=${code}`);
+    useAuthStore.setState({ status: 'signed-out', config: { mode: 'on', localLogin: false, sso: true } });
+    const { unmount } = render(<SignInScreen />);
+    expect(screen.getByRole('alert')).toHaveTextContent(th[code]);
+    expect(th[code]).not.toBe(messagesFor('en').auth.signinError[code]);
+    unmount();
+  }
+  await useLangStore.getState().setLang('en');
+  window.history.replaceState(null, '', '/');
+});
+
+it.each(['Your account is closed. Call 555-0100 to reopen', 'constructor', '__proto__', 'toString'])('shows the generic message, never the raw text, for an unknown value (%s)', (value) => {
+  window.history.replaceState(null, '', `/?signin_error=${encodeURIComponent(value)}`);
+  useAuthStore.setState({ status: 'signed-out', config: { mode: 'on', localLogin: false, sso: true } });
+  render(<SignInScreen />);
+  const alert = screen.getByRole('alert');
+  expect(alert).toHaveTextContent(messagesFor('en').auth.signinError.generic);
+  expect(alert).not.toHaveTextContent(value);
   window.history.replaceState(null, '', '/');
 });
 

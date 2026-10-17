@@ -6,7 +6,7 @@ import { provisionOidcUser } from '../../identity/provision';
 import type { IdentityStore } from '../../identity/types';
 import { checkMutation } from './csrf';
 import { MAX_FAILURES_PER_IP, type LoginThrottle } from './loginThrottle';
-import { OidcError, safeReturnTo, type OidcLogin } from './oidc';
+import { OidcError, safeReturnTo, type OidcLogin, type SigninErrorCode } from './oidc';
 import type { SessionAuth } from './sessionAuth';
 
 export interface AuthRouteDeps {
@@ -37,7 +37,7 @@ export function registerAuthRoutes(app: FastifyInstance, deps: AuthRouteDeps): v
 
   if (deps.oidc) {
     const oidc = deps.oidc;
-    const failTo = (reply: FastifyReply, message: string) => reply.redirect(`/?signin_error=${encodeURIComponent(message)}`);
+    const failTo = (reply: FastifyReply, code: SigninErrorCode) => reply.redirect(`/?signin_error=${code}`);
     // Ties the sign-in to this browser, so a callback link sent to someone else signs nobody in.
     const bindingCookie = { httpOnly: true, sameSite: 'lax' as const, secure: config.secureCookies, path: '/auth/oidc' };
     app.get('/auth/oidc/start', async (request, reply) => {
@@ -53,9 +53,9 @@ export function registerAuthRoutes(app: FastifyInstance, deps: AuthRouteDeps): v
       try {
         result = await oidc.finish(new URL(request.url, config.publicUrl), typeof binding === 'string' && binding !== '' ? binding : null);
       } catch (e) {
-        if (e instanceof OidcError) return failTo(reply, e.message);
+        if (e instanceof OidcError) return failTo(reply, e.code);
         request.log.error(e, 'Company sign-in failed');
-        return failTo(reply, 'The company sign-in failed. Try again, or ask an admin.');
+        return failTo(reply, 'generic');
       }
       const outcome = await provisionOidcUser(store, result.claims, { defaultRole: config.defaultRole, bootstrapAdmin: config.bootstrapAdmin, now: now().toISOString() });
       if ('refused' in outcome) return failTo(reply, outcome.refused);

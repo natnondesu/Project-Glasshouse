@@ -62,10 +62,8 @@ async function signIn(app: FastifyInstance, returnTo = '/rooms/r1/plan', binding
   return app.inject({ url: `${back.pathname}${back.search}`, headers: sent === null ? {} : { cookie: `gh_oidc=${sent}` } });
 }
 
-const refusedWith = (res: { headers: Record<string, unknown> }, message: RegExp) => {
-  const location = String(res.headers.location);
-  expect(location).toMatch(/^\/\?signin_error=/);
-  expect(decodeURIComponent(location.split('=')[1]!)).toMatch(message);
+const refusedWith = (res: { headers: Record<string, unknown> }, code: string) => {
+  expect(String(res.headers.location)).toBe(`/?signin_error=${code}`);
 };
 
 it('signs a new company user in with the default role and returns them where they were', async () => {
@@ -93,10 +91,8 @@ it('refuses a switched-off user and an unknown or replayed callback', async () =
   await signIn(app);
   const user = await store.findUserBySubject('authelia-off');
   await store.updateUser(user!.id, { active: false });
-  const refused = await signIn(app);
-  expect(refused.headers.location).toMatch(/^\/\?signin_error=/);
-  const bogus = await app.inject({ url: '/auth/oidc/callback?code=x&state=not-ours' });
-  expect(bogus.headers.location).toMatch(/^\/\?signin_error=/);
+  refusedWith(await signIn(app), 'switched_off');
+  refusedWith(await app.inject({ url: '/auth/oidc/callback?code=x&state=not-ours' }), 'expired');
 });
 
 it('never redirects off-site after sign-in', async () => {
@@ -109,8 +105,8 @@ it('never redirects off-site after sign-in', async () => {
 it('refuses a callback from another browser, even with a valid state', async () => {
   claims = { sub: 'authelia-csrf', email: 'csrf@company.test', email_verified: true, name: 'Csrf' };
   const { app, store } = await setup();
-  refusedWith(await signIn(app, '/', null), /expired/);
-  refusedWith(await signIn(app, '/', 'someone-elses-value'), /expired/);
+  refusedWith(await signIn(app, '/', null), 'expired');
+  refusedWith(await signIn(app, '/', 'someone-elses-value'), 'expired');
   expect(await store.findUserBySubject('authelia-csrf')).toBeNull();
 });
 
@@ -123,14 +119,22 @@ it('sets a narrow binding cookie at start and clears it at the callback', async 
   expect(done.cookies.find((c) => c.name === 'gh_oidc')).toMatchObject({ value: '', path: '/auth/oidc' });
 });
 
-it('shows a fixed message for IdP errors and never echoes the raw value', async () => {
+it('redirects with a fixed code for IdP errors and never echoes the raw value', async () => {
   const { app } = await setup();
-  refusedWith(await app.inject({ url: '/auth/oidc/callback?error=access_denied&state=x' }), /cancelled/);
-  refusedWith(await app.inject({ url: '/auth/oidc/callback?error=login_required&state=x' }), /Sign in at the company/);
-  refusedWith(await app.inject({ url: '/auth/oidc/callback?error=server_error&state=x' }), /unavailable/);
+  refusedWith(await app.inject({ url: '/auth/oidc/callback?error=access_denied&state=x' }), 'cancelled');
+  refusedWith(await app.inject({ url: '/auth/oidc/callback?error=login_required&state=x' }), 'refused');
+  refusedWith(await app.inject({ url: '/auth/oidc/callback?error=server_error&state=x' }), 'unavailable');
+  refusedWith(await app.inject({ url: '/auth/oidc/callback?error=temporarily_unavailable&state=x' }), 'unavailable');
   const unknown = await app.inject({ url: '/auth/oidc/callback?error=%3Cb%3Ebuy-now%3C%2Fb%3E&error_description=evil&state=x' });
-  refusedWith(unknown, /^The company sign-in refused this request\.$/);
-  expect(decodeURIComponent(String(unknown.headers.location))).not.toMatch(/buy-now|evil/);
+  refusedWith(unknown, 'refused');
+  expect(String(unknown.headers.location)).not.toMatch(/buy-now|evil/);
+});
+
+it('does not look IdP errors up on the object prototype', async () => {
+  const { app } = await setup();
+  for (const name of ['constructor', '__proto__', 'toString', 'hasOwnProperty']) {
+    refusedWith(await app.inject({ url: `/auth/oidc/callback?error=${name}&state=x` }), 'refused');
+  }
 });
 
 it('refuses to redirect off-site through whitespace, backslash or dot-segment tricks', async () => {

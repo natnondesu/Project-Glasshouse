@@ -15,7 +15,14 @@ export interface OidcLogin {
   finish(callbackUrl: URL, binding: string | null): Promise<{ claims: OidcClaims; returnTo: string }>;
 }
 
-export class OidcError extends Error {}
+/** What the sign-in screen is told when a company sign-in fails. The browser words these itself, in the reader's language. */
+export type SigninErrorCode = 'cancelled' | 'expired' | 'unavailable' | 'refused' | 'exists' | 'switched_off' | 'generic';
+
+export class OidcError extends Error {
+  constructor(readonly code: SigninErrorCode) {
+    super(code);
+  }
+}
 
 /** A sign-in started but never finished is forgotten after this; the map is also capped. */
 const PENDING_TTL_MS = 10 * 60 * 1000;
@@ -39,15 +46,15 @@ export const safeReturnTo = (value: unknown): string => {
   }
 };
 
-const FAILURE_MESSAGES: Record<string, string> = {
-  access_denied: 'Sign-in was cancelled.',
-  login_required: 'Sign in at the company sign-in page first, then try again.',
-  interaction_required: 'Sign in at the company sign-in page first, then try again.',
-  consent_required: 'Sign in at the company sign-in page first, then try again.',
-  temporarily_unavailable: 'The company sign-in is unavailable right now. Try again soon.',
-  server_error: 'The company sign-in is unavailable right now. Try again soon.',
-};
-const EXPIRED = 'This sign-in link has expired. Try again.';
+// A Map, not an object: `?error=constructor` must not find Object's own properties.
+const FAILURE_CODES = new Map<string, SigninErrorCode>([
+  ['access_denied', 'cancelled'],
+  ['login_required', 'refused'],
+  ['interaction_required', 'refused'],
+  ['consent_required', 'refused'],
+  ['temporarily_unavailable', 'unavailable'],
+  ['server_error', 'unavailable'],
+]);
 
 const sameSecret = (a: string, b: string): boolean => timingSafeEqual(createHash('sha256').update(a).digest(), createHash('sha256').update(b).digest());
 const text = (v: unknown): string | null => (typeof v === 'string' && v.trim() !== '' ? v.trim() : null);
@@ -89,11 +96,11 @@ export async function createOidcLogin(options: { issuer: string; clientId: strin
       // Single use, whatever happens next.
       pending.delete(state);
       const error = callbackUrl.searchParams.get('error');
-      if (error) throw new OidcError(FAILURE_MESSAGES[error] ?? 'The company sign-in refused this request.');
-      if (!p || p.at < now() - PENDING_TTL_MS || binding === null || !sameSecret(binding, p.binding)) throw new OidcError(EXPIRED);
+      if (error) throw new OidcError(FAILURE_CODES.get(error) ?? 'refused');
+      if (!p || p.at < now() - PENDING_TTL_MS || binding === null || !sameSecret(binding, p.binding)) throw new OidcError('expired');
       const tokens = await client.authorizationCodeGrant(config, callbackUrl, { pkceCodeVerifier: p.verifier, expectedState: state, expectedNonce: p.nonce });
       const c = tokens.claims();
-      if (!c?.sub) throw new OidcError('The company sign-in did not say who you are.');
+      if (!c?.sub) throw new OidcError('generic');
       let email = text(c.email);
       let emailVerified = c.email_verified === true;
       let name = text(c.name) ?? text(c.preferred_username);

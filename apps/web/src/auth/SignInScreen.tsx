@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react';
-import { useT } from '../i18n';
+import { useT, type Messages } from '../i18n';
 import { LanguageSwitch } from '../i18n/LanguageSwitch';
 import { GlasshouseMark } from '../ui/icons';
 import '../ui/fields.css';
@@ -14,6 +14,15 @@ function pathWithoutSigninError(): string {
   return `${url.pathname}${url.search}${url.hash}`;
 }
 
+type SigninErrorCode = keyof Messages['auth']['signinError'];
+
+/** The server sends a code, never text: anything else in the address (a hand-made link) reads as the generic failure. */
+function signinErrorCode(known: Messages['auth']['signinError']): SigninErrorCode | null {
+  const value = new URLSearchParams(window.location.search).get('signin_error');
+  if (value === null) return null;
+  return Object.hasOwn(known, value) ? (value as SigninErrorCode) : 'generic';
+}
+
 export function SignInScreen() {
   const m = useT();
   const config = useAuthStore((s) => s.config);
@@ -24,8 +33,12 @@ export function SignInScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(() => new URLSearchParams(window.location.search).get('signin_error'));
+  const [urlCode] = useState(() => signinErrorCode(m.auth.signinError));
+  const [dismissedUrl, setDismissedUrl] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const here = pathWithoutSigninError();
+  const urlError = urlCode && !dismissedUrl ? m.auth.signinError[urlCode] : null;
+  const shownError = error ?? urlError ?? startupError;
   const sso = config?.mode === 'on' && config.sso;
   const local = config?.mode === 'on' && config.localLogin;
   useEffect(() => {
@@ -36,6 +49,7 @@ export function SignInScreen() {
     e.preventDefault();
     setBusy(true);
     setError(null);
+    setDismissedUrl(true);
     try {
       await login(email.trim(), password);
       await init();
@@ -55,9 +69,9 @@ export function SignInScreen() {
         </header>
         {sessionEnded ? <p className="signin__note">{m.auth.sessionEnded}</p> : null}
         {unsent > 0 ? <p className="signin__note">{m.auth.unsent(unsent)}</p> : null}
-        {error ?? startupError ? (
+        {shownError ? (
           <p role="alert" className="field__error">
-            {error ?? startupError}
+            {shownError}
           </p>
         ) : null}
         {startupError ? (

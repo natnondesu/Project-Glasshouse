@@ -28,7 +28,7 @@ describe('provisionOidcUser', () => {
     const store = new MemoryIdentityStore();
     await store.createUser({ id: 'local-1', email: 'ploy@company.test', displayName: 'Ploy', role: 'editor', source: 'local', oidcSubject: null, passwordHash: 'x', mustChangePassword: false, active: true, createdAt: NOW, lastLoginAt: null });
     const unverified = await provisionOidcUser(store, claims({ emailVerified: false }), opts);
-    expect(unverified).toEqual({ refused: expect.stringMatching(/already/) });
+    expect(unverified).toEqual({ refused: 'exists' });
     const linked = await provisionOidcUser(store, claims(), opts);
     expect('user' in linked && linked.user).toMatchObject({ id: 'local-1', role: 'editor', oidcSubject: 'sub-ploy' });
   });
@@ -38,6 +38,6 @@ describe('provisionOidcUser', () => {
     const noEmail = await provisionOidcUser(store, claims({ email: null, sub: 'sub-x', name: null }), opts);
     expect('user' in noEmail && noEmail.user).toMatchObject({ oidcSubject: 'sub-x', displayName: 'sub-x' });
     if ('user' in noEmail) await store.updateUser(noEmail.user.id, { active: false });
-    expect(await provisionOidcUser(store, claims({ email: null, sub: 'sub-x' }), opts)).toEqual({ refused: expect.stringMatching(/switched off/) });
+    expect(await provisionOidcUser(store, claims({ email: null, sub: 'sub-x' }), opts)).toEqual({ refused: 'switched_off' });
   });
 });
