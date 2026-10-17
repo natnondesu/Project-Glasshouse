@@ -7,7 +7,7 @@ import { clearClaimsStore, useClaimsStore } from '../claims/claimsStore';
 import { resetAuthStore, useAuthStore } from '../auth/authStore';
 import { resetPeopleStore, usePeopleStore } from '../people/peopleStore';
 import { saveStash, takeStash } from './pendingStash';
-import { startServerSync } from './serverMode';
+import { getActiveSync, startServerSync } from './serverMode';
 
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } });
 let people: { id: string; name: string; email: string }[];
@@ -319,4 +319,44 @@ it('stops watching the role when sync stops', async () => {
   expect(unsubscribe).not.toHaveBeenCalled();
   stop();
   expect(unsubscribe).toHaveBeenCalledTimes(1);
+});
+
+it('applies a demotion in place: the sync is not restarted and unsent edits stay queued', async () => {
+  useAuthStore.setState({ status: 'signed-in', user: person('editor') });
+  const t = transport({ postCommands: vi.fn<Transport['postCommands']>(() => new Promise(() => {})) });
+  const stop = await startServerSync(t, () => false, person('editor'));
+  useWorkspaceStore.getState().dispatch({ type: 'project/create', id: 'q', name: 'Unsent' });
+  expect(getActiveSync()!.pendingCommands()).toHaveLength(1);
+
+  useAuthStore.setState({ user: person('viewer') });
+
+  expect(useWorkspaceStore.getState()).toMatchObject({ readOnly: true, readOnlyReason: 'view-only' });
+  expect(getActiveSync()!.pendingCommands()).toHaveLength(1);
+  expect(t.fetchWorkspace).toHaveBeenCalledTimes(1);
+  expect(t.openEvents).toHaveBeenCalledTimes(1);
+  stop();
+});
+
+it('tries the role re-check once more after a short wait before warning', async () => {
+  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+  try {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    useAuthStore.setState({ status: 'signed-in', user: person('editor') });
+    let meCalls = 0;
+    fetchSpy.mockImplementation(async (input) => {
+      if (String(input) !== '/auth/me') return json({ people: [] });
+      meCalls += 1;
+      return meCalls === 1 ? json({}, 500) : json(person('viewer'));
+    });
+    const stop = await startServerSync(transport(forbidding()), () => false, person('editor'));
+    useWorkspaceStore.getState().dispatch({ type: 'project/create', id: 'q', name: 'Local' });
+    await vi.waitFor(() => expect(meCalls).toBe(1));
+    await vi.advanceTimersByTimeAsync(2500);
+    await vi.waitFor(() => expect(useAuthStore.getState().user?.role).toBe('viewer'));
+    expect(meCalls).toBe(2);
+    expect(warn).not.toHaveBeenCalled();
+    stop();
+  } finally {
+    vi.useRealTimers();
+  }
 });

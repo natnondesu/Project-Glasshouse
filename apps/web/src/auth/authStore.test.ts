@@ -37,3 +37,17 @@ it('refresh adopts a changed role, and signs out with a notice when the session 
   await useAuthStore.getState().refresh();
   expect(useAuthStore.getState()).toMatchObject({ status: 'signed-out', user: null, sessionEnded: true });
 });
+
+it('refresh keeps the same user object when nothing about the person changed, and a new one when the role did', async () => {
+  const before = { id: 'u1', name: 'Ploy', email: 'p@x', role: 'editor' as const, mustChangePassword: false };
+  useAuthStore.setState({ status: 'signed-in', user: before });
+  respond({ '/auth/me': [200, { ...before }] });
+  await useAuthStore.getState().refresh();
+  expect(useAuthStore.getState().user).toBe(before);
+
+  vi.restoreAllMocks();
+  respond({ '/auth/me': [200, { ...before, role: 'viewer' }] });
+  await useAuthStore.getState().refresh();
+  expect(useAuthStore.getState().user).not.toBe(before);
+  expect(useAuthStore.getState().user?.role).toBe('viewer');
+});

@@ -18,7 +18,7 @@ interface AuthState {
 
 const initial = { status: 'unknown' as Status, config: null, user: null, sessionEnded: false, error: null };
 
-export const useAuthStore = create<AuthState>()((set) => ({
+export const useAuthStore = create<AuthState>()((set, get) => ({
   ...initial,
   init: async () => {
     try {
@@ -34,7 +34,10 @@ export const useAuthStore = create<AuthState>()((set) => ({
   refresh: async () => {
     const user = await getMe();
     if (user === null) return set({ status: 'signed-out', user: null, sessionEnded: true });
-    set({ user, status: user.mustChangePassword ? 'must-change' : 'signed-in' });
+    // The same person keeps the same object, so nothing that watches `user` reacts to a re-check that found no change.
+    const current = get().user;
+    const same = current !== null && current.id === user.id && current.role === user.role && current.name === user.name && current.email === user.email && current.mustChangePassword === user.mustChangePassword;
+    set({ user: same ? current : user, status: user.mustChangePassword ? 'must-change' : 'signed-in' });
   },
 }));
 

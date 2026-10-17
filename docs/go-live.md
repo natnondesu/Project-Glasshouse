@@ -157,7 +157,7 @@ What to expect after the import:
 
 ## 8. Releasing
 
-The pipeline in `bitbucket-pipelines.yml` runs on Bitbucket only. While the repository is still on GitHub nothing here runs: build with `pnpm docker:build` and move the image by hand, or move the repository first.
+The pipeline in `bitbucket-pipelines.yml` runs on Bitbucket only. While the repository is still on GitHub nothing here runs: build with `pnpm docker:build` (it tags the image `oxygenai/glasshouse:dev`), move the image to the host by hand and deploy it with `TAG=dev`, or move the repository first.
 
 **One-time setup**
 
@@ -189,9 +189,11 @@ The pipeline in `bitbucket-pipelines.yml` runs on Bitbucket only. While the repo
    TAG=v2026.10.20 docker compose pull web && TAG=v2026.10.20 docker compose up -d --wait web
    ```
 
-Deploying to the host stays manual, as for `rtsp-viewer-next`.
+4. Set `TAG=v2026.10.20` in `deployment/.env`, so a later `docker compose up` does not go back.
 
-**Rollback.** Deploy the previous tag the same way, but only if no migration ran in between: migrations only run forward, so otherwise restore a dump from before the update first (section 9).
+Deploying to the host stays manual, as for `rtsp-viewer-next`. Pushing a version tag also moves `:latest` (as in `rtsp-viewer-next`), so always deploy by an explicit `TAG`, never `:latest`.
+
+**Rollback.** Deploy the previous tag the same way, but only if no migration ran in between: migrations only run forward, so otherwise restore a dump from before the update first (section 7).
 
 ## 9. Updating
 

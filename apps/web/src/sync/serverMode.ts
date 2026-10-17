@@ -13,6 +13,9 @@ import { SyncClient, type Transport } from './syncClient';
 /** Built with VITE_GLASSHOUSE_SERVER=1: the workspace lives on the Glasshouse server, not in this browser. */
 export const SERVER_MODE = import.meta.env.VITE_GLASSHOUSE_SERVER === '1';
 
+/** A failed "who am I now" check is tried once more after this. */
+export const ROLE_RECHECK_RETRY_MS = 2000;
+
 /** A blip shorter than this doesn't flash the read-only banner. */
 export const OFFLINE_GRACE_MS = 3000;
 
@@ -74,10 +77,17 @@ export async function startServerSync(transport: Transport = httpTransport(), is
   const loadPeople = (): void => {
     usePeopleStore.getState().load().catch((e: unknown) => console.warn('Could not load the people list; names show without email.', e));
   };
+  let roleRetryTimer: ReturnType<typeof setTimeout> | null = null;
   // Dev mode has nobody to re-check, so only a signed-in tab asks the server who it is now.
   const recheckRole = (): void => {
     if (!me) return;
-    useAuthStore.getState().refresh().catch((e: unknown) => console.warn('Could not re-check your role.', e));
+    const refresh = (): Promise<void> => useAuthStore.getState().refresh();
+    refresh().catch(() => {
+      roleRetryTimer = setTimeout(() => {
+        roleRetryTimer = null;
+        refresh().catch((e: unknown) => console.warn('Could not re-check your role.', e));
+      }, ROLE_RECHECK_RETRY_MS);
+    });
   };
   let hasBeenLive = false;
   let offlineTimer: ReturnType<typeof setTimeout> | null = null;
@@ -149,6 +159,7 @@ export async function startServerSync(transport: Transport = httpTransport(), is
   return () => {
     unsubscribeAuth();
     if (offlineTimer !== null) clearTimeout(offlineTimer);
+    if (roleRetryTimer !== null) clearTimeout(roleRetryTimer);
     client.stop();
     if (activeSync === client) activeSync = null;
     unloadGuard.dispose();

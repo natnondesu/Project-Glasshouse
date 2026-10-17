@@ -9,7 +9,7 @@ definitions:
     sonar: ~/.sonar
   services:
     docker:
-      memory: 3072
+      memory: 7168 # every step that uses the docker service is size 2x
 
   steps:
     - step: &unit
@@ -42,12 +42,16 @@ definitions:
           - pnpm e2e:server
           - pnpm e2e:auth
         artifacts:
-          - apps/web/test-results/**
-          - apps/web/playwright-report/**
+          - name: Playwright traces
+            type: shared
+            paths:
+              - apps/web/test-results/**
+            capture-on: failed
 
     - step: &db
         name: Postgres tests
         image: node:22
+        size: 2x
         caches: [node, pnpm]
         services: [docker]
         script:
