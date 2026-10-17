@@ -1,4 +1,5 @@
 import type { FastifyInstance } from 'fastify';
+import type { Authenticate } from './devAuth';
 import type { LoggedCommand } from '../store/commandStore';
 import type { WorkspaceService } from '../workspaceService';
 
@@ -9,7 +10,7 @@ export const HEARTBEAT_MS = 15_000;
 const frame = (e: LoggedCommand): string =>
   `id: ${e.seq}\nevent: command\ndata: ${JSON.stringify({ seq: e.seq, clientId: e.clientId, commandId: e.commandId, command: e.command })}\n\n`;
 
-export function registerEvents(app: FastifyInstance, service: WorkspaceService, { heartbeatMs = HEARTBEAT_MS }: { heartbeatMs?: number } = {}): void {
+export function registerEvents(app: FastifyInstance, service: WorkspaceService, authenticate: Authenticate, { heartbeatMs = HEARTBEAT_MS }: { heartbeatMs?: number } = {}): void {
   app.get('/api/events', async (request, reply) => {
     const header = request.headers['last-event-id'];
     const query = (request.query as { after?: string }).after;
@@ -33,11 +34,36 @@ export function registerEvents(app: FastifyInstance, service: WorkspaceService, 
       last = e.seq;
     };
     const unsubscribe = service.subscribe((e) => (live ? send(e) : buffered.push(e)));
-    const heartbeat = setInterval(() => raw.write('event: ping\ndata: {}\n\n'), heartbeatMs);
+    let ended = false;
+    let checking = false;
     const cleanup = (): void => {
+      ended = true;
       clearInterval(heartbeat);
       unsubscribe();
     };
+    // The session was checked once at connect. Re-check on every beat so switching a user off, signing out,
+    // a password reset or an expired session cuts the stream; the client reconnects and meets the 401.
+    const beat = async (): Promise<void> => {
+      if (checking || ended) return;
+      checking = true;
+      try {
+        const actor = await authenticate(request);
+        if (ended) return;
+        if (!actor || actor.mustChangePassword) {
+          cleanup();
+          raw.end();
+          return;
+        }
+        raw.write('event: ping\ndata: {}\n\n');
+      } catch (e) {
+        request.log.error(e, 'Could not re-check the session of an event stream; closing it');
+        cleanup();
+        raw.end();
+      } finally {
+        checking = false;
+      }
+    };
+    const heartbeat = setInterval(() => void beat(), heartbeatMs);
     request.raw.on('close', cleanup);
 
     let missed: LoggedCommand[];
@@ -58,6 +84,7 @@ export function registerEvents(app: FastifyInstance, service: WorkspaceService, 
       raw.end();
       return;
     }
+    if (ended) return;
     missed.forEach(send);
     buffered.forEach(send);
     live = true;

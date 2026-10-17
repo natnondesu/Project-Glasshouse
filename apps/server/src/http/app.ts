@@ -84,7 +84,7 @@ export async function buildApp({ service, authenticate, authRoutes, publicOrigin
     });
     api.get('/api/workspace', async () => service.state);
     registerCommands(api, service);
-    registerEvents(api, service, { heartbeatMs });
+    registerEvents(api, service, authenticate, { heartbeatMs });
     admin?.(api);
   });
   if (webDir) {
