@@ -30,7 +30,8 @@ export class MemoryIdentityStore implements IdentityStore {
     if (!current) return null;
     if (patch.email && this.users.some((u) => u.id !== id && sameEmail(u.email, patch.email!))) throw new DuplicateUserError(`Email already in use: ${patch.email}`);
     if (patch.oidcSubject && this.users.some((u) => u.id !== id && u.oidcSubject === patch.oidcSubject)) throw new DuplicateUserError('That sign-in is already linked to another user.');
-    const next = { ...current, ...patch };
+    const defined = Object.fromEntries(Object.entries(patch).filter(([, v]) => v !== undefined)) as UserPatch;
+    const next = { ...current, ...defined };
     this.users = this.users.map((u) => (u.id === id ? next : u));
     return structuredClone(next);
   }

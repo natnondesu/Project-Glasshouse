@@ -39,3 +39,12 @@ describe('MemoryIdentityStore', () => {
     expect(await s.findSession('a')).toBeNull();
   });
 });
+
+describe('MemoryIdentityStore.updateUser with undefined patch values', () => {
+  it('keeps fields whose patch value is undefined, like Postgres does', async () => {
+    const s = new MemoryIdentityStore();
+    await s.createUser(userFixture());
+    const updated = await s.updateUser('u1', { displayName: undefined, role: 'admin' });
+    expect(updated).toMatchObject({ displayName: 'Ploy S.', role: 'admin' });
+  });
+});

@@ -22,3 +22,19 @@ it('makes temporary passwords that pass the rules and differ', () => {
   expect(passwordProblem(a)).toBeNull();
   expect(temporaryPassword()).not.toBe(a);
 });
+
+it('rejects stored hashes with an empty key or salt instead of accepting any password', async () => {
+  const good = await hashPassword('correct horse battery');
+  const [, , , , salt] = good.split('$');
+  expect(await verifyPassword('anything at all', `scrypt$32768$8$1$${salt}$`)).toBe(false);
+  expect(await verifyPassword('anything at all', `scrypt$32768$8$1$$${good.split('$')[5]}`)).toBe(false);
+});
+
+it('rejects stored hashes with cost parameters other than the current ones', async () => {
+  const good = await hashPassword('correct horse battery');
+  const [, , , , salt, key] = good.split('$');
+  expect(await verifyPassword('correct horse battery', `scrypt$1048576$8$1$${salt}$${key}`)).toBe(false);
+  expect(await verifyPassword('correct horse battery', `scrypt$32768$64$1$${salt}$${key}`)).toBe(false);
+  expect(await verifyPassword('correct horse battery', `scrypt$abc$8$1$${salt}$${key}`)).toBe(false);
+  expect(await verifyPassword('correct horse battery', `scrypt$0$8$1$${salt}$${key}`)).toBe(false);
+});
