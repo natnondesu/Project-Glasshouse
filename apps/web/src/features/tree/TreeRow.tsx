@@ -18,6 +18,10 @@ interface TreeRowProps {
   onStopEdit: () => void;
   onAdd?: () => void;
   addLabel?: string;
+  /** False hides rename and delete (a viewer's tree). */
+  canEdit?: boolean;
+  /** False hides delete only (a project is the Admin's to remove). */
+  canDelete?: boolean;
   onDelete: () => void;
   deleteWarning: string;
   children?: ReactNode;
@@ -27,7 +31,7 @@ interface TreeRowProps {
 }
 
 export function TreeRow(props: TreeRowProps) {
-  const { kind, label, to, active = false, badge, editing, onAdd, addLabel, children, expanded, onToggle } = props;
+  const { kind, label, to, active = false, badge, editing, onAdd, addLabel, children, expanded, onToggle, canEdit = true, canDelete = true } = props;
   const [confirming, setConfirming] = useState(false);
   const m = useT();
 
@@ -79,12 +83,16 @@ export function TreeRow(props: TreeRowProps) {
               <IconPlus />
             </button>
           ) : null}
-          <button type="button" className="icon-btn icon-btn--sm" aria-label={m.tree.renameOf(label)} title={m.tree.rename} onClick={props.onStartEdit}>
-            <IconPencil />
-          </button>
-          <button type="button" className="icon-btn icon-btn--sm" aria-label={m.tree.deleteOf(label)} title={m.tree.delete} onClick={() => setConfirming(true)}>
-            <IconTrash />
-          </button>
+          {canEdit ? (
+            <button type="button" className="icon-btn icon-btn--sm" aria-label={m.tree.renameOf(label)} title={m.tree.rename} onClick={props.onStartEdit}>
+              <IconPencil />
+            </button>
+          ) : null}
+          {canEdit && canDelete ? (
+            <button type="button" className="icon-btn icon-btn--sm" aria-label={m.tree.deleteOf(label)} title={m.tree.delete} onClick={() => setConfirming(true)}>
+              <IconTrash />
+            </button>
+          ) : null}
         </span>
       </div>
     );
