@@ -1,10 +1,20 @@
 import type { WorkspaceCommand } from '@glasshouse/domain';
+import { AuthError } from '../auth/authApi';
 import { NetworkError, type BatchOutcome, type EventHandlers, type Transport } from './syncClient';
 import type { ServerEvent } from './syncEngine';
 
 /** A hung request becomes a NetworkError, which the sync client retries. */
 const REQUEST_TIMEOUT_MS = 30_000;
 const describe = (e: unknown): string => (e instanceof Error ? e.message : String(e));
+
+async function authFailure(res: Response): Promise<AuthError | null> {
+  if (res.status === 401) return new AuthError('unauthorised', 'Your session has ended.');
+  if (res.status === 403) {
+    const body = (await res.clone().json().catch(() => null)) as { error?: { code?: string } } | null;
+    if (body?.error?.code === 'password_change_required') return new AuthError('password_change_required', 'Change your temporary password first.');
+  }
+  return null;
+}
 
 export function httpTransport(base = ''): Transport {
   return {
@@ -15,6 +25,8 @@ export function httpTransport(base = ''): Transport {
       } catch (e) {
         throw new NetworkError(`Can't reach the Glasshouse server (${describe(e)})`);
       }
+      const auth = await authFailure(res);
+      if (auth) throw auth;
       if (!res.ok) throw new NetworkError(`The Glasshouse server answered ${res.status}`);
       return (await res.json()) as { seq: number; workspace: unknown };
     },
@@ -30,6 +42,8 @@ export function httpTransport(base = ''): Transport {
       } catch (e) {
         throw new NetworkError(`Can't reach the Glasshouse server (${describe(e)})`);
       }
+      const auth = await authFailure(res);
+      if (auth) throw auth;
       if (res.status >= 500) throw new NetworkError(`The Glasshouse server answered ${res.status}`);
       if (!res.ok) {
         const body = (await res.json().catch(() => null)) as { error?: { message?: string } } | null;

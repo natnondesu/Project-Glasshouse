@@ -956,6 +956,26 @@ export const en = {
     delete: 'Delete',
     deleteTemplate: 'Delete template',
   },
+  auth: {
+    title: 'Sign in to Glasshouse',
+    sso: 'Sign in with your company account',
+    or: 'or',
+    email: 'Email',
+    password: 'Password',
+    signIn: 'Sign in',
+    sessionEnded: 'Your session ended. Sign in again — changes you hadn’t sent yet will be sent then.',
+    changeTitle: 'Choose your own password',
+    changeNote: 'You signed in with a temporary password. Choose a new one of at least 12 characters.',
+    temporary: 'Temporary password',
+    newPassword: 'New password',
+    newAgain: 'New password again',
+    change: 'Change password',
+    mismatch: 'The new passwords don’t match.',
+    users: 'Users',
+    signOut: 'Sign out',
+    menu: (name: string) => `Account menu for ${name}`,
+    role: { viewer: 'Viewer', editor: 'Editor', reviewer: 'Reviewer', admin: 'Admin' },
+  },
 };
 
 /** Same shape as `en`, with every string (and string-returning function) widened so other languages can differ. */

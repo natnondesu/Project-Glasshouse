@@ -1,5 +1,6 @@
 import { createWorkspace, type Workspace, type WorkspaceCommand } from '@glasshouse/domain';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { AuthError } from '../auth/authApi';
 import { NetworkError, SyncClient, WATCHDOG_MS, type BatchOutcome, type EventHandlers, type Transport } from './syncClient';
 
 const RETRY_MIN_MS = 500;
@@ -42,7 +43,7 @@ function fakeServer() {
   return { transport, posts, failOnce: () => void (failNext = 1), get seq() { return seq; } };
 }
 
-const callbacks = () => ({ onWorkspace: vi.fn<(ws: Workspace) => void>(), onSave: vi.fn(), onConnection: vi.fn(), onDropped: vi.fn(), onUnsaved: vi.fn<(has: boolean) => void>() });
+const callbacks = () => ({ onWorkspace: vi.fn<(ws: Workspace) => void>(), onSave: vi.fn(), onConnection: vi.fn(), onDropped: vi.fn(), onUnsaved: vi.fn<(has: boolean) => void>(), onAuthLost: vi.fn() });
 
 describe('SyncClient', () => {
   beforeEach(() => vi.useFakeTimers());
@@ -242,5 +243,21 @@ describe('SyncClient', () => {
       expect(server.transport.fetchWorkspace).not.toHaveBeenCalled();
       expect(server.transport.openEvents).toHaveBeenCalledTimes(1);
     });
+  });
+  it('stops and reports when the session ends, keeping the unsent edit', async () => {
+    const server = fakeServer();
+    (server.transport.postCommands as ReturnType<typeof vi.fn>).mockRejectedValueOnce(new AuthError('unauthorised', 'Sign in to use Glasshouse.'));
+    const cb = { ...callbacks(), onAuthLost: vi.fn() };
+    const client = new SyncClient(server.transport, { seq: 0, workspace: createWorkspace() }, cb, { clientId: 'me', newId: () => '1' });
+    client.start();
+    client.dispatch(create('p', 'Riverside'));
+    await client.flush();
+    expect(cb.onAuthLost).toHaveBeenCalledTimes(1);
+    // The rejected call replaces the fake's own implementation, so count calls rather than `posts`.
+    expect(server.transport.postCommands).toHaveBeenCalledTimes(1);
+    expect(client.pendingCommands().map((c) => c.commandId)).toEqual(['1']);
+    await vi.advanceTimersByTimeAsync(60_000);
+    expect(server.transport.postCommands).toHaveBeenCalledTimes(1);
+    expect(server.posts).toEqual([]);
   });
 });

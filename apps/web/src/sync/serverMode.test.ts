@@ -2,9 +2,13 @@ import { createWorkspace } from '@glasshouse/domain';
 import { beforeEach, expect, it, vi } from 'vitest';
 import { resetWorkspaceStore, useWorkspaceStore } from '../store/workspaceStore';
 import type { EventHandlers, Transport } from './syncClient';
+import { saveStash } from './pendingStash';
 import { startServerSync } from './serverMode';
 
-beforeEach(() => resetWorkspaceStore());
+beforeEach(() => {
+  resetWorkspaceStore();
+  sessionStorage.clear();
+});
 
 const transport = (overrides: Partial<Transport> = {}): Transport => ({
   fetchWorkspace: vi.fn(async () => ({ seq: 0, workspace: createWorkspace() })),
@@ -85,4 +89,16 @@ it('after stop while offline, edits apply locally', async () => {
   expect(useWorkspaceStore.getState().dispatch({ type: 'project/create', id: 'q', name: 'Local' })).toBeNull();
   expect(useWorkspaceStore.getState().workspace.projects.some((p) => p.id === 'q')).toBe(true);
   vi.useRealTimers();
+});
+
+it('keeps unsent edits across a sign-in: sends them first, with the old tab id, then loads', async () => {
+  saveStash({ userId: 'u1', clientId: 'old-tab', commands: [{ commandId: 'c9', command: { type: 'project/create', id: 'p', name: 'Kept' } }] });
+  const order: string[] = [];
+  const t = transport({
+    postCommands: vi.fn<Transport['postCommands']>(async (clientId, commands) => { order.push(`post:${clientId}:${commands.map((c) => c.commandId).join(',')}`); return { accepted: commands.map((c, i) => ({ commandId: c.commandId, seq: i + 1 })), rejected: null, skipped: [] }; }),
+    fetchWorkspace: vi.fn(async () => { order.push('fetch'); return { seq: 1, workspace: createWorkspace() }; }),
+  });
+  const stop = await startServerSync(t, () => false, { id: 'u1', name: 'Ploy', email: 'p@x', role: 'editor', mustChangePassword: false });
+  expect(order.slice(0, 2)).toEqual(['post:old-tab:c9', 'fetch']);
+  stop();
 });

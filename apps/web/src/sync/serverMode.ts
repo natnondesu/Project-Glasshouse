@@ -1,7 +1,10 @@
 import { parseWorkspace } from '@glasshouse/domain';
 import { apply } from '@glasshouse/domain';
+import { useAuthStore } from '../auth/authStore';
+import type { AuthUser } from '../auth/authApi';
 import { useWorkspaceStore, setCommit } from '../store/workspaceStore';
 import { httpTransport } from './httpTransport';
+import { saveStash, takeStash } from './pendingStash';
 import { createUnloadGuard } from './unloadGuard';
 import { SyncClient, type Transport } from './syncClient';
 
@@ -13,8 +16,21 @@ export const OFFLINE_GRACE_MS = 3000;
 
 const describe = (e: unknown): string => (e instanceof Error ? e.message : String(e));
 
-export async function startServerSync(transport: Transport = httpTransport(), isCancelled: () => boolean = () => false): Promise<() => void> {
+export async function startServerSync(transport: Transport = httpTransport(), isCancelled: () => boolean = () => false, me: AuthUser | null = null): Promise<() => void> {
   const store = useWorkspaceStore.getState();
+  if (me) {
+    const stash = takeStash(me.id);
+    if (stash && stash.commands.length > 0) {
+      try {
+        const outcome = await transport.postCommands(stash.clientId, stash.commands);
+        if (outcome.rejected) store.setNotice(outcome.rejected.error.message);
+      } catch (e) {
+        // Couldn't send them: keep them for the next try rather than lose them.
+        saveStash({ userId: me.id, clientId: stash.clientId, commands: stash.commands });
+        store.setNotice(`Some changes from before you signed in aren't sent yet: ${describe(e)}`);
+      }
+    }
+  }
   let snapshot: { seq: number; workspace: unknown };
   try {
     snapshot = await transport.fetchWorkspace();
@@ -35,6 +51,11 @@ export async function startServerSync(transport: Transport = httpTransport(), is
     onWorkspace: (ws) => useWorkspaceStore.getState().adopt(ws),
     onSave: (save) => useWorkspaceStore.getState().setSave(save),
     onUnsaved: (has) => unloadGuard.set(has),
+    onAuthLost: () => {
+      if (me) saveStash({ userId: me.id, clientId: client.clientId, commands: client.pendingCommands() });
+      unloadGuard.set(false);
+      useAuthStore.getState().signedOut(true);
+    },
     onDropped: (dropped) => useWorkspaceStore.getState().setNotice(dropped.map((d) => d.error.message).join(' ')),
     onConnection: (status) => {
       const s = useWorkspaceStore.getState();

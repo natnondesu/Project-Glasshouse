@@ -1,4 +1,5 @@
 import { newId, parseWorkspace, type DomainError, type Result, type Workspace, type WorkspaceCommand } from '@glasshouse/domain';
+import { AuthError } from '../auth/authApi';
 import type { SaveState } from '../store/workspaceStore';
 import { SyncEngine, type Dropped, type ServerEvent } from './syncEngine';
 
@@ -36,6 +37,8 @@ export interface SyncCallbacks {
   onDropped(dropped: Dropped[]): void;
   /** True while any edit is unsent or unacknowledged; called only when that changes. */
   onUnsaved(hasUnsaved: boolean): void;
+  /** The session ended (or needs a new password): the client has stopped; unsent edits stay in `pendingCommands()`. */
+  onAuthLost(): void;
 }
 
 const RETRY_MIN_MS = 500;
@@ -48,7 +51,7 @@ const describe = (e: unknown): string => (e instanceof Error ? e.message : Strin
 /** Talks to the server for one tab: batches edits, retries them with the same IDs, follows the event stream. */
 export class SyncClient {
   private readonly engine: SyncEngine;
-  private readonly clientId: string;
+  private readonly id: string;
   private readonly newId: () => string;
   private flushing: Promise<void> | null = null;
   private closeEvents: (() => void) | null = null;
@@ -62,6 +65,7 @@ export class SyncClient {
   private reconnectMs = RETRY_MIN_MS;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private stopped = false;
+  private authLost = false;
   private watchdog: ReturnType<typeof setTimeout> | null = null;
 
   constructor(
@@ -70,13 +74,21 @@ export class SyncClient {
     private readonly callbacks: SyncCallbacks,
     ids: { clientId?: string; newId?: () => string } = {},
   ) {
-    this.clientId = ids.clientId ?? newId();
+    this.id = ids.clientId ?? newId();
     this.newId = ids.newId ?? newId;
-    this.engine = new SyncEngine(start, this.clientId);
+    this.engine = new SyncEngine(start, this.id);
   }
 
   get workspace(): Workspace {
     return this.engine.workspace;
+  }
+
+  get clientId(): string {
+    return this.id;
+  }
+
+  pendingCommands(): { commandId: string; command: WorkspaceCommand }[] {
+    return this.engine.pendingList();
   }
 
   start(): void {
@@ -99,12 +111,13 @@ export class SyncClient {
     if (error) return { ok: false, error };
     this.notifyUnsaved();
     this.callbacks.onSave({ kind: 'saving' });
-    if (!this.paused) void this.flush();
+    if (!this.paused && !this.authLost) void this.flush();
     return { ok: true, value: this.engine.workspace };
   }
 
   /** Sends everything queued; resolves when every sent edit has an answer from the server. */
   flush(): Promise<void> {
+    if (this.authLost) return Promise.resolve();
     this.flushing ??= this.sendAll().finally(() => {
       this.flushing = null;
     });
@@ -118,9 +131,13 @@ export class SyncClient {
       if (batch.length === 0) break;
       let outcome: BatchOutcome;
       try {
-        outcome = await this.transport.postCommands(this.clientId, batch);
+        outcome = await this.transport.postCommands(this.id, batch);
       } catch (e) {
         this.engine.markUnsent(batch.map((b) => b.commandId));
+        if (e instanceof AuthError) {
+          this.loseAuth();
+          return;
+        }
         this.callbacks.onSave({ kind: 'failed', reason: `${describe(e)}. Retrying…` });
         await delay(retryMs);
         retryMs = Math.min(retryMs * 2, RETRY_MAX_MS);
@@ -135,6 +152,12 @@ export class SyncClient {
       this.engine.markUnsent(outcome.skipped);
     }
     if (!this.stopped && !this.paused) this.callbacks.onSave({ kind: 'saved', at: new Date() });
+  }
+
+  private loseAuth(): void {
+    this.authLost = true;
+    this.stop();
+    this.callbacks.onAuthLost();
   }
 
   private notifyUnsaved(): void {
@@ -234,6 +257,11 @@ export class SyncClient {
         break;
       } catch (e) {
         this.paused = false;
+        if (e instanceof AuthError) {
+          this.resyncing = false;
+          this.loseAuth();
+          return;
+        }
         void this.flush();
         this.callbacks.onConnection('offline');
         this.callbacks.onSave({ kind: 'failed', reason: `Couldn't reload from the server: ${describe(e)}. Retrying…` });
