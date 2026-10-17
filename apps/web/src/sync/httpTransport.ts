@@ -18,6 +18,15 @@ async function authFailure(res: Response): Promise<AuthError | null> {
   return null;
 }
 
+const isTransient = (status: number): boolean => status >= 500 || status === 408 || status === 429;
+
+async function errorEnvelope(res: Response): Promise<{ code: string; message?: string } | null> {
+  const body = (await res.json().catch(() => null)) as { error?: { code?: unknown; message?: unknown } } | null;
+  const code = body?.error?.code;
+  if (typeof code !== 'string') return null;
+  return { code, message: typeof body?.error?.message === 'string' ? body.error.message : undefined };
+}
+
 export function httpTransport(base = ''): Transport {
   return {
     async fetchWorkspace() {
@@ -46,12 +55,13 @@ export function httpTransport(base = ''): Transport {
       }
       const auth = await authFailure(res);
       if (auth) throw auth;
-      if (res.status >= 500) throw new NetworkError(`The Glasshouse server answered ${res.status}`);
       if (!res.ok) {
-        const body = (await res.json().catch(() => null)) as { error?: { message?: string } } | null;
-        const message = body?.error?.message ?? `The server refused the request (${res.status}).`;
+        // Only the server's own JSON error envelope on a plain 4xx is a refusal of the first command. A proxy page
+        // (Traefik's plain-text 404 while the container restarts), 408, 429 and 5xx are transient: retry the batch as is.
+        const refusal = isTransient(res.status) ? null : await errorEnvelope(res);
+        if (!refusal) throw new NetworkError(`The Glasshouse server answered ${res.status}`);
         const [first, ...rest] = commands;
-        return { accepted: [], rejected: { commandId: first!.commandId, error: { code: 'invalid_value', message, targets: [] } }, skipped: rest.map((c) => c.commandId) };
+        return { accepted: [], rejected: { commandId: first!.commandId, error: { code: 'invalid_value', message: refusal.message ?? `The server refused the request (${res.status}).`, targets: [] } }, skipped: rest.map((c) => c.commandId) };
       }
       return (await res.json()) as BatchOutcome;
     },

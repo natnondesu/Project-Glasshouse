@@ -4,6 +4,8 @@ Run every command from `deployment/` on the ops host unless it says otherwise. `
 
 **Prerequisite:** Docker Compose v2.24.4 or newer on the host (`docker compose version`). The files use `env_file` with `path`/`required` (needs 2.24) and `!reset`/`!override` in `docker-compose.smoke.yml` (needs 2.24.4). Older Compose fails with a parse error, not silently.
 
+**Prerequisite:** Docker Engine 25 or newer (`docker version`). The web healthcheck uses `start_interval`, which older engines ignore; the web container then stays unhealthy for up to 30 seconds after each restart, and Traefik answers a plain-text 404 meanwhile.
+
 ## 1. What runs where
 
 Three containers in one compose project (`glasshouse`):
@@ -222,7 +224,7 @@ One real site, one week.
 - [ ] Two editors on different rooms, then on the same room: the claim strip, a takeover after 15 minutes without edits (or by an admin), and the "Download my version" copy for the person who lost the room.
 - [ ] A submit, then an approval by a different reviewer; the fingerprint on the review panel matches the one on the Install sheet.
 - [ ] A viewer's account: read-only, with the banner.
-- [ ] A restart during the day (`docker compose restart web`): nothing lost.
+- [ ] A restart during the day (`docker compose restart web`): nothing lost. First deploy only: while the restart runs, make an edit in a second browser, and confirm it has landed (reload and look) once the web container is healthy again.
 - [ ] After the week, check client addresses on sign-in:
 
   ```sh

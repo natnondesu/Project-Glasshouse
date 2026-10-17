@@ -50,6 +50,8 @@ services:
         condition: service_healthy
     healthcheck:
       <<: *common-healthcheck
+      # While starting, check every 2s so the container turns healthy (and Traefik routes to it) quickly after a restart; needs Docker Engine 25+.
+      start_interval: 2s
       test: ['CMD', 'wget', '-qO-', 'http://127.0.0.1:8787/api/ready']
     # SIGTERM writes a final snapshot before exit.
     stop_grace_period: 30s
