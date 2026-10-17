@@ -7,7 +7,8 @@ services:
     container_name: !reset null
   web:
     container_name: !reset null
-    env_file:
+    # Replaces (not adds to) the base file's env_file, so a real deployment/.env is never read by a smoke or staging stack.
+    env_file: !override
       - ${GLASSHOUSE_ENV_FILE:-.env.smoke}
     ports: ['127.0.0.1:18787:8787']
     labels:

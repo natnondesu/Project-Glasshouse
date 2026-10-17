@@ -142,10 +142,17 @@ $COMPOSE exec -T backup sh /backup.sh --once || fail "backup.sh --once failed"
 dump="$(ls -t "$data_dir"/backups/glasshouse-*.dump 2>/dev/null | head -n 1)"
 [ -n "$dump" ] && [ -s "$dump" ] || fail "no dump was written to $data_dir/backups"
 
+step "a failed backup is reported and leaves nothing behind"
+before="$(ls "$data_dir/backups" | wc -l)"
+if $COMPOSE exec -T -e PGPASSWORD=wrong backup sh /backup.sh --once >/dev/null 2>&1; then
+  fail "backup.sh --once exited 0 although pg_dump could not connect"
+fi
+[ "$(ls "$data_dir/backups" | wc -l)" = "$before" ] || fail "a failed backup left a file in $data_dir/backups"
+
 step "restore drill"
 create_project smoke-two "Smoke two" 2
 [ "$(seq_now)" = 2 ] || fail "the second project did not reach seq 2"
-sh ./restore.sh "$dump" || fail "restore.sh failed"
+FORCE=1 sh ./restore.sh "$dump" || fail "restore.sh failed"
 wait_ready
 [ "$(seq_now)" = 1 ] || fail "after the restore the workspace is not back at seq 1"
 get /api/workspace | grep -q 'Smoke two' && fail "after the restore the second project is still there"

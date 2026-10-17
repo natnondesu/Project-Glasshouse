@@ -2,6 +2,8 @@
 
 Run every command from `deployment/` on the ops host unless it says otherwise. `docker compose` here always means the stack in `deployment/docker-compose.yml`.
 
+**Prerequisite:** Docker Compose v2.24.4 or newer on the host (`docker compose version`). The files use `env_file` with `path`/`required` (needs 2.24) and `!reset`/`!override` in `docker-compose.smoke.yml` (needs 2.24.4). Older Compose fails with a parse error, not silently.
+
 ## 1. What runs where
 
 Three containers in one compose project (`glasshouse`):
@@ -112,7 +114,7 @@ The plan, decided with the product owner on 2026-10-17:
 > - Rehearsal: import the real Project files into a staging server first and compare a few rooms.
 > - Cut-over: stop editing on Vercel, export, import, switch the team over.
 
-**Rehearsal on a staging stack.** A second compose project with its own data folder and a throwaway password, published on this host's loopback only (no Traefik), reached through an SSH tunnel:
+**Rehearsal on a staging stack.** A second compose project with its own data folder and a throwaway password, published on this host's loopback only (no Traefik), reached through an SSH tunnel. The `docker-compose.smoke.yml` override replaces the web container's `env_file`, so the production `deployment/.env` is not read by the staging stack (staging takes its values from `.env.staging` only). This needs the Compose version in the prerequisite above.
 
 ```sh
 mkdir -p /data/services/services-data/glasshouse-staging/db-data /data/services/services-data/glasshouse-staging/backups
@@ -141,7 +143,7 @@ What to expect after the import:
 
 ## 7. Backups and restore
 
-- **Nightly dumps** by the `backup` container into `/data/services/services-data/glasshouse/backups/glasshouse-YYYY-MM-DD-HHMM.dump`, keeping 14 days. Check it weekly: `docker logs --tail 20 glasshouse-backup` must show a recent `backup: wrote ...` line. A failed dump is logged to stderr and retried every 30 seconds inside the same minute; if that window passes it is retried the next day.
+- **Nightly dumps** by the `backup` container into `/data/services/services-data/glasshouse/backups/glasshouse-YYYY-MM-DD-HHMM.dump`, keeping 14 days. Check it weekly: `docker logs --tail 20 glasshouse-backup` must show a recent `backup: wrote ...` line. A failed dump is logged to stderr, leaves no file behind, and is retried every 30 seconds while the `BACKUP_AT` minute lasts; if that window passes it is retried the next day. `BACKUP_AT` must be `HH:MM`; the container refuses to start otherwise.
 - **In-app download**: an admin chooses "Download workspace backup" in the account menu. It is the whole workspace as a file the app can import; use it before risky edits and for the weekly off-host copy before go-live.
 - **Off the host**: ask IT for their standard off-host backup target and copy `backups/` there. The dumps on the same disk do not protect against losing the disk.
 - **Restore** a dump into the running stack (this replaces everything in the database with the dump's contents):
@@ -150,16 +152,26 @@ What to expect after the import:
   ./restore.sh /data/services/services-data/glasshouse/backups/glasshouse-YYYY-MM-DD-HHMM.dump
   ```
 
-  It stops `web`, loads the dump into `db`, and starts `web`, which replays the restored log. Then open the app and check a few rooms. Use `sudo ./restore.sh ...` if the backups folder is not readable by you.
+  It asks you to type `yes` first (`FORCE=1` skips the question; the smoke test uses that). It stops `web`, loads the dump into `db`, and starts `web`, which replays the restored log. If the load fails it exits non-zero and leaves `web` stopped on purpose: the previous data may be partly replaced, so restore an earlier dump with the same script, or ask for help with the output in hand, before starting `web` again. Then open the app and check a few rooms. Use `sudo ./restore.sh ...` if the backups folder is not readable by you.
 - **Restore drill: before go-live and every quarter.** Take a backup now (`docker compose exec -T backup sh /backup.sh --once`), make a visible change, restore the backup, and confirm the change is gone and the rest is intact. Do it on the staging stack from section 6 if the real one already holds live work (`COMPOSE="$STAGING" ./restore.sh <dump>`). `pnpm smoke` from a laptop runs the same drill against a throwaway stack, including the second-instance refusal.
 
 ## 8. Updating
 
-```sh
-TAG=<new> docker compose up -d --wait web
-```
+1. Take a backup first: rolling back needs a dump from before the update.
 
-Then set `TAG=<new>` in `.env` so a later `docker compose up` does not go back. The old container gets SIGTERM and writes a final snapshot before it exits (it has 30 seconds). People in the app reconnect by themselves, and edit claims are cleared by the restart, so the next edit claims the room again.
+   ```sh
+   docker compose exec -T backup sh /backup.sh --once
+   ```
+
+2. Start the new tag:
+
+   ```sh
+   TAG=<new> docker compose up -d --wait web
+   ```
+
+3. Set `TAG=<new>` in `.env` so a later `docker compose up` does not go back.
+
+The old container gets SIGTERM and writes a final snapshot before it exits (it has 30 seconds). People in the app reconnect by themselves, and edit claims are cleared by the restart, so the next edit claims the room again.
 
 Migrations only run forward. Never put an older image back on a database a newer one has opened: restore a dump from before the update first (section 7), then start the older tag.
 

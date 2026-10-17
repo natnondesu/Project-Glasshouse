@@ -16,6 +16,8 @@ RUN VITE_GLASSHOUSE_SERVER=1 pnpm --filter @glasshouse/web exec vite build --out
 FROM node:22-alpine
 ENV NODE_ENV=production HOST=0.0.0.0 PORT=8787 GLASSHOUSE_WEB_DIR=/app/web
 WORKDIR /app
+# So TZ=Asia/Bangkok applies to the server (dates in the admin backup download are local).
+RUN apk add --no-cache tzdata
 COPY --from=build /out/node_modules ./node_modules
 COPY --from=build /out/package.json ./package.json
 COPY --from=build /repo/apps/server/dist ./dist
