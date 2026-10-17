@@ -1,8 +1,9 @@
-import { createWorkspace } from '@glasshouse/domain';
+import { apply, createWorkspace, type WorkspaceCommand } from '@glasshouse/domain';
 import { beforeEach, expect, it, vi } from 'vitest';
 import { resetWorkspaceStore, useWorkspaceStore } from '../store/workspaceStore';
 import type { EventHandlers, Transport } from './syncClient';
 import { AuthError } from '../auth/authApi';
+import { resetClaimsStore, useClaimsStore } from '../claims/claimsStore';
 import { resetAuthStore, useAuthStore } from '../auth/authStore';
 import { saveStash, takeStash } from './pendingStash';
 import { startServerSync } from './serverMode';
@@ -10,6 +11,7 @@ import { startServerSync } from './serverMode';
 beforeEach(() => {
   resetWorkspaceStore();
   resetAuthStore();
+  resetClaimsStore();
   sessionStorage.clear();
 });
 
@@ -174,4 +176,49 @@ it('keeps this person’s pending edits when the session ends', async () => {
   useWorkspaceStore.getState().dispatch({ type: 'project/create', id: 'p', name: 'Mine' });
   await vi.waitFor(() => expect(useAuthStore.getState().status).toBe('signed-out'));
   expect(takeStash('u1')?.commands).toHaveLength(1);
+});
+
+const claimFor = (roomId: string) => ({ roomId, userId: 'u-ada', name: 'Ada', since: 't', lastEditAt: 't' });
+
+it('keeps who is editing from the first snapshot and from the stream, and clears it on stop', async () => {
+  let handlers: EventHandlers | null = null;
+  const stop = await startServerSync(
+    transport({
+      fetchWorkspace: vi.fn(async () => ({ seq: 0, workspace: createWorkspace(), claims: [claimFor('r')] })),
+      openEvents: vi.fn((_a: number, h: EventHandlers) => ((handlers = h), h.onOpen(), () => {})),
+    }),
+  );
+  expect(Object.keys(useClaimsStore.getState().byRoom)).toEqual(['r']);
+  handlers!.onClaims([claimFor('q')]);
+  expect(Object.keys(useClaimsStore.getState().byRoom)).toEqual(['q']);
+  stop();
+  expect(useClaimsStore.getState().byRoom).toEqual({});
+});
+
+it('offers the person their own version when their edits to a room were refused', async () => {
+  const setup: WorkspaceCommand[] = [
+    { type: 'project/create', id: 'p', name: 'Riverside' },
+    { type: 'site/create', projectId: 'p', id: 's', name: 'S' },
+    { type: 'room/create', siteId: 's', id: 'r', floorAreaId: 'fa-r', name: 'MDF-1' },
+  ];
+  const ws = setup.reduce((w, c) => {
+    const r = apply(w, c);
+    if (!r.ok) throw new Error(r.error.message);
+    return r.value;
+  }, createWorkspace());
+  const t = transport({
+    fetchWorkspace: vi.fn(async () => ({ seq: 0, workspace: ws, claims: [claimFor('r')] })),
+    postCommands: vi.fn<Transport['postCommands']>(async (_c, commands) => ({
+      accepted: [],
+      rejected: { commandId: commands[0]!.commandId, error: { code: 'claimed', message: 'Ada is editing this room', targets: ['r'] } },
+      skipped: [],
+    })),
+  });
+  const stop = await startServerSync(t);
+  // The tab doesn't know yet (it is not signed in here), so the edit goes out and the server refuses it.
+  useWorkspaceStore.getState().dispatch({ type: 'plan', roomId: 'r', command: { type: 'survey/update', patch: { width: 9 } } });
+  await vi.waitFor(() => expect(useClaimsStore.getState().lost).not.toBeNull());
+  expect(useClaimsStore.getState().lost).toMatchObject({ roomId: 'r', roomName: 'MDF-1', holderName: 'Ada', changes: 1 });
+  expect(useClaimsStore.getState().lost!.file.format).toBe('glasshouse.project');
+  stop();
 });

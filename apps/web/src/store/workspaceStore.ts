@@ -2,6 +2,7 @@ import {
   apply,
   createWorkspace,
   currentRevision,
+  draftEditRoom,
   findRoom,
   type DomainError,
   type Id,
@@ -11,6 +12,7 @@ import {
   type WorkspaceCommand,
 } from '@glasshouse/domain';
 import { create } from 'zustand';
+import { claimHeldByOther, type Claim } from '../claims/claimsStore';
 import { messagesFor, useLangStore } from '../i18n';
 import type { ConnectionStatus } from '../sync/syncClient';
 import { readOnlyMessage } from './readOnlyMessage';
@@ -38,6 +40,8 @@ const readOnlyError = (reason: ReadOnlyReason | null): DomainError => ({
   message: readOnlyMessage(messagesFor(useLangStore.getState().lang), reason),
   targets: [],
 });
+
+const claimedError = (held: Claim): DomainError => ({ code: 'claimed', message: messagesFor(useLangStore.getState().lang).claims.heldBy(held.name), targets: [held.roomId] });
 
 type Commit = (ws: Workspace, command: WorkspaceCommand) => Result<Workspace>;
 let commit: Commit = apply;
@@ -107,6 +111,9 @@ export const useWorkspaceStore = create<WorkspaceState>()((set, get) => ({
   dispatch: (command, options = {}) => {
     const state = get();
     if (state.readOnly) return readOnlyError(state.readOnlyReason);
+    const claimedRoom = draftEditRoom(command);
+    const held = claimedRoom ? claimHeldByOther(claimedRoom) : null;
+    if (held) return claimedError(held);
     const result = commit(state.workspace, command);
     if (!result.ok) return result.error;
     if (command.type !== 'plan') {
@@ -134,6 +141,8 @@ export const useWorkspaceStore = create<WorkspaceState>()((set, get) => ({
     const previous = h?.past[h.past.length - 1];
     const current = draftContent(state.workspace, roomId);
     if (!h || !previous || !current || state.readOnly) return null;
+    const held = claimHeldByOther(roomId);
+    if (held) return claimedError(held);
     const result = commit(state.workspace, { type: 'draft/replace', roomId, content: previous, expected: h.head ?? current });
     if (!result.ok) {
       set({ notice: result.error.message });
@@ -152,6 +161,8 @@ export const useWorkspaceStore = create<WorkspaceState>()((set, get) => ({
     const next = h?.future[0];
     const current = draftContent(state.workspace, roomId);
     if (!h || !next || !current || state.readOnly) return null;
+    const held = claimHeldByOther(roomId);
+    if (held) return claimedError(held);
     const result = commit(state.workspace, { type: 'draft/replace', roomId, content: next, expected: h.head ?? current });
     if (!result.ok) {
       set({ notice: result.error.message });

@@ -8,6 +8,7 @@ import { useViewedRevisionNumber } from '../store/hooks';
 import { useT } from '../i18n';
 import { HintLayer } from './HintLayer';
 import { SyncNotice } from './SyncNotice';
+import { ClaimLostDialog } from '../claims/ClaimLostDialog';
 import { ConfirmDialog } from '../ui/confirm/ConfirmDialog';
 import { TitleBlock } from './TitleBlock';
 import './shell.css';
@@ -70,6 +71,7 @@ export function Shell() {
         </main>
       </div>
       <ConfirmDialog />
+      <ClaimLostDialog />
     </div>
   );
 }

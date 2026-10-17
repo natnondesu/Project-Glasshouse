@@ -1,0 +1,62 @@
+/* Who is editing this room: a slim strip between the view tabs and the drawing. */
+.claim-strip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+  /* Same height with or without a button, so the drawing below doesn't jump when the holder changes. */
+  min-height: 44px;
+  padding: 6px 14px 6px 12px;
+  border: 1px solid var(--line);
+  border-left-width: 3px;
+  border-radius: var(--radius-control);
+  font-size: var(--text-sm);
+  color: var(--ink);
+}
+
+.claim-strip--other {
+  background: var(--warn-bg);
+  border-color: var(--warn-border);
+  border-left-color: var(--warn);
+}
+
+.claim-strip--mine {
+  background: var(--control-bg);
+  border-left-color: var(--acc);
+}
+
+.claim-strip__text,
+.claim-strip__hint {
+  margin: 0;
+}
+
+.claim-strip__text {
+  min-width: 0;
+}
+
+.claim-strip__hint {
+  font-size: var(--text-xs);
+  color: var(--ink-2);
+}
+
+@media (max-width: 640px) {
+  .claim-strip {
+    flex-wrap: wrap;
+    align-items: flex-start;
+  }
+}
+
+/* The lost-claim dialog reuses .dialog; this only narrows it. */
+.claim-lost {
+  width: min(480px, calc(100% - 32px));
+}
+
+.claim-lost p {
+  margin: 0;
+  color: var(--ink-2);
+  font-size: var(--text-sm);
+}
+
+.claim-lost .dialog__actions {
+  justify-content: flex-end;
+}

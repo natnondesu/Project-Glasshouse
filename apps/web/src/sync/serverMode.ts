@@ -1,7 +1,7 @@
-import { parseWorkspace, type WorkspaceCommand } from '@glasshouse/domain';
-import { apply } from '@glasshouse/domain';
+import { apply, exportProjectFile, findRoom, parseWorkspace, type WorkspaceCommand } from '@glasshouse/domain';
 import { useAuthStore } from '../auth/authStore';
 import { AuthError, type AuthUser } from '../auth/authApi';
+import { resetClaimsStore, useClaimsStore, type Claim } from '../claims/claimsStore';
 import { messagesFor, useLangStore } from '../i18n';
 import { useWorkspaceStore, setCommit } from '../store/workspaceStore';
 import { httpTransport } from './httpTransport';
@@ -50,7 +50,7 @@ export async function startServerSync(transport: Transport = httpTransport(), is
       }
     }
   }
-  let snapshot: { seq: number; workspace: unknown };
+  let snapshot: { seq: number; workspace: unknown; claims?: Claim[] };
   try {
     snapshot = await transport.fetchWorkspace();
   } catch (e) {
@@ -68,6 +68,7 @@ export async function startServerSync(transport: Transport = httpTransport(), is
     store.setLoad({ kind: 'failed', reason: parsed.error.message, raw: snapshot.workspace });
     return () => {};
   }
+  useClaimsStore.getState().setClaims(snapshot.claims ?? []);
   const viewOnly = me?.role === 'viewer';
   let offlineTimer: ReturnType<typeof setTimeout> | null = null;
   const unloadGuard = createUnloadGuard(window);
@@ -81,6 +82,16 @@ export async function startServerSync(transport: Transport = httpTransport(), is
       if (me && pending.length > 0) saveStash({ userId: me.id, clientId: client.clientId, commands: pending });
       unloadGuard.set(false);
       useAuthStore.getState().signedOut(true);
+    },
+    onClaims: (claims) => useClaimsStore.getState().setClaims(claims),
+    onClaimLost: ({ roomId, workspace, changes }) => {
+      const loc = findRoom(workspace, roomId);
+      const file = loc ? exportProjectFile(workspace, loc.project.id, new Date().toISOString()) : null;
+      if (!loc || !file?.ok) {
+        useWorkspaceStore.getState().setNotice(messagesFor(useLangStore.getState().lang).claims.lostNoCopy);
+        return;
+      }
+      useClaimsStore.getState().setLost({ roomId, roomName: loc.room.name, holderName: useClaimsStore.getState().byRoom[roomId]?.name ?? null, changes, file: file.value });
     },
     onDropped: (dropped) => useWorkspaceStore.getState().setNotice(dropped.map((d) => d.error.message).join(' ')),
     onConnection: (status) => {
@@ -115,6 +126,7 @@ export async function startServerSync(transport: Transport = httpTransport(), is
     client.stop();
     if (activeSync === client) activeSync = null;
     unloadGuard.dispose();
+    resetClaimsStore();
     setCommit(apply);
     useWorkspaceStore.getState().setConnection('local');
     useWorkspaceStore.getState().setReadOnly(false);

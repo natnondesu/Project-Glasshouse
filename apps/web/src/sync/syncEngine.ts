@@ -1,4 +1,4 @@
-import { apply, type DomainError, type Workspace, type WorkspaceCommand } from '@glasshouse/domain';
+import { apply, draftEditRoom, type DomainError, type Workspace, type WorkspaceCommand } from '@glasshouse/domain';
 
 export interface ServerEvent {
   seq: number;
@@ -88,6 +88,12 @@ export class SyncEngine {
 
   rejected(commandId: string): Dropped[] {
     this.pending = this.pending.filter((p) => p.commandId !== commandId);
+    return this.rebuild();
+  }
+
+  /** Someone else holds the room now: this tab's unconfirmed edits to its draft can't land. */
+  dropDraftEdits(roomId: string): Dropped[] {
+    this.pending = this.pending.filter((p) => p.ackedSeq !== undefined || draftEditRoom(p.command) !== roomId);
     return this.rebuild();
   }
 

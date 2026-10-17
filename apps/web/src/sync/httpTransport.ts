@@ -1,5 +1,6 @@
 import type { WorkspaceCommand } from '@glasshouse/domain';
 import { AuthError } from '../auth/authApi';
+import type { Claim } from '../claims/claimsStore';
 import { messagesFor, useLangStore } from '../i18n';
 import { NetworkError, type BatchOutcome, type EventHandlers, type Transport } from './syncClient';
 import type { ServerEvent } from './syncEngine';
@@ -29,7 +30,7 @@ export function httpTransport(base = ''): Transport {
       const auth = await authFailure(res);
       if (auth) throw auth;
       if (!res.ok) throw new NetworkError(`The Glasshouse server answered ${res.status}`);
-      return (await res.json()) as { seq: number; workspace: unknown };
+      return (await res.json()) as { seq: number; workspace: unknown; claims?: Claim[] };
     },
     async postCommands(clientId: string, commands: { commandId: string; command: WorkspaceCommand }[]): Promise<BatchOutcome> {
       let res: Response;
@@ -59,6 +60,7 @@ export function httpTransport(base = ''): Transport {
       source.addEventListener('open', () => handlers.onOpen());
       source.addEventListener('command', (e) => handlers.onCommand(JSON.parse((e as MessageEvent<string>).data) as ServerEvent));
       source.addEventListener('ping', () => handlers.onHeartbeat());
+      source.addEventListener('claims', (e) => handlers.onClaims((JSON.parse((e as MessageEvent<string>).data) as { claims: Claim[] }).claims));
       source.addEventListener('resync', () => handlers.onResync());
       source.addEventListener('error', () => handlers.onError(source.readyState === EventSource.CLOSED));
       return () => source.close();
