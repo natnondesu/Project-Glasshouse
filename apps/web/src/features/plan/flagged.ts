@@ -22,4 +22,6 @@ export function warnedObjectIds(issues: Issue[], codes: ReadonlySet<IssueCode> =
   return new Set(issues.filter((i) => codes.has(i.code)).flatMap((i) => i.targets));
 }
 
-export const zoneWarnedObjectIds = (issues: Issue[]): Set<Id> => warnedObjectIds(issues, ZONE_CODES);
+/** Only the unit that owns the zone (the last target; the first is what stands in it), so a rack in the way doesn't get a zone drawn too. */
+export const zoneWarnedObjectIds = (issues: Issue[]): Set<Id> =>
+  new Set(issues.filter((i) => ZONE_CODES.has(i.code)).flatMap((i) => i.targets.slice(-1)));
