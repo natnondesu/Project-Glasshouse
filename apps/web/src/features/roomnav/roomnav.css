@@ -78,7 +78,6 @@
   max-width: 50%;
 }
 
-.crumbs__link,
 .crumbs__btn {
   display: inline-flex;
   align-items: center;
@@ -100,7 +99,6 @@
     color var(--duration-fast) ease-out;
 }
 
-.crumbs__link:hover,
 .crumbs__btn:hover {
   background: var(--hover);
   color: var(--ink);

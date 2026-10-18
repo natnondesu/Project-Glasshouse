@@ -61,7 +61,7 @@ export function Shell() {
         {m.shell.skipToMain}
       </a>
       <HintLayer />
-      <TitleBlock roomId={roomId} drawer={inRoom && !pinned ? drawer : null} />
+      <TitleBlock roomId={roomId} drawer={inRoom && !pinned ? drawer : null} treeNav={inRoom ? drawer : null} />
       {readOnly && readOnlyReason === 'view-only' && connection !== 'offline' ? (
         <p className="read-only-banner" role="status">
           {m.shell.viewOnly}

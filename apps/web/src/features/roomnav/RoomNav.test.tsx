@@ -180,14 +180,40 @@ describe('the save status on room screens', () => {
   });
 });
 
+describe('the project crumb', () => {
+  const projectCrumb = () => within(screen.getByRole('navigation', { name: 'Breadcrumb' })).getByRole('button', { name: 'Northgate' });
+
+  it('opens the project drawer in place instead of leaving the room, and closes it back to the crumb', async () => {
+    const user = userEvent.setup();
+    const { router } = open();
+    await user.click(projectCrumb());
+    expect(router.state.location.pathname).toBe('/rooms/r1/plan');
+    expect(tree()).toHaveClass('tree--drawer');
+    expect(projectCrumb()).toHaveAttribute('aria-expanded', 'true');
+    await user.click(projectCrumb());
+    expect(tree()).toBeNull();
+    await user.click(projectCrumb());
+    await user.keyboard('{Escape}');
+    expect(tree()).toBeNull();
+    expect(projectCrumb()).toHaveFocus();
+  });
+
+  it('with the tree pinned, takes you to the open room in the tree', async () => {
+    const user = userEvent.setup();
+    localStorage.setItem('glasshouse:tree-pinned', 'true');
+    open();
+    await user.click(projectCrumb());
+    expect(within(tree()!).getByRole('link', { name: /MDF-1/ })).toHaveFocus();
+  });
+});
+
 describe('the breadcrumb switcher', () => {
   const crumbs = () => within(screen.getByRole('navigation', { name: 'Breadcrumb' }));
   const switcher = () => screen.queryByRole('dialog', { name: 'Rooms in Northgate' });
 
-  it('links the project home and lists this project’s rooms by site, the current one marked', async () => {
+  it('lists this project’s rooms by site, the current one marked', async () => {
     const user = userEvent.setup();
     open();
-    expect(crumbs().getByRole('link', { name: 'Northgate' })).toHaveAttribute('href', '/');
     await user.click(crumbs().getByRole('button', { name: 'MDF-1' }));
     const list = within(switcher()!);
     expect(list.getAllByRole('group').map((g) => g.getAttribute('aria-label'))).toEqual(['Site A', 'Site B']);

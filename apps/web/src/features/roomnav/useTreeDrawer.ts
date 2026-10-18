@@ -8,6 +8,10 @@ export interface TreeDrawer {
   open: boolean;
   setOpen: (open: boolean) => void;
   toggle: () => void;
+  /** Opens or closes the drawer from another control (the project crumb); focus returns to it on close. */
+  toggleFrom: (opener: HTMLElement) => void;
+  /** Moves focus to the open room in the tree, docked or drawer. */
+  focusTree: () => void;
   buttonRef: React.RefObject<HTMLButtonElement | null>;
   panelRef: React.RefObject<HTMLElement | null>;
   onRoomPicked: () => void;
@@ -29,6 +33,7 @@ export function useTreeDrawer(inRoom: boolean, pinned: boolean): TreeDrawer {
   const buttonRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLElement>(null);
   const naming = useRef<string | null>(null);
+  const opener = useRef<HTMLElement | null>(null);
   const showing = inRoom && !pinned && open;
 
   const close = useCallback((refocus: boolean) => {
@@ -37,7 +42,8 @@ export function useTreeDrawer(inRoom: boolean, pinned: boolean): TreeDrawer {
     const active = document.activeElement;
     if (active instanceof HTMLInputElement && panelRef.current?.contains(active)) active.blur();
     setOpen(false);
-    if (refocus) buttonRef.current?.focus();
+    if (refocus) (opener.current ?? buttonRef.current)?.focus();
+    opener.current = null;
   }, []);
 
   // Back on Home the tree docks again; returning to a room starts with the drawer closed.
@@ -53,7 +59,7 @@ export function useTreeDrawer(inRoom: boolean, pinned: boolean): TreeDrawer {
   useEffect(() => {
     if (!showing) return;
     const inside = (target: EventTarget | null): boolean =>
-      target instanceof Node && (!!panelRef.current?.contains(target) || !!buttonRef.current?.contains(target) || (target instanceof Element && target.closest(POPUP) !== null));
+      target instanceof Node && (!!panelRef.current?.contains(target) || !!buttonRef.current?.contains(target) || !!opener.current?.contains(target) || (target instanceof Element && target.closest(POPUP) !== null));
     const onPointerDown = (e: PointerEvent): void => {
       if (!inside(e.target)) close(false);
     };
@@ -91,7 +97,17 @@ export function useTreeDrawer(inRoom: boolean, pinned: boolean): TreeDrawer {
   return {
     open,
     setOpen,
-    toggle: () => (open ? close(false) : setOpen(true)),
+    toggle: () => {
+      if (open) return close(false);
+      opener.current = null;
+      setOpen(true);
+    },
+    toggleFrom: (el) => {
+      if (open) return close(false);
+      opener.current = el;
+      setOpen(true);
+    },
+    focusTree: () => focusInto(panelRef.current),
     buttonRef,
     panelRef,
     onRoomPicked: () => {
