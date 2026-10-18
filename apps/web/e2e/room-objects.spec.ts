@@ -121,3 +121,52 @@ test('dragging a door along a partition keeps it in the partition', async ({ pag
   await expect(page.getByLabel('Y', { exact: true })).toHaveValue('2.95');
   await expect(checks(page)).toContainText('No issues found');
 });
+
+test('the new objects show in 3D without errors, can be found by search, and are listed on the Install sheet', async ({ page, browserName }) => {
+  const errors: string[] = [];
+  page.on('pageerror', (e) => errors.push(e.message));
+  page.on('console', (m) => (m.type() === 'error' ? errors.push(m.text()) : undefined));
+  await createRoom(page);
+  await pickTool(page, 'Racks', 'Rack');
+  await click(page, 6.5, 1.5);
+  await expect(page.getByRole('heading', { name: 'RK-01' })).toBeVisible();
+  await pickTool(page, 'Walls & doors', 'Partition');
+  await drag(page, [4, 0.03], [4, 5.96]);
+  await pickTool(page, 'Walls & doors', 'Door');
+  await click(page, 4.15, 3);
+  await pickTool(page, 'Cooling', 'Wall split AC');
+  await click(page, 2, 0.2);
+  await pickTool(page, 'Cooling', 'Precision AC');
+  await click(page, 1.5, 3.5);
+  await pickTool(page, 'Furniture', 'Display wall');
+  await click(page, 2, 5.8);
+  await expect(page.getByRole('heading', { name: 'DW-01' })).toBeVisible();
+
+  await page.getByRole('link', { name: '3D' }).click();
+  const canvas = page.locator('.room3d canvas');
+  await expect(canvas.or(page.getByText(/can't show 3D/))).toBeVisible({ timeout: 20_000 });
+  if (browserName === 'chromium') await expect(canvas).toBeVisible();
+  const search = page.getByRole('combobox', { name: 'Search this room' });
+  await search.fill('aircon');
+  await expect(page.getByRole('option')).toHaveCount(2);
+  await search.fill('pt-01');
+  await search.press('Enter');
+  await expect(page.getByRole('region', { name: 'PT-01 details' })).toContainText('Partition');
+  expect(errors).toEqual([]);
+
+  await page.getByRole('link', { name: 'Elevation' }).click();
+  await page.getByRole('button', { name: 'Add Compute Server 4U to RK-01' }).click();
+  await page.getByRole('link', { name: 'Review' }).click();
+  await page.getByRole('button', { name: 'Submit for review' }).click();
+  await page.getByRole('button', { name: 'Confirm submit' }).click();
+  await page.getByLabel('Reviewer name (unverified)').fill('Ploy');
+  await page.getByRole('button', { name: 'Approve revision' }).click();
+  await page.getByRole('button', { name: 'Confirm approval' }).click();
+  await page.getByRole('link', { name: /Install sheet · R01/ }).click();
+  const table = page.getByRole('table', { name: 'Room fittings' });
+  await expect(table).toContainText('PT-01');
+  await expect(table).toContainText('AC-01');
+  await expect(table).toContainText('PAC-01');
+  await expect(table).toContainText('DW-01');
+  await expect(table.getByRole('row', { name: /DW-01/ })).toContainText('Viewing 1.50 m');
+});

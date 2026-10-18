@@ -1,4 +1,4 @@
-import { cutOutKind, effectiveHeight, feedRoute, footprintOf, localToWorld, usedU, type PowerFeed, type Point, type EquipmentState, type Category, type MultiPoly, type PlanContent, type Rack, type RoomObject, type SimpleObjectType } from '@glasshouse/domain';
+import { centerOf, cutOutKind, effectiveHeight, feedRoute, footprintOf, isDoorInPartition, localToWorld, usedU, wallBottomOf, worldToLocal, type PowerFeed, type Point, type EquipmentState, type Category, type MultiPoly, type PlanContent, type Rack, type RoomObject, type SimpleObjectType } from '@glasshouse/domain';
 
 /** One rack unit (EIA-310) in metres. */
 export const U_M = 0.04445;
@@ -69,6 +69,15 @@ export interface Object3D {
   yaw: number;
   /** Doors only: which side the leaf hangs from or slides to, and how it opens. */
   door?: { hinge: 'left' | 'right'; opening: 'swing' | 'slide' };
+  /** Partitions only: the doorways cut through it, measured along its length from its middle. */
+  openings?: Opening3D[];
+}
+
+export interface Opening3D {
+  from: number;
+  to: number;
+  /** Height of the doorway; the wall carries on above it. */
+  height: number;
 }
 
 /** Cut-outs are columns and notches the floor can't use: shown solid so they read as obstacles, not holes. */
@@ -127,7 +136,7 @@ function placement(o: RoomObject): { position: Vec3; yaw: number; size: Vec3 } {
   const [ax, az] = localToWorld(o, [1, 0]);
   const yaw = -Math.atan2(az - cz, ax - cx);
   const h = effectiveHeight(o);
-  const bottom = o.type === 'rack' ? (o.wallBottomM ?? 0) : 0;
+  const bottom = wallBottomOf(o);
   return { position: [cx, bottom + h / 2, cz], yaw, size: [o.w, h, o.d] };
 }
 
@@ -172,13 +181,24 @@ function rackFaces(rack: Rack, stateOf: StateOf): Pick<Rack3D, 'faces' | 'slots'
 type StateOf = (id: string) => EquipmentState;
 const ALL_PLANNED: StateOf = () => 'planned';
 
+/** Where the doors that stand in a partition cut it, along its own length. */
+function openingsOf(partition: RoomObject, objects: RoomObject[]): Opening3D[] {
+  return objects
+    .filter((door) => isDoorInPartition(door, partition))
+    .map((door) => {
+      const [along] = worldToLocal(partition, centerOf(door));
+      return { from: along - door.w / 2, to: along + door.w / 2, height: effectiveHeight(door) };
+    })
+    .sort((a, b) => a.from - b.from);
+}
+
 export function buildScene(content: PlanContent, stateOf: StateOf = ALL_PLANNED): Scene3D {
   const racks: Rack3D[] = [];
   const others: Object3D[] = [];
   for (const o of content.objects) {
     const p = placement(o);
     if (o.type === 'rack') racks.push({ id: o.id, name: o.name, owner: o.owner, ...p, ...rackFaces(o, stateOf), capacityU: o.capacityU, usedU: usedU(o) });
-    else others.push({ id: o.id, name: o.name, type: o.type, ...p, ...(o.type === 'door' ? { door: { hinge: o.hinge ?? 'left', opening: o.opening ?? 'swing' } } : {}) });
+    else others.push({ id: o.id, name: o.name, type: o.type, ...p, ...(o.type === 'door' ? { door: { hinge: o.hinge ?? 'left', opening: o.opening ?? 'swing' } } : {}), ...(o.type === 'partition' ? { openings: openingsOf(o, content.objects) } : {}) });
   }
   const columns = content.survey.cutOuts.filter((c) => cutOutKind(c) === 'solid').map((c) => ({ id: c.id, position: [c.x + c.w / 2, COLUMN_HEIGHT_M / 2, c.y + c.d / 2] as Vec3, size: [c.w, COLUMN_HEIGHT_M, c.d] as Vec3 }));
   const feeds = content.feeds.flatMap((feed) => {

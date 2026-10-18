@@ -8,7 +8,7 @@ import { pad2 } from '../../ui/StatusStamp';
 import { useT } from '../../i18n';
 import { RackElevation } from '../elevation/RackElevation';
 import { SheetPlan } from './SheetPlan';
-import { BomTable, CableScheduleTable, SlotMapsTable, VlanTable } from './SheetTables';
+import { BomTable, CableScheduleTable, FittingsTable, fittingsOf, SlotMapsTable, VlanTable } from './SheetTables';
 import { TopologyDiagram } from '../network/TopologyDiagram';
 import { buildTopology, fitTopology, type Remotes, type Topology } from '../network/topology';
 
@@ -102,6 +102,7 @@ export function InstallSheet() {
   const racks: Rack[] = orderedRacks(revision.content, location.room.plan.rackOrder);
   const chassis = racks.flatMap((rack) => rack.devices.filter((d): d is Chassis => d.kind === 'chassis').map((c) => ({ rack, chassis: c })));
   const title = (section: string) => <SheetTitleBlock location={location} revision={revision} printedAt={printedAt} section={section} />;
+  const fittings = fittingsOf(revision.content);
   const { topology, landscape } = sheetTopology(revision.content, remoteNamer(workspace, m));
 
   return (
@@ -132,6 +133,12 @@ export function InstallSheet() {
         <SheetPlan content={revision.content} roomName={location.room.name} />
         <p className="sheet-legend">{m.sheet.planLegend}</p>
       </section>
+
+      {fittings.length > 0 ? (
+        <section className="sheet-page sheet-page--flow">
+          <FittingsTable objects={fittings} titleBlock={title(m.sheet.fittings.title)} />
+        </section>
+      ) : null}
 
       {elevationPages(racks).map((group, i) => (
         <section key={`elev-${i}`} className="sheet-page">

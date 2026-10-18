@@ -1,4 +1,4 @@
-import { createObject, emptyContent, applyPlanCommand, type PlanCommand, type PlanContent, type Rack } from '@glasshouse/domain';
+import { centerOf, createObject, emptyContent, applyPlanCommand, topLeftForCenter, type PlanCommand, type PlanContent, type Rack, type RoomObject } from '@glasshouse/domain';
 import { describe, expect, it } from 'vitest';
 import { buildScene, rotateY } from './scene';
 import { entrance, look, moveTo, standAt, standHere, step, walkable, type WalkCamera } from './walk';
@@ -60,3 +60,29 @@ describe('walking the room', () => {
   });
 });
 
+
+describe('walking past a partition and under a wall unit', () => {
+  const wall = { ...createObject('partition', { x: 2, y: 2 }, []), id: 'pt', w: 4, name: 'PT-01' };
+  const [cx, cy] = centerOf(wall);
+  const [dx, dy] = topLeftForCenter([cx, cy], 0.9, 0.1, 0);
+  const door = { ...createObject('door', { x: dx, y: dy }, []), id: 'd', angle: 0 };
+  const big = (objects: RoomObject[]) => buildScene({ ...emptyContent(), survey: { ...emptyContent().survey, width: 10, length: 8, floorAreas: [{ id: 'a', x: 0, y: 0, w: 10, d: 8 }] }, objects });
+  const withDoor = big([wall, door]);
+  const without = big([wall]);
+
+  it('stops you at a partition but lets you through the door in it', () => {
+    expect(walkable(without, cx + 1.5, cy)).toBe(false);
+    expect(walkable(withDoor, cx + 1.5, cy)).toBe(false);
+    expect(walkable(withDoor, cx, cy)).toBe(true);
+    expect(walkable(without, cx, cy)).toBe(false);
+    const through = moveTo(withDoor, { x: cx, z: cy - 1, heading: 0, pitch: 0 }, cx, cy + 1);
+    expect([through.x, through.z]).toEqual([cx, cy + 1]);
+  });
+
+  it('lets you stand under a split AC hung above head height, but not right in front of a display wall', () => {
+    const ac = createObject('wall_split_ac', { x: 3, y: 0.3 }, []);
+    expect(walkable(big([ac]), 3.45, 0.5)).toBe(true);
+    const dw = createObject('display_wall', { x: 3, y: 0.3 }, []);
+    expect(walkable(big([dw]), 4.5, 0.65)).toBe(false);
+  });
+});

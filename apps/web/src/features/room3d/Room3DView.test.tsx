@@ -70,8 +70,8 @@ it('chooses which kinds are always labelled, and remembers it', async () => {
   expect(menu).toHaveClass('popover-surface');
   expect(menu).not.toHaveClass('glass');
   expect(screen.getByRole('checkbox', { name: 'Racks' })).toBeChecked();
-  for (const kind of ['Existing racks', 'Power sources', 'Doors', 'Furniture']) expect(screen.getByRole('checkbox', { name: kind })).not.toBeChecked();
-  await user.click(screen.getByRole('checkbox', { name: 'Doors' }));
+  for (const kind of ['Existing racks', 'Power sources', 'Doors and partitions', 'Furniture and display walls', 'Air conditioning']) expect(screen.getByRole('checkbox', { name: kind })).not.toBeChecked();
+  await user.click(screen.getByRole('checkbox', { name: 'Doors and partitions' }));
   await user.click(screen.getByRole('checkbox', { name: 'Racks' }));
   expect(JSON.parse(localStorage.getItem('glasshouse:3d-label-kinds')!)).toEqual(['door']);
   await user.keyboard('{Escape}');

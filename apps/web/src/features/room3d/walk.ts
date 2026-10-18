@@ -33,6 +33,36 @@ export function look(c: WalkCamera, dx: number, dy: number): WalkCamera {
   return { ...c, heading: c.heading - dx * LOOK_RAD_PER_PX, pitch: Math.max(-MAX_PITCH, Math.min(MAX_PITCH, c.pitch - dy * LOOK_RAD_PER_PX)) };
 }
 
+/** Something hung with its underside above this is walked under, like a split AC over an aisle. */
+const HEAD_M = 1.9;
+
+interface Blocker {
+  position: [number, number, number];
+  size: [number, number, number];
+  yaw: number;
+}
+
+/** A partition is solid except at its doorways; the rest of the room's boxes are solid as they stand. */
+function solidBoxes(scene: Scene3D): Blocker[] {
+  const boxes: Blocker[] = [...scene.racks, ...scene.columns.map((c) => ({ ...c, yaw: 0 }))];
+  for (const o of scene.others) {
+    if (o.type === 'door' || o.position[1] - o.size[1] / 2 >= HEAD_M) continue;
+    if (o.type !== 'partition') {
+      boxes.push(o);
+      continue;
+    }
+    // Between the doorways, left to right along the wall.
+    const edges = [-o.size[0] / 2, ...(o.openings ?? []).flatMap((g) => [g.from, g.to]), o.size[0] / 2];
+    for (let i = 0; i < edges.length; i += 2) {
+      const [from, to] = [edges[i]!, edges[i + 1]!];
+      if (to - from <= 0) continue;
+      const [dx, dz] = rotateY(o.yaw, [(from + to) / 2, 0]);
+      boxes.push({ position: [o.position[0] + dx, o.position[1], o.position[2] + dz], size: [to - from, o.size[1], o.size[2]], yaw: o.yaw });
+    }
+  }
+  return boxes;
+}
+
 /** Can someone stand here: on the floor, clear of racks, other objects and columns by a body's width? */
 export function walkable(scene: Scene3D, x: number, z: number): boolean {
   const onFloor = scene.floor.some((poly) => pointInPolygon([x, z], poly));
@@ -40,8 +70,7 @@ export function walkable(scene: Scene3D, x: number, z: number): boolean {
   // Keep a body's width from the floor's edge (the walls).
   const probes: [number, number][] = [[BODY_M, 0], [-BODY_M, 0], [0, BODY_M], [0, -BODY_M]];
   if (!probes.every(([dx, dz]) => scene.floor.some((poly) => pointInPolygon([x + dx, z + dz], poly)))) return false;
-  const solid = [...scene.racks, ...scene.others.filter((o) => o.type !== 'door'), ...scene.columns.map((c) => ({ ...c, yaw: 0 }))];
-  return !solid.some((o) => {
+  return !solidBoxes(scene).some((o) => {
     const [lx, lz] = rotateY(-o.yaw, [x - o.position[0], z - o.position[2]]);
     return Math.abs(lx) < o.size[0] / 2 + BODY_M && Math.abs(lz) < o.size[2] / 2 + BODY_M;
   });
