@@ -96,6 +96,8 @@ export function WalkController({ scene, walk, onCommit, glide, onExit }: WalkCon
     const keys = ['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright', 'shift'];
     const onKeyDown = (e: KeyboardEvent): void => {
       if (isTextEntry(e.target) || e.metaKey || e.ctrlKey || e.altKey) return;
+      // Keys pressed in a floating panel (the panel manager) belong to it, not to walking.
+      if (e.target instanceof Element && e.target.closest('[role="dialog"]')) return;
       const k = e.key.toLowerCase();
       if (k === 'escape') return latest.current.onExit();
       if (!keys.includes(k)) return;

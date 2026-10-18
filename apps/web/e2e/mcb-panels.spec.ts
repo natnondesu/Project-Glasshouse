@@ -71,3 +71,19 @@ test('a rack\'s feed source picker shows a panel that is not in use disabled', a
   await expect(source.getByRole('option', { name: 'MCB-02 (not in use)' })).toBeDisabled();
   await expect(source.getByRole('option', { name: 'MCB-01' })).toBeEnabled();
 });
+
+test('keys pressed on a breaker tile stay in the panel: the panel never moves or asks to be removed, and Escape closes it', async ({ page }) => {
+  const manager = await openManager(page, 'MCB-01', /MDF-1/);
+  const placement = page.getByRole('complementary', { name: 'MCB-01 details' }).getByRole('group', { name: 'Placement' });
+  const x = placement.getByRole('textbox', { name: 'X' });
+  const y = placement.getByRole('textbox', { name: 'Y' });
+  const [x0, y0] = [await x.inputValue(), await y.inputValue()];
+  await manager.getByRole('button', { name: /^Way 1,/ }).click();
+  for (const key of ['ArrowLeft', 'ArrowRight', 'ArrowDown', 'ArrowUp', 'r', 'Delete']) await page.keyboard.press(key);
+  await expect(manager.getByRole('button', { name: /^Way 2,/ })).toBeFocused();
+  await expect(page.getByRole('alertdialog')).toHaveCount(0);
+  await expect(x).toHaveValue(x0);
+  await expect(y).toHaveValue(y0);
+  await page.keyboard.press('Escape');
+  await expect(manager).toBeHidden();
+});
