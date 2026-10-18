@@ -5,6 +5,24 @@ import { SOLO_TOOLS, TOOL_GROUPS, TOOL_SPECS, type Tool } from './tools';
 
 const VIEW_ONLY: Tool[] = ['select', 'pan', 'measure'];
 
+/**
+ * Whether the person is using the keyboard right now. Browsers disagree on :focus-visible after focus is moved by code
+ * (Firefox counts it as keyboard focus), so the last input decides: a click means hints come from hovering only.
+ */
+let lastInput: 'pointer' | 'keyboard' = 'pointer';
+let listening = false;
+function focusedByKeyboard(): boolean {
+  if (!listening && typeof window !== 'undefined') {
+    listening = true;
+    window.addEventListener('pointerdown', () => (lastInput = 'pointer'), true);
+    window.addEventListener('keydown', (e) => {
+      // Escape and modifier keys don't mean someone is moving through the tools.
+      if (e.key !== 'Escape' && !['Shift', 'Control', 'Alt', 'Meta'].includes(e.key)) lastInput = 'keyboard';
+    }, true);
+  }
+  return lastInput === 'keyboard';
+}
+
 /** The hint card beside a tool: what it is, what it does, and its key. */
 function Hint({ tool, id }: { tool: Tool; id: string }) {
   const spec = TOOL_SPECS[tool];
@@ -39,9 +57,11 @@ function ToolButton({ tool, active, onTool, label, hintTool = tool, hintHidden =
   const defaultName = useT().tools.spec[tool].label;
   const name = label ?? defaultName;
   const [ownHover, setHover] = useState(false);
+  /** A focused tool explains itself only when the keyboard put focus there; after a mouse pick the hint would linger. */
+  const [keyboardFocus, setKeyboardFocus] = useState(false);
   const hover = (hovered ?? false) || ownHover;
   const hintId = `hint-${hintTool}`;
-  const hinted = hover && !hintHidden;
+  const hinted = (hover || keyboardFocus) && !hintHidden;
   const tracksOwnHover = hovered === undefined;
   return (
     <span className="tool-cell" onMouseEnter={tracksOwnHover ? () => setHover(true) : undefined} onMouseLeave={tracksOwnHover ? () => setHover(false) : undefined}>
@@ -53,8 +73,8 @@ function ToolButton({ tool, active, onTool, label, hintTool = tool, hintHidden =
         aria-describedby={hinted ? hintId : undefined}
         aria-haspopup={menu ? 'menu' : undefined}
         aria-expanded={menu ? menu.open : undefined}
-        onFocus={() => setHover(true)}
-        onBlur={() => setHover(false)}
+        onFocus={() => setKeyboardFocus(focusedByKeyboard())}
+        onBlur={() => setKeyboardFocus(false)}
         onClick={() => (menu ? menu.onToggle() : onTool(tool))}
       >
         <spec.Icon />
@@ -169,6 +189,8 @@ function Group({ group, tool, onTool }: GroupProps) {
                 onClick={() => {
                   onTool(t);
                   setOpen(false);
+                  // The list vanishes from under the pointer; Firefox then never reports the pointer leaving the group.
+                  setHover(false);
                   // The list is about to unmount with focus inside it; without this, focus falls to the page and Esc no longer reaches the plan.
                   cell.current?.querySelector<HTMLElement>('.tool')?.focus();
                 }}

@@ -67,3 +67,26 @@ test('the hint shows wherever the pointer is on a grouped tool, including over i
   await page.mouse.move(face.x + face.width / 2, face.y + 6);
   await expect(hint).toBeVisible();
 });
+
+test('after picking from a list and pressing Escape, no hint lingers and hovering shows only one', async ({ page }) => {
+  await openRoom(page);
+  await pickTool(page, 'Floor', 'Cut out');
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('button', { name: 'Select', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  // Pointer away from the toolbar: nothing explains itself.
+  await page.mouse.move(700, 500);
+  await expect(page.getByRole('tooltip')).toHaveCount(0);
+  // Hovering another tool shows its hint alone, not next to the Floor one.
+  await groupButton(page, 'Racks').hover();
+  await expect(page.getByRole('tooltip')).toHaveCount(1);
+  await expect(page.getByRole('tooltip')).toContainText('Place rack');
+});
+
+test('keyboard focus still shows a tool’s hint', async ({ page, browserName }) => {
+  test.skip(browserName === 'webkit', 'Safari does not Tab to buttons unless the user opts in');
+  await openRoom(page);
+  await page.getByRole('button', { name: 'Select', exact: true }).focus();
+  await page.keyboard.press('Tab');
+  await expect(page.getByRole('button', { name: 'Pan', exact: true })).toBeFocused();
+  await expect(page.getByRole('tooltip')).toContainText('Pan');
+});

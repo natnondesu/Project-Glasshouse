@@ -67,6 +67,9 @@ test('a viewer gets no New room card', async ({ browser }) => {
 });
 
 test('an editor whose role was lowered finds out on their next refused edit, without signing in again', async ({ browser }) => {
+  // Two password sign-ins (scrypt is slow on purpose) plus the refusal and re-check: under a full test run this outgrows 30 s.
+  // Each step below has its own wait, so a real stall still names the step that never happened.
+  test.slow();
   const adminCtx = await browser.newContext();
   const admin = await adminCtx.newPage();
   await signIn(admin, 'admin@company.test', 'admin-password-1');
