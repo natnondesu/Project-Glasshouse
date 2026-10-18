@@ -117,9 +117,20 @@ export function parseDetail(...topologies: Topology[]): GeoDetail {
 
 const NO_DETAIL: GeoDetail = { rivers: [], lakes: [], places: [], airports: [] };
 
+/** Areas the data carries without an ISO code, so the browser can't name them: their Thai names, checked here. */
+const UNCODED_TH: Record<string, string> = {
+  Taiwan: 'ไต้หวัน',
+  Somaliland: 'โซมาลีแลนด์',
+  'N. Cyprus': 'ไซปรัสเหนือ',
+  'Siachen Glacier': 'ธารน้ำแข็งเซียาเชน',
+};
+
 export function parseGeo(countries: Topology, provinces: Topology, ...detail: Topology[]): GeoData {
   return {
-    countries: regions<CountryProps>(countries, 'countries', (p) => ({ code: /^[A-Z]{2}$/.test(p.a2) ? p.a2 : null, name: p.n, nameTh: null })),
+    countries: regions<CountryProps>(countries, 'countries', (p) => {
+      const code = /^[A-Z]{2}$/.test(p.a2) ? p.a2 : null;
+      return { code, name: p.n, nameTh: code ? null : (UNCODED_TH[p.n] ?? null) };
+    }),
     provinces: regions<ProvinceProps>(provinces, 'provinces', (p) => ({ code: p.iso || null, name: p.n, nameTh: p.t || null })),
     detail: detail.length > 0 ? parseDetail(...detail) : NO_DETAIL,
   };

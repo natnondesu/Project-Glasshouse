@@ -65,8 +65,9 @@ describe('the map detail', () => {
     expect(pointName(place('Hat Yai'), 'th')).toBe('หาดใหญ่');
     // Natural Earth's misspelling is corrected.
     expect(place('Suphan Buri').nameTh).toBe('สุพรรณบุรี');
-    // A place without a Thai name keeps its English one in Thai.
-    expect(pointName(place('Sydney'), 'th')).toBe('Sydney');
+    // Places outside Thailand are named in Thai too.
+    expect(pointName(place('Sydney'), 'th')).toBe('ซิดนีย์');
+    expect(pointName(place('Sydney'), 'en')).toBe('Sydney');
   });
 
   it('lists capitals first, then by importance, so minor names give way', () => {
@@ -82,5 +83,37 @@ describe('the map detail', () => {
     expect([dmk.name, dmk.nameTh]).toEqual(['Don Mueang', 'ดอนเมือง']);
     expect(bkk.lon).toBeCloseTo(100.75, 1);
     expect(dmk.lat).toBeCloseTo(13.92, 1);
+  });
+});
+
+describe('Thai on the map', () => {
+  const latin = /[A-Za-z]/;
+
+  it('has a Thai name for every place and airport the map can show, never a Latin fallback', () => {
+    const { places, airports } = geo.detail;
+    expect(places.length).toBeGreaterThan(700);
+    expect(places.filter((p) => !p.nameTh || latin.test(p.nameTh)).map((p) => p.name)).toEqual([]);
+    expect(airports.filter((a) => !a.nameTh || latin.test(a.nameTh)).map((a) => a.iata)).toEqual([]);
+  });
+
+  it('names every country in Thai, those without a code too', () => {
+    expect(geo.countries.filter((c) => latin.test(regionName(c, 'th'))).map((c) => c.name)).toEqual([]);
+    expect(regionName(geo.countries.find((c) => c.name === 'Taiwan')!, 'th')).toBe('ไต้หวัน');
+  });
+
+  it('keeps the checked names and the usual forms of the region’s cities', () => {
+    const th = (name: string) => pointName(geo.detail.places.find((p) => p.name === name)!, 'th');
+    expect(th('Bangkok')).toBe('กรุงเทพมหานคร');
+    expect(th('Suphan Buri')).toBe('สุพรรณบุรี');
+    expect(th('Hanoi')).toBe('ฮานอย');
+    expect(th('Yangon')).toBe('ย่างกุ้ง');
+    expect(th('Vientiane')).toBe('เวียงจันทน์');
+    expect(th('Phnom Penh')).toBe('พนมเปญ');
+    expect(th('Hong Kong')).toBe('ฮ่องกง');
+    expect(th('Kolkata')).toBe('โกลกาตา');
+    expect(th('Chattogram')).toBe('จิตตะกอง');
+    expect(th('Nanning')).toBe('หนานหนิง');
+    // Wikidata's administrative prefixes are dropped from map labels.
+    expect(th('Batu Pahat')).toBe('บาตูปาฮัต');
   });
 });
