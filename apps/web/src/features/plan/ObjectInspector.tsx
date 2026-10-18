@@ -1,4 +1,4 @@
-import { formatMetres, isPowerSource, isWallHung, rackAutoHeightM, wallBottomOf, type ObjectPatch, type PlanContent, type RoomObject, DEFAULT_WALL_RACK } from '@glasshouse/domain';
+import { DEFAULT_KEEP_CLEAR_M, formatMetres, hasKeepClear, isPowerSource, isWallHung, rackAutoHeightM, wallBottomOf, type ObjectPatch, type PlanContent, type RoomObject, DEFAULT_WALL_RACK } from '@glasshouse/domain';
 import { PanelFeeds, RackFeeds } from './feeds';
 import { useState } from 'react';
 import { IconRotateCcw, IconRotateCw } from '../../ui/icons';
@@ -29,6 +29,7 @@ export function ObjectInspector({ object, content, commit, onDeleted, onManagePa
   const rackContents = rack ? describeRackContents(m, rack) : null;
   const autoHeight = rack ? rackAutoHeightM(rack.capacityU) : null;
   const isWall = object.type === 'partition';
+  const keepClearType = object.type !== 'rack' && hasKeepClear(object.type) ? (object.type as keyof typeof m.inspector.keepClearHint) : null;
   const zoneNote = object.type in m.inspector.note ? m.inspector.note[object.type as keyof typeof m.inspector.note] : null;
 
   return (
@@ -140,6 +141,20 @@ export function ObjectInspector({ object, content, commit, onDeleted, onManagePa
           placeholder={autoHeight === null ? m.inspector.heightDefault : m.inspector.heightFromCapacity(formatMetres(autoHeight))}
           onCommit={(v) => update({ height: v }, 'height')}
         />
+        {keepClearType && object.type !== 'rack' ? (
+          <>
+            <NumberField
+              id={`${object.id}-keep-clear`}
+              label={m.inspector.keepClear}
+              unit="m"
+              allowEmpty
+              value={object.keepClearM ?? null}
+              placeholder={formatMetres(DEFAULT_KEEP_CLEAR_M[keepClearType] ?? 0)}
+              onCommit={(v) => update({ keepClearM: v }, 'keepClear')}
+            />
+            <p className="inspector__note">{object.keepClearM === 0 ? m.inspector.keepClearNone : m.inspector.keepClearHint[keepClearType]}</p>
+          </>
+        ) : null}
         {zoneNote ? <p className="inspector__note">{zoneNote}</p> : null}
       </fieldset>
 

@@ -1,5 +1,5 @@
 import { newId } from './ids';
-import { DEFAULT_CLEARANCE, DEFAULT_HEIGHTS_M, DEFAULT_RACK, DEFAULT_SIZES, DEFAULT_WALL_BOTTOM_M, NAME_PREFIX } from './model/defaults';
+import { DEFAULT_CLEARANCE, DEFAULT_HEIGHTS_M, DEFAULT_KEEP_CLEAR_M, DEFAULT_RACK, DEFAULT_SIZES, DEFAULT_WALL_BOTTOM_M, LIMITS, NAME_PREFIX } from './model/defaults';
 import type { Metres, RoomObject, RoomObjectType } from './model/types';
 import { rackAutoHeightM } from './units';
 
@@ -36,6 +36,21 @@ export function createObject(type: RoomObjectType, at: { x: Metres; y: Metres },
 
 /** A split AC or display wall: hung on a wall with its bottom at `wallBottomM`, like a wall rack. */
 export const isWallHung = (o: RoomObject): boolean => o.type !== 'rack' && DEFAULT_WALL_BOTTOM_M[o.type] !== undefined;
+
+/** Whether this type has a space kept clear in front of it that can be sized. */
+export const hasKeepClear = (type: RoomObjectType): boolean => DEFAULT_KEEP_CLEAR_M[type] !== undefined;
+
+/** The depth of the space kept clear in front of an air conditioner or display wall (0 = none); null for objects without one. */
+export function keepClearOf(o: RoomObject): Metres | null {
+  const fallback = DEFAULT_KEEP_CLEAR_M[o.type];
+  if (fallback === undefined) return null;
+  if (o.type === 'rack') return null;
+  return isKeepClearInRange(o.keepClearM) ? o.keepClearM : fallback;
+}
+
+/** A depth a person could have set: commands refuse anything else, and a hand-edited file's out-of-range value is ignored. */
+export const isKeepClearInRange = (depth: unknown): depth is Metres =>
+  typeof depth === 'number' && Number.isFinite(depth) && depth >= 0 && depth <= LIMITS.keepClearMaxM;
 
 /**
  * Height of the object's bottom above the floor. Only racks and wall-hung objects have one: a stray

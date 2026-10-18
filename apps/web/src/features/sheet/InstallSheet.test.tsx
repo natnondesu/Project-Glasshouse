@@ -168,7 +168,7 @@ it('prints the cable schedule of the approved server room', () => {
 });
 
 describe('room fittings', () => {
-  function approvedRoom(withFittings: boolean): string {
+  function approvedRoom(withFittings: boolean, extras: Record<string, object> = {}): string {
     const s = useWorkspaceStore.getState();
     const siteId = s.workspace.projects[0]!.sites[0]!.id;
     s.dispatch({ type: 'room/create', siteId, id: 'fit', floorAreaId: 'fa-fit', name: 'Command' });
@@ -181,9 +181,9 @@ describe('room fittings', () => {
         if (problem) throw new Error(problem.message);
       };
       add(createObject('partition', { x: 2, y: 3 }, []), 'pt', 'PT-01');
-      add(createObject('wall_split_ac', { x: 1, y: 0 }, []), 'ac', 'AC-01');
-      add(createObject('precision_ac', { x: 3, y: 0.5 }, []), 'pac', 'PAC-01');
-      add(createObject('display_wall', { x: 1, y: 3.8 }, []), 'dw', 'DW-01', { wallBottomM: 1 });
+      add(createObject('wall_split_ac', { x: 1, y: 0 }, []), 'ac', 'AC-01', extras.ac);
+      add(createObject('precision_ac', { x: 3, y: 0.5 }, []), 'pac', 'PAC-01', extras.pac);
+      add(createObject('display_wall', { x: 1, y: 3.8 }, []), 'dw', 'DW-01', { wallBottomM: 1, ...extras.dw });
     }
     s.dispatch({ type: 'review', roomId: 'fit', command: { type: 'review/submit', designedBy: 'Ploy', at: AT } });
     const problem = s.dispatch({ type: 'review', roomId: 'fit', command: { type: 'review/approve', reviewer: 'Nok', at: AT } });
@@ -201,6 +201,23 @@ describe('room fittings', () => {
     expect(row('AC-01')).toEqual(['AC-01', 'Wall split AC', '0.90 × 0.25', '0.30', 'On the wall, bottom at 2.20 m', 'Airflow 1.00 m']);
     expect(row('PAC-01')).toEqual(['PAC-01', 'Precision AC', '0.80 × 0.80', '1.95', 'On the floor', 'Service 1.00 m']);
     expect(row('DW-01')).toEqual(['DW-01', 'Display wall', '3.00 × 0.15', '1.70', 'On the wall, bottom at 1.00 m', 'Viewing 1.50 m']);
+  });
+
+  it('marks a keep-clear depth that was changed from the default, and says None when it is 0', () => {
+    open(approvedRoom(true, { pac: { keepClearM: 0.6 }, ac: { keepClearM: 0 } }));
+    const table = screen.getByRole('table', { name: 'Room fittings' });
+    const clear = (name: string) => within(table).getByText(name).closest('tr')!.querySelectorAll('td')[5]!.textContent;
+    expect(clear('PAC-01')).toBe('Service 0.60 m (set)');
+    expect(clear('AC-01')).toBe('None (set)');
+    expect(clear('DW-01')).toBe('Viewing 1.50 m');
+  });
+
+  it('reads a depth equal to the default plainly, even when it was typed in', () => {
+    open(approvedRoom(true, { pac: { keepClearM: 1 }, dw: { keepClearM: 1.5 } }));
+    const table = screen.getByRole('table', { name: 'Room fittings' });
+    const clear = (name: string) => within(table).getByText(name).closest('tr')!.querySelectorAll('td')[5]!.textContent;
+    expect(clear('PAC-01')).toBe('Service 1.00 m');
+    expect(clear('DW-01')).toBe('Viewing 1.50 m');
   });
 
   it('prints no fittings page for a room without any', () => {

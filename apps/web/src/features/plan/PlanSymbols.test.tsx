@@ -159,6 +159,14 @@ describe('zones in front of air conditioning and the display wall', () => {
     expect(container.querySelector('.env-zone__label')?.textContent).toBe('Airflow1.00 m');
   });
 
+  it('follows the keep-clear depth: the zone and its label say the depth, and there is none at 0', () => {
+    const dw = (keepClearM: number) => ({ ...at(createObject('display_wall', { x: 3, y: 0 }, []), 'dw'), keepClearM });
+    expect(render(<Scene objects={[dw(2.5)]} selectedId="dw" />).container.querySelector('.env-zone__label')?.textContent).toBe('Viewing 2.50 m');
+    const none = render(<Scene objects={[dw(0)]} selectedId="dw" />).container;
+    expect(none.querySelector('.env-zone')).toBeNull();
+    expect(none.querySelector('.env-zone__label')).toBeNull();
+  });
+
   it('goes with the clearance zones layer', () => {
     const { container } = render(<Scene objects={[ac]} selectedId="ac" layers={{ ...ALL_LAYERS, clearance: false }} />);
     expect(container.querySelector('.env-zone')).toBeNull();

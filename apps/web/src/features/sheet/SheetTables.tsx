@@ -1,6 +1,6 @@
-import { BOM_COLUMNS, effectiveHeight, ENVIRONMENT_ZONE_M, formatDemand, formatMetres, formatURange, isWallHung, panelOf, racksOf, wallBottomOf, wayPhase, type BomRow, type Chassis, type Rack, type Revision, type CableRow, type PlanContent, type RoomObject } from '@glasshouse/domain';
+import { BOM_COLUMNS, DEFAULT_KEEP_CLEAR_M, effectiveHeight, formatDemand, formatMetres, formatURange, isWallHung, keepClearOf, panelOf, racksOf, wallBottomOf, wayPhase, type BomRow, type Chassis, type Rack, type Revision, type CableRow, type PlanContent, type RoomObject } from '@glasshouse/domain';
 import type { ReactNode } from 'react';
-import { useT } from '../../i18n';
+import { useT, type Messages } from '../../i18n';
 import { usePeople } from '../../people/peopleStore';
 import { personLabel } from '../../ui/person';
 import { bomCell, bomHeader } from '../bom/bomText';
@@ -22,8 +22,6 @@ const FITTING_WIDTHS = [11, 17, 15, 11, 28, 18];
 /** What the sheet lists besides racks and power: things that stand or hang in the room and need a place, a height and sometimes space kept clear. */
 const FITTING_TYPES = new Set<RoomObject['type']>(['partition', 'wall_split_ac', 'precision_ac', 'display_wall']);
 export const fittingsOf = (content: PlanContent): RoomObject[] => content.objects.filter((o) => FITTING_TYPES.has(o.type));
-
-const ZONE_DEPTH_M = { wall_split_ac: ENVIRONMENT_ZONE_M.splitAcAirflow, precision_ac: ENVIRONMENT_ZONE_M.precisionAcService, display_wall: ENVIRONMENT_ZONE_M.displayWallViewing } as const;
 
 /**
  * Long tables carry the title block in <thead>: browsers repeat <thead> on every printed page,
@@ -233,6 +231,15 @@ export function VlanTable({ content }: { content: PlanContent }) {
   );
 }
 
+/** The default depth reads plainly; a depth someone set is marked, so an exception shows to reviewers and installers. */
+function keepClearText(m: Messages, o: RoomObject, depth: number): string {
+  // Marked only when it differs from the type's default: typing the default in is not an exception.
+  const isSet = o.type !== 'rack' && depth !== DEFAULT_KEEP_CLEAR_M[o.type];
+  if (depth === 0) return m.sheet.fittings.clearNone;
+  const zone = m.plan.zone[o.type as keyof typeof m.plan.zone];
+  return isSet ? m.sheet.fittings.clearSet(zone, formatMetres(depth)) : `${zone} ${formatMetres(depth)} m`;
+}
+
 /** Partitions, air conditioning and display walls: where each one is fixed, how big, how high, and the space to leave in front of it. */
 export function FittingsTable({ objects, titleBlock }: { objects: RoomObject[]; titleBlock: ReactNode }) {
   const m = useT();
@@ -255,7 +262,7 @@ export function FittingsTable({ objects, titleBlock }: { objects: RoomObject[]; 
       </TitleHead>
       <tbody>
         {objects.map((o) => {
-          const depth = ZONE_DEPTH_M[o.type as keyof typeof ZONE_DEPTH_M];
+          const depth = keepClearOf(o);
           return (
             <tr key={o.id}>
               <td className="mono">{o.name}</td>
@@ -263,7 +270,7 @@ export function FittingsTable({ objects, titleBlock }: { objects: RoomObject[]; 
               <td className="mono is-short">{`${formatMetres(o.w)} × ${formatMetres(o.d)}`}</td>
               <td className="mono is-short">{formatMetres(effectiveHeight(o))}</td>
               <td>{isWallHung(o) ? m.sheet.fittings.onWall(formatMetres(wallBottomOf(o))) : m.sheet.fittings.onFloor}</td>
-              <td className="mono">{depth === undefined ? '' : `${m.plan.zone[o.type as keyof typeof m.plan.zone]} ${formatMetres(depth)} m`}</td>
+              <td className="mono">{depth === null ? '' : keepClearText(m, o, depth)}</td>
             </tr>
           );
         })}

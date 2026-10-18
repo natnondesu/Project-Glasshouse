@@ -1,16 +1,16 @@
 import { localRectPolygon, overlaps, placementPolygon, type Poly } from '../geometry/polygon';
-import { ENVIRONMENT_ZONE_M } from '../model/defaults';
 import type { PlanContent, RoomObject } from '../model/types';
-import { effectiveHeight, verticalSpan } from '../objects';
+import { effectiveHeight, keepClearOf, verticalSpan } from '../objects';
 import { isFlush } from '../sources';
+import { formatMetres } from '../units';
 import type { Issue } from './types';
 
 const isRackLike = (o: RoomObject): boolean => o.type === 'rack' || o.type === 'existing_rack';
 
-/** The area in front of an object that the planner keeps watch on; null for objects without one. */
+/** The area in front of an object that the planner keeps watch on; null for objects without one, or whose keep-clear depth is 0. */
 export function environmentZone(o: RoomObject): Poly | null {
-  const depth = o.type === 'wall_split_ac' ? ENVIRONMENT_ZONE_M.splitAcAirflow : o.type === 'precision_ac' ? ENVIRONMENT_ZONE_M.precisionAcService : o.type === 'display_wall' ? ENVIRONMENT_ZONE_M.displayWallViewing : null;
-  return depth === null ? null : localRectPolygon(o, -o.w / 2, o.d / 2, o.w / 2, o.d / 2 + depth);
+  const depth = keepClearOf(o);
+  return depth === null || depth <= 0 ? null : localRectPolygon(o, -o.w / 2, o.d / 2, o.w / 2, o.d / 2 + depth);
 }
 
 const approvalNote = 'Approval is still allowed.';
@@ -21,7 +21,7 @@ export function environmentIssues(content: PlanContent): Issue[] {
   const solids = content.objects.filter((o) => !isFlush(o));
   for (const unit of content.objects) {
     const zone = environmentZone(unit);
-    if (!zone) continue;
+    const depth = formatMetres(keepClearOf(unit) ?? 0);
     const footprint = placementPolygon(unit);
     if (unit.type === 'wall_split_ac') {
       for (const rack of solids.filter(isRackLike)) {
@@ -38,19 +38,19 @@ export function environmentIssues(content: PlanContent): Issue[] {
             targets: [rack.id, unit.id],
           });
         }
-        if (overlaps(zone, poly)) {
+        if (zone && overlaps(zone, poly)) {
           issues.push({
             key: `wall_ac_airflow:${unit.id}:${rack.id}`,
             code: 'wall_ac_airflow',
             severity: 'warn',
-            message: `${rack.name} blocks the airflow in front of the wall AC.`,
-            params: { rack: rack.name, ac: unit.name },
+            message: `${rack.name} blocks the airflow within ${depth} m in front of the wall AC.`,
+            params: { rack: rack.name, ac: unit.name, depth },
             hint: `Keep the space in front of ${unit.name} clear of racks. ${approvalNote}`,
             targets: [rack.id, unit.id],
           });
         }
       }
-    } else if (unit.type === 'precision_ac') {
+    } else if (unit.type === 'precision_ac' && zone) {
       const top = effectiveHeight(unit);
       for (const other of solids) {
         // A door is how people get in; anything hung above the cabinet is not in the way of service.
@@ -59,21 +59,21 @@ export function environmentIssues(content: PlanContent): Issue[] {
           key: `precision_ac_service:${unit.id}:${other.id}`,
           code: 'precision_ac_service',
           severity: 'warn',
-          message: `Keep 1.00 m clear in front of the precision AC for service; ${other.name} is in the way.`,
-          params: { other: other.name, ac: unit.name },
+          message: `Keep ${depth} m clear in front of the precision AC for service; ${other.name} is in the way.`,
+          params: { other: other.name, ac: unit.name, depth },
           hint: `Move ${other.name}, or confirm service access is agreed. ${approvalNote}`,
           targets: [other.id, unit.id],
         });
       }
-    } else if (unit.type === 'display_wall') {
+    } else if (unit.type === 'display_wall' && zone) {
       for (const rack of solids.filter(isRackLike)) {
         if (!overlaps(zone, placementPolygon(rack))) continue;
         issues.push({
           key: `display_wall_view:${unit.id}:${rack.id}`,
           code: 'display_wall_view',
           severity: 'warn',
-          message: `${rack.name} stands in front of the display wall.`,
-          params: { rack: rack.name, screen: unit.name },
+          message: `${rack.name} stands within ${depth} m in front of the display wall.`,
+          params: { rack: rack.name, screen: unit.name, depth },
           hint: `Move ${rack.name} if people need to see ${unit.name}. ${approvalNote}`,
           targets: [rack.id, unit.id],
         });

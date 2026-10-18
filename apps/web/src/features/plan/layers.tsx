@@ -2,8 +2,8 @@ import {
   centerOf,
   clearanceZones,
   cutOutKind,
-  ENVIRONMENT_ZONE_M,
   environmentZone,
+  keepClearOf,
   footprintOf,
   formatMetres,
   frontEdge,
@@ -347,8 +347,6 @@ const ZONE_LABEL_LINE_PX = 13;
 /** The label sits this far in from the zone's far edge, where nothing but the zone's own hatch is. */
 const ZONE_LABEL_INSET_PX = 10;
 
-const ZONE_DEPTH_KEY = { wall_split_ac: 'splitAcAirflow', precision_ac: 'precisionAcService', display_wall: 'displayWallViewing' } as const;
-
 interface ZoneDrawing {
   object: RoomObject;
   zone: Poly;
@@ -362,7 +360,7 @@ function zoneDrawings(objects: RoomObject[], view: View, selectedId: string | nu
   return objects.flatMap((o) => {
     const zone = environmentZone(o);
     if (!zone || !(o.id === selectedId || warned.has(o.id))) return [];
-    const depth = ENVIRONMENT_ZONE_M[ZONE_DEPTH_KEY[o.type as keyof typeof ZONE_DEPTH_KEY]];
+    const depth = keepClearOf(o) ?? 0;
     const title = name(o);
     const figure = `${formatMetres(depth)} m`;
     const ring = (zone[0] ?? []).map((p) => toScreen(view, p));

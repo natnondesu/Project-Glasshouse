@@ -102,7 +102,7 @@ test('a display wall hangs on the wall at 0.80 m, takes no power, and warns abou
   await expect(checks(page)).toContainText('No issues found');
   await pickTool(page, 'Racks', 'Rack');
   await click(page, 3.5, 1.2);
-  await expect(checks(page)).toContainText('RK-01 stands in front of the display wall.');
+  await expect(checks(page)).toContainText('RK-01 stands within 1.50 m in front of the display wall.');
   await expect(page.locator('.env-zone--warn')).toHaveCount(1);
 });
 
@@ -169,4 +169,38 @@ test('the new objects show in 3D without errors, can be found by search, and are
   await expect(table).toContainText('PAC-01');
   await expect(table).toContainText('DW-01');
   await expect(table.getByRole('row', { name: /DW-01/ })).toContainText('Viewing 1.50 m');
+});
+
+test('setting a precision AC’s keep clear to 0.5 m drops the service warning for a rack 0.8 m in front, and the Install sheet shows the exception', async ({ page }) => {
+  await createRoom(page);
+  await pickTool(page, 'Cooling', 'Precision AC');
+  await click(page, 2, 1.5);
+  await expect(page.getByRole('heading', { name: 'PAC-01' })).toBeVisible();
+  await page.getByLabel('X', { exact: true }).fill('2');
+  await page.getByLabel('Y', { exact: true }).fill('1');
+  await expect(page.getByLabel('Keep clear')).toHaveAttribute('placeholder', '1.00');
+  // The cabinet's front face is at 1.80 m; the rack starts 0.80 m beyond it.
+  await pickTool(page, 'Racks', 'Rack');
+  await click(page, 5, 4.5);
+  await expect(page.getByRole('heading', { name: 'RK-01' })).toBeVisible();
+  await page.getByLabel('X', { exact: true }).fill('2');
+  await page.getByLabel('Y', { exact: true }).fill('2.6');
+  await expect(checks(page)).toContainText('Keep 1.00 m clear in front of the precision AC for service; RK-01 is in the way.');
+
+  await click(page, 2.4, 1.4);
+  await expect(page.getByRole('heading', { name: 'PAC-01' })).toBeVisible();
+  await page.getByLabel('Keep clear').fill('0.5');
+  await expect(checks(page)).not.toContainText('Keep 1.00 m clear');
+  await expect(checks(page)).not.toContainText('for service');
+
+  await page.getByRole('link', { name: 'Elevation' }).click();
+  await page.getByRole('button', { name: 'Add Compute Server 4U to RK-01' }).click();
+  await page.getByRole('link', { name: 'Review' }).click();
+  await page.getByRole('button', { name: 'Submit for review' }).click();
+  await page.getByRole('button', { name: 'Confirm submit' }).click();
+  await page.getByLabel('Reviewer name (unverified)').fill('Ploy');
+  await page.getByRole('button', { name: 'Approve revision' }).click();
+  await page.getByRole('button', { name: 'Confirm approval' }).click();
+  await page.getByRole('link', { name: /Install sheet · R01/ }).click();
+  await expect(page.getByRole('table', { name: 'Room fittings' }).getByRole('row', { name: /PAC-01/ })).toContainText('Service 0.50 m (set)');
 });

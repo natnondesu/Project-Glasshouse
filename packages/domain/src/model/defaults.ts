@@ -14,6 +14,7 @@ export const LIMITS = {
   clearanceMaxM: 3,
   heightMaxM: 10,
   wallBottomMaxM: 4,
+  keepClearMaxM: 5,
   powerMinW: 100,
   powerMaxW: 100_000,
   designLimitMinPct: 50,
@@ -89,6 +90,13 @@ export const ENVIRONMENT_ZONE_M = {
   /** Viewing area in front of a display wall. */
   displayWallViewing: 1.5,
 } as const;
+
+/** The default keep-clear depth per object type; the types missing here have no zone. */
+export const DEFAULT_KEEP_CLEAR_M: Partial<Record<RoomObjectType, number>> = {
+  wall_split_ac: ENVIRONMENT_ZONE_M.splitAcAirflow,
+  precision_ac: ENVIRONMENT_ZONE_M.precisionAcService,
+  display_wall: ENVIRONMENT_ZONE_M.displayWallViewing,
+};
 
 export const NAME_PREFIX: Record<RoomObjectType, string> = {
   rack: 'RK',
