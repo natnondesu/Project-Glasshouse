@@ -1,8 +1,7 @@
 import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react';
 import { IconChevronCorner } from '../../ui/icons';
-import { usePersistentState } from '../../ui/usePersistentState';
 import { useT } from '../../i18n';
-import { SOLO_TOOLS, TOOL_GROUPS, TOOL_SPECS, type Tool, type ToolGroupId } from './tools';
+import { SOLO_TOOLS, TOOL_GROUPS, TOOL_SPECS, type Tool } from './tools';
 
 const VIEW_ONLY: Tool[] = ['select', 'pan', 'measure'];
 
@@ -20,34 +19,39 @@ function Hint({ tool, id }: { tool: Tool; id: string }) {
 }
 
 interface ToolButtonProps {
+  /** Whose icon the button wears; clicking it picks this tool. */
   tool: Tool;
   active: boolean;
   onTool: (tool: Tool) => void;
-  /** A group's face opens its list instead of picking straight away. */
-  menu?: { open: boolean; onToggle: () => void };
+  /** A group button names the variant that is active, while the icon stays the group's default. */
+  label?: string;
+  /** The tool the hint describes; the active variant for a group button. */
+  hintTool?: Tool;
+  hintHidden?: boolean;
 }
 
-function ToolButton({ tool, active, onTool, menu }: ToolButtonProps) {
+function ToolButton({ tool, active, onTool, label, hintTool = tool, hintHidden = false }: ToolButtonProps) {
   const spec = TOOL_SPECS[tool];
-  const label = useT().tools.spec[tool].label;
+  const defaultName = useT().tools.spec[tool].label;
+  const name = label ?? defaultName;
   const [hover, setHover] = useState(false);
-  const hintId = `hint-${tool}`;
+  const hintId = `hint-${hintTool}`;
+  const hinted = hover && !hintHidden;
   return (
     <span className="tool-cell" onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}>
       <button
         type="button"
         className="tool"
         aria-pressed={active}
-        aria-label={label}
-        aria-describedby={hover && !menu?.open ? hintId : undefined}
-        {...(menu ? { 'aria-haspopup': 'menu' as const, 'aria-expanded': menu.open } : {})}
+        aria-label={name}
+        aria-describedby={hinted ? hintId : undefined}
         onFocus={() => setHover(true)}
         onBlur={() => setHover(false)}
-        onClick={() => (menu ? menu.onToggle() : onTool(tool))}
+        onClick={() => onTool(tool)}
       >
         <spec.Icon />
       </button>
-      {hover && !menu?.open ? <Hint tool={tool} id={hintId} /> : null}
+      {hinted ? <Hint tool={hintTool} id={hintId} /> : null}
     </span>
   );
 }
@@ -55,17 +59,19 @@ function ToolButton({ tool, active, onTool, menu }: ToolButtonProps) {
 interface GroupProps {
   group: (typeof TOOL_GROUPS)[number];
   tool: Tool;
-  current: Tool;
   onTool: (tool: Tool) => void;
 }
 
-function Group({ group, tool, current, onTool }: GroupProps) {
+function Group({ group, tool, onTool }: GroupProps) {
   const [open, setOpen] = useState(false);
   const cell = useRef<HTMLSpanElement>(null);
   const m = useT();
   const groupLabel = m.tools.group[group.id];
+  const face = group.tools[0]!;
+  const inGroup = group.tools.includes(tool);
+  const variant = inGroup && tool !== face ? tool : null;
   const flyout = useRef<HTMLSpanElement>(null);
-  // Menu keys: arrows and Home/End move through the tools; Escape closes and hands focus back to the group.
+  // Menu keys: arrows and Home/End move through the tools; Escape closes and hands focus back to the arrow that opened it.
   const onMenuKey = (e: ReactKeyboardEvent): void => {
     if (!open) return;
     const items = [...(flyout.current?.querySelectorAll<HTMLElement>('[role="menuitemradio"]') ?? [])];
@@ -82,7 +88,7 @@ function Group({ group, tool, current, onTool }: GroupProps) {
       e.preventDefault();
       e.stopPropagation();
       setOpen(false);
-      cell.current?.querySelector<HTMLElement>('.tool')?.focus();
+      cell.current?.querySelector<HTMLElement>('.tool-group__more')?.focus();
     }
   };
   // Keyboard users land on the current tool when the list opens.
@@ -101,8 +107,14 @@ function Group({ group, tool, current, onTool }: GroupProps) {
   }, [open]);
   return (
     <span ref={cell} className="tool-group" onKeyDown={onMenuKey}>
-      {/* Clicking the group always shows its tools: many people never find the corner arrow. */}
-      <ToolButton tool={current} active={tool === current} onTool={onTool} menu={group.tools.length > 1 ? { open, onToggle: () => setOpen((o) => !o) } : undefined} />
+      <ToolButton
+        tool={face}
+        active={inGroup}
+        onTool={onTool}
+        label={variant ? m.tools.activeVariant(m.tools.spec[variant].name, groupLabel) : undefined}
+        hintTool={inGroup ? tool : face}
+        hintHidden={open}
+      />
       {group.tools.length > 1 ? (
         <button type="button" className="tool-group__more" aria-label={m.tools.more(groupLabel)} aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
           <IconChevronCorner />
@@ -139,15 +151,6 @@ function Group({ group, tool, current, onTool }: GroupProps) {
 
 export function Toolbar({ tool, onTool, readOnly = false }: { tool: Tool; onTool: (tool: Tool) => void; readOnly?: boolean }) {
   const m = useT();
-  const [last, setLast] = usePersistentState<Partial<Record<ToolGroupId, Tool>>>('glasshouse:tool-groups', {});
-  const choose = (t: Tool): void => {
-    const group = TOOL_GROUPS.find((g) => g.tools.includes(t));
-    if (group && last[group.id] !== t) setLast({ ...last, [group.id]: t });
-    onTool(t);
-  };
-  // A tool picked by keyboard shortcut also becomes its group's face.
-  const faceOf = (g: (typeof TOOL_GROUPS)[number]): Tool => (g.tools.includes(tool) ? tool : last[g.id] && g.tools.includes(last[g.id]!) ? last[g.id]! : g.tools[0]!);
-
   if (readOnly) {
     return (
       <div className="toolbar glass" role="toolbar" aria-label={m.tools.toolbar} aria-orientation="vertical">
@@ -160,12 +163,12 @@ export function Toolbar({ tool, onTool, readOnly = false }: { tool: Tool; onTool
   return (
     <div className="toolbar glass" role="toolbar" aria-label={m.tools.toolbar} aria-orientation="vertical">
       {SOLO_TOOLS.map((t) => (
-        <ToolButton key={t} tool={t} active={tool === t} onTool={choose} />
+        <ToolButton key={t} tool={t} active={tool === t} onTool={onTool} />
       ))}
       {TOOL_GROUPS.map((g) => (
         <span key={g.id} className="tool-group-wrap">
           <span className="toolbar__sep" aria-hidden="true" />
-          <Group group={g} tool={tool} current={faceOf(g)} onTool={choose} />
+          <Group group={g} tool={tool} onTool={onTool} />
         </span>
       ))}
     </div>

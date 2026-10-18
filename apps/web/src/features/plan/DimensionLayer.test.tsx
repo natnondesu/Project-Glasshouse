@@ -50,5 +50,5 @@ it('offers the Dimension tool with the D shortcut', () => {
   open();
   const canvas = screen.getByLabelText(/Room plan drawing/);
   fireEvent.keyDown(canvas, { key: 'd' });
-  expect(screen.getByRole('button', { name: 'Dimension' })).toHaveAttribute('aria-pressed', 'true');
+  expect(screen.getByRole('button', { name: 'Dimension — Measure tools' })).toHaveAttribute('aria-pressed', 'true');
 });

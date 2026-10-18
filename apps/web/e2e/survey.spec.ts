@@ -16,7 +16,7 @@ async function createRoom(page: Page): Promise<void> {
 }
 
 async function placeRack(page: Page, fx: number, fy: number): Promise<void> {
-  await pickTool(page, 'Place rack', 'Rack');
+  await pickTool(page, 'Racks', 'Rack');
   const box = await page.getByTestId('footprint').boundingBox();
   if (!box) throw new Error('Footprint not rendered');
   await page.mouse.click(box.x + box.width * fx, box.y + box.height * fy);
@@ -125,7 +125,7 @@ test('drawing floor past the room asks to extend it; growing left keeps what is 
   const survey = page.getByRole('complementary', { name: 'Survey' });
   await expect(survey).toBeVisible();
   const drag = async (fx1: number, fy1: number, fx2: number, fy2: number): Promise<void> => {
-    await pickTool(page, 'Add floor area', 'Add floor area');
+    await pickTool(page, 'Floor', 'Add floor area');
     const box = (await page.getByTestId('footprint').boundingBox())!;
     await page.mouse.move(box.x + box.width * fx1, box.y + box.height * fy1);
     await page.mouse.down();

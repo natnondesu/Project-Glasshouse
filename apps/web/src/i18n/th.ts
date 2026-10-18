@@ -213,7 +213,8 @@ export const th: Messages = {
     toolbar: 'เครื่องมือแปลน',
     more: (group) => `เครื่องมือ${group}เพิ่มเติม`,
     groupTools: (group) => `เครื่องมือ${group}`,
-    group: { floor: 'พื้น', objects: 'วัตถุ', measure: 'วัดระยะ', power: 'แหล่งจ่ายไฟ' },
+    activeVariant: (tool, group) => `${tool} — เครื่องมือ${group}`,
+    group: { floor: 'พื้น', racks: 'แร็ค', doors: 'ประตู', furniture: 'เฟอร์นิเจอร์', measure: 'วัดระยะ', power: 'แหล่งจ่ายไฟ' },
     spec: {
       select: { label: 'เลือก', name: 'เลือก', hint: 'เลือก ย้าย และปรับขนาดวัตถุ คลิกพื้นว่างเพื่อยกเลิกการเลือก' },
       pan: { label: 'เลื่อนมุมมอง', name: 'เลื่อนมุมมอง', hint: 'ลากเพื่อเลื่อนมุมมอง หรือกด Space ค้างแล้วลาก หรือเลื่อนด้วยสองนิ้ว' },

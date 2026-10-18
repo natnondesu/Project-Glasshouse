@@ -216,7 +216,9 @@ export const en = {
     toolbar: 'Plan tools',
     more: (group: string) => `More ${group} tools`,
     groupTools: (group: string) => `${group} tools`,
-    group: { floor: 'Floor', objects: 'Objects', measure: 'Measure', power: 'Power source' },
+    /** A group button whose variant is the active tool: "Wall rack — Racks tools". */
+    activeVariant: (tool: string, group: string) => `${tool} — ${group} tools`,
+    group: { floor: 'Floor', racks: 'Racks', doors: 'Doors', furniture: 'Furniture', measure: 'Measure', power: 'Power source' },
     spec: {
       select: { label: 'Select', name: 'Select', hint: 'Select, move and resize objects. Click empty floor to clear.' },
       pan: { label: 'Pan', name: 'Pan', hint: 'Drag to move the view. Space+drag or two-finger scroll also pan.' },
