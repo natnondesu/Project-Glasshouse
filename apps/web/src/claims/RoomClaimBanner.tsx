@@ -48,18 +48,21 @@ export function RoomClaimBanner({ roomId }: { roomId: string }) {
         setBusy(false);
       }
     };
+    const when = minutes < 1 ? m.claims.justNow : m.claims.minutesAgo(minutes);
+    const later = m.claims.takeOverLater(CLAIM_IDLE_MS / MS_PER_MINUTE);
     return (
-      <section className="claim-strip claim-strip--other" aria-label={m.claims.heldBy(other.name)}>
-        <p className="claim-strip__text">
-          <strong>{m.claims.heldBy(other.name)}</strong> {m.claims.lastEdit(minutes < 1 ? m.claims.justNow : m.claims.minutesAgo(minutes))}
-        </p>
-        {!can.edit ? null : allowed ? (
-          <button type="button" className="btn btn--sm" disabled={busy} onClick={() => void takeOver()}>
+      <section className="claim-chip" aria-label={m.claims.heldBy(other.name)}>
+        <span className="claim-chip__state claim-chip__state--other" title={`${m.claims.heldBy(other.name)} ${m.claims.lastEdit(when)}${can.edit && !allowed ? ` ${later}` : ''}`}>
+          <span className="claim-chip__dot" aria-hidden="true" />
+          <span aria-hidden="true">{m.claims.chipHeldBy(other.name)}</span>
+          <span className="claim-chip__when" aria-hidden="true">· {when}</span>
+          <span className="visually-hidden">{`${m.claims.heldBy(other.name)} ${m.claims.lastEdit(when)}${can.edit && !allowed ? ` ${later}` : ''}`}</span>
+        </span>
+        {can.edit && allowed ? (
+          <button type="button" className="btn btn--sm btn--ink" disabled={busy} onClick={() => void takeOver()}>
             {m.claims.takeOver}
           </button>
-        ) : (
-          <p className="claim-strip__hint">{m.claims.takeOverLater(CLAIM_IDLE_MS / MS_PER_MINUTE)}</p>
-        )}
+        ) : null}
       </section>
     );
   }
@@ -77,10 +80,14 @@ export function RoomClaimBanner({ roomId }: { roomId: string }) {
       }
     };
     return (
-      <section className="claim-strip claim-strip--mine" aria-label={m.claims.youEditing}>
-        <p className="claim-strip__text">{m.claims.youEditing}</p>
-        <button type="button" className="btn btn--sm" disabled={busy} onClick={() => void done()}>
-          {m.claims.doneEditing}
+      <section className="claim-chip" aria-label={m.claims.youEditing}>
+        <span className="claim-chip__state claim-chip__state--mine" title={m.claims.youEditing}>
+          <span className="claim-chip__dot" aria-hidden="true" />
+          <span aria-hidden="true">{m.claims.chipEditing}</span>
+          <span className="visually-hidden">{m.claims.youEditing}</span>
+        </span>
+        <button type="button" className="btn btn--sm" aria-label={m.claims.doneEditing} disabled={busy} onClick={() => void done()}>
+          {m.claims.chipDone}
         </button>
       </section>
     );
