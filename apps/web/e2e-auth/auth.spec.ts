@@ -9,6 +9,21 @@ test('the workspace is behind sign-in, and a wrong password is explained', async
   await expect(page.getByRole('alert')).toContainText('don’t match');
 });
 
+test('a refused password marks both fields red, and a focused one still shows its focus ring', async ({ page }) => {
+  await signIn(page, 'ed@company.test', 'not-the-password');
+  await expect(page.getByRole('alert')).toContainText('don’t match');
+  const password = page.getByLabel('Password', { exact: true });
+  await password.focus();
+  const box = page.locator('.field__box', { has: password });
+  const read = (prop: 'boxShadow' | 'borderTopColor') => box.evaluate((el, p) => getComputedStyle(el)[p], prop);
+  // The border and ring ease in over 150 ms; wait for them to settle.
+  await expect.poll(() => read('borderTopColor')).toBe('rgb(184, 50, 42)');
+  await expect.poll(() => read('boxShadow')).toContain('3px');
+  expect(await read('boxShadow')).not.toBe('none');
+  await page.getByLabel('Work email').focus();
+  await expect.poll(() => read('boxShadow')).toBe('none');
+});
+
 test('an editor signs in, edits, and signs out', async ({ page }) => {
   await signIn(page, 'ed@company.test', 'editor-password-1');
   await expect(page.getByText('Connected to the Glasshouse server')).toBeVisible();

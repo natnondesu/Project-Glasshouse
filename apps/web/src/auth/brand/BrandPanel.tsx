@@ -8,7 +8,7 @@ const STEP_STAGGER_S = 0.12;
 /** The ink-coloured half of the sign-in page. Under ~900 px it shrinks to a band: lockup and headline only (brand-panel.css). */
 export function BrandPanel() {
   const m = useT();
-  const { headline, sub, steps, footer, illustration } = m.auth.brand;
+  const { headline, sub, steps, footer, illustration, captions } = m.auth.brand;
   return (
     <aside className="signin-brand">
       <img className="signin-brand__lockup" src="/brand/glasshouse-lockup-horizontal-dark.svg" width="200" height="54" alt="Glasshouse" />
@@ -25,7 +25,7 @@ export function BrandPanel() {
         ))}
       </ol>
       <div className="signin-brand__stage">
-        <RoomIllustration label={illustration} />
+        <RoomIllustration label={illustration} captions={captions} />
       </div>
       <p className="signin-brand__footer">{footer}</p>
     </aside>

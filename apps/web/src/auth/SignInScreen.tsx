@@ -3,7 +3,7 @@ import { useT, type Messages } from '../i18n';
 import { IconAlertCircle, IconBuilding } from '../ui/icons';
 import '../ui/fields.css';
 import { stashCount } from '../sync/pendingStash';
-import { login, ssoUrl } from './authApi';
+import { login, LoginRefusedError, ssoUrl } from './authApi';
 import { AuthShell } from './AuthShell';
 import { useAuthStore } from './authStore';
 import { Swiftlet } from './brand/Swiftlet';
@@ -37,6 +37,7 @@ export function SignInScreen() {
   const [urlCode] = useState(() => signinErrorCode(m.auth.signinError));
   const [dismissedUrl, setDismissedUrl] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [credentialsRefused, setCredentialsRefused] = useState(false);
   const here = pathWithoutSigninError();
   const urlError = urlCode && !dismissedUrl ? m.auth.signinError[urlCode] : null;
   const shownError = error ?? urlError ?? startupError;
@@ -50,17 +51,18 @@ export function SignInScreen() {
     e.preventDefault();
     setBusy(true);
     setError(null);
+    setCredentialsRefused(false);
     setDismissedUrl(true);
     try {
       await login(email.trim(), password);
       await init();
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
+      setCredentialsRefused(err instanceof LoginRefusedError && err.status === 401);
     } finally {
       setBusy(false);
     }
   };
-  const credentialsRefused = error !== null;
   const alertId = 'signin-alert';
   // Above the password form when there is one (as in the design); otherwise straight under the title, ahead of the company button.
   const alert = shownError ? (

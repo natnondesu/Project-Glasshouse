@@ -40,9 +40,17 @@ export async function getMe(): Promise<AuthUser | null> {
   return (await res.json()) as AuthUser;
 }
 
+/** A refused password sign-in, with the status so the screen can tell wrong credentials (401) from everything else. */
+export class LoginRefusedError extends Error {
+  constructor(message: string, readonly status: number) {
+    super(message);
+    this.name = 'LoginRefusedError';
+  }
+}
+
 export async function login(email: string, password: string): Promise<{ mustChangePassword: boolean }> {
   const res = await fetch('/auth/login', { method: 'POST', headers: JSON_HEADERS, body: JSON.stringify({ email, password }) });
-  if (!res.ok) throw new Error(await messageOf(res, text().signInFailed));
+  if (!res.ok) throw new LoginRefusedError(await messageOf(res, text().signInFailed), res.status);
   return (await res.json()) as { mustChangePassword: boolean };
 }
 

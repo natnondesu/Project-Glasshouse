@@ -83,6 +83,31 @@ it('shows Signing in… and disables the button while the server answers, then m
   expect(screen.getByRole('button', { name: 'Sign in' })).toBeEnabled();
 });
 
+it.each([
+  ['a server error', 500],
+  ['password sign-in switched off', 404],
+  ['too many attempts', 429],
+])('leaves the fields unmarked when the refusal is %s, not the credentials', async (_name, status) => {
+  useAuthStore.setState({ status: 'signed-out', config: { mode: 'on', localLogin: true, sso: false } });
+  vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({ error: { message: 'Not that.' } }), { status }));
+  render(<SignInScreen />);
+  await userEvent.type(screen.getByLabelText('Work email'), 'p@company.test');
+  await userEvent.type(screen.getByLabelText('Password'), 'some-password-1{Enter}');
+  expect(await screen.findByRole('alert')).toHaveTextContent('Not that.');
+  expect(screen.getByLabelText('Work email')).not.toHaveAttribute('aria-invalid');
+  expect(screen.getByLabelText('Password')).not.toHaveAttribute('aria-invalid');
+});
+
+it('leaves the fields unmarked when the server cannot be reached', async () => {
+  useAuthStore.setState({ status: 'signed-out', config: { mode: 'on', localLogin: true, sso: false } });
+  vi.spyOn(globalThis, 'fetch').mockRejectedValue(new TypeError('Failed to fetch'));
+  render(<SignInScreen />);
+  await userEvent.type(screen.getByLabelText('Work email'), 'p@company.test');
+  await userEvent.type(screen.getByLabelText('Password'), 'some-password-1{Enter}');
+  expect(await screen.findByRole('alert')).toHaveTextContent('Failed to fetch');
+  expect(screen.getByLabelText('Password')).not.toHaveAttribute('aria-invalid');
+});
+
 it('leaves the fields unmarked when the refusal is not about the credentials', () => {
   window.history.replaceState(null, '', '/?signin_error=expired');
   useAuthStore.setState({ status: 'signed-out', config: { mode: 'on', localLogin: true, sso: true } });
@@ -174,4 +199,15 @@ it('mentions edits waiting to be sent', () => {
   render(<SignInScreen />);
   expect(screen.getByText(/1 change you made wasn’t sent yet/)).toBeInTheDocument();
   sessionStorage.clear();
+});
+
+it('draws the demo captions in the page language', async () => {
+  useAuthStore.setState({ status: 'signed-out', config: { mode: 'on', localLogin: true, sso: false } });
+  const { container, unmount } = render(<SignInScreen />);
+  const pills = () => [...container.querySelectorAll('.demo text')].map((t) => t.textContent);
+  expect(pills()).toContain('Click a rack to select it');
+  unmount();
+  await useLangStore.getState().setLang('th');
+  const th = render(<SignInScreen />);
+  expect([...th.container.querySelectorAll('.demo text')].map((t) => t.textContent)).toEqual(expect.arrayContaining(['คลิกแร็คเพื่อเลือก', 'ลากเพื่อย้าย — ระยะเว้นตามไปด้วย', 'ปรับขนาด: 0.60 → 1.20 ม.', 'ตรวจสอบใหม่ทุกครั้งที่แก้ไข ✓', 'คลิกอุปกรณ์เพื่อดูรายละเอียด']));
 });

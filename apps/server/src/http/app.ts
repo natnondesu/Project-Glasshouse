@@ -71,6 +71,9 @@ const serializeRequest = (request: FastifyRequest) => ({
   remotePort: request.socket?.remotePort,
 });
 
+/** For static SVG files only: their own inline styles, and nothing else (no scripts, no loads). */
+const SVG_CSP = "default-src 'none'; style-src 'unsafe-inline'";
+
 export async function buildApp({ service, authenticate, recheck, authRoutes, publicOrigin, admin, people, trustProxy = false, webDir = null, logger = false, logStream, heartbeatMs, claims }: AppDeps): Promise<FastifyInstance> {
   // Force-close: open event streams would otherwise keep shutdown waiting forever.
   const app = Fastify({ logger: logger || logStream ? { ...(logStream ? { stream: logStream } : {}), serializers: { req: serializeRequest } } : false, trustProxy: typeof trustProxy === 'number' ? hopsTrusted(trustProxy) : trustProxy, bodyLimit: BODY_LIMIT, forceCloseConnections: true });
@@ -119,6 +122,10 @@ export async function buildApp({ service, authenticate, recheck, authRoutes, pub
   });
   if (webDir) {
     await app.register(fastifyStatic, { root: webDir, wildcard: false });
+    // favicon.svg colours itself with an inline <style> (and swaps it for dark mode). Opened on its own it must keep that; nothing else is allowed.
+    app.addHook('onSend', async (_request, reply) => {
+      if ((reply.statusCode === 200 || reply.statusCode === 304) && String(reply.getHeader('content-type') ?? '').startsWith('image/svg+xml')) reply.header('content-security-policy', SVG_CSP);
+    });
     // The web app routes on the client: any other GET outside /api gets index.html.
     app.setNotFoundHandler((request, reply) => {
       if (request.method === 'GET' && !request.url.startsWith('/api/')) return reply.sendFile('index.html');

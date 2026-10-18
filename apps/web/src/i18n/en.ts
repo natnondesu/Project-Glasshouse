@@ -1010,6 +1010,7 @@ export const en = {
       sub: 'Glasshouse turns a room survey into an approved rack plan your onsite team can install from — power, clearance and every device checked before anyone lifts a rack.',
       steps: ['Survey', 'Plan', 'Approve', 'Install'],
       footer: 'ROOM SURVEY · RACK INSTALLATION PLANNING',
+      captions: ['Click a rack to select it', 'Drag to move — clearance follows', 'Resize: 0.60 → 1.20 m', 'Checks re-run on every change ✓', 'Click any device for its details'],
       illustration: 'Isometric server room with eight racks and front clearance zones',
     },
     sessionEnded: 'Your session ended. Sign in again — changes you hadn’t sent yet will be sent then.',

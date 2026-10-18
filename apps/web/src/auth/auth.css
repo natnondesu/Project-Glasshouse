@@ -135,6 +135,14 @@
 .signin .field__box--error,
 .signin .field__box--error:focus-within {
   border-color: var(--block);
+}
+
+/* The red border stays; the focus ring is still the accent ring so keyboard users see where they are. */
+.signin .field__box--error:focus-within {
+  box-shadow: 0 0 0 3px var(--acc-ring);
+}
+
+.signin .field__box--error:not(:focus-within) {
   box-shadow: none;
 }
 

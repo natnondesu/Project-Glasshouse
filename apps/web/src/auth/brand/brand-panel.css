@@ -163,6 +163,27 @@
   animation: signin-float 7s ease-in-out infinite;
 }
 
+/* Short laptops (1366x768, 1280x720): tighter copy so lockup, steps, room and footer fit without scrolling. */
+@media (min-width: 900px) and (max-height: 819px) {
+  .signin-brand {
+    gap: 22px;
+    padding: 28px 56px 24px;
+  }
+
+  .signin-brand__headline {
+    font-size: 36px;
+  }
+
+  .signin-brand__sub {
+    font-size: var(--text-lg);
+    line-height: 1.5;
+  }
+
+  .signin-brand__stage {
+    min-height: 180px;
+  }
+}
+
 /* Narrow screens: a compact band above the form, lockup and headline only. */
 @media (max-width: 899px) {
   .signin-brand {

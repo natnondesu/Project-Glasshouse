@@ -1,9 +1,10 @@
 /**
  * The 18-second swiftlet demo (select, drag, resize, re-check, details), copied from the product owner's sign-in design.
  * It is a SMIL timeline: no scripts and no inline <style>, so it runs under the server's content security policy.
+ * The five caption pills come from the messages (the SRV-02 card is sample data and stays as drawn).
  * Decorative, hence aria-hidden; `prefers-reduced-motion` hides it (auth.css).
  */
-export function RoomDemo() {
+export function RoomDemo({ captions }: { captions: readonly string[] }) {
   return (
     <g className="demo" aria-hidden="true">
     <g>
@@ -24,11 +25,11 @@ export function RoomDemo() {
     <g fontFamily="Geist, sans-serif" fontSize="14" fontWeight="600">
     <rect x="56" y="360" width="268" height="34" rx="17" fill="rgba(127,162,232,0.14)" stroke="rgba(127,162,232,0.35)"></rect>
     <circle cx="76" cy="377" r="4" fill="#7fa2e8"></circle>
-    <text x="90" y="382" fill="#ffffff" opacity="0"><animate attributeName="opacity" dur="18s" repeatCount="indefinite" keyTimes="0;0.0133;0.0283;0.105;0.12;1" values="0;0;1;1;0;0"></animate>Click a rack to select it</text>
-    <text x="90" y="382" fill="#ffffff" opacity="0"><animate attributeName="opacity" dur="18s" repeatCount="indefinite" keyTimes="0;0.12;0.135;0.285;0.3;1" values="0;0;1;1;0;0"></animate>Drag to move — clearance follows</text>
-    <text x="90" y="382" fill="#ffffff" opacity="0"><animate attributeName="opacity" dur="18s" repeatCount="indefinite" keyTimes="0;0.3067;0.3217;0.4983;0.5133;1" values="0;0;1;1;0;0"></animate>Resize: 0.60 → 1.20 m</text>
-    <text x="90" y="382" fill="#ffffff" opacity="0"><animate attributeName="opacity" dur="18s" repeatCount="indefinite" keyTimes="0;0.5133;0.5283;0.675;0.69;1" values="0;0;1;1;0;0"></animate>Checks re-run on every change ✓</text>
-    <text x="90" y="382" fill="#ffffff" opacity="0"><animate attributeName="opacity" dur="18s" repeatCount="indefinite" keyTimes="0;0.69;0.705;0.955;0.97;1" values="0;0;1;1;0;0"></animate>Click any device for its details</text>
+    <text x="90" y="382" fill="#ffffff" opacity="0"><animate attributeName="opacity" dur="18s" repeatCount="indefinite" keyTimes="0;0.0133;0.0283;0.105;0.12;1" values="0;0;1;1;0;0"></animate>{captions[0]}</text>
+    <text x="90" y="382" fill="#ffffff" opacity="0"><animate attributeName="opacity" dur="18s" repeatCount="indefinite" keyTimes="0;0.12;0.135;0.285;0.3;1" values="0;0;1;1;0;0"></animate>{captions[1]}</text>
+    <text x="90" y="382" fill="#ffffff" opacity="0"><animate attributeName="opacity" dur="18s" repeatCount="indefinite" keyTimes="0;0.3067;0.3217;0.4983;0.5133;1" values="0;0;1;1;0;0"></animate>{captions[2]}</text>
+    <text x="90" y="382" fill="#ffffff" opacity="0"><animate attributeName="opacity" dur="18s" repeatCount="indefinite" keyTimes="0;0.5133;0.5283;0.675;0.69;1" values="0;0;1;1;0;0"></animate>{captions[3]}</text>
+    <text x="90" y="382" fill="#ffffff" opacity="0"><animate attributeName="opacity" dur="18s" repeatCount="indefinite" keyTimes="0;0.69;0.705;0.955;0.97;1" values="0;0;1;1;0;0"></animate>{captions[4]}</text>
     </g></g>
   );
 }

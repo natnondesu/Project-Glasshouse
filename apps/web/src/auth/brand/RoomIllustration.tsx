@@ -28,7 +28,7 @@ function Rack({ index }: { index: number }) {
   );
 }
 
-export function RoomIllustration({ label }: { label: string }) {
+export function RoomIllustration({ label, captions }: { label: string; captions: readonly string[] }) {
   return (
     <svg className="float signin-brand__room" viewBox="40 -10 650 420" preserveAspectRatio="xMidYMax meet" role="img" aria-label={label}>
       <polygon points="330.0,60.0 648.7,244.0 389.8,393.5 71.1,209.5" fill="#142233" stroke="#2e4258" strokeWidth="1.5" />
@@ -46,7 +46,7 @@ export function RoomIllustration({ label }: { label: string }) {
       {RACKS.map((i) => (
         <Rack key={i} index={i} />
       ))}
-      <RoomDemo />
+      <RoomDemo captions={captions} />
     </svg>
   );
 }
