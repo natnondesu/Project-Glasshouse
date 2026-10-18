@@ -11,6 +11,7 @@ import {
   placementPolygon,
   rotatedBoundsSize,
   type Point,
+  type Poly,
   type RoomObject,
   type Survey,
   usedU,
@@ -343,50 +344,90 @@ const ZONE_LABEL_CHAR_PX = 6.7;
 const ZONE_LABEL_PAD_PX = 12;
 const ZONE_LABEL_MIN_HEIGHT_PX = 16;
 const ZONE_LABEL_LINE_PX = 13;
+/** The label sits this far in from the zone's far edge, where nothing but the zone's own hatch is. */
+const ZONE_LABEL_INSET_PX = 10;
+
+const ZONE_DEPTH_KEY = { wall_split_ac: 'splitAcAirflow', precision_ac: 'precisionAcService', display_wall: 'displayWallViewing' } as const;
+
+interface ZoneDrawing {
+  object: RoomObject;
+  zone: Poly;
+  warned: boolean;
+  /** Empty when the zone is too small or a rule about it holds. */
+  lines: string[];
+  at: [number, number];
+}
+
+function zoneDrawings(objects: RoomObject[], view: View, selectedId: string | null, warned: ReadonlySet<string>, name: (o: RoomObject) => string): ZoneDrawing[] {
+  return objects.flatMap((o) => {
+    const zone = environmentZone(o);
+    if (!zone || !(o.id === selectedId || warned.has(o.id))) return [];
+    const depth = ENVIRONMENT_ZONE_M[ZONE_DEPTH_KEY[o.type as keyof typeof ZONE_DEPTH_KEY]];
+    const title = name(o);
+    const figure = `${formatMetres(depth)} m`;
+    const ring = (zone[0] ?? []).map((p) => toScreen(view, p));
+    const [minX, maxX] = extent(ring.map((p) => p[0]));
+    const [minY, maxY] = extent(ring.map((p) => p[1]));
+    // One line when the zone is wide enough; otherwise the name over the figure, when it is tall enough for two.
+    // While a rule about the zone holds, racks stand in it: the amber hatch says it, and the label would only sit on top of them.
+    const lines = warned.has(o.id) ? [] : (title.length + 1 + figure.length) * ZONE_LABEL_CHAR_PX + ZONE_LABEL_PAD_PX <= maxX - minX && maxY - minY >= ZONE_LABEL_MIN_HEIGHT_PX
+      ? [`${title} ${figure}`]
+      : Math.max(title.length, figure.length) * ZONE_LABEL_CHAR_PX + ZONE_LABEL_PAD_PX <= maxX - minX && maxY - minY >= ZONE_LABEL_MIN_HEIGHT_PX * 2
+        ? [title, figure]
+        : [];
+    // The middle of the far edge, drawn inward by the inset, then kept whole inside the zone (a sideways zone is shallow).
+    const far = toScreen(view, localToWorld(o, [0, o.d / 2 + depth]));
+    const near = toScreen(view, localToWorld(o, [0, o.d / 2]));
+    const run = Math.hypot(near[0] - far[0], near[1] - far[1]) || 1;
+    const inX = far[0] + ((near[0] - far[0]) / run) * ZONE_LABEL_INSET_PX;
+    const inY = far[1] + ((near[1] - far[1]) / run) * ZONE_LABEL_INSET_PX;
+    const halfW = (Math.max(...lines.map((l) => l.length), 0) * ZONE_LABEL_CHAR_PX) / 2;
+    const halfH = (lines.length * ZONE_LABEL_LINE_PX) / 2;
+    const at: [number, number] = [clampTo(inX, minX + halfW, maxX - halfW), clampTo(inY, minY + halfH, maxY - halfH)];
+    return [{ object: o, zone, warned: warned.has(o.id), lines, at }];
+  });
+}
+
+const extent = (values: number[]): [number, number] => [Math.min(...values), Math.max(...values)];
+const clampTo = (v: number, lo: number, hi: number): number => (lo > hi ? (lo + hi) / 2 : Math.min(hi, Math.max(lo, v)));
 
 /**
  * The area the planner keeps watch on in front of an air conditioner or a display wall, hatched like a clearance zone.
  * Shown while the unit is selected or while a rule about it has fired (then in the warning colour).
  */
 export function EnvironmentLayer({ objects, view, selectedId, warned }: { objects: RoomObject[]; view: View; selectedId: string | null; warned: ReadonlySet<string> }) {
-  const m = useT();
   return (
     <g aria-hidden="true">
-      {objects.flatMap((o) => {
-        const zone = environmentZone(o);
-        const shown = o.id === selectedId || warned.has(o.id);
-        if (!zone || !shown) return [];
-        const depth = ENVIRONMENT_ZONE_M[o.type === 'wall_split_ac' ? 'splitAcAirflow' : o.type === 'precision_ac' ? 'precisionAcService' : 'displayWallViewing'];
-        const name = m.plan.zone[o.type as keyof typeof m.plan.zone];
-        const figure = `${formatMetres(depth)} m`;
-        const ring = (zone[0] ?? []).map((p) => toScreen(view, p));
-        const xs = ring.map((p) => p[0]);
-        const ys = ring.map((p) => p[1]);
-        const widthPx = Math.max(...xs) - Math.min(...xs);
-        const heightPx = Math.max(...ys) - Math.min(...ys);
-        // One line when the zone is wide enough; otherwise the name over the figure, when it is tall enough for two.
-        // While a rule about the zone holds, racks stand in it: the amber hatch says it, and the label would only sit on top of them.
-        const lines = warned.has(o.id) ? [] : (name.length + 1 + figure.length) * ZONE_LABEL_CHAR_PX + ZONE_LABEL_PAD_PX <= widthPx && heightPx >= ZONE_LABEL_MIN_HEIGHT_PX
-          ? [`${name} ${figure}`]
-          : Math.max(name.length, figure.length) * ZONE_LABEL_CHAR_PX + ZONE_LABEL_PAD_PX <= widthPx && heightPx >= ZONE_LABEL_MIN_HEIGHT_PX * 2
-            ? [name, figure]
-            : [];
-        const [lx, ly] = toScreen(view, localToWorld(o, [0, o.d / 2 + depth / 2]));
-        return [
-          <g key={o.id} className={`env-zone${warned.has(o.id) ? ' env-zone--warn' : ''}`}>
-            <path className="env-zone__area" d={polygonPath(zone, view)} />
-            {lines.length > 0 ? (
-              <text className="env-zone__label" x={lx} y={ly - ((lines.length - 1) * ZONE_LABEL_LINE_PX) / 2} textAnchor="middle" dominantBaseline="middle">
+      {zoneDrawings(objects, view, selectedId, warned, () => '').map(({ object, zone, warned: isWarned }) => (
+        <g key={object.id} className={`env-zone${isWarned ? ' env-zone--warn' : ''}`}>
+          <path className="env-zone__area" d={polygonPath(zone, view)} />
+        </g>
+      ))}
+    </g>
+  );
+}
+
+/**
+ * What each zone is for and how deep. Drawn after the distance lines so the label's paper halo
+ * cuts any line that runs under it rather than the line running through the words.
+ */
+export function ZoneLabelLayer({ objects, view, selectedId, warned }: { objects: RoomObject[]; view: View; selectedId: string | null; warned: ReadonlySet<string> }) {
+  const m = useT();
+  return (
+    <g aria-hidden="true" className="env-labels">
+      {zoneDrawings(objects, view, selectedId, warned, (o) => m.plan.zone[o.type as keyof typeof m.plan.zone]).flatMap(({ object, lines, at: [lx, ly] }) =>
+        lines.length === 0
+          ? []
+          : [
+              <text key={object.id} className="env-zone__label" x={lx} y={ly - ((lines.length - 1) * ZONE_LABEL_LINE_PX) / 2} textAnchor="middle" dominantBaseline="middle">
                 {lines.map((line, i) => (
                   <tspan key={line} x={lx} dy={i === 0 ? 0 : ZONE_LABEL_LINE_PX}>
                     {line}
                   </tspan>
                 ))}
-              </text>
-            ) : null}
-          </g>,
-        ];
-      })}
+              </text>,
+            ],
+      )}
     </g>
   );
 }

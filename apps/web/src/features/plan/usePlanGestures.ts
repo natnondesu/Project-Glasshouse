@@ -125,6 +125,19 @@ export function usePlanGestures({ content, tool, setTool, selectedId, select, vi
     setPreview(null);
   };
 
+  // Undo is a window-level shortcut. While something is being dragged it means "never mind this drag", not "undo the step before it".
+  useEffect(() => {
+    const onUndo = (e: globalThis.KeyboardEvent): void => {
+      if (!(e.metaKey || e.ctrlKey) || e.key.toLowerCase() !== 'z' || !gesture.current || gesture.current.kind === 'pan') return;
+      e.preventDefault();
+      e.stopPropagation();
+      cancel();
+    };
+    window.addEventListener('keydown', onUndo, true);
+    return () => window.removeEventListener('keydown', onUndo, true);
+    // `cancel` only touches refs and a state setter.
+  }, []);
+
   const onPointerDown = (e: PointerEvent<SVGSVGElement>): void => {
     if (e.button === 2) return;
     const world = viewport.clientToWorld(e.clientX, e.clientY);

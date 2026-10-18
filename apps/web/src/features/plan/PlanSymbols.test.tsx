@@ -171,6 +171,44 @@ describe('zones in front of air conditioning and the display wall', () => {
     expect(container.querySelector('.env-zone')).not.toBeNull();
     expect(render(<Scene objects={[dw]} selectedId="dw" />).container.querySelector('.env-zone__label')?.textContent).toBe('Viewing 1.50 m');
   });
+
+  it('covers 1.00 m in front of a precision AC: the area reaches 1.00 m past its front face, and says so on two lines', () => {
+    const pac = at(createObject('precision_ac', { x: 3, y: 3 }, []), 'pac');
+    const { container } = render(<Scene objects={[pac]} selectedId="pac" />);
+    const ys = [...(container.querySelector('.env-zone__area')?.getAttribute('d') ?? '').matchAll(/[ML]\s*([-\d.]+)[ ,]([-\d.]+)/g)].map((m) => Number(m[2]));
+    // Front face at y = 3.80 m, 100 px per metre.
+    expect(Math.min(...ys)).toBeCloseTo(380, 0);
+    expect(Math.max(...ys)).toBeCloseTo(480, 0);
+    expect(container.querySelector('.env-zone__label')?.textContent).toBe('Service1.00 m');
+  });
+
+  it('draws the zone label in a layer of its own, above the objects and the distances, so its halo cuts any line under it', () => {
+    const dw = at(createObject('display_wall', { x: 3, y: 0 }, []), 'dw');
+    const { container } = render(<Scene objects={[dw]} selectedId="dw" />);
+    const label = container.querySelector('.env-zone__label')!;
+    expect(label.closest('.env-zone')).toBeNull();
+    const layer = label.closest('.env-labels')!;
+    expect(layer).not.toBeNull();
+    const objectsLayer = container.querySelector('[data-object-id="dw"]')!;
+    expect(objectsLayer.compareDocumentPosition(layer) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it('puts the label near the far edge of the zone, inset about 10 px, not in the middle', () => {
+    const dw = at(createObject('display_wall', { x: 3, y: 0 }, []), 'dw');
+    const { container } = render(<Scene objects={[dw]} selectedId="dw" />);
+    const ys = [...(container.querySelector('.env-zone__area')?.getAttribute('d') ?? '').matchAll(/[ML]\s*([-\d.]+)[ ,]([-\d.]+)/g)].map((m) => Number(m[2]));
+    const far = Math.max(...ys);
+    const labelY = Number(container.querySelector('.env-zone__label')?.getAttribute('y'));
+    expect(far - labelY).toBeCloseTo(10, 0);
+  });
+
+  it('keeps a sideways zone label inside the zone', () => {
+    const dw = at(createObject('display_wall', { x: 0, y: 3 }, []), 'dw', { angle: 90 });
+    const { container } = render(<Scene objects={[dw]} selectedId="dw" />);
+    const xs = [...(container.querySelector('.env-zone__area')?.getAttribute('d') ?? '').matchAll(/[ML]\s*([-\d.]+)[ ,]([-\d.]+)/g)].map((m) => Number(m[1]));
+    const label = container.querySelector('.env-zone__label');
+    if (label) expect(Number(label.getAttribute('x'))).toBeLessThanOrEqual(Math.max(...xs));
+  });
 });
 
 describe('drawing a partition', () => {

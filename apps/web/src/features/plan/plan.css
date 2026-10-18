@@ -869,9 +869,11 @@
   stroke-width: 1.5;
 }
 
+/* A solid wall block with a door gap cut in it: nothing like the rack front's single thin line. */
 .plan-legend__swatch--partition {
-  height: 5px;
-  background: var(--d-ink);
+  width: 20px;
+  height: 9px;
+  background: linear-gradient(90deg, var(--d-ink) 0 7px, transparent 7px 12px, var(--d-ink) 12px);
 }
 
 .plan-legend__swatch--zone {

@@ -22,6 +22,7 @@ import {
   HatchDefs,
   ObjectsLayer,
   SelectionLayer,
+  ZoneLabelLayer,
   WallPreview,
   type Preview,
 } from './layers';
@@ -112,6 +113,8 @@ export function PlanCanvas({ content, issues, selectedId, viewport, preview, mea
         </g>
       ) : null}
       {active && showGaps ? <GapLayer object={active} content={liveContent} view={view} /> : null}
+      {layers.clearance ? <ZoneLabelLayer objects={objects} view={view} selectedId={selectedId} warned={zoneWarned} /> : null}
+      {ghost && layers.clearance ? <ZoneLabelLayer objects={[ghost]} view={view} selectedId={ghost.id} warned={NONE} /> : null}
       {pulsed && pulse ? (
         <circle
           key={pulse.n}

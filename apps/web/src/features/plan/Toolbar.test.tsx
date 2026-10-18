@@ -1,9 +1,8 @@
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { useState } from 'react';
+import { createElement, useState } from 'react';
 import { beforeEach, expect, it } from 'vitest';
 import { Toolbar } from './Toolbar';
-import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { TOOL_SPECS, type Tool } from './tools';
 
