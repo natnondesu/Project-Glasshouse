@@ -69,8 +69,34 @@ it('explains short links, and takes a site off the map', async () => {
   await user.click(within(dialog).getByRole('textbox'));
   await user.paste('https://maps.app.goo.gl/Ab12');
   expect(within(dialog).getByRole('status')).toHaveTextContent("Short links (maps.app.goo.gl) can't be read here");
+  // Taking a site off the map asks first; No brings the dialog back.
   await user.click(within(dialog).getByRole('button', { name: 'Take off the map' }));
+  const ask = screen.getByRole('alertdialog', { name: 'Take Warehouse 2 off the map?' });
+  expect(ask).toHaveAccessibleDescription('You can place it again any time.');
+  await user.click(within(ask).getByRole('button', { name: 'Cancel' }));
+  expect(location()).toEqual({ lat: 1, lon: 2 });
+  await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Take off the map' }));
+  await user.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Take off the map' }));
   expect(location()).toBeUndefined();
+  expect(screen.queryByRole('dialog')).toBeNull();
+});
+
+it('closes on Escape and gives focus back to the row action', async () => {
+  const user = userEvent.setup();
+  open();
+  const action = tree().getByRole('button', { name: 'Location of Warehouse 2' });
+  await user.click(action);
+  expect(screen.getByRole('dialog')).toBeInTheDocument();
+  await user.keyboard('{Escape}');
+  expect(screen.queryByRole('dialog')).toBeNull();
+  expect(action).toHaveFocus();
+});
+
+it('caps what can be pasted at a link’s length', async () => {
+  const user = userEvent.setup();
+  open();
+  await user.click(tree().getByRole('button', { name: 'Location of Warehouse 2' }));
+  expect(within(screen.getByRole('dialog')).getByRole('textbox')).toHaveAttribute('maxlength', '2000');
 });
 
 it('goes to Home to place a site on the map from inside a room', async () => {

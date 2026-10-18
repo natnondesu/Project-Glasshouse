@@ -65,3 +65,26 @@ it.each([
   expect(screen.queryByRole('button', { name: /^New room in Bangna campus/ }) !== null).toBe(present);
   expect(screen.getByRole('region', { name: /Bangna campus/ })).toBeInTheDocument();
 });
+
+it.each([
+  [{}, 'Ploy (unverified)'],
+  [{ byId: 'u1' }, 'Ploy S.'],
+])('labels the picked room’s designer by whether they signed in (%j)', (who, label) => {
+  const s = useWorkspaceStore.getState();
+  const mdf = s.workspace.projects[0]!.sites[0]!.rooms.find((r) => r.name === 'MDF-1')!;
+  localStorage.setItem('glasshouse:last-room', mdf.id);
+  s.dispatch({ type: 'review', roomId: mdf.id, command: { type: 'review/submit', designedBy: 'byId' in who ? 'Ploy S.' : 'Ploy', ...who, at: '2026-10-15T09:00:00.000Z' } });
+  open();
+  const stamp = document.querySelector('.site-card__stamp')!;
+  expect(stamp).toHaveTextContent('IN REVIEW');
+  expect(stamp).toHaveTextContent(`R01 · 2026-10-15 · ${label}`);
+  if ('byId' in who) expect(stamp).not.toHaveTextContent('unverified');
+});
+
+it('stamps an approved room with its approver and offers its Install sheet', () => {
+  open();
+  const stamp = document.querySelector('.site-card__stamp')!;
+  expect(stamp).toHaveTextContent('APPROVED');
+  expect(stamp).toHaveTextContent(/R01 · \d{4}-\d{2}-\d{2} · .+/);
+  expect(screen.getByRole('link', { name: 'Install sheet · R01' })).toHaveAttribute('href', expect.stringMatching(/install-sheet$/));
+});

@@ -59,9 +59,26 @@ function fromLink(input: string): ParsedLocation {
   return fail('unrecognised');
 }
 
-/** One coordinate: decimal degrees or degrees-minutes-seconds, with a sign or a hemisphere letter before or after. */
-const COMPONENT = `([NSEW])?\\s*([-+]?\\d+(?:\\.\\d+)?)\\s*°?\\s*(?:(\\d+(?:\\.\\d+)?)\\s*'\\s*)?(?:(\\d+(?:\\.\\d+)?)\\s*"\\s*)?([NSEW])?`;
-const TWO_COMPONENTS = new RegExp(`^${COMPONENT}(?:\\s*[,;]\\s*|\\s+)${COMPONENT}$`, 'i');
+/** Longer than any map link: refused before any pattern runs, so a huge paste costs nothing. */
+export const MAX_INPUT_LENGTH = 2000;
+
+type Atom = { kind: 'letter' | 'num' | 'deg' | 'min' | 'sec' | 'sep' | 'space'; text: string };
+const ATOM = /[NSEW]|[-+]?\d+(?:\.\d+)?|°|'|"|[,;]| /iy;
+
+/** Splits typed coordinates into atoms in one pass; anything else means it isn't coordinates. */
+function atoms(text: string): Atom[] | null {
+  const out: Atom[] = [];
+  ATOM.lastIndex = 0;
+  while (ATOM.lastIndex < text.length) {
+    const at = ATOM.lastIndex;
+    const match = ATOM.exec(text);
+    if (!match || ATOM.lastIndex === at) return null;
+    const t = match[0];
+    const kind: Atom['kind'] = /^[NSEW]$/i.test(t) ? 'letter' : t === '°' ? 'deg' : t === "'" ? 'min' : t === '"' ? 'sec' : t === ',' || t === ';' ? 'sep' : t === ' ' ? 'space' : 'num';
+    out.push({ kind, text: t });
+  }
+  return out;
+}
 
 interface Component {
   value: number;
@@ -69,23 +86,58 @@ interface Component {
   valid: boolean;
 }
 
-function component(parts: (string | undefined)[]): Component {
-  const [before, deg = '', min, sec, after] = parts;
-  const letter = (before ?? after)?.toUpperCase() ?? null;
+/**
+ * Reads one coordinate from `list` at `i`: a hemisphere letter before or after, degrees, then optional minutes (')
+ * and seconds ("). One atom of look-ahead decides everything, so it runs in linear time.
+ */
+function component(list: Atom[], start: number, allowTrailingLetter: (letterBefore: boolean) => boolean): { c: Component; next: number } | null {
+  let i = start;
+  const skip = (): void => {
+    while (list[i]?.kind === 'space') i++;
+  };
+  const peek = (): Atom | undefined => {
+    let j = i;
+    while (list[j]?.kind === 'space') j++;
+    return list[j];
+  };
+  skip();
+  let before: string | null = null;
+  if (list[i]?.kind === 'letter') before = list[i++]!.text.toUpperCase();
+  skip();
+  if (list[i]?.kind !== 'num') return null;
+  const deg = list[i++]!.text;
+  if (peek()?.kind === 'deg') {
+    skip();
+    i++;
+  }
+  const take = (mark: 'min' | 'sec'): string | undefined => {
+    let j = i;
+    while (list[j]?.kind === 'space') j++;
+    if (list[j]?.kind !== 'num') return undefined;
+    let k = j + 1;
+    while (list[k]?.kind === 'space') k++;
+    if (list[k]?.kind !== mark) return undefined;
+    i = k + 1;
+    return list[j]!.text;
+  };
+  const min = take('min');
+  const sec = take('sec');
+  let after: string | null = null;
+  if (peek()?.kind === 'letter' && allowTrailingLetter(before !== null)) {
+    skip();
+    after = list[i++]!.text.toUpperCase();
+  }
+  const letter = before ?? after;
   const signed = /^[-+]/.test(deg);
   const negative = deg.startsWith('-') || letter === 'S' || letter === 'W';
   const minutes = min === undefined ? 0 : Number(min);
   const seconds = sec === undefined ? 0 : Number(sec);
   // Minutes and seconds only follow whole degrees, below 60; a letter and a sign together, or two letters, are a typo.
   const dms = min !== undefined || sec !== undefined;
-  const valid = !(before && after) && !(signed && letter) && (!dms || /^[-+]?\d+$/.test(deg));
-  const inRange = minutes < 60 && seconds < 60;
+  const valid = !(before && after) && !(signed && letter) && (!dms || /^[-+]?\d+$/.test(deg)) && !/[-+]/.test(min ?? '') && !/[-+]/.test(sec ?? '');
   const magnitude = Math.abs(Number(deg)) + minutes / 60 + seconds / 3600;
-  return {
-    value: inRange ? (negative ? -magnitude : magnitude) : Number.NaN,
-    axis: letter === null ? null : letter === 'N' || letter === 'S' ? 'lat' : 'lon',
-    valid,
-  };
+  const value = minutes < 60 && seconds < 60 ? (negative ? -magnitude : magnitude) : Number.NaN;
+  return { c: { value, axis: letter === null ? null : letter === 'N' || letter === 'S' ? 'lat' : 'lon', valid }, next: i };
 }
 
 function fromCoordinates(input: string): ParsedLocation {
@@ -93,11 +145,26 @@ function fromCoordinates(input: string): ParsedLocation {
     .replace(/[′’‘`]/g, "'")
     .replace(/[″”“]|''/g, '"')
     .replace(/º/g, '°')
+    .replace(/\s+/g, ' ')
+    .trim()
     .replace(/^\(\s*|\s*\)$/g, '');
-  const match = TWO_COMPONENTS.exec(text);
-  if (!match) return fail('unrecognised');
-  const a = component(match.slice(1, 6));
-  const b = component(match.slice(6, 11));
+  const list = atoms(text);
+  if (!list) return fail('unrecognised');
+  // A letter right after the first number belongs to it only when it had none in front ("13.6 N, …" vs "N13.6 E100.6").
+  const first = component(list, 0, (letterBefore) => !letterBefore);
+  if (!first) return fail('unrecognised');
+  // Between the two: spaces and at most one comma or semicolon, but something.
+  let i = first.next;
+  let commas = 0;
+  while (list[i]?.kind === 'space' || list[i]?.kind === 'sep') commas += list[i++]!.kind === 'sep' ? 1 : 0;
+  if (i === first.next || commas > 1) return fail('unrecognised');
+  const second = component(list, i, () => true);
+  if (!second) return fail('unrecognised');
+  let end = second.next;
+  while (list[end]?.kind === 'space') end++;
+  if (end !== list.length) return fail('unrecognised');
+  const a = first.c;
+  const b = second.c;
   if (!a.valid || !b.valid) return fail('unrecognised');
   // Letters decide which is which; without them the order is latitude, longitude (as Google Maps copies them).
   if (a.axis && b.axis && a.axis === b.axis) return fail('unrecognised');
@@ -111,6 +178,7 @@ function fromCoordinates(input: string): ParsedLocation {
  * Google Maps shows them. Short links (maps.app.goo.gl) only resolve over the network, so they are explained instead.
  */
 export function parseLocation(raw: string): ParsedLocation {
+  if (raw.length > MAX_INPUT_LENGTH) return fail('unrecognised');
   const input = raw.trim();
   if (input === '') return fail('empty');
   if (SHORT_LINK.test(input)) return fail('short_link');

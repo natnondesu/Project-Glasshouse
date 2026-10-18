@@ -83,3 +83,39 @@ describe('coordinates typed or pasted', () => {
     expect(parseLocation(input)).toEqual({ ok: false, reason });
   });
 });
+
+describe('hostile input', () => {
+  const quick = (input: string) => {
+    const started = performance.now();
+    const result = parseLocation(input);
+    expect(performance.now() - started).toBeLessThan(50);
+    return result;
+  };
+
+  it.each([
+    ['a long run of spaces', `1${' '.repeat(1000)}x`],
+    ['spaces between numbers', `1${' '.repeat(1500)}2${' '.repeat(400)}x`],
+    ['a long run of digits', '1'.repeat(1900)],
+    ['digits and dots', '1.'.repeat(900)],
+    ['NaN', 'NaN, NaN'],
+    ['Infinity', 'Infinity, 100'],
+    ['exponents', '1e5, 1e5'],
+    ['mixed junk', '13°°°°\'\'\'"""NNNN 100°EEEE'.repeat(40)],
+    ['DMS-shaped junk', `${'1° 2\' 3" '.repeat(150)}x`],
+    ['a link-shaped run', `https://${'a.'.repeat(900)}`],
+    ['a domain-shaped run without a slash', 'a.'.repeat(1000)],
+    ['a link full of commas', `https://maps.google.com/?q=${'1,'.repeat(900)}`],
+  ])('answers %s at once', (_name, input) => {
+    expect(quick(input).ok).toBe(false);
+  });
+
+  it('refuses a paste far longer than any link', () => {
+    expect(quick(`13.668, 100.605${' '.repeat(10_000)}`)).toEqual({ ok: false, reason: 'unrecognised' });
+    expect(quick('x'.repeat(10_240))).toEqual({ ok: false, reason: 'unrecognised' });
+  });
+
+  it('still reads coordinates with odd spacing', () => {
+    expect(quick('  13.668 ,   100.605  ')).toMatchObject({ ok: true, location: { lat: 13.668, lon: 100.605 } });
+    expect(quick('13 ° 40 \' 4.8 " N    100 ° 36 \' 18 " E')).toMatchObject({ ok: true, location: { lat: 13.668, lon: 100.605 } });
+  });
+});

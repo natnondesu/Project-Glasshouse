@@ -190,6 +190,10 @@ export const th: Messages = {
     },
     now: 'อยู่บนแผนที่ที่',
     remove: 'นำออกจากแผนที่',
+    removeTitle: (site) => `นำ ${site} ออกจากแผนที่หรือไม่`,
+    removeBody: 'ปักหมุดใหม่ได้ทุกเมื่อ',
+    pauseSpin: 'หยุดหมุนลูกโลก',
+    playSpin: 'หมุนลูกโลกต่อ',
   },
   tree: {
     title: 'โปรเจกต์',

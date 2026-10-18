@@ -191,6 +191,10 @@ export const en = {
     },
     now: 'On the map at',
     remove: 'Take off the map',
+    removeTitle: (site: string) => `Take ${site} off the map?`,
+    removeBody: 'You can place it again any time.',
+    pauseSpin: 'Stop the globe turning',
+    playSpin: 'Turn the globe',
   },
   tree: {
     title: 'Projects',

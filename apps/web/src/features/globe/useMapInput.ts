@@ -11,11 +11,12 @@ interface Options {
   jumpTo: (camera: Camera) => void;
   flyTo: (camera: Camera, ms?: number) => void;
   stop: () => void;
+  /** True while a flight runs: a click then is not meant for the spot under it, which is still moving. */
+  flying: boolean;
   onUserMove: () => void;
   /** A click on the drawing that wasn't a drag, at that spot on the globe. */
   onTap: (point: GeoPoint) => void;
   onEnter: () => void;
-  onEscape: () => void;
   zoomMs: number;
 }
 
@@ -24,6 +25,14 @@ const DRAG_SLOP_PX = 4;
 const KEY_PAN = 0.15;
 const WHEEL_HINT_MS = 1800;
 const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
+const LINE_PX = 16;
+
+/** Wheel steps in pixels, whatever unit the browser reports (Firefox sends lines). */
+export function wheelPixels(e: Pick<WheelEvent, 'deltaY' | 'deltaMode'>, pageHeight: number): number {
+  if (e.deltaMode === 1) return e.deltaY * LINE_PX;
+  if (e.deltaMode === 2) return e.deltaY * pageHeight;
+  return e.deltaY;
+}
 
 /** Dragging moves the globe under the pointer, like grabbing paper; near the poles longitude is kept from racing. */
 export function panBy(cam: Camera, dx: number, dy: number): Camera {
@@ -37,6 +46,8 @@ export function panBy(cam: Camera, dx: number, dy: number): Camera {
  */
 export function useMapInput(o: Options) {
   const drag = useRef<{ id: number; x: number; y: number; cam: Camera; moved: boolean } | null>(null);
+  // A plain wheel zooms only once the map was clicked (or reached from the keyboard) and the pointer hasn't left since.
+  const armed = useRef(false);
   const [wheelHint, setWheelHint] = useState(false);
   const latest = useRef(o);
   latest.current = o;
@@ -45,10 +56,16 @@ export function useMapInput(o: Options) {
     const el = o.root.current;
     if (!el) return;
     let timer: ReturnType<typeof setTimeout> | undefined;
+    const disarm = (): void => {
+      armed.current = false;
+    };
+    const armFromKeyboard = (e: FocusEvent): void => {
+      if (!drag.current && (e.target as Element | null)?.matches?.(':focus-visible')) armed.current = true;
+    };
     const onWheel = (e: WheelEvent): void => {
       const { camera, size, jumpTo, stop, onUserMove } = latest.current;
       if (!camera || !size) return;
-      const focused = el.contains(document.activeElement);
+      const focused = el.contains(document.activeElement) && armed.current;
       if (!(e.ctrlKey || e.metaKey || e.altKey || focused)) {
         setWheelHint(true);
         clearTimeout(timer);
@@ -61,12 +78,16 @@ export function useMapInput(o: Options) {
       onUserMove();
       const rect = el.getBoundingClientRect();
       // A trackpad pinch sends small steps with ctrlKey; a mouse wheel sends ~100 a notch.
-      const factor = Math.exp(-e.deltaY * (e.ctrlKey ? 0.01 : 0.0025));
+      const factor = Math.exp(-wheelPixels(e, size.height) * (e.ctrlKey ? 0.01 : 0.0025));
       jumpTo(zoomAround(camera, factor, { x: e.clientX - rect.left, y: e.clientY - rect.top }, size));
     };
     el.addEventListener('wheel', onWheel, { passive: false });
+    el.addEventListener('pointerleave', disarm);
+    el.addEventListener('focusin', armFromKeyboard);
     return () => {
       el.removeEventListener('wheel', onWheel);
+      el.removeEventListener('pointerleave', disarm);
+      el.removeEventListener('focusin', armFromKeyboard);
       clearTimeout(timer);
     };
   }, [o.root]);
@@ -84,10 +105,11 @@ export function useMapInput(o: Options) {
 
   return {
     wheelHint,
-    modifierKey: isMac ? '⌘' : 'Ctrl',
+    modifierKey: isMac ? 'Cmd' : 'Ctrl',
     zoom,
     onPointerDown: (e: React.PointerEvent<HTMLDivElement>): void => {
       if (e.button !== 0 || !o.camera) return;
+      armed.current = true;
       drag.current = { id: e.pointerId, x: e.clientX, y: e.clientY, cam: o.camera, moved: false };
       e.currentTarget.setPointerCapture?.(e.pointerId);
     },
@@ -107,7 +129,7 @@ export function useMapInput(o: Options) {
     onPointerUp: (e: React.PointerEvent<HTMLDivElement>): void => {
       const d = drag.current;
       drag.current = null;
-      if (!d || d.moved || !o.projection) return;
+      if (!d || d.moved || !o.projection || o.flying) return;
       const at = point(e);
       const geo = o.projection.invert?.([at.x, at.y]);
       if (geo && Number.isFinite(geo[0]) && Number.isFinite(geo[1])) o.onTap({ lon: geo[0], lat: geo[1] });
@@ -136,10 +158,6 @@ export function useMapInput(o: Options) {
         o.onEnter();
       }
     },
-    onRootKeyDown: (e: React.KeyboardEvent): void => {
-      if (e.key !== 'Escape') return;
-      e.stopPropagation();
-      o.onEscape();
-    },
+
   };
 }

@@ -6,7 +6,8 @@ import { useWorkspaceStore } from '../../store/workspaceStore';
 import { IconMapPin } from '../../ui/icons';
 import { formatLatLon } from './format';
 import { useLocationStore } from './locationStore';
-import { parseLocation } from './parseLocation';
+import { MAX_INPUT_LENGTH, parseLocation } from './parseLocation';
+import { confirmAction } from '../../ui/confirm/confirmStore';
 import '../handoff/handoff.css';
 import '../../ui/fields.css';
 import './globe.css';
@@ -28,7 +29,7 @@ function LocationForm({ siteId, name, current }: { siteId: string; name: string;
   const navigate = useNavigate();
   const onHome = useLocation().pathname === '/';
   const [text, setText] = useState('');
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(() => useLocationStore.getState().notice);
   const parsed = useMemo(() => parseLocation(text), [text]);
   const ref = useRef<HTMLDialogElement>(null);
   const input = useRef<HTMLInputElement>(null);
@@ -50,7 +51,21 @@ function LocationForm({ siteId, name, current }: { siteId: string; name: string;
   const save = (location: { lat: number; lon: number } | null): void => {
     const problem = dispatch({ type: 'site/locate', siteId, location });
     setError(problem?.message ?? null);
-    if (!problem) done();
+    if (problem) return;
+    if (location) useLocationStore.getState().markSaved(siteId);
+    done();
+  };
+  // Asks first, in the ordinary popup: the dialog steps aside for it and comes back if the answer is no.
+  const remove = (): void => {
+    done();
+    void confirmAction({ title: m.globe.removeTitle(name), body: m.globe.removeBody, confirmLabel: m.globe.remove, tone: 'danger' }).then((ok) => {
+      if (!ok) {
+        useLocationStore.getState().edit(siteId);
+        return;
+      }
+      const problem = dispatch({ type: 'site/locate', siteId, location: null });
+      if (problem) useLocationStore.getState().edit(siteId, problem.message);
+    });
   };
   const placeOnMap = (): void => {
     place(siteId);
@@ -65,6 +80,13 @@ function LocationForm({ siteId, name, current }: { siteId: string; name: string;
       aria-labelledby={ids.title}
       onCancel={(e) => {
         e.preventDefault();
+        done();
+      }}
+      onKeyDown={(e) => {
+        // The native dialog's Escape, made explicit so it works the same everywhere.
+        if (e.key !== 'Escape') return;
+        e.preventDefault();
+        e.stopPropagation();
         done();
       }}
     >
@@ -94,6 +116,7 @@ function LocationForm({ siteId, name, current }: { siteId: string; name: string;
               className="field__input"
               value={text}
               placeholder={m.globe.inputPlaceholder}
+              maxLength={MAX_INPUT_LENGTH}
               autoComplete="off"
               spellCheck={false}
               aria-describedby={`${ids.hint} ${ids.status}`}
@@ -115,7 +138,7 @@ function LocationForm({ siteId, name, current }: { siteId: string; name: string;
         ) : null}
         <div className="location-dialog__actions">
           {current ? (
-            <button type="button" className="btn btn--danger location-dialog__remove" onClick={() => save(null)}>
+            <button type="button" className="btn btn--danger location-dialog__remove" onClick={remove}>
               {m.globe.remove}
             </button>
           ) : null}

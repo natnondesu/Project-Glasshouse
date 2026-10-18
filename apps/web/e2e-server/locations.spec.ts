@@ -28,10 +28,11 @@ test('a site placed in one tab shows on the other tab’s globe, and the server 
     await dialog.getByRole('textbox').fill('-33.8688, 151.2093');
     await dialog.getByRole('button', { name: 'Save location' }).click();
 
-    // Other specs share this server, so only this site's entry is expected to leave the list.
+    // The tab that saved it picks the site and brings it into view (Sydney, far from the opening frame).
+    await expect(one.getByRole('heading', { level: 1, name: site })).toBeVisible();
+    await expect(one.getByRole('button', { name: new RegExp(`^${site}, `) })).toHaveAttribute('aria-pressed', 'true');
+    // The other tab sees it leave its list (other specs share this server, so only this site's entry is checked).
     await expect(two.getByRole('region', { name: /Not placed yet/ }).getByRole('button', { name: new RegExp(site) })).toHaveCount(0);
-    await two.getByRole('navigation', { name: 'Map level' }).getByRole('button', { name: 'World' }).click();
-    await expect(two.getByRole('button', { name: /^(Australia — \d+ sites\. Show them|Depot .*, 0 rooms)$/ })).toBeVisible();
     await expect
       .poll(async () => {
         const ws = await (await request.get('/api/workspace')).json();

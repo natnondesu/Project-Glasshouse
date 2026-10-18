@@ -1,5 +1,6 @@
 import { createWorkspace, withSample, type Workspace, type WorkspaceCommand } from '@glasshouse/domain';
-import { act, render, screen, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { StrictMode } from 'react';
 import userEvent from '@testing-library/user-event';
 import { createMemoryRouter, RouterProvider } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -10,6 +11,7 @@ import { resetWorkspaceStore, useWorkspaceStore } from '../../store/workspaceSto
 import countries from './data/countries-50m.topo.json';
 import provinces from './data/thailand-provinces-10m.topo.json';
 import { useLocationStore } from './locationStore';
+import { parseGeo } from './geoData';
 
 const geo = vi.hoisted(() => ({ fail: false }));
 vi.mock('./geoData', async (importOriginal) => {
@@ -156,18 +158,119 @@ describe('Home’s globe hero', () => {
     send({ type: 'site/create', projectId: 'p', id: 's', name: 'Warehouse 2' });
     open();
     await map();
-    await user.click(screen.getByRole('button', { name: 'Place Warehouse 2 on the map' }));
-    expect(screen.getByRole('region', { name: 'Place Warehouse 2 on the map' })).toHaveTextContent('Zoom in to the province first');
+    const placeButton = screen.getByRole('button', { name: 'Place Warehouse 2 on the map' });
+    await user.click(placeButton);
+    const banner = screen.getByRole('region', { name: 'Place Warehouse 2 on the map' });
+    expect(banner).toHaveTextContent('Zoom in to the province first');
+    // Place mode takes focus to the map, so the keys work at once.
     const view = screen.getByRole('application');
-    view.focus();
+    expect(view).toHaveFocus();
     for (let i = 0; i < 6; i++) await user.keyboard('+');
+    expect(banner).toHaveTextContent('Click again to move the pin');
     await user.keyboard('{Enter}');
-    await user.click(screen.getByRole('button', { name: 'Save location' }));
+    // The opening frame is Thailand's box, and zooming with the keys keeps its middle: the pin lands exactly there.
+    const thailand = parseGeo(countries as never, provinces as never).countries.find((c) => c.code === 'TH')!;
+    const [[w, south], [e, north]] = thailand.box;
+    const lat = (south + north) / 2;
+    const lon = (w + e) / 2;
+    expect(banner).toHaveTextContent(`${lat.toFixed(5)}° N, ${lon.toFixed(5)}° E`);
+    await user.click(within(banner).getByRole('button', { name: 'Save location' }));
     const site = useWorkspaceStore.getState().workspace.projects.find((p) => p.id === 'p')!.sites[0]!;
-    expect(site.location?.lat).toBeCloseTo(13.04, 0);
-    expect(site.location?.lon).toBeCloseTo(101.5, 0);
+    expect(site.location!.lat).toBeCloseTo(lat, 5);
+    expect(site.location!.lon).toBeCloseTo(lon, 5);
     expect(screen.queryByRole('region', { name: /Not placed yet/ })).toBeNull();
     expect(screen.getByRole('heading', { level: 1, name: 'Warehouse 2' })).toBeInTheDocument();
+    // The Place button left with the list: focus goes to the site's new pin.
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Warehouse 2, Acme, 0 rooms' })).toHaveFocus());
+  });
+
+  it('leaves Place mode on Escape from anywhere and gives focus back to the Place button', async () => {
+    const user = userEvent.setup();
+    load(sample());
+    send({ type: 'project/create', id: 'p', name: 'Acme' });
+    send({ type: 'site/create', projectId: 'p', id: 's', name: 'Warehouse 2' });
+    open();
+    await map();
+    const placeButton = screen.getByRole('button', { name: 'Place Warehouse 2 on the map' });
+    await user.click(placeButton);
+    expect(screen.getByRole('region', { name: 'Place Warehouse 2 on the map' })).toBeInTheDocument();
+    (document.activeElement as HTMLElement).blur();
+    await user.keyboard('{Escape}');
+    expect(screen.queryByRole('region', { name: 'Place Warehouse 2 on the map' })).toBeNull();
+    await waitFor(() => expect(placeButton).toHaveFocus());
+  });
+
+  it('keeps Place mode under StrictMode’s double effects', async () => {
+    load(sample());
+    send({ type: 'project/create', id: 'p', name: 'Acme' });
+    send({ type: 'site/create', projectId: 'p', id: 's', name: 'Warehouse 2' });
+    useLocationStore.getState().place('s');
+    render(
+      <StrictMode>
+        <RouterProvider router={createMemoryRouter(routes, { initialEntries: ['/'] })} />
+      </StrictMode>,
+    );
+    expect(await screen.findByRole('region', { name: 'Place Warehouse 2 on the map' })).toBeInTheDocument();
+    expect(useLocationStore.getState().placing).toBe('s');
+  });
+
+  it('lists sites that zooming can never split, instead of flying in', async () => {
+    const user = userEvent.setup();
+    load(createWorkspace());
+    send({ type: 'project/create', id: 'p', name: 'Acme' });
+    // About 50 m apart: still under 40 px at the closest zoom.
+    send({ type: 'site/create', projectId: 'p', id: 'a', name: 'Hall A' });
+    send({ type: 'site/create', projectId: 'p', id: 'b', name: 'Hall B' });
+    send({ type: 'site/locate', siteId: 'a', location: { lat: 18.7883, lon: 98.9853 } });
+    send({ type: 'site/locate', siteId: 'b', location: { lat: 18.7887, lon: 98.9855 } });
+    open();
+    await map();
+    await user.click(screen.getByRole('button', { name: /— 2 sites\. Show them$/ }));
+    const chooser = screen.getByRole('group', { name: 'These sites share one spot' });
+    expect(within(chooser).getByRole('button', { name: 'Hall A' })).toHaveFocus();
+    await user.click(within(chooser).getByRole('button', { name: 'Hall B' }));
+    expect(screen.getByRole('heading', { level: 1, name: 'Hall B' })).toBeInTheDocument();
+  });
+
+  it('brings a site into view and picks it once its location is saved in the dialog', async () => {
+    const user = userEvent.setup();
+    load(sample());
+    send({ type: 'project/create', id: 'p', name: 'Acme' });
+    send({ type: 'site/create', projectId: 'p', id: 's', name: 'Sydney office' });
+    open();
+    await map();
+    await user.click(screen.getByRole('button', { name: 'Location of Sydney office' }));
+    await user.type(screen.getByRole('textbox', { name: 'Google Maps link or coordinates' }), '-33.8688, 151.2093');
+    await user.click(screen.getByRole('button', { name: 'Save location' }));
+    expect(screen.getByRole('heading', { level: 1, name: 'Sydney office' })).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: 'Sydney office, Acme, 0 rooms' })).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  it('zooms with a plain wheel only while the pointer is over the map and it has focus', async () => {
+    load(sample());
+    open();
+    const view = await map();
+    const root = view.parentElement!;
+    const scale = () => screen.getByRole('img', { name: /^Scale bar/ }).getAttribute('aria-label');
+    const before = scale();
+    fireEvent.pointerEnter(root);
+    fireEvent.wheel(root, { deltaY: -400 });
+    expect(scale()).toBe(before);
+    expect(screen.getByText(/scroll to zoom, or click the map first/)).toBeInTheDocument();
+    expect(screen.getByText(/^Hold (Ctrl|Cmd) and scroll/)).toBeInTheDocument();
+    fireEvent.pointerDown(view, { button: 0, pointerId: 1 });
+    view.focus();
+    fireEvent.wheel(root, { deltaY: -400 });
+    const zoomed = scale();
+    expect(zoomed).not.toBe(before);
+    // Leaving the map disarms it, even though focus stays inside.
+    fireEvent.pointerLeave(root);
+    fireEvent.pointerEnter(root);
+    fireEvent.wheel(root, { deltaY: -400 });
+    expect(scale()).toBe(zoomed);
+    // Firefox reports lines, not pixels: it zooms all the same.
+    fireEvent.wheel(root, { deltaY: -10, deltaMode: 1, ctrlKey: true });
+    expect(scale()).not.toBe(zoomed);
   });
 
   it('speaks Thai on the map: province and country names from the data and the browser', async () => {
@@ -177,5 +280,63 @@ describe('Home’s globe hero', () => {
     await screen.findByRole('application');
     expect(within(screen.getByRole('navigation', { name: 'ระดับแผนที่' })).getByRole('button', { name: 'ไทย' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'กรุงเทพมหานคร — 3 ไซต์ ดูทั้งหมด' })).toBeInTheDocument();
+  });
+
+  describe('with motion', () => {
+    beforeEach(() => vi.stubGlobal('matchMedia', () => ({ matches: false, addEventListener: () => {}, removeEventListener: () => {} })));
+    const marker = () => screen.getByRole('button', { name: 'Thailand — 3 sites. Show them' }).closest('li')!;
+    // React follows the pointer through over/out events; leave/enter go to native listeners too.
+    const enter = (el: HTMLElement): void => {
+      fireEvent.pointerOver(el, { relatedTarget: document.body });
+      fireEvent.pointerEnter(el);
+    };
+    const leave = (el: HTMLElement): void => {
+      fireEvent.pointerOut(el, { relatedTarget: document.body });
+      fireEvent.pointerLeave(el);
+    };
+    const wait = (ms: number) => act(() => new Promise((r) => setTimeout(r, ms)));
+    /** Turning: the marker moves within a second and a half (jsdom's frames are slow). Still: it holds for half a second. */
+    const moves = async (): Promise<boolean> => {
+      await wait(120);
+      const start = marker().style.transform;
+      for (let t = 0; t < 1500; t += 100) {
+        await wait(100);
+        if (marker().style.transform !== start) return true;
+      }
+      return false;
+    };
+    const still = async (): Promise<boolean> => {
+      await wait(150);
+      const start = marker().style.transform;
+      await wait(500);
+      return marker().style.transform === start;
+    };
+
+    it('turns the world view slowly, and stops for a pointer, focus or the pause button', async () => {
+      const user = userEvent.setup();
+      load(sample());
+      open();
+      const view = await map();
+      const root = view.parentElement!;
+      await user.click(within(crumbs()).getByRole('button', { name: 'World' }));
+      leave(root);
+      (document.activeElement as HTMLElement).blur();
+      await screen.findByRole('button', { name: 'Thailand — 3 sites. Show them' }, { timeout: 3000 });
+      await wait(1600);
+      expect(await moves()).toBe(true);
+      enter(root);
+      expect(await still()).toBe(true);
+      leave(root);
+      expect(await moves()).toBe(true);
+      act(() => view.focus());
+      expect(await still()).toBe(true);
+      act(() => view.blur());
+      const pause = screen.getByRole('button', { name: 'Stop the globe turning' });
+      await user.click(pause);
+      leave(root);
+      act(() => (document.activeElement as HTMLElement).blur());
+      expect(await still()).toBe(true);
+      expect(screen.getByRole('button', { name: 'Turn the globe' })).toHaveAttribute('aria-pressed', 'true');
+    }, 15_000);
   });
 });

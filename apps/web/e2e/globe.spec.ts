@@ -86,11 +86,16 @@ test('a site is placed by clicking the map', async ({ page }) => {
   await page.getByRole('button', { name: 'Place Depot 9 on the map' }).click();
   const banner = page.getByRole('region', { name: 'Place Depot 9 on the map' });
   await expect(banner).toContainText('Zoom in to the province first');
+  // Place mode takes focus to the map.
+  await expect(mapOf(page)).toBeFocused();
   const box = await mapOf(page).boundingBox();
   if (!box) throw new Error('The map is not on screen');
-  // At country zoom a click zooms in there; then a click drops the pin.
+  // At country zoom a click zooms in there; clicks are ignored until that flight has landed.
   await page.mouse.click(box.x + box.width * 0.45, box.y + box.height * 0.35);
+  await expect(page.locator('.globe-map')).not.toHaveClass(/is-flying/);
   await expect(banner).toContainText('Click again to move the pin');
+  const province = await crumbs(page).locator('[aria-current="location"]').textContent();
+  expect(province).toBeTruthy();
   await page.mouse.click(box.x + box.width * 0.5, box.y + box.height * 0.4);
   await expect(banner.locator('.globe-place__coords')).toContainText('° N');
   await banner.getByRole('button', { name: 'Save location' }).click();
@@ -98,6 +103,14 @@ test('a site is placed by clicking the map', async ({ page }) => {
   await expect(page.getByRole('heading', { level: 1, name: 'Depot 9' })).toBeVisible();
   await expect(page.getByRole('button', { name: /^Depot 9, Acme/ })).toHaveAttribute('aria-pressed', 'true');
   await expect(page.getByRole('region', { name: /Not placed yet/ })).toBeHidden();
+  // The pin landed in the province the map was showing, inside Thailand.
+  await expect(crumbs(page).getByRole('button', { name: province! })).toBeVisible();
+  const coords = (await page.locator('.site-card__where .mono').textContent()) ?? '';
+  const [lat, lon] = [...coords.matchAll(/([\d.]+)°/g)].map((m) => Number(m[1]));
+  expect(lat).toBeGreaterThan(5.6);
+  expect(lat).toBeLessThan(20.5);
+  expect(lon).toBeGreaterThan(97.3);
+  expect(lon).toBeLessThan(105.7);
 });
 
 test.describe('with reduced motion', () => {

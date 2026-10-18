@@ -1,14 +1,14 @@
 import type { GeoPoint } from '@glasshouse/domain';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useLangStore, useT } from '../../i18n';
-import { IconMinus, IconPlus } from '../../ui/icons';
+import { IconMinus, IconPause, IconPlay, IconPlus } from '../../ui/icons';
 import { usePrefersReducedMotion } from '../../ui/usePrefersReducedMotion';
 import { boxOfPoints, fitBox, LEVEL_PPD, levelOf, MAX_PPD, worldCamera, type Camera, type GeoBox, type Size } from './camera';
 import { drawMap, readPalette, type MapPalette, type Rect } from './drawMap';
 import { loadGeo, regionAt, regionName, type GeoData, type Region } from './geoData';
 import { MapCrumbs, type Crumb } from './MapCrumbs';
 import { MapMarkers } from './MapMarkers';
-import { computeMarkers, type Marker, type MapSite } from './markers';
+import { markerGroups, markersFrom, splitsAt, type Marker, type MapSite, type Places } from './markers';
 import { PlaceBanner } from './PlaceBanner';
 import { projectionFor, screenOf } from './projection';
 import { scaleBar } from './scale';
@@ -60,6 +60,30 @@ function useSize(ref: React.RefObject<HTMLElement | null>): Size | null {
   return size;
 }
 
+/** The screen's pixel ratio, followed live (a window dragged to another display redraws sharp). */
+function useDevicePixelRatio(): number {
+  const read = (): number => Math.min(2, window.devicePixelRatio || 1);
+  const [dpr, setDpr] = useState(read);
+  useEffect(() => {
+    if (!window.matchMedia) return;
+    const mq = window.matchMedia(`(resolution: ${dpr}dppx)`);
+    const on = (): void => setDpr(read());
+    mq.addEventListener?.('change', on);
+    return () => mq.removeEventListener?.('change', on);
+  }, [dpr]);
+  return dpr;
+}
+
+/** The map's own controls, in its coordinates: names drawn on the map stay clear of them. */
+function overlayBoxes(root: HTMLElement | null): Rect[] {
+  if (!root) return [];
+  const base = root.getBoundingClientRect();
+  return [...root.querySelectorAll<HTMLElement>('.globe-crumbs, .globe-zoom, .globe-spin, .globe-map__foot, .globe-place, .globe-map__empty')].map((el) => {
+    const r = el.getBoundingClientRect();
+    return { x: r.left - base.left - 6, y: r.top - base.top - 6, w: r.width + 12, h: r.height + 12 };
+  });
+}
+
 function useInView(ref: React.RefObject<HTMLElement | null>): boolean {
   const [inView, setInView] = useState(true);
   useEffect(() => {
@@ -108,6 +132,9 @@ function Globe({ sites, selectedId, onSelect, placing, onPlace, onCancelPlace, o
   const [pin, setPin] = useState<GeoPoint | null>(null);
   const [placeError, setPlaceError] = useState<string | null>(null);
   const [chooser, setChooser] = useState<Extract<Marker, { kind: 'cluster' }> | null>(null);
+  const [paused, setPaused] = useState(false);
+  const [focusWithin, setFocusWithin] = useState(false);
+  const dpr = useDevicePixelRatio();
 
   useEffect(() => onReady?.(), [onReady]);
 
@@ -131,18 +158,13 @@ function Globe({ sites, selectedId, onSelect, placing, onPlace, onCancelPlace, o
   );
 
   // The world view turns slowly until someone drags or zooms it, points at it, places a site, or scrolls it away.
-  const { camera, flyTo, jumpTo, stop, flying } = useGlobeCamera(size, initial, { reduced, spin: !userMoved && !hover && inView && !placing });
+  const { camera, flyTo, jumpTo, stop, flying } = useGlobeCamera(size, initial, { reduced, spin: !userMoved && !hover && !focusWithin && !paused && inView && !placing });
   const cameraState = useRef<Camera | null>(null);
   cameraState.current = camera;
 
   const projection = useMemo(() => (camera && size ? projectionFor(camera, size) : null), [camera, size]);
-  const markers = useMemo(() => {
-    if (!projection || !camera || !size) return [];
-    const project = (lon: number, lat: number): [number, number] | null => {
-      const at = screenOf(projection, camera, lon, lat);
-      return at && at[0] > -20 && at[1] > -20 && at[0] < size.width + 20 && at[1] < size.height + 20 ? at : null;
-    };
-    return computeMarkers(sites, levelOf(camera.ppd), project, {
+  const placeNames = useMemo<Places>(
+    () => ({
       country: (id) => places.get(id)?.country?.code ?? null,
       countryName: (code) => {
         const region = geo.countries.find((c) => c.code === code);
@@ -152,8 +174,24 @@ function Globe({ sites, selectedId, onSelect, placing, onPlace, onCancelPlace, o
         const region = places.get(id)?.province;
         return region ? regionName(region, lang) : null;
       },
-    });
-  }, [projection, camera, size, sites, places, geo, lang]);
+    }),
+    [places, geo, lang],
+  );
+  const project = useMemo(() => {
+    if (!projection || !camera || !size) return null;
+    return (lon: number, lat: number): [number, number] | null => {
+      const at = screenOf(projection, camera, lon, lat);
+      return at && at[0] > -20 && at[1] > -20 && at[0] < size.width + 20 && at[1] < size.height + 20 ? at : null;
+    };
+  }, [projection, camera, size]);
+  // Which sites share a marker changes with the zoom, not with every frame of a pan or a turn: kept per zoom step.
+  const zoomStep = camera ? Math.round(Math.log2(camera.ppd) * 8) : 0;
+  const level = camera ? levelOf(camera.ppd) : 'world';
+  const visible = project ? sites.filter((s) => project(s.location.lon, s.location.lat)).map((s) => s.id).join(',') : '';
+  const groups = useMemo(() => (project ? markerGroups(sites, level, project, placeNames) : []),
+    // `project` is read once per zoom step on purpose.
+    [sites, level, zoomStep, visible, placeNames]);
+  const markers = useMemo(() => (project ? markersFrom(groups, sites, level, project, placeNames) : []), [groups, sites, level, project, placeNames]);
 
   const selected = sites.find((s) => s.id === selectedId) ?? null;
   const selectedPlaces = selected ? places.get(selected.id) : undefined;
@@ -163,7 +201,6 @@ function Globe({ sites, selectedId, onSelect, placing, onPlace, onCancelPlace, o
   useLayoutEffect(() => {
     const el = canvas.current;
     if (!el || !camera || !size) return;
-    const dpr = Math.min(2, window.devicePixelRatio || 1);
     const w = Math.round(size.width * dpr);
     const h = Math.round(size.height * dpr);
     if (el.width !== w || el.height !== h) {
@@ -173,30 +210,51 @@ function Globe({ sites, selectedId, onSelect, placing, onPlace, onCancelPlace, o
     const ctx = el.getContext('2d');
     if (!ctx) return;
     palette.current ??= readPalette(root.current ?? el);
-    const avoid: Rect[] = markers.map((mk) => ({ x: mk.x - 24, y: mk.y - 24, w: 48 + 180, h: 48 }));
+    const avoid: Rect[] = [...markers.map((mk) => ({ x: mk.x - 24, y: mk.y - 24, w: 48 + 180, h: 48 })), ...overlayBoxes(root.current)];
     drawMap({ ctx, size, dpr, camera, geo, palette: palette.current, highlight: { country: selectedPlaces?.country ?? null, province: selectedPlaces?.province ?? null }, lang, avoid });
-  }, [camera, size, geo, selectedPlaces, lang, markers]);
+  }, [camera, size, geo, selectedPlaces, lang, markers, dpr, placing, paused]);
 
-  // A site picked elsewhere (the not-placed list after placing it) comes into view if it isn't.
-  const lastSelected = useRef(selectedId);
+  // A site picked elsewhere, or given a new location (the dialog, Place mode), comes into view if it isn't.
+  const selectedKey = selected ? `${selected.id}@${selected.location.lat},${selected.location.lon}` : selectedId;
+  const lastSelected = useRef(selectedKey);
   useEffect(() => {
-    if (lastSelected.current === selectedId) return;
-    lastSelected.current = selectedId;
+    if (lastSelected.current === selectedKey) return;
+    lastSelected.current = selectedKey;
     if (!selected || !projection || !camera || !size) return;
     const at = screenOf(projection, camera, selected.location.lon, selected.location.lat);
     const visible = at && at[0] > 0 && at[1] > 0 && at[0] < size.width && at[1] < size.height;
     if (!visible) flyTo({ lon: selected.location.lon, lat: selected.location.lat, ppd: Math.max(camera.ppd, LEVEL_PPD.country * 2) });
-  }, [selectedId, selected, projection, camera, size, flyTo]);
+  }, [selectedKey, selected, projection, camera, size, flyTo]);
 
   // Entering "Place" mode: a site being moved is shown where it is now; otherwise the view stays where the user is.
   const placingId = placing?.id ?? null;
   useEffect(() => {
     setPin(null);
     setPlaceError(null);
+    if (!placingId) return;
+    // Place mode takes focus to the map: the keys move it and Enter drops the pin.
+    root.current?.querySelector<HTMLElement>('.globe-map__view')?.focus({ preventScroll: true });
     const from = placing?.location;
     if (from && cameraState.current) flyTo({ lon: from.lon, lat: from.lat, ppd: Math.max(cameraState.current.ppd, LEVEL_PPD.province * 2) });
     // Only when the site being placed changes.
   }, [placingId]);
+
+  // Escape leaves the chooser, then Place mode, from anywhere on the page (a dialog handles its own Escape first).
+  useEffect(() => {
+    if (!placingId && !chooser) return;
+    const onKey = (e: KeyboardEvent): void => {
+      if (e.key !== 'Escape' || e.defaultPrevented || document.querySelector('dialog[open], .confirm-backdrop')) return;
+      e.preventDefault();
+      if (chooser) setChooser(null);
+      else onCancelPlace();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [placingId, chooser, onCancelPlace]);
+
+  useEffect(() => {
+    if (chooser) root.current?.querySelector<HTMLElement>('.globe-chooser button')?.focus();
+  }, [chooser]);
 
   const closeEnough = camera ? camera.ppd >= LEVEL_PPD.province : false;
 
@@ -208,6 +266,7 @@ function Globe({ sites, selectedId, onSelect, placing, onPlace, onCancelPlace, o
     jumpTo,
     flyTo,
     stop,
+    flying,
     onUserMove: () => setUserMoved(true),
     onTap: (point) => {
       if (!placing || !camera) return;
@@ -216,10 +275,6 @@ function Globe({ sites, selectedId, onSelect, placing, onPlace, onCancelPlace, o
     },
     onEnter: () => {
       if (placing && camera && closeEnough) setPin({ lat: camera.lat, lon: camera.lon });
-    },
-    onEscape: () => {
-      if (chooser) setChooser(null);
-      else if (placing) onCancelPlace();
     },
     zoomMs: ZOOM_MS,
   });
@@ -234,13 +289,20 @@ function Globe({ sites, selectedId, onSelect, placing, onPlace, onCancelPlace, o
   };
   const goCluster = (marker: Extract<Marker, { kind: 'cluster' }>): void => {
     const box = boxOfPoints(marker.sites.map((s) => s.location));
-    if (spanOf(box) < 1e-4) {
+    const country = lv === 'world' ? places.get(marker.sites[0]!.id)?.country : null;
+    if (country && spanOf(country.box) <= MAX_FRAME_SPAN) {
+      const target = fitBox(country.box, size, { padding: FRAME_PAD_PX, maxPpd: LEVEL_PPD.province });
+      flyTo({ ...target, ppd: Math.max(target.ppd, camera.ppd * 2) });
+      return;
+    }
+    const fitted = fitBox(box, size, { padding: 96, maxPpd: MAX_PPD });
+    const target = { ...fitted, ppd: Math.min(MAX_PPD, Math.max(fitted.ppd, camera.ppd * 2)) };
+    // Sites that no zoom can pull apart (the same building, a campus 50 m wide) are listed instead.
+    if (camera.ppd >= MAX_PPD * 0.99 || !splitsAt(marker.sites, target.ppd)) {
       setChooser(marker);
       return;
     }
-    const country = lv === 'world' ? places.get(marker.sites[0]!.id)?.country : null;
-    const target = country && spanOf(country.box) <= MAX_FRAME_SPAN ? fitBox(country.box, size, { padding: FRAME_PAD_PX, maxPpd: LEVEL_PPD.province }) : fitBox(box, size, { padding: 96, maxPpd: MAX_PPD });
-    flyTo({ ...target, ppd: Math.max(target.ppd, camera.ppd * 2) });
+    flyTo(target);
   };
   const fit = (region: Region): void => flyTo(fitBox(region.box, size, { padding: FRAME_PAD_PX }));
 
@@ -276,7 +338,10 @@ function Globe({ sites, selectedId, onSelect, placing, onPlace, onCancelPlace, o
       className={`globe-map${placing ? ' is-placing' : ''}${flying ? ' is-flying' : ''}`}
       onPointerEnter={() => setHover(true)}
       onPointerLeave={() => setHover(false)}
-      onKeyDown={input.onRootKeyDown}
+      onFocus={() => setFocusWithin(true)}
+      onBlur={(e) => {
+        if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setFocusWithin(false);
+      }}
     >
       <div
         className="globe-map__view"
@@ -306,6 +371,20 @@ function Globe({ sites, selectedId, onSelect, placing, onPlace, onCancelPlace, o
         </div>
       ) : null}
       <MapCrumbs crumbs={crumbs} current={current} />
+      {lv === 'world' && !reduced ? (
+        <button
+          type="button"
+          className="globe-spin popover-surface"
+          aria-pressed={paused}
+          aria-label={paused ? m.globe.playSpin : m.globe.pauseSpin}
+          onClick={() => {
+            setPaused(!paused);
+            if (paused) setUserMoved(false);
+          }}
+        >
+          {paused ? <IconPlay /> : <IconPause />}
+        </button>
+      ) : null}
       <div className="globe-zoom popover-surface">
         <button type="button" className="globe-zoom__btn" aria-label={m.globe.zoomIn} onClick={() => input.zoom(2)} disabled={camera.ppd >= MAX_PPD}>
           <IconPlus />

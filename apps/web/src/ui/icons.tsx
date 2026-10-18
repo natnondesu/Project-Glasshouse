@@ -348,3 +348,10 @@ export const IconMapPin = (p: IconProps) => (
     <circle cx="8" cy="6.5" r="1.75" />
   </svg>
 );
+/** The Install sheet: a printed page with ruled lines. */
+export const IconSheet = (p: IconProps) => (
+  <svg {...frame(16)} strokeLinecap="round" strokeLinejoin="round" {...p}>
+    <path d="M4 1.75h5.5L12.25 4.5v9.75H4Z" />
+    <path d="M9.25 1.75V4.75h3M6 7.5h4.25M6 9.75h4.25M6 12h2.5" />
+  </svg>
+);

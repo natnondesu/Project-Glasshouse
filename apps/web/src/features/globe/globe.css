@@ -320,8 +320,9 @@
 
 .site-card__actions {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 8px;
+  min-width: 0;
 }
 
 .site-card__actions .btn {
@@ -332,14 +333,85 @@
   text-decoration: none;
 }
 
-.site-card__open {
-  min-width: 0;
-  max-width: 100%;
+.site-card__actions .btn--ink {
+  flex-shrink: 0;
 }
 
-.site-card__open {
+/* A long room name gives way first, with an ellipsis (the full name is its hint). */
+.site-card__actions .site-card__open {
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+.site-card__open > span {
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.site-card__actions .btn--ink.site-card__open {
+  flex: 0 1 auto;
+}
+
+.site-card__actions .site-card__sheet {
+  flex-shrink: 0;
+  width: 40px;
+  padding: 0;
+  margin-left: auto;
+  border-color: transparent;
+  background: transparent;
+  color: var(--ink-2);
+}
+
+.site-card__actions .site-card__sheet:hover {
+  color: var(--acc-deep);
+}
+
+.site-card__actions .site-card__sheet svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* The picked room's record over the 3D's foot; the rack names take its place on hover and focus. */
+.site-card__stamp {
+  position: absolute;
+  left: 10px;
+  bottom: 10px;
+  max-width: calc(100% - 64px);
+  margin: 0;
+  font-size: var(--text-2xs);
+  transition: opacity var(--duration-fast) ease-out;
+}
+
+.site-card__paper .site-card__stamp {
+  background: var(--paper);
+}
+
+.site-card__paper .home-hero__stamp--draft {
+  background: var(--warn-bg);
+}
+
+.site-card__paper .home-hero__stamp--approved {
+  background: linear-gradient(var(--ok-bg), var(--ok-bg)), var(--paper);
+}
+
+.site-card__paper .home-hero__stamp--in_review {
+  background: linear-gradient(var(--acc-soft), var(--acc-soft)), var(--paper);
+}
+
+.site-card__paper .site-card__stamp > span {
+  padding: 2px 6px;
+  white-space: normal;
+  line-height: 1.35;
+}
+
+.site-card__paper .site-card__stamp > span:first-child {
+  flex-shrink: 0;
+  letter-spacing: 0.04em;
+}
+
+.site-card__paper:hover .site-card__stamp,
+.site-card__paper:focus-within .site-card__stamp {
+  opacity: 0;
 }
 
 .site-card__empty {
@@ -975,4 +1047,21 @@
   .site-card__paper {
     height: 118px;
   }
+}
+
+.globe-spin {
+  position: absolute;
+  top: 104px;
+  right: 12px;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border-radius: 12px;
+  color: var(--ink);
+}
+
+.globe-spin:hover {
+  background: #fff;
 }

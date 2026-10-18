@@ -1,5 +1,5 @@
 import { newId, type GeoPoint } from '@glasshouse/domain';
-import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { useCan } from '../../auth/useCan';
 import { useT } from '../../i18n';
@@ -34,8 +34,42 @@ export function GlobeHero({ sites, lastRoomId }: { sites: SiteSummary[]; lastRoo
   const startPlacing = useLocationStore((s) => s.place);
   const finish = useLocationStore((s) => s.done);
 
-  // Leaving Home ends "Place" mode; a Location dialog opened elsewhere is not Home's to close.
-  useEffect(() => () => useLocationStore.setState({ placing: null }), []);
+  // Leaving Home ends "Place" mode; a Location dialog opened elsewhere is not Home's to close. StrictMode runs the
+  // cleanup and the effect again at once on mount, so the clearing waits a tick and checks Home is really gone.
+  const mounted = useRef(false);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+      queueMicrotask(() => {
+        if (!mounted.current) useLocationStore.setState({ placing: null });
+      });
+    };
+  }, []);
+
+  // A location saved in the dialog (or on the map) picks that site, so the map brings it into view.
+  const saved = useLocationStore((s) => s.saved);
+  useEffect(() => {
+    if (saved && sites.some((s) => s.site.id === saved.siteId)) setSiteId(saved.siteId);
+    // Only a new save; the sites list changing is not a reason to jump.
+  }, [saved]);
+
+  // Leaving Place mode hands focus back to what started it; if that has gone (the not-placed row after a save), to
+  // the site's new pin, else the card's heading. Not when the Location dialog took over.
+  const opener = useRef<HTMLElement | null>(null);
+  const wasPlacing = useRef<string | null>(placingId);
+  useEffect(() => {
+    const left = wasPlacing.current;
+    wasPlacing.current = placingId;
+    if (!left || placingId) return;
+    const back = opener.current;
+    opener.current = null;
+    requestAnimationFrame(() => {
+      if (useLocationStore.getState().editing) return;
+      if (back?.isConnected) back.focus();
+      else (document.querySelector<HTMLElement>(`[data-site-id="${CSS.escape(left)}"]`) ?? document.getElementById('home-site-name'))?.focus();
+    });
+  }, [placingId]);
 
   const site = sites.find((s) => s.site.id === siteId) ?? sites[0]!;
   const roomId = roomBySite[site.site.id] ?? (site.rooms.find((r) => r.room.id === lastRoomId) ?? site.rooms[0])?.room.id ?? null;
@@ -51,6 +85,7 @@ export function GlobeHero({ sites, lastRoomId }: { sites: SiteSummary[]; lastRoo
   // Without the map (still loading, or failed) "Place" opens the Location dialog instead.
   const place = (id: string): void => {
     setSiteId(id);
+    opener.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     if (mapReady && !mapFailed) startPlacing(id);
     else editLocation(id);
   };
@@ -59,6 +94,7 @@ export function GlobeHero({ sites, lastRoomId }: { sites: SiteSummary[]; lastRoo
     const problem = dispatch({ type: 'site/locate', siteId: placing.site.id, location });
     if (problem) return problem.message;
     setSiteId(placing.site.id);
+    useLocationStore.getState().markSaved(placing.site.id);
     finish();
     return null;
   };

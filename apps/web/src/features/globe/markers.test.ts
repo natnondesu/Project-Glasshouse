@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { computeMarkers, type MapSite } from './markers';
+import { computeMarkers, markerGroups, markersFrom, splitsAt, type MapSite } from './markers';
 
 const site = (id: string, lon: number, lat: number): MapSite => ({ id, name: id, project: 'P', rooms: 1, location: { lat, lon }, sample: false });
 // A flat stand-in for the projection: 10 px a degree, the far side hidden past 90° east.
@@ -30,5 +30,31 @@ describe('computeMarkers', () => {
     expect(m).toMatchObject({ kind: 'cluster', place: 'Bangkok' });
     const [n] = computeMarkers([site('a', 10, 0), site('d', 10.5, 0)], 'province', project, place);
     expect(n).toMatchObject({ kind: 'cluster', place: null });
+  });
+});
+
+describe('grouping kept per zoom step', () => {
+  it('keeps the groups and moves the markers with the view', () => {
+    const sites = [site('a', 10, 0), site('b', 10.5, 0), site('c', 30, 0)];
+    const groups = markerGroups(sites, 'country', project, place);
+    expect(groups).toEqual([['a', 'b'], ['c']]);
+    const panned = (lon: number, lat: number): [number, number] | null => [lon * 10 + 50, -lat * 10];
+    expect(markersFrom(groups, sites, 'country', panned, place).map((m) => [m.key, m.x])).toEqual([['a+b', 152.5], ['c', 350]]);
+  });
+
+  it('drops members that went off screen, and a group with none left', () => {
+    const sites = [site('a', 10, 0), site('far', 120, 0)];
+    expect(markersFrom([['a', 'far']], sites, 'country', project, place)).toMatchObject([{ kind: 'site', key: 'a' }]);
+    expect(markersFrom([['far']], sites, 'country', project, place)).toEqual([]);
+  });
+});
+
+describe('splitsAt', () => {
+  it('knows when zooming in can no longer pull two sites apart', () => {
+    const near = [site('a', 98.9853, 18.7883), site('b', 98.9855, 18.7887)];
+    expect(splitsAt(near, 30000)).toBe(false);
+    const apart = [site('a', 100.5135, 13.7208), site('b', 100.51, 13.739)];
+    expect(splitsAt(apart, 4000)).toBe(true);
+    expect(splitsAt(apart, 500)).toBe(false);
   });
 });

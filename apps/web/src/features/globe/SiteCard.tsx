@@ -2,7 +2,9 @@ import { formatWatts, latestApproved } from '@glasshouse/domain';
 import { lazy, Suspense } from 'react';
 import { Link } from 'react-router';
 import { useT } from '../../i18n';
-import { IconArrowRight, IconCheck, IconChevronLeft, IconChevronRight, IconMapPin, IconPlus } from '../../ui/icons';
+import { IconArrowRight, IconCheck, IconChevronLeft, IconChevronRight, IconMapPin, IconPlus, IconSheet } from '../../ui/icons';
+import { usePeople } from '../../people/peopleStore';
+import { personLabel } from '../../ui/person';
 import { pad2 } from '../../ui/StatusStamp';
 import { holdsTotal } from '../home/RoomCard';
 import type { RoomSummary } from '../home/rooms';
@@ -63,6 +65,12 @@ export function SiteCard({ summary, roomId, lastRoomId, onRoom, canEdit, onLocat
   const room = rooms[index] ?? null;
   const holds = room && room.revision.state !== 'approved' ? holdsTotal(room) : 0;
   const approved = room ? latestApproved(room.room.plan) : undefined;
+  const people = usePeople();
+  // The picked room's record, as the Review stamp reads: state, then revision · date · who (unverified when typed).
+  const revision = room?.revision;
+  const person = revision ? (revision.state === 'approved' ? revision.approvedBy : revision.designedBy) : null;
+  const by = person ? personLabel(m, person, people) : undefined;
+  const when = revision ? (revision.state === 'approved' ? revision.approvedAt : revision.submittedAt)?.slice(0, 10) : undefined;
   const step = (by: number): void => {
     const next = rooms[(index + by + rooms.length) % rooms.length];
     if (next) onRoom(next.room.id);
@@ -71,7 +79,7 @@ export function SiteCard({ summary, roomId, lastRoomId, onRoom, canEdit, onLocat
   return (
     <div className="site-card">
       <header className="site-card__head">
-        <h1 id="home-site-name">{site.name}</h1>
+        <h1 id="home-site-name" tabIndex={-1}>{site.name}</h1>
         <p className="site-card__project">{project.name}</p>
         <p className="site-card__where">
           <IconMapPin />
@@ -119,6 +127,12 @@ export function SiteCard({ summary, roomId, lastRoomId, onRoom, canEdit, onLocat
                 <HeroScene location={{ project, site, room: room.room }} caption={room.room.name} />
               </Suspense>
             </SceneBoundary>
+            {revision ? (
+              <p className={`home-hero__stamp home-hero__stamp--${revision.state} site-card__stamp`}>
+                <span className="mono">{m.revision.stamp[revision.state]}</span>
+                <span className="mono">{[`R${pad2(revision.number)}`, when, by].filter(Boolean).join(' · ')}</span>
+              </p>
+            ) : null}
             {rooms.length > 1 ? (
               <div className="site-card__stepper">
                 <button type="button" className="icon-btn" aria-label={m.globe.prevRoom} onClick={() => step(-1)}>
@@ -161,18 +175,19 @@ export function SiteCard({ summary, roomId, lastRoomId, onRoom, canEdit, onLocat
                   <IconArrowRight />
                 </Link>
                 <Link to={`/rooms/${room.room.id}/plan`} className="btn site-card__open" title={m.globe.openRoom(room.room.name)}>
-                  {m.globe.openRoom(room.room.name)}
+                  <span>{m.globe.openRoom(room.room.name)}</span>
                 </Link>
               </>
             ) : (
               <Link to={`/rooms/${room.room.id}/plan`} className="btn btn--ink site-card__open" title={m.globe.openRoom(room.room.name)}>
-                {m.globe.openRoom(room.room.name)}
+                <span>{m.globe.openRoom(room.room.name)}</span>
                 <IconArrowRight />
               </Link>
             )}
             {approved ? (
-              <Link to={`/rooms/${room.room.id}/install-sheet`} className="btn">
-                {m.views.installSheet(pad2(approved.number))}
+              // Quieter than the way into the room, and one icon wide, so the actions never wrap; its name is its hint.
+              <Link to={`/rooms/${room.room.id}/install-sheet`} className="btn site-card__sheet" aria-label={m.views.installSheet(pad2(approved.number))}>
+                <IconSheet />
               </Link>
             ) : null}
           </div>

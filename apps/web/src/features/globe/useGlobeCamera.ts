@@ -3,6 +3,8 @@ import { clampCamera, flight, FLIGHT_MS, levelOf, type Camera, type Size } from 
 
 /** About 3° a second: the world view turns slowly, like the room 3D does. */
 const SPIN_DEG_PER_S = 3;
+/** The slow turn redraws at about 30 frames a second; flights keep every frame. */
+const SPIN_FRAME_MS = 33;
 
 interface Flight {
   at: (t: number) => Camera;
@@ -63,9 +65,13 @@ export function useGlobeCamera(size: Size | null, initial: (size: Size) => Camer
     let raf = 0;
     let last = performance.now();
     const step = (now: number): void => {
-      const dt = Math.min(0.05, Math.max(0, (now - last) / 1000));
-      last = now;
       const f = current.current;
+      if (!f && now - last < SPIN_FRAME_MS - 2) {
+        raf = requestAnimationFrame(step);
+        return;
+      }
+      const dt = Math.min(0.1, Math.max(0, (now - last) / 1000));
+      last = now;
       if (f) {
         const t = Math.min(1, (now - f.start) / f.ms);
         setCamera(f.at(t));
