@@ -1,0 +1,294 @@
+/* Room screens: where you are, and the way to the next room, in one line of the title block. */
+.title-block__where {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.projects-btn {
+  flex: none;
+}
+
+.projects-btn.is-open {
+  background: #fff;
+  border-color: var(--line-strong);
+  box-shadow: inset 0 1px 2px rgb(14 24 36 / 0.1);
+}
+
+.projects-btn__icon {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+}
+
+/* The backup warning, while the panel that says it is out of sight: a dot here, the words in the label and hint. */
+.projects-btn__dot {
+  position: absolute;
+  top: -3px;
+  right: -4px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--warn);
+  box-shadow: 0 0 0 2px var(--floor);
+}
+
+@media (max-width: 1359px) {
+  .projects-btn__label {
+    display: none;
+  }
+}
+
+.crumbs {
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+.crumbs__list {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.crumbs__item {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  flex: 0 1 auto;
+}
+
+/* When space runs out the project name gives way first, then the site; the room stays whole up to half the trail. */
+.crumbs__item--project {
+  flex-shrink: 6;
+  min-width: 72px;
+}
+
+.crumbs__item--site {
+  flex-shrink: 3;
+  min-width: 64px;
+}
+
+.crumbs__item--room {
+  flex-shrink: 0;
+  max-width: 50%;
+}
+
+.crumbs__link,
+.crumbs__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  height: 30px;
+  padding: 0 8px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-field);
+  background: none;
+  color: var(--ink-2);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  text-decoration: none;
+  white-space: nowrap;
+  transition:
+    background var(--duration-fast) ease-out,
+    border-color var(--duration-fast) ease-out,
+    color var(--duration-fast) ease-out;
+}
+
+.crumbs__link:hover,
+.crumbs__btn:hover {
+  background: var(--hover);
+  color: var(--ink);
+}
+
+.crumbs__name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* The room is where you are and the switcher's handle: full ink, heavier, drawn as a control. */
+.crumbs__btn--room {
+  color: var(--ink);
+  font-weight: 650;
+  border-color: var(--line);
+  background: var(--control-bg);
+}
+
+.crumbs__btn--room:hover {
+  background: #fff;
+  border-color: var(--line-strong);
+}
+
+.crumbs__btn[aria-expanded='true'] {
+  background: #fff;
+  border-color: var(--line-strong);
+  color: var(--ink);
+}
+
+.crumbs__caret {
+  flex: none;
+  color: var(--ink-2);
+  transition: transform var(--duration-fast) ease-out;
+}
+
+.crumbs__btn[aria-expanded='true'] .crumbs__caret {
+  transform: rotate(180deg);
+}
+
+.crumbs__sep {
+  flex: none;
+  color: var(--ink-3);
+}
+
+.crumbs__stamp {
+  flex: none;
+  margin: 0 2px 0 -2px;
+  background: var(--acc-soft);
+  color: var(--acc-deep);
+}
+
+.title-block__revision {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-left: 12px;
+  border-left: 1px solid var(--line);
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+
+/* A solid surface, never glass: it floats over the drawing and has to read at a glance. */
+.room-switcher {
+  position: fixed;
+  z-index: 40;
+  width: 320px;
+  max-width: calc(100vw - 16px);
+  display: flex;
+  flex-direction: column;
+  border-radius: 12px;
+  overflow: hidden;
+  animation: room-switcher-in var(--duration-fast) var(--ease-out-expo);
+}
+
+@keyframes room-switcher-in {
+  from {
+    opacity: 0;
+    transform: translateY(-3px);
+  }
+}
+
+.room-switcher__filter {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 34px;
+  margin: 6px 6px 2px;
+  padding: 0 10px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-field);
+  background: #fff;
+  color: var(--ink-3);
+}
+
+.room-switcher__filter:focus-within {
+  border-color: var(--acc);
+  box-shadow: var(--focus-ring);
+}
+
+.room-switcher__filter input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: none;
+  background: none;
+  color: var(--ink);
+  font-size: var(--text-sm);
+}
+
+.room-switcher__list {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 4px 5px 6px;
+}
+
+.room-switcher__site + .room-switcher__site {
+  margin-top: 4px;
+  padding-top: 4px;
+  border-top: 1px solid var(--line);
+}
+
+.room-switcher__site-name {
+  padding: 6px 10px 3px;
+  color: var(--ink-2);
+  font-size: var(--text-xs);
+  font-weight: 600;
+}
+
+.room-switcher__room {
+  display: grid;
+  grid-template-columns: 14px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  min-height: 34px;
+  padding: 0 8px;
+  border-radius: 8px;
+  color: var(--ink);
+  font-size: var(--text-sm);
+  text-decoration: none;
+}
+
+.room-switcher__room:hover {
+  background: rgb(14 24 36 / 0.06);
+}
+
+.room-switcher__room:focus-visible {
+  outline: none;
+  background: rgb(14 24 36 / 0.06);
+  box-shadow: var(--focus-ring-inset);
+}
+
+.room-switcher__room.is-current {
+  font-weight: 650;
+}
+
+.room-switcher__mark {
+  display: grid;
+  place-items: center;
+  color: var(--acc);
+}
+
+.room-switcher__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.room-switcher__room .stamp--draft {
+  background: var(--warn-bg);
+  color: var(--warn);
+}
+
+.room-switcher__room .stamp--in_review {
+  background: var(--acc-soft);
+  color: var(--acc-deep);
+}
+
+.room-switcher__room .stamp--approved {
+  background: var(--ok-bg);
+  color: var(--ok);
+}
+
+.room-switcher__empty {
+  padding: 10px;
+  color: var(--ink-2);
+  font-size: var(--text-sm);
+}

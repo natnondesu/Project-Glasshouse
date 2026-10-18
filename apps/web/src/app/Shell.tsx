@@ -4,13 +4,15 @@ import { ProjectTree } from '../features/tree/ProjectTree';
 import { PanelRail } from '../ui/PanelRail';
 import { usePersistentState } from '../ui/usePersistentState';
 import { useWorkspaceStore } from '../store/workspaceStore';
-import { useViewedRevisionNumber } from '../store/hooks';
+import { useRoomLocation, useViewedRevisionNumber } from '../store/hooks';
 import { useT } from '../i18n';
 import { HintLayer } from './HintLayer';
 import { SyncNotice } from './SyncNotice';
 import { ClaimLostDialog } from '../claims/ClaimLostDialog';
 import { ConfirmDialog } from '../ui/confirm/ConfirmDialog';
 import { TitleBlock } from './TitleBlock';
+import { treePlacement, usePinnedTree } from '../features/roomnav/placement';
+import { useTreeDrawer } from '../features/roomnav/useTreeDrawer';
 import './shell.css';
 
 const isTextEntry = (target: EventTarget): boolean =>
@@ -26,7 +28,17 @@ export function Shell() {
   const connection = useWorkspaceStore((s) => s.connection);
   const viewingPast = useViewedRevisionNumber() !== null;
   const [treeOpen, setTreeOpen] = usePersistentState('glasshouse:tree-open', true);
+  const [pinned, setPinned] = usePinnedTree();
+  // A room that isn't in the workspace (deleted elsewhere, a stale link) is a not-found page: the tree docks there.
+  const inRoom = useRoomLocation(roomId) !== null;
+  const drawer = useTreeDrawer(inRoom, pinned);
+  const placement = treePlacement({ inRoom, treeOpen, pinned, drawerOpen: drawer.open });
   const m = useT();
+  const togglePin = (): void => {
+    // Pinning docks the open drawer in place; unpinning leaves it open as a drawer until it is dismissed.
+    drawer.setOpen(pinned);
+    setPinned(!pinned);
+  };
 
   // Window-level so undo still works when focus falls back to <body>, e.g. right after a delete.
   useEffect(() => {
@@ -49,7 +61,7 @@ export function Shell() {
         {m.shell.skipToMain}
       </a>
       <HintLayer />
-      <TitleBlock roomId={roomId} />
+      <TitleBlock roomId={roomId} drawer={inRoom && !pinned ? drawer : null} />
       {readOnly && readOnlyReason === 'view-only' && connection !== 'offline' ? (
         <p className="read-only-banner" role="status">
           {m.shell.viewOnly}
@@ -65,7 +77,21 @@ export function Shell() {
       ) : null}
       <SyncNotice />
       <div className="shell__body">
-        {treeOpen ? <ProjectTree activeRoomId={roomId} onCollapse={() => setTreeOpen(false)} /> : <PanelRail label={m.panels.projects} side="left" onExpand={() => setTreeOpen(true)} />}
+        {/* One slot for docked and drawer alike, so the tree keeps its state (a rename in progress) as it moves. */}
+        {placement === 'rail' ? (
+          <PanelRail label={m.panels.projects} side="left" onExpand={() => setTreeOpen(true)} />
+        ) : placement === 'hidden' ? null : (
+          <ProjectTree
+            activeRoomId={roomId}
+            variant={placement === 'drawer' ? 'drawer' : 'docked'}
+            onCollapse={inRoom ? undefined : () => setTreeOpen(false)}
+            pin={inRoom ? { pinned, onToggle: togglePin } : undefined}
+            onRoomPicked={drawer.onRoomPicked}
+            onRoomAdded={drawer.onRoomAdded}
+            onRenameDone={drawer.onRenameDone}
+            panelRef={drawer.panelRef}
+          />
+        )}
         <main id="main" tabIndex={-1} className="shell__main">
           <Outlet />
         </main>

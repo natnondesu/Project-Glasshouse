@@ -323,3 +323,29 @@
   opacity: 0.4;
   cursor: not-allowed;
 }
+
+/* Over a room the tree floats: glass with depth over the drawing, until a room is picked or it is dismissed. */
+.tree--drawer {
+  position: absolute;
+  z-index: 15;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 272px;
+  background: var(--glass-bg-float);
+  box-shadow: var(--glass-shadow), var(--shadow-float);
+  animation: tree-drawer-in var(--duration-normal) var(--ease-out-expo);
+}
+
+@keyframes tree-drawer-in {
+  from {
+    opacity: 0;
+    transform: translateX(-16px);
+  }
+}
+
+.tree__pin.is-pinned {
+  background: #fff;
+  border-color: var(--line-strong);
+  color: var(--acc-deep);
+}

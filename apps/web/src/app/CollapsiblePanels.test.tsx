@@ -19,14 +19,14 @@ beforeEach(() => {
 
 const open = (path: string) => render(<RouterProvider router={createMemoryRouter(routes, { initialEntries: [path] })} />);
 
-it('collapses the project tree to a rail and remembers it', async () => {
+it('collapses the project tree on Home to a rail and remembers it', async () => {
   const user = userEvent.setup();
-  const { unmount } = open('/rooms/r/plan');
+  const { unmount } = open('/');
   await user.click(screen.getByRole('button', { name: 'Hide projects' }));
   expect(screen.queryByRole('heading', { name: 'Projects' })).toBeNull();
   expect(screen.getByRole('button', { name: 'Show projects' })).toHaveAttribute('aria-expanded', 'false');
   unmount();
-  open('/rooms/r/plan');
+  open('/');
   await user.click(screen.getByRole('button', { name: 'Show projects' }));
   expect(screen.getByRole('heading', { name: 'Projects' })).toBeInTheDocument();
 });

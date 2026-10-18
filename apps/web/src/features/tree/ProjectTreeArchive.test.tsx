@@ -31,7 +31,11 @@ afterEach(async () => {
   await act(() => useLangStore.getState().setLang('en'));
 });
 
-const open = (path = '/') => render(<RouterProvider router={createMemoryRouter(routes, { initialEntries: [path] })} />);
+const open = (path = '/') => {
+  // Inside a room the tree is a drawer until pinned; these tests read the tree beside the open room.
+  if (path.startsWith('/rooms/')) localStorage.setItem('glasshouse:tree-pinned', 'true');
+  return render(<RouterProvider router={createMemoryRouter(routes, { initialEntries: [path] })} />);
+};
 const tree = () => screen.getByRole('complementary', { name: /^(Projects|โปรเจกต์)$/ });
 const inTree = () => within(tree());
 const signInAs = (role: Role): void => useAuthStore.setState({ status: 'signed-in', user: { id: 'u', name: 'Ada', email: 'a@x', role, mustChangePassword: false } });

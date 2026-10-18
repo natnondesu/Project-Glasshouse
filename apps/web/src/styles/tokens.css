@@ -50,6 +50,8 @@
   --glass-tint: 0.56;
   --glass-blur: 13px;
   --glass-bg: rgb(247 249 251 / var(--glass-tint));
+  /* Glass that floats over a drawing (the project drawer): denser, so linework behind it doesn't smudge its text. */
+  --glass-bg-float: rgb(247 249 251 / 0.8);
   --glass-border: rgb(255 255 255 / 0.75);
   --glass-shadow: inset 0 1px 0 rgb(255 255 255 / 0.9), 0 1px 2px rgb(14 24 36 / 0.06), 0 18px 48px -12px rgb(14 24 36 / 0.22);
   /* Floating menus sit over the drawing: the glass colour, fully opaque, with a visible edge and a deeper shadow. */
