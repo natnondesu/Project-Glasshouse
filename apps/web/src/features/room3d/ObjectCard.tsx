@@ -1,4 +1,4 @@
-import { panelOf, type RoomObject } from '@glasshouse/domain';
+import { isInUse, panelOf, type RoomObject } from '@glasshouse/domain';
 import type { ReactNode } from 'react';
 import { useT } from '../../i18n';
 
@@ -14,8 +14,16 @@ export function ObjectCard({ object, onManageWays, children }: { object: RoomObj
         <dd>{m.objects.type[object.type]}</dd>
         {panel ? (
           <>
+            <dt>{m.panelMgr.status}</dt>
+            <dd>{isInUse(object) ? m.panelMgr.inUse : m.panelMgr.notInUse}</dd>
             <dt>{m.panelMgr.ways}</dt>
             <dd className="mono">{`${panel.ways.length} · ${panel.phase === 'three' ? m.panelMgr.three : m.panelMgr.single}`}</dd>
+            {panel.mainRatingA !== undefined ? (
+              <>
+                <dt>{m.panelMgr.main}</dt>
+                <dd className="mono">{`${panel.mainRatingA} A`}</dd>
+              </>
+            ) : null}
           </>
         ) : null}
       </dl>
