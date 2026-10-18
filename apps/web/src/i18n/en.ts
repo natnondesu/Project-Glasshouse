@@ -163,7 +163,7 @@ export const en = {
     projectsHint: (key: string, notBackedUp: boolean) => `Projects (shortcut ${key})${notBackedUp ? ' · Workspace not backed up' : ''}`,
     pin: 'Pin projects',
     pinHint: (pinned: boolean) => (pinned ? 'Unpin: open projects as a drawer' : 'Pin beside the room'),
-    toHome: 'All projects',
+    showProjects: 'Show projects',
     siteRooms: 'Rooms in this site',
     switchRoom: 'Switch room',
     crumbHint: (name: string, action: string, truncated: boolean) => (truncated ? `${name} · ${action}` : action),

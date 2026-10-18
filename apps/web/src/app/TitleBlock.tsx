@@ -61,7 +61,8 @@ function SaveStatus({ save, compact }: { save: SaveState; compact: boolean }) {
 }
 
 /** `drawer` is the project drawer on a room screen while the tree isn't pinned; null elsewhere. */
-export function TitleBlock({ roomId, drawer = null }: { roomId: string | null; drawer?: TreeDrawer | null }) {
+/** `treeNav` is the same drawer on any room screen, pinned or not: the project crumb opens it (or, pinned, goes to it). */
+export function TitleBlock({ roomId, drawer = null, treeNav = null }: { roomId: string | null; drawer?: TreeDrawer | null; treeNav?: TreeDrawer | null }) {
   const location = useRoomLocation(roomId);
   const save = useWorkspaceStore((s) => s.save);
   const viewedNumber = useViewedRevisionNumber();
@@ -90,7 +91,7 @@ export function TitleBlock({ roomId, drawer = null }: { roomId: string | null; d
       {location ? (
         <div className="title-block__where">
           {drawer ? <ProjectsButton drawer={drawer} /> : null}
-          <RoomCrumbs location={location} isSample={location.project.isSample === true} />
+          <RoomCrumbs location={location} isSample={location.project.isSample === true} tree={treeNav} pinned={treeNav !== null && drawer === null} />
           <p className="title-block__revision">
             <span className="mono">
               <span className="visually-hidden">{m.roomNav.revision} </span>

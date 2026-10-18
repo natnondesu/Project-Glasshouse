@@ -164,7 +164,7 @@ export const th: Messages = {
     projectsHint: (key, notBackedUp) => `โปรเจกต์ (ปุ่มลัด ${key})${notBackedUp ? ' · ยังไม่ได้สำรองพื้นที่ทำงาน' : ''}`,
     pin: 'ปักหมุดโปรเจกต์',
     pinHint: (pinned) => (pinned ? 'เลิกปักหมุด: เปิดโปรเจกต์เป็นแผงลอย' : 'ปักหมุดไว้ข้างห้อง'),
-    toHome: 'โปรเจกต์ทั้งหมด',
+    showProjects: 'แสดงโปรเจกต์',
     siteRooms: 'ห้องในไซต์นี้',
     switchRoom: 'สลับห้อง',
     crumbHint: (name, action, truncated) => (truncated ? `${name} · ${action}` : action),

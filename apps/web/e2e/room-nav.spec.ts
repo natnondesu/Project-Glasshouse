@@ -17,10 +17,15 @@ test('a room opens without the tree and the breadcrumb switches rooms in one cli
   await expect(crumbs(page).getByRole('button', { name: 'MDF-1' })).toBeVisible();
   await expect(switcher).toHaveCount(0);
 
-  // The project crumb goes Home, where the tree is docked as before.
-  await crumbs(page).getByRole('link', { name: 'Sample · Northgate DC' }).click();
-  await expect(page).toHaveURL(/\/$/);
+  // The project crumb opens the project drawer where you are, never a jump Home.
+  const url = page.url();
+  const projectCrumb = crumbs(page).getByRole('button', { name: 'Sample · Northgate DC' });
+  await projectCrumb.click();
   await expect(projectTree(page)).toBeVisible();
+  expect(page.url()).toBe(url);
+  await page.keyboard.press('Escape');
+  await expect(projectTree(page)).toHaveCount(0);
+  await expect(projectCrumb).toBeFocused();
 });
 
 test('the Projects button and [ open the drawer; picking a room closes it', async ({ page }) => {

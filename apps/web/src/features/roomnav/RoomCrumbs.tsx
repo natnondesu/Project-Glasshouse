@@ -1,9 +1,11 @@
 import type { RoomLocation } from '@glasshouse/domain';
 import { useCallback, useLayoutEffect, useRef, useState, type KeyboardEvent } from 'react';
-import { Link, useMatch } from 'react-router';
+import { useMatch } from 'react-router';
 import { useT } from '../../i18n';
 import { IconChevronDown, IconChevronRight } from '../../ui/icons';
+import { PROJECT_DRAWER_ID } from '../tree/ProjectTree';
 import { RoomSwitcher } from './RoomSwitcher';
+import type { TreeDrawer } from './useTreeDrawer';
 import './roomnav.css';
 
 /** Whether a name is cut short by its ellipsis, so its hint can carry the full name. */
@@ -23,10 +25,11 @@ function useIsTruncated<T extends HTMLElement>(text: string): [React.RefObject<T
 }
 
 /**
- * Project › Site › Room in the title block. The project goes Home; the room (and its site) open the
+ * Project › Site › Room in the title block. The project opens the project drawer where you are (pinned, it
+ * takes you to the open room in the docked tree), never a jump Home; the room (and its site) open the
  * switcher, so moving to the next room is one click without the project tree.
  */
-export function RoomCrumbs({ location, isSample }: { location: RoomLocation; isSample: boolean }) {
+export function RoomCrumbs({ location, isSample, tree = null, pinned = false }: { location: RoomLocation; isSample: boolean; tree?: TreeDrawer | null; pinned?: boolean }) {
   const m = useT();
   const view = useMatch('/rooms/:roomId/:view')?.params.view ?? 'plan';
   const [open, setOpen] = useState<null | 'site' | 'room'>(null);
@@ -56,11 +59,18 @@ export function RoomCrumbs({ location, isSample }: { location: RoomLocation; isS
     <nav className="crumbs" aria-label={m.roomNav.breadcrumb}>
       <ol className="crumbs__list">
         <li className="crumbs__item crumbs__item--project">
-          <Link to="/" className="crumbs__link" data-hint={m.roomNav.crumbHint(location.project.name, m.roomNav.toHome, projectCut)}>
+          <button
+            type="button"
+            className="crumbs__btn"
+            aria-expanded={pinned ? undefined : (tree?.open ?? false)}
+            aria-controls={!pinned && tree?.open ? PROJECT_DRAWER_ID : undefined}
+            data-hint={m.roomNav.crumbHint(location.project.name, m.roomNav.showProjects, projectCut)}
+            onClick={(e) => (pinned ? tree?.focusTree() : tree?.toggleFrom(e.currentTarget))}
+          >
             <span ref={projectName} className="crumbs__name">
               {location.project.name}
             </span>
-          </Link>
+          </button>
           {isSample ? <span className="stamp crumbs__stamp">{m.common.sample}</span> : null}
           <IconChevronRight className="crumbs__sep" aria-hidden="true" />
         </li>
