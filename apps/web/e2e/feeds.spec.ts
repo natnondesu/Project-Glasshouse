@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { pickTool } from './tools';
 
 test('connect a rack to an MCB panel and see the run on the plan and the Install sheet', async ({ page }) => {
   await page.goto('/');
@@ -29,8 +30,7 @@ test('place a UPS, feed a rack from it, feed the UPS from the MCB, and wire feed
   await page.goto('/');
   await page.getByRole('complementary', { name: 'Projects' }).getByRole('link', { name: /MDF-1/ }).click();
   await expect(page.getByTestId('zoom-value')).not.toHaveText('100 px/m');
-  await page.getByRole('button', { name: 'More Power source tools' }).click();
-  await page.getByRole('menuitemradio', { name: 'UPS' }).click();
+  await pickTool(page, 'Power source', 'UPS');
   const box = await page.getByTestId('footprint').boundingBox();
   if (!box) throw new Error('no footprint');
   // An empty spot in the L-shaped leg, clear of the desk.

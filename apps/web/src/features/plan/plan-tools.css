@@ -100,47 +100,20 @@
   flex-direction: column;
 }
 
-.tool-group__more {
+.tool {
+  position: relative;
+}
+
+/* The corner mark says "this opens a list"; the whole button opens it, the mark takes no clicks of its own. */
+.tool__corner {
   position: absolute;
-  right: 2px;
-  bottom: 2px;
-  width: 12px;
-  height: 12px;
-  display: grid;
-  place-items: end;
-  padding: 1px;
-  border: 0;
-  border-radius: 3px;
-  background: none;
+  right: 3px;
+  bottom: 3px;
   color: var(--ink-2);
-  cursor: pointer;
+  pointer-events: none;
 }
 
-/* The arrow is the only way to the variants, so its pointer target is 24 x 24 px around the 12 px drawing:
-   6 px into the toolbar's right padding, flush with the group's bottom edge (never into the next group). */
-.tool-group__more::after {
-  content: '';
-  position: absolute;
-  right: -6px;
-  bottom: -2px;
-  width: 24px;
-  height: 24px;
-}
-
-.tool-group__more:focus-visible {
-  outline: none;
-  box-shadow: var(--focus-ring);
-  background: rgb(14 24 36 / 0.08);
-}
-
-.tool-group__more:hover,
-.tool-group__more[aria-expanded='true'] {
-  color: var(--ink);
-  background: rgb(14 24 36 / 0.08);
-}
-
-.tool[aria-pressed='true'] ~ .tool-group__more,
-.tool-cell:has(.tool[aria-pressed='true']) + .tool-group__more {
+.tool[aria-pressed='true'] .tool__corner {
   color: rgb(255 255 255 / 0.85);
 }
 

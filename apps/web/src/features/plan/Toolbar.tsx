@@ -30,9 +30,11 @@ interface ToolButtonProps {
   hintHidden?: boolean;
   /** A group owns the hover, so the hint also shows over its corner arrow; solo tools track their own. */
   hovered?: boolean;
+  /** Set for a group with variants: the whole button opens the list instead of picking a tool. */
+  menu?: { open: boolean; onToggle: () => void };
 }
 
-function ToolButton({ tool, active, onTool, label, hintTool = tool, hintHidden = false, hovered }: ToolButtonProps) {
+function ToolButton({ tool, active, onTool, label, hintTool = tool, hintHidden = false, hovered, menu }: ToolButtonProps) {
   const spec = TOOL_SPECS[tool];
   const defaultName = useT().tools.spec[tool].label;
   const name = label ?? defaultName;
@@ -49,11 +51,14 @@ function ToolButton({ tool, active, onTool, label, hintTool = tool, hintHidden =
         aria-pressed={active}
         aria-label={name}
         aria-describedby={hinted ? hintId : undefined}
+        aria-haspopup={menu ? 'menu' : undefined}
+        aria-expanded={menu ? menu.open : undefined}
         onFocus={() => setHover(true)}
         onBlur={() => setHover(false)}
-        onClick={() => onTool(tool)}
+        onClick={() => (menu ? menu.onToggle() : onTool(tool))}
       >
         <spec.Icon />
+        {menu ? <IconChevronCorner className="tool__corner" /> : null}
       </button>
       {hinted ? <Hint tool={hintTool} id={hintId} /> : null}
     </span>
@@ -88,9 +93,9 @@ function Group({ group, tool, onTool }: GroupProps) {
   const groupLabel = m.tools.group[group.id];
   const face = group.tools[0]!;
   const inGroup = group.tools.includes(tool);
-  const variant = inGroup && tool !== face ? tool : null;
+  const hasMenu = group.tools.length > 1;
   const flyout = useRef<HTMLSpanElement>(null);
-  // Menu keys: arrows and Home/End move through the tools; Escape closes and hands focus back to the arrow that opened it.
+  // Menu keys: arrows and Home/End move through the tools; Escape closes and hands focus back to the group button.
   const onMenuKey = (e: ReactKeyboardEvent): void => {
     if (!open) return;
     const items = [...(flyout.current?.querySelectorAll<HTMLElement>('[role="menuitemradio"]') ?? [])];
@@ -107,7 +112,7 @@ function Group({ group, tool, onTool }: GroupProps) {
       e.preventDefault();
       e.stopPropagation();
       setOpen(false);
-      cell.current?.querySelector<HTMLElement>('.tool-group__more')?.focus();
+      cell.current?.querySelector<HTMLElement>('.tool')?.focus();
     }
   };
   // Keyboard users land on the current tool when the list opens.
@@ -144,15 +149,11 @@ function Group({ group, tool, onTool }: GroupProps) {
         tool={face}
         active={inGroup}
         onTool={onTool}
-        label={variant ? m.tools.activeVariant(m.tools.spec[variant].name, groupLabel) : undefined}
+        label={hasMenu ? (inGroup ? m.tools.activeVariant(m.tools.spec[tool].name, groupLabel) : m.tools.groupTools(groupLabel)) : undefined}
         hintTool={inGroup ? tool : face}
         hintHidden={open}
+        menu={hasMenu ? { open, onToggle: () => setOpen((o) => !o) } : undefined}
       />
-      {group.tools.length > 1 ? (
-        <button type="button" className="tool-group__more" aria-label={m.tools.more(groupLabel)} aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
-          <IconChevronCorner />
-        </button>
-      ) : null}
       {open ? (
         <span ref={flyout} className="tool-flyout popover-surface" role="menu" aria-label={m.tools.groupTools(groupLabel)} style={lift > 0 ? { transform: `translateY(${-lift}px)` } : undefined}>
           <span className="tool-flyout__title">{groupLabel}</span>
@@ -168,6 +169,8 @@ function Group({ group, tool, onTool }: GroupProps) {
                 onClick={() => {
                   onTool(t);
                   setOpen(false);
+                  // The list is about to unmount with focus inside it; without this, focus falls to the page and Esc no longer reaches the plan.
+                  cell.current?.querySelector<HTMLElement>('.tool')?.focus();
                 }}
               >
                 <spec.Icon aria-hidden="true" />
