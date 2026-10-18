@@ -1,4 +1,4 @@
-import { createObject, localToWorld, type Chassis, type PlanContent, type Rack, type Template, emptyContent, seedTemplates, apply, createWorkspace, currentRevision, findRoom } from '@glasshouse/domain';
+import { centerOf, createObject, localToWorld, topLeftForCenter, type RoomObject, type Chassis, type PlanContent, type Rack, type Template, emptyContent, seedTemplates, apply, createWorkspace, currentRevision, findRoom } from '@glasshouse/domain';
 import { describe, expect, it } from 'vitest';
 import { buildScene, rotateY, U_M, RACK_BASE_M } from './scene';
 
@@ -91,5 +91,80 @@ describe('wall racks in 3D', () => {
     const [, y] = scene.racks[0]!.position;
     const h = scene.racks[0]!.size[1];
     expect(y - h / 2).toBeCloseTo(1.2, 5);
+  });
+});
+
+describe('partition, air conditioning and display wall in 3D', () => {
+  const objectsOf = (...objects: RoomObject[]) => buildScene({ ...emptyContent(), objects }).others;
+  const bottomOf = (o: { position: [number, number, number]; size: [number, number, number] }) => o.position[1] - o.size[1] / 2;
+
+  it('hangs a wall split AC at 2.20 m and a display wall at 0.80 m, as high as they are tall', () => {
+    const [ac, dw] = objectsOf(createObject('wall_split_ac', { x: 1, y: 0 }, []), createObject('display_wall', { x: 4, y: 0 }, []));
+    expect(bottomOf(ac!)).toBeCloseTo(2.2, 6);
+    expect(ac!.size).toEqual([0.9, 0.3, 0.25]);
+    expect(bottomOf(dw!)).toBeCloseTo(0.8, 6);
+    expect(dw!.size[1]).toBeCloseTo(1.7, 6);
+  });
+
+  it('hangs a wall item from a file with no stored height at its default height, not on the floor', () => {
+    const bare = { ...createObject('wall_split_ac', { x: 1, y: 0 }, []) } as Partial<RoomObject>;
+    delete bare.wallBottomM;
+    expect(bottomOf(objectsOf(bare as RoomObject)[0]!)).toBeCloseTo(2.2, 6);
+    const edited = { ...createObject('display_wall', { x: 1, y: 0 }, []), wallBottomM: 1.1 };
+    expect(bottomOf(objectsOf(edited)[0]!)).toBeCloseTo(1.1, 6);
+  });
+
+  it('stands a partition and a precision AC on the floor at their own heights', () => {
+    const [wall, pac] = objectsOf(createObject('partition', { x: 1, y: 1 }, []), createObject('precision_ac', { x: 4, y: 1 }, []));
+    expect(bottomOf(wall!)).toBeCloseTo(0, 6);
+    expect(wall!.size).toEqual([2, 2.4, 0.1]);
+    expect(bottomOf(pac!)).toBeCloseTo(0, 6);
+    expect(pac!.size[1]).toBeCloseTo(1.95, 6);
+  });
+
+  it('opens a partition where a door stands in it: the door width along the wall, as high as the door', () => {
+    const wall = { ...createObject('partition', { x: 3, y: 4 }, []), id: 'pt' };
+    const [dx, dy] = topLeftForCenter([wall.x + 1 + 0.5, centerOf(wall)[1]], 0.9, 0.1, 0);
+    const door = { ...createObject('door', { x: dx, y: dy }, []), id: 'd', angle: 0 };
+    const beside = { ...createObject('door', { x: 7, y: 7 }, []), id: 'far' };
+    const [pt] = objectsOf(wall, door, beside);
+    expect(pt!.openings).toHaveLength(1);
+    expect(pt!.openings![0]!.from).toBeCloseTo(0.5 - 0.45, 6);
+    expect(pt!.openings![0]!.to).toBeCloseTo(0.5 + 0.45, 6);
+    expect(pt!.openings![0]!.height).toBeCloseTo(2.1, 6);
+  });
+
+  describe('where doors reach past the partition or each other', () => {
+    const wall = { ...createObject('partition', { x: 3, y: 4 }, []), id: 'pt' };
+    const doorAt = (id: string, along: number, w = 0.9) => {
+      const [dx, dy] = topLeftForCenter([centerOf(wall)[0] + along, centerOf(wall)[1]], w, 0.1, 0);
+      return { ...createObject('door', { x: dx, y: dy }, []), id, w, angle: 0 };
+    };
+
+    it('stops an opening at the end of the partition, so no lintel floats past it', () => {
+      const [pt] = objectsOf(wall, doorAt('d', 0.8));
+      expect(pt!.openings).toHaveLength(1);
+      expect(pt!.openings![0]!.from).toBeCloseTo(0.35, 6);
+      expect(pt!.openings![0]!.to).toBeCloseTo(1, 6);
+    });
+
+    it('merges doors that overlap into one opening as high as the taller', () => {
+      const tall = { ...doorAt('b', 0.3), height: 2.4 };
+      const [pt] = objectsOf(wall, doorAt('a', -0.3), tall);
+      expect(pt!.openings).toHaveLength(1);
+      expect(pt!.openings![0]!.from).toBeCloseTo(-0.75, 6);
+      expect(pt!.openings![0]!.to).toBeCloseTo(0.75, 6);
+      expect(pt!.openings![0]!.height).toBeCloseTo(2.4, 6);
+    });
+
+    it('keeps separate openings for doors that do not touch', () => {
+      const [pt] = objectsOf(wall, doorAt('a', -0.6, 0.6), doorAt('b', 0.6, 0.6));
+      expect(pt!.openings).toHaveLength(2);
+    });
+  });
+
+  it('gives only partitions openings', () => {
+    const [ac] = objectsOf(createObject('wall_split_ac', { x: 1, y: 0 }, []));
+    expect(ac!.openings).toBeUndefined();
   });
 });

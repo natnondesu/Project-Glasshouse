@@ -12,3 +12,16 @@ export function flaggedObjectIds(issues: Issue[]): Set<Id> {
   }
   return ids;
 }
+
+/** Warnings about air conditioning and display walls: advice, so the objects they name are marked rather than blocked. */
+const ENVIRONMENT_CODES: ReadonlySet<IssueCode> = new Set(['wall_ac_drip', 'wall_ac_airflow', 'precision_ac_service', 'display_wall_view']);
+/** The ones about a zone in front of a unit: the zone is drawn while one of them stands. */
+const ZONE_CODES: ReadonlySet<IssueCode> = new Set(['wall_ac_airflow', 'precision_ac_service', 'display_wall_view']);
+
+export function warnedObjectIds(issues: Issue[], codes: ReadonlySet<IssueCode> = ENVIRONMENT_CODES): Set<Id> {
+  return new Set(issues.filter((i) => codes.has(i.code)).flatMap((i) => i.targets));
+}
+
+/** Only the unit that owns the zone (the last target; the first is what stands in it), so a rack in the way doesn't get a zone drawn too. */
+export const zoneWarnedObjectIds = (issues: Issue[]): Set<Id> =>
+  new Set(issues.filter((i) => ZONE_CODES.has(i.code)).flatMap((i) => i.targets.slice(-1)));

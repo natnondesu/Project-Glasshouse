@@ -56,6 +56,25 @@ test('a flyout low on the rail stays inside the plan area on a short screen', as
   await expect(page.getByRole('toolbar', { name: 'Plan tools' }).getByRole('button', { name: /^3rd-party PDU — / })).toHaveAttribute('aria-pressed', 'true');
 });
 
+test('on a short screen with Checks expanded the rail clears the strip and all nine buttons stay reachable', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await page.addInitScript(() => localStorage.setItem('glasshouse:checks-open', 'true'));
+  await openRoom(page);
+  const bar = page.getByRole('toolbar', { name: 'Plan tools' });
+  const buttons = bar.getByRole('button');
+  await expect(buttons).toHaveCount(9);
+  const rail = await bar.boundingBox();
+  const last = await buttons.last().boundingBox();
+  const plan = await page.locator('.plan-canvas').boundingBox();
+  const checks = await page.getByRole('region', { name: 'Checks' }).boundingBox();
+  if (!rail || !last || !plan || !checks) throw new Error('Plan view not rendered');
+  // The strip starts to the right of the rail, so the rail never covers its heading.
+  expect(checks.x).toBeGreaterThanOrEqual(rail.x + rail.width);
+  expect(last.y + last.height).toBeLessThanOrEqual(plan.y + plan.height);
+  await buttons.last().click();
+  await expect(page.getByRole('menu', { name: 'Power source tools' })).toBeVisible();
+});
+
 test('the hint shows wherever the pointer is on a grouped tool, including over its corner arrow', async ({ page }) => {
   await openRoom(page);
   const face = await groupButton(page, 'Racks').boundingBox();

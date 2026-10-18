@@ -1,4 +1,4 @@
-import { formatMetres, isPowerSource, rackAutoHeightM, type ObjectPatch, type PlanContent, type RoomObject, DEFAULT_WALL_RACK } from '@glasshouse/domain';
+import { formatMetres, isPowerSource, isWallHung, rackAutoHeightM, wallBottomOf, type ObjectPatch, type PlanContent, type RoomObject, DEFAULT_WALL_RACK } from '@glasshouse/domain';
 import { PanelFeeds, RackFeeds } from './feeds';
 import { useState } from 'react';
 import { IconRotateCcw, IconRotateCw } from '../../ui/icons';
@@ -28,6 +28,8 @@ export function ObjectInspector({ object, content, commit, onDeleted, onManagePa
   const rack = object.type === 'rack' ? object : null;
   const rackContents = rack ? describeRackContents(m, rack) : null;
   const autoHeight = rack ? rackAutoHeightM(rack.capacityU) : null;
+  const isWall = object.type === 'partition';
+  const zoneNote = object.type in m.inspector.note ? m.inspector.note[object.type as keyof typeof m.inspector.note] : null;
 
   return (
     <div className="inspector__body">
@@ -113,6 +115,9 @@ export function ObjectInspector({ object, content, commit, onDeleted, onManagePa
           </button>
           <NumberField id={`${object.id}-angle`} label={m.inspector.angle} unit="°" value={object.angle} onCommit={num('angle')} />
         </div>
+        {isWallHung(object) ? (
+          <NumberField id={`${object.id}-wall-bottom`} label={m.inspector.heightAboveFloor} unit="m" value={wallBottomOf(object)} onCommit={(v) => (v === null ? null : update({ wallBottomM: v }, 'wallBottom'))} />
+        ) : null}
         {actionError ? (
           <p role="alert" className="field__error">
             {actionError}
@@ -123,8 +128,8 @@ export function ObjectInspector({ object, content, commit, onDeleted, onManagePa
       <fieldset className="inspector__group">
         <legend className="lbl">{m.inspector.size}</legend>
         <div className="field-pair">
-          <NumberField id={`${object.id}-w`} label={m.inspector.width} unit="m" value={object.w} onCommit={num('w')} />
-          <NumberField id={`${object.id}-d`} label={m.inspector.depth} unit="m" value={object.d} onCommit={num('d')} />
+          <NumberField id={`${object.id}-w`} label={isWall ? m.inspector.length : m.inspector.width} unit="m" value={object.w} onCommit={num('w')} />
+          <NumberField id={`${object.id}-d`} label={isWall ? m.inspector.thickness : m.inspector.depth} unit="m" value={object.d} onCommit={num('d')} />
         </div>
         <NumberField
           id={`${object.id}-height`}
@@ -135,6 +140,7 @@ export function ObjectInspector({ object, content, commit, onDeleted, onManagePa
           placeholder={autoHeight === null ? m.inspector.heightDefault : m.inspector.heightFromCapacity(formatMetres(autoHeight))}
           onCommit={(v) => update({ height: v }, 'height')}
         />
+        {zoneNote ? <p className="inspector__note">{zoneNote}</p> : null}
       </fieldset>
 
       {rack ? (

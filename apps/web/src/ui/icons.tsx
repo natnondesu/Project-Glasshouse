@@ -71,6 +71,38 @@ export const IconFurniture = (p: IconProps) => (
     <path d="M4 11V15M14 11V15" />
   </svg>
 );
+/** A wall drawn end to end: the solid bar, and the length it takes from the drag. */
+export const IconPartition = (p: IconProps) => (
+  <svg {...frame(18)} {...p}>
+    <path d="M1.5 6.5H16.5V10H1.5Z" fill="currentColor" />
+    <path d="M1.5 13.5H16.5M1.5 12V15M16.5 12V15" strokeWidth={1} />
+  </svg>
+);
+/** An indoor split unit high on a wall, air fanning out below it. */
+export const IconWallSplitAc = (p: IconProps) => (
+  <svg {...frame(18)} {...p}>
+    <rect x="1.5" y="2.5" width="15" height="6" rx="1.5" />
+    <path d="M3.5 6.5H14.5" strokeWidth={1} />
+    <path d="M5 11.5L3.5 15M9 11.5V15.5M13 11.5L14.5 15" />
+  </svg>
+);
+/** A floor-standing cabinet with its fan and the grille below it. */
+export const IconPrecisionAc = (p: IconProps) => (
+  <svg {...frame(18)} {...p}>
+    <rect x="3.5" y="1.5" width="11" height="15" />
+    <circle cx="9" cy="6.5" r="3" />
+    <path d="M9 3.5V9.5M6 6.5H12" strokeWidth={1} />
+    <path d="M6 12.5H12M6 14.5H12" strokeWidth={1} />
+  </svg>
+);
+/** A video wall: tiles of screens on a stand. */
+export const IconDisplayWall = (p: IconProps) => (
+  <svg {...frame(18)} {...p}>
+    <rect x="1.5" y="2.5" width="15" height="10" />
+    <path d="M6.5 2.5V12.5M11.5 2.5V12.5M1.5 7.5H16.5" strokeWidth={1} />
+    <path d="M9 12.5V15.5M5.5 15.5H12.5" />
+  </svg>
+);
 export const IconPlus = (p: IconProps) => (
   <svg {...frame(14)} {...p}>
     <path d="M7 2V12M2 7H12" />

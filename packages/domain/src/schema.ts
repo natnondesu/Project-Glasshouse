@@ -94,10 +94,11 @@ const rack = z.object({
   reserved: z.array(reserved),
   wallBottomM: num.optional(),
 });
-const simpleObject = z.object({ ...objectBase, type: z.enum(['existing_rack', 'door', 'mcb', 'furniture', 'wall_plug', 'industrial_socket', 'floor_box', 'ups', 'pdu']),
+const simpleObject = z.object({ ...objectBase, type: z.enum(['existing_rack', 'door', 'mcb', 'furniture', 'wall_plug', 'industrial_socket', 'floor_box', 'ups', 'pdu', 'partition', 'wall_split_ac', 'precision_ac', 'display_wall']),
   hinge: z.enum(['left', 'right']).optional(),
   opening: z.enum(['swing', 'slide']).optional(),
   panel: z.object({ phase: z.enum(['single', 'three']), ways: z.array(z.object({ ratingA: num, label: text })) }).optional(),
+  wallBottomM: num.optional(),
 });
 const unverifiedName = z.object({ name: text, at: text, userId: text.optional() });
 const anchor = z.discriminatedUnion('kind', [

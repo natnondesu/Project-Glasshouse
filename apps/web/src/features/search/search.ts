@@ -1,4 +1,4 @@
-import { cableSchedule, findNode, findRackDevice, formatURange, racksOf, type PlanContent, type Template } from '@glasshouse/domain';
+import { cableSchedule, findNode, findRackDevice, formatURange, racksOf, type PlanContent, type SimpleObjectType, type Template } from '@glasshouse/domain';
 import { en, type Messages } from '../../i18n/en';
 
 export type HitKind = 'object' | 'device' | 'node' | 'reserved' | 'feed' | 'link';
@@ -28,11 +28,19 @@ const templateText = (content: PlanContent, id: string, version: number): string
 const templateLabel = (content: PlanContent, id: string, version: number): string =>
   content.templatesUsed.find((x) => x.id === id && x.version === version)?.label ?? 'Device';
 
+/** What people call these, beyond the name the plan gives them; Thai and English both stay searchable. */
+const ALSO_CALLED: Partial<Record<SimpleObjectType, string>> = {
+  partition: 'wall divider ฉากกั้น',
+  wall_split_ac: 'air conditioner air conditioning aircon cooling เครื่องปรับอากาศ',
+  precision_ac: 'air conditioner air conditioning aircon cooling crac cold ระบบทำความเย็น เครื่องปรับอากาศ',
+  display_wall: 'video wall led screen monitor tv จอภาพ วิดีโอวอลล์',
+};
+
 function entries(content: PlanContent, stateOf: (id: string) => string, m: Messages): Entry[] {
   const out: Entry[] = [];
   const name = (id: string): string => content.objects.find((o) => o.id === id)?.name ?? '';
   for (const o of content.objects) {
-    out.push({ key: o.id, kind: 'object', name: o.name, detail: m.objects.type[o.type], objectId: o.id, elementId: null, text: `${m.objects.type[o.type]} ${en.objects.type[o.type]} ${o.notes}` });
+    out.push({ key: o.id, kind: 'object', name: o.name, detail: m.objects.type[o.type], objectId: o.id, elementId: null, text: `${m.objects.type[o.type]} ${en.objects.type[o.type]} ${ALSO_CALLED[o.type as SimpleObjectType] ?? ''} ${o.notes}` });
   }
   for (const rack of racksOf(content)) {
     for (const d of rack.devices) {

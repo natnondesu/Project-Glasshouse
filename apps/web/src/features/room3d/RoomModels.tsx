@@ -2,7 +2,7 @@ import { useEffect, useMemo } from 'react';
 import { BoxGeometry, DoubleSide, EdgesGeometry, Shape, ShapeGeometry, Vector2 } from 'three';
 import { NO_PICK } from './picking';
 import type { Palette3D } from './palette';
-import type { Column3D, Object3D, Scene3D } from './scene';
+import type { Column3D, Object3D, Opening3D, Scene3D } from './scene';
 import { floorGridTexture } from './textures';
 
 const WALL_H_M = 0.32;
@@ -316,6 +316,121 @@ function PowerBar({ size, color, wall }: { size: [number, number, number]; color
   );
 }
 
+/** A partition: a full-height wall, with a doorway cut wherever a door stands in it and the wall carried on above. */
+function Partition({ size, color, wall, openings }: { size: [number, number, number]; color: string; wall: string; openings: Opening3D[] }) {
+  const [w, h, d] = size;
+  const pieces: { x: number; len: number; y: number; high: number }[] = [];
+  let from = -w / 2;
+  for (const gap of openings) {
+    if (gap.from > from) pieces.push({ x: (from + gap.from) / 2, len: gap.from - from, y: 0, high: h });
+    // Above the doorway the wall carries on up to its top.
+    if (gap.height < h) pieces.push({ x: (gap.from + gap.to) / 2, len: gap.to - gap.from, y: gap.height / 2, high: h - gap.height });
+    from = gap.to;
+  }
+  if (from < w / 2) pieces.push({ x: (from + w / 2) / 2, len: w / 2 - from, y: 0, high: h });
+  return (
+    <group>
+      {pieces.map((p, i) => (
+        <group key={i} position={[p.x, p.y, 0]}>
+          <mesh castShadow receiveShadow>
+            <boxGeometry args={[p.len, p.high, d]} />
+            <meshStandardMaterial color={color} roughness={0.85} />
+          </mesh>
+          <Edges size={[p.len, p.high, d]} color={wall} opacity={0.5} />
+        </group>
+      ))}
+    </group>
+  );
+}
+
+/** A wall-mounted split unit: a white case with a louvre slot low on its face and a status light. */
+function WallSplitAc({ size, color, wall }: { size: [number, number, number]; color: string; wall: string }) {
+  const [w, h, d] = size;
+  return (
+    <group>
+      <mesh castShadow>
+        <boxGeometry args={size} />
+        <meshStandardMaterial color={color} roughness={0.45} />
+      </mesh>
+      <mesh position={[0, -h * 0.28, d / 2 + 0.002]}>
+        <planeGeometry args={[w * 0.86, h * 0.2]} />
+        <meshStandardMaterial color="#59636d" roughness={0.7} />
+      </mesh>
+      <mesh position={[w * 0.4, h * 0.2, d / 2 + 0.002]}>
+        <circleGeometry args={[0.012, 12]} />
+        <meshStandardMaterial color="#4cd17a" emissive="#4cd17a" emissiveIntensity={0.6} />
+      </mesh>
+      <Edges size={size} color={wall} />
+    </group>
+  );
+}
+
+/** A floor-standing precision (computer room) unit: a tall cabinet, a display and an air grille on its front, and a plinth. */
+function PrecisionAc({ size, color, wall }: { size: [number, number, number]; color: string; wall: string }) {
+  const [w, h, d] = size;
+  const slats = 6;
+  return (
+    <group>
+      <mesh castShadow receiveShadow>
+        <boxGeometry args={size} />
+        <meshStandardMaterial color={color} roughness={0.5} metalness={0.15} />
+      </mesh>
+      <mesh position={[0, -h / 2 + 0.06, d / 2 + 0.002]}>
+        <planeGeometry args={[w, 0.12]} />
+        <meshStandardMaterial color="#2b333c" roughness={0.7} />
+      </mesh>
+      <mesh position={[0, h * 0.4, d / 2 + 0.002]}>
+        <planeGeometry args={[w * 0.28, 0.07]} />
+        <meshStandardMaterial color="#1b2128" emissive="#2f6fd1" emissiveIntensity={0.35} />
+      </mesh>
+      {Array.from({ length: slats }, (_, i) => (
+        <mesh key={i} position={[0, h * 0.1 + (i - (slats - 1) / 2) * 0.09, d / 2 + 0.002]}>
+          <planeGeometry args={[w * 0.72, 0.04]} />
+          <meshStandardMaterial color="#59636d" roughness={0.7} />
+        </mesh>
+      ))}
+      <Edges size={size} color={wall} />
+    </group>
+  );
+}
+
+const TILE_TARGET_M = 0.9;
+const TILE_JOINT_M = 0.008;
+
+/** A video wall: a dark bezel, the screen set into its face, and the joints between its tiles. */
+function DisplayWall({ size, color, wall }: { size: [number, number, number]; color: string; wall: string }) {
+  const [w, h, d] = size;
+  const bezel = 0.03;
+  const cols = Math.max(1, Math.round(w / TILE_TARGET_M));
+  const rows = Math.max(1, Math.round(h / TILE_TARGET_M));
+  const front = d / 2 + 0.002;
+  return (
+    <group>
+      <mesh castShadow>
+        <boxGeometry args={size} />
+        <meshStandardMaterial color={color} roughness={0.5} metalness={0.3} />
+      </mesh>
+      <mesh position={[0, 0, front]}>
+        <planeGeometry args={[w - bezel * 2, h - bezel * 2]} />
+        <meshStandardMaterial color="#0c1a2e" emissive="#1f5fbf" emissiveIntensity={0.28} roughness={0.25} />
+      </mesh>
+      {Array.from({ length: cols - 1 }, (_, i) => (
+        <mesh key={`c${i}`} position={[-w / 2 + bezel + ((w - bezel * 2) * (i + 1)) / cols, 0, front + 0.001]}>
+          <planeGeometry args={[TILE_JOINT_M, h - bezel * 2]} />
+          <meshStandardMaterial color={color} />
+        </mesh>
+      ))}
+      {Array.from({ length: rows - 1 }, (_, i) => (
+        <mesh key={`r${i}`} position={[0, -h / 2 + bezel + ((h - bezel * 2) * (i + 1)) / rows, front + 0.001]}>
+          <planeGeometry args={[w - bezel * 2, TILE_JOINT_M]} />
+          <meshStandardMaterial color={color} />
+        </mesh>
+      ))}
+      <Edges size={size} color={wall} opacity={0.7} />
+    </group>
+  );
+}
+
 export function ObjectModel({ object, palette }: { object: Object3D; palette: Palette3D }) {
   const color = palette.object[object.type];
   let body;
@@ -324,6 +439,10 @@ export function ObjectModel({ object, palette }: { object: Object3D; palette: Pa
   else if (object.type === 'wall_plug' || object.type === 'industrial_socket') body = <Faceplate size={object.size} color={color} wall={palette.wall} round={object.type === 'industrial_socket'} />;
   else if (object.type === 'floor_box') body = <FloorBoxLid size={object.size} color={color} wall={palette.wall} />;
   else if (object.type === 'pdu') body = <PowerBar size={object.size} color={color} wall={palette.wall} />;
+  else if (object.type === 'partition') body = <Partition size={object.size} color={color} wall={palette.wall} openings={object.openings ?? []} />;
+  else if (object.type === 'wall_split_ac') body = <WallSplitAc size={object.size} color={color} wall={palette.wall} />;
+  else if (object.type === 'precision_ac') body = <PrecisionAc size={object.size} color={color} wall={palette.wall} />;
+  else if (object.type === 'display_wall') body = <DisplayWall size={object.size} color={color} wall={palette.wall} />;
   else if (object.type === 'ups') body = <Cabinet size={object.size} color={color} wall={palette.wall} accent="#4cd17a" />;
   else body = <Mcb size={object.size} color={color} wall={palette.wall} />;
   return (

@@ -1,5 +1,5 @@
 import { newId } from './ids';
-import { DEFAULT_CLEARANCE, DEFAULT_HEIGHTS_M, DEFAULT_RACK, DEFAULT_SIZES, NAME_PREFIX } from './model/defaults';
+import { DEFAULT_CLEARANCE, DEFAULT_HEIGHTS_M, DEFAULT_RACK, DEFAULT_SIZES, DEFAULT_WALL_BOTTOM_M, NAME_PREFIX } from './model/defaults';
 import type { Metres, RoomObject, RoomObjectType } from './model/types';
 import { rackAutoHeightM } from './units';
 
@@ -30,7 +30,22 @@ export function createObject(type: RoomObjectType, at: { x: Metres; y: Metres },
     };
   }
   const size = DEFAULT_SIZES[type];
-  return { ...base, type, w: size.w, d: size.d };
+  const wallBottomM = DEFAULT_WALL_BOTTOM_M[type];
+  return { ...base, type, w: size.w, d: size.d, ...(wallBottomM === undefined ? {} : { wallBottomM }) };
+}
+
+/** A split AC or display wall: hung on a wall with its bottom at `wallBottomM`, like a wall rack. */
+export const isWallHung = (o: RoomObject): boolean => o.type !== 'rack' && DEFAULT_WALL_BOTTOM_M[o.type] !== undefined;
+
+/**
+ * Height of the object's bottom above the floor. Only racks and wall-hung objects have one: a stray
+ * height on anything else (from an imported file) is ignored, so it can't lift an object out of overlap checks.
+ * A hung item from a file with no height keeps its default, so it still hangs.
+ */
+export function wallBottomOf(o: RoomObject): Metres {
+  if (o.type === 'rack') return o.wallBottomM ?? 0;
+  const hung = DEFAULT_WALL_BOTTOM_M[o.type];
+  return hung === undefined ? 0 : (o.wallBottomM ?? hung);
 }
 
 export function effectiveHeight(o: RoomObject): Metres {
@@ -38,9 +53,9 @@ export function effectiveHeight(o: RoomObject): Metres {
   return o.type === 'rack' ? rackAutoHeightM(o.capacityU) : DEFAULT_HEIGHTS_M[o.type];
 }
 
-/** The heights an object fills: a wall rack from its bottom up, everything else from the floor. */
+/** The heights an object fills: a wall rack, split AC or display wall from its bottom up, everything else from the floor. */
 export function verticalSpan(o: RoomObject): [Metres, Metres] {
-  const bottom = o.type === 'rack' ? (o.wallBottomM ?? 0) : 0;
+  const bottom = wallBottomOf(o);
   return [bottom, bottom + effectiveHeight(o)];
 }
 

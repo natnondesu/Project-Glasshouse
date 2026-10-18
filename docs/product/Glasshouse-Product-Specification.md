@@ -82,7 +82,7 @@ All team members work on laptops or desktops, mostly with trackpads. Tablets and
 | --- | --- | --- |
 | Project → Site → Room hierarchy | Organising tree, browser-local | Shared, permissioned hierarchy |
 | Room Footprint | Floor areas minus Cut-outs, 10 cm | Survey evidence and measurement provenance |
-| Room objects | Racks, Existing racks, doors, MCB panels, furniture | Authoritative rack bindings |
+| Room objects | Racks, Existing racks, doors, partitions, MCB panels, furniture, air conditioning (wall split, precision), display walls | Authoritative rack bindings |
 | Racks in customer racks | Rack owner + Reserved ranges | External containment mapping |
 | Clearance zones | Front/rear depths, checked | Configurable organisation standards |
 | Rack elevation | Implemented, front/rear inspection | Dual-face mounting rules |
@@ -107,7 +107,7 @@ Accepting the MVP does not make it ready for shared operational use. The product
 
 1. Onsite opens or creates a Project, Site and Room. Opening a Room opens its Plan.
 2. Onsite enters the Survey (room name, Power budget, network handoff, notes) and builds the Footprint from Floor areas and Cut-outs.
-3. Onsite places Racks (marking each Rack owner), Existing racks, doors, MCB panels and furniture, and sets each Rack's facing.
+3. Onsite places Racks (marking each Rack owner), Existing racks, doors, partitions, MCB panels, furniture, air conditioning and display walls, and sets each Rack's facing.
 4. Onsite exports a Project file and sends it to IT.
 5. IT imports the Project file, opens the Room's elevation, and adds Devices from the Catalog. For customer racks, IT records occupied U as Reserved ranges.
 6. For a Chassis, IT fills Slots with Node templates and configures each Node.
@@ -149,7 +149,9 @@ A drag commits on release; Escape cancels and restores the prior state. Removing
 
 ### FR03 Room objects
 
-Object types: **Rack**, **Existing rack**, access door, MCB panel, furniture. Each stores a stable ID, name, X/Y, width, depth, angle, optional physical height and notes. Racks additionally store capacity in U, **Usable depth** in mm, **Rack owner** (OxygenAI or Customer) and front/rear clearance depths.
+Object types: **Rack**, **Existing rack**, access door, MCB panel, furniture, **Partition**, **Wall split AC**, **Precision AC**, **Display wall**. Each stores a stable ID, name, X/Y, width, depth, angle, optional physical height and notes. Racks additionally store capacity in U, **Usable depth** in mm, **Rack owner** (OxygenAI or Customer) and front/rear clearance depths.
+
+The four newer objects are rectangles like the others: a **Partition** is a full-height wall drawn by dragging from one end to the other (default 2.00 m long, 0.10 m thick, 2.40 m high; its ends snap to the room's walls and to other partitions) and a door placed or dragged near it snaps into it; a **Wall split AC** (0.90 × 0.25 m, 0.30 m high) and a **Display wall** (3.00 × 0.15 m, 1.70 m high) hang on a wall or partition with their bottoms at 2.20 m and 0.80 m (editable as Height above floor); a **Precision AC** (0.80 × 0.80 m, 1.95 m high) stands on the floor. A display wall is drawn only: it takes no power feed and does not count toward the room's power. Their checks are in FR04. They appear in search, in 3D (a partition has a doorway where a door stands in it), on the plan and in the Install sheet's Room fittings table (size, height, how fixed, and the space to keep clear).
 
 Objects are selected, dragged and resized with edge/corner handles; drag and resize snap to 0.10 m, and numeric fields accept values to 0.01 m. Rotation uses **45° step** controls (buttons and keyboard) plus an exact angle field for any value, normalised to 0–360°. There is no free rotation handle. Rotation preserves the physical centre; resize handles follow the object's local axes.
 
@@ -167,6 +169,17 @@ Each Rack has a **Clearance zone** in front and behind, as wide as the Rack, wit
 | A Clearance zone extends outside the Footprint | Flagged; blocks approval |
 | Any Rack, Existing rack, MCB panel or furniture inside a Clearance zone | Flagged; blocks approval |
 | A door inside a Clearance zone | Warning only |
+
+Air conditioning and the display wall add warnings of their own (none blocks approval):
+
+| Condition | Result |
+| --- | --- |
+| A Rack, Existing rack or wall rack stands under a Wall split AC (plan footprints overlap) | Warning: condensate can drip on it |
+| A Rack or Existing rack is within 1.00 m in front of a Wall split AC's long face | Warning: it blocks the airflow |
+| Anything but a door is within 1.00 m in front of a Precision AC | Warning: keep the service space clear |
+| A Rack or Existing rack is within 1.50 m in front of a Display wall (desks are allowed) | Warning: it stands in the viewing area |
+
+A Partition is an obstacle: overlapping it blocks approval like any object, and a Rack's Clearance zone crossing it is flagged like one crossing furniture. A door standing in a partition is not an overlap. These zones are hatched on the plan while the unit is selected or a rule about it has fired, and are not drawn on the Install sheet; the Room fittings table lists the space to keep clear.
 
 Clearance zones render as a hatch in 2D and are hidden in room 3D by default. Door-swing simulation is excluded.
 
@@ -208,7 +221,7 @@ The Slot map, rack elevation, room 3D and BOM show Nodes, and each Node is indiv
 
 The 2D plan, rack elevation, room 3D, BOM and Install sheet read the same canonical records. Visual editing emits domain commands; no view keeps its own state.
 
-**2D plan and elevation:** trackpad-first. Pinch or Ctrl/⌘+scroll zooms around the pointer; two-finger scroll pans; an explicit Pan tool and Space+drag also pan; Fit room resets the view. Mouse wheel zoom and middle-drag pan also work. A short click selects; a drag never accidentally selects. Plan tools are grouped (Floor, Racks, Doors, Furniture, Measure, Power source). Each group button always shows its default tool and picks it on click; the other tools in the group are chosen from a flyout behind the corner arrow, and the button names the active one. Each tool has a hover hint naming it, what it does and its shortcut. The plan is drawn as a technical drawing (paper, ink lines, hatched Clearance zones, callouts for blocking issues, scale bar and legend). While an object is being placed, dragged, resized or is selected, the plan shows its clear distance to the nearest wall or object on each side. A Dimension tool places persistent dimensions in three clicks (two points, then where the dimension line sits); they are saved in the Revision, follow the objects they are attached to, can have their line dragged to a new offset, and print on the Install sheet. Doors are drawn with their leaf and swing and have a hinge side; MCB panels use a panel symbol; object names fit inside their shapes and show in full on hover; the Measure tool stays for quick, temporary checks (decided 2026-10-14). The project tree and the inspectors can be collapsed to give the drawing more room.
+**2D plan and elevation:** trackpad-first. Pinch or Ctrl/⌘+scroll zooms around the pointer; two-finger scroll pans; an explicit Pan tool and Space+drag also pan; Fit room resets the view. Mouse wheel zoom and middle-drag pan also work. A short click selects; a drag never accidentally selects. Plan tools are grouped (Floor, Racks, Walls & doors, Furniture, Cooling, Measure, Power source). Each group button always shows its default tool and picks it on click; the other tools in the group are chosen from a flyout behind the corner arrow, and the button names the active one. Each tool has a hover hint naming it, what it does and its shortcut. The plan is drawn as a technical drawing (paper, ink lines, hatched Clearance zones, callouts for blocking issues, scale bar and legend). While an object is being placed, dragged, resized or is selected, the plan shows its clear distance to the nearest wall or object on each side. A Dimension tool places persistent dimensions in three clicks (two points, then where the dimension line sits); they are saved in the Revision, follow the objects they are attached to, can have their line dragged to a new offset, and print on the Install sheet. Doors are drawn with their leaf and swing and have a hinge side; MCB panels use a panel symbol; object names fit inside their shapes and show in full on hover; the Measure tool stays for quick, temporary checks (decided 2026-10-14). The project tree and the inspectors can be collapsed to give the drawing more room.
 
 **Room 3D:** view only. Orbit, pan and pointer-anchored zoom with the same trackpad and mouse gestures; Reset restores the default camera. Racks render with a frame, rails and open front; Devices are drawn at their depth with category fronts (drive bays, ports, vents) and Chassis show their Node Slots; each Rack carries a readable label. Clicking a Rack highlights it and shows its summary with an Open elevation action (decided 2026-10-14). Projection and depth ordering must never make Racks appear inverted or floating.
 
@@ -316,6 +329,9 @@ Names are user-visible labels; stable IDs establish relationships. Room geometry
 | Rack automatic height | Capacity × 0.04445 m + 0.18 m frame allowance |
 | Existing rack default height | 2.0 m |
 | Door, MCB panel, furniture default heights | 2.1 m, 1.4 m, 0.75 m |
+| Partition, Wall split AC, Precision AC, Display wall default heights | 2.4 m, 0.30 m, 1.95 m, 1.70 m |
+| Wall split AC, Display wall default height above floor | 2.20 m, 0.80 m (0–4 m) |
+| Airflow, service and viewing zones | 1.00 m, 1.00 m, 1.50 m |
 | Chassis Slots | 1–64; Slots per row 1 to Slot count |
 | Power budget | 100–100,000 W |
 | Design limit | 50–100% of Power budget, default 80% |
@@ -335,6 +351,7 @@ Defaults are rendering and planning assumptions, not manufacturer specifications
 | Rotated footprint overlap between objects | Allow temporarily, flag | Block |
 | Clearance zone outside Footprint, or obstacle inside a Clearance zone | Flag | Block |
 | Door inside a Clearance zone | Warn | Allowed |
+| Rack under or in front of a Wall split AC; object in front of a Precision AC; Rack in front of a Display wall | Warn | Allowed |
 | Disconnected Floor areas | Warn | Allowed |
 | Empty Footprint | Allowed while building | Block |
 | Invalid Slot, Slot capacity or non-Node insert | Reject | Block |

@@ -1,5 +1,6 @@
 import { applyPlanCommand, createObject, emptyContent, seedTemplates, type PlanCommand, type PlanContent, type Rack, type Template } from '@glasshouse/domain';
 import { describe, expect, it } from 'vitest';
+import { th } from '../../i18n/th';
 import { searchRoom } from './search';
 
 const t = (id: string) => seedTemplates().find((x) => x.id === id) as Template;
@@ -35,6 +36,36 @@ describe('searchRoom', () => {
     expect(searchRoom(room(), 'node')[0]).toMatchObject({ kind: 'node', name: 'NODE-01', elementId: 'n1', objectId: 'rk' });
     expect(searchRoom(room(), 'feed a mcb')[0]).toMatchObject({ kind: 'feed', objectId: 'rk' });
     expect(searchRoom(room(), 'door')[0]).toMatchObject({ kind: 'object', name: 'D-01', objectId: 'door', elementId: null });
+  });
+
+  it('finds the new room objects by name, type and what people call them', () => {
+    const c = [
+      { ...createObject('partition', { x: 2, y: 3 }, []), id: 'pt', name: 'PT-01' },
+      { ...createObject('wall_split_ac', { x: 1, y: 0 }, []), id: 'ac', name: 'AC-01' },
+      { ...createObject('precision_ac', { x: 3, y: 0.5 }, []), id: 'pac', name: 'PAC-01' },
+      { ...createObject('display_wall', { x: 1, y: 3.8 }, []), id: 'dw', name: 'DW-01', notes: 'Command wall' },
+    ].reduce((acc, object) => {
+      const r = applyPlanCommand(acc, { type: 'object/add', object });
+      if (!r.ok) throw new Error(r.error.message);
+      return r.value;
+    }, room());
+    const ids = (q: string) => searchRoom(c, q).map((h) => h.objectId);
+    expect(searchRoom(c, 'pt-01')[0]).toMatchObject({ kind: 'object', name: 'PT-01', objectId: 'pt', detail: 'Partition' });
+    expect(ids('partition')).toEqual(['pt']);
+    expect(ids('wall split').sort()).toEqual(['ac']);
+    expect(ids('aircon').sort()).toEqual(['ac', 'pac']);
+    expect(ids('air conditioning').sort()).toEqual(['ac', 'pac']);
+    expect(ids('precision')).toEqual(['pac']);
+    expect(ids('video wall')).toEqual(['dw']);
+    expect(ids('led')).toEqual(['dw']);
+    expect(ids('command')).toEqual(['dw']);
+  });
+
+  it('finds them by their Thai names too', () => {
+    const c = applyPlanCommand(room(), { type: 'object/add', object: { ...createObject('wall_split_ac', { x: 1, y: 0 }, []), id: 'ac', name: 'AC-01' } });
+    if (!c.ok) throw new Error(c.error.message);
+    expect(searchRoom(c.value, 'แอร์', { m: th }).map((h) => h.objectId)).toEqual(['ac']);
+    expect(searchRoom(c.value, 'เครื่องปรับอากาศ', { m: th }).map((h) => h.objectId)).toEqual(['ac']);
   });
 
   it('ranks exact and leading name matches first, ignores case, and returns nothing for blank queries', () => {

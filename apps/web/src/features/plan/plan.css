@@ -61,6 +61,15 @@
   opacity: 0.5;
 }
 
+.hatch-fill--warn {
+  fill: rgb(154 90 0 / 0.09);
+}
+
+.hatch-line--warn {
+  stroke: var(--warn);
+  opacity: 0.6;
+}
+
 .grid {
   stroke: var(--d-grid-minor);
   stroke-width: 1;
@@ -142,6 +151,12 @@
 
 .obj--furniture .obj__body {
   stroke-width: 1.25;
+}
+
+/* An object named by an advisory warning (air conditioning, display wall): amber outline, still approvable. */
+.obj.is-warned .obj__body {
+  stroke: var(--warn);
+  stroke-width: 2;
 }
 
 .obj:hover .obj__body {
@@ -720,4 +735,148 @@
 /* Wall-mounted racks hang above the floor: drawn dashed, as overhead items are on a plan. */
 .obj--wall .obj__body {
   stroke-dasharray: 6 3;
+}
+
+/* Partition: wall poche, solid ink under the doors that stand in it. */
+.obj--partition .obj__body {
+  fill: var(--d-ink);
+  stroke: var(--d-ink);
+  stroke-width: 1;
+}
+
+.obj--partition:hover .obj__body {
+  fill: var(--d-ink-2);
+}
+
+.obj--partition.is-selected .obj__body {
+  fill: var(--d-sel);
+  stroke: var(--d-sel);
+}
+
+.obj--partition.is-flagged .obj__body {
+  fill: var(--d-block);
+  stroke: var(--d-block);
+}
+
+/* Names that lie along a long, thin object. The halo keeps them legible over hatching and lines. */
+.obj__label--along {
+  paint-order: stroke;
+  stroke: var(--paper);
+  stroke-width: 3px;
+  stroke-linejoin: round;
+}
+
+.obj__label--beside {
+  font-size: var(--text-2xs);
+}
+
+/* Wall split AC: overhead, so dashed like a wall rack; the vent and the air it blows out. */
+.obj--wall_split_ac .obj__body {
+  stroke-dasharray: 6 3;
+}
+
+.ac__louvre {
+  fill: none;
+  stroke: var(--d-ink);
+  stroke-width: 1.2;
+}
+
+.ac__flow {
+  fill: none;
+  stroke: var(--d-clr);
+  stroke-width: 1.3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* Precision AC: a cabinet on the floor, its fan from above and the heavy front band. */
+.obj--precision_ac .obj__body {
+  stroke-width: 2;
+}
+
+.pac__fan,
+.pac__blades {
+  fill: none;
+  stroke: var(--d-ink);
+  stroke-width: 1.3;
+  stroke-linecap: round;
+}
+
+/* Display wall: tile joints, and a heavy line on the face people look at. */
+.obj--display_wall .obj__body {
+  stroke: var(--d-ink-2);
+}
+
+.dw__tile {
+  fill: none;
+  stroke: var(--d-ink-2);
+  stroke-width: 1;
+}
+
+.dw__screen {
+  fill: none;
+  stroke: var(--d-ink);
+  stroke-width: 3.5;
+  stroke-linecap: butt;
+}
+
+.obj.is-selected .ac__louvre,
+.obj.is-selected .pac__fan,
+.obj.is-selected .pac__blades,
+.obj.is-selected .dw__screen,
+.obj.is-selected .dw__tile {
+  stroke: var(--d-sel);
+}
+
+/* The area watched in front of a unit: hatched like a clearance zone, amber while a rule about it holds. */
+.env-zone__area {
+  fill: url(#gh-hatch-clearance);
+  stroke: var(--d-clr);
+  stroke-width: 1;
+  stroke-dasharray: 4 3;
+  pointer-events: none;
+}
+
+.env-zone--warn .env-zone__area {
+  fill: url(#gh-hatch-warn);
+  stroke: var(--warn);
+}
+
+.env-zone__label {
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  font-weight: 700;
+  fill: var(--d-clr);
+  paint-order: stroke;
+  stroke: var(--paper);
+  stroke-width: 3px;
+  stroke-linejoin: round;
+  pointer-events: none;
+}
+
+.env-zone--warn .env-zone__label {
+  fill: var(--warn);
+}
+
+.wall-preview {
+  pointer-events: none;
+}
+
+.wall-preview__body {
+  fill: var(--d-sel);
+  fill-opacity: 0.55;
+  stroke: var(--d-sel);
+  stroke-width: 1.5;
+}
+
+/* A solid wall block with a door gap cut in it: nothing like the rack front's single thin line. */
+.plan-legend__swatch--partition {
+  width: 20px;
+  height: 9px;
+  background: linear-gradient(90deg, var(--d-ink) 0 7px, transparent 7px 12px, var(--d-ink) 12px);
+}
+
+.plan-legend__swatch--zone {
+  border: 1px dashed var(--warn);
+  background: repeating-linear-gradient(45deg, rgb(154 90 0 / 0.09) 0 3px, rgb(154 90 0 / 0.5) 3px 4px);
 }

@@ -1,8 +1,8 @@
-import { createWorkspace, currentRevision, withSample, type PlanCommand, type Workspace } from '@glasshouse/domain';
+import { createObject, createWorkspace, currentRevision, withSample, type PlanCommand, type Rack, type Workspace } from '@glasshouse/domain';
 import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { createMemoryRouter, RouterProvider } from 'react-router';
-import { beforeEach, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { routes } from '../../app/routes';
 import { resetWorkspaceStore, useWorkspaceStore } from '../../store/workspaceStore';
 
@@ -165,4 +165,46 @@ it('prints the cable schedule of the approved server room', () => {
   expect([...row.querySelectorAll('td')].map((td) => [...td.childNodes].map((n) => n.textContent).join(' / '))).toEqual(['C-001', 'SRV-01 / RK-01', 'eth0 (bond0)', 'ACC-01 / RK-01', 'Gi1/0/1 (Po11)', 'Cat 6', '20']);
   expect(within(table).getByText('UPL-11').closest('tr')).toHaveTextContent('Fibre OM4');
   expect(within(table).getByText('UPL-11').closest('tr')).toHaveTextContent('Trunk all · native 99');
+});
+
+describe('room fittings', () => {
+  function approvedRoom(withFittings: boolean): string {
+    const s = useWorkspaceStore.getState();
+    const siteId = s.workspace.projects[0]!.sites[0]!.id;
+    s.dispatch({ type: 'room/create', siteId, id: 'fit', floorAreaId: 'fa-fit', name: 'Command' });
+    const server = s.workspace.catalog.find((t) => t.id === 'tpl-server-2u')!;
+    s.dispatch({ type: 'plan', roomId: 'fit', command: { type: 'object/add', object: { ...(createObject('rack', { x: 4, y: 1.5 }, []) as Rack), id: 'rk', name: 'RK-01', clearance: { front: 0, rear: 0 } } } });
+    s.dispatch({ type: 'plan', roomId: 'fit', command: { type: 'device/place', id: 'srv', rackId: 'rk', bottomU: 1, template: server } });
+    if (withFittings) {
+      const add = (object: ReturnType<typeof createObject>, id: string, name: string, extra: object = {}) => {
+        const problem = s.dispatch({ type: 'plan', roomId: 'fit', command: { type: 'object/add', object: { ...object, id, name, ...extra } } });
+        if (problem) throw new Error(problem.message);
+      };
+      add(createObject('partition', { x: 2, y: 3 }, []), 'pt', 'PT-01');
+      add(createObject('wall_split_ac', { x: 1, y: 0 }, []), 'ac', 'AC-01');
+      add(createObject('precision_ac', { x: 3, y: 0.5 }, []), 'pac', 'PAC-01');
+      add(createObject('display_wall', { x: 1, y: 3.8 }, []), 'dw', 'DW-01', { wallBottomM: 1 });
+    }
+    s.dispatch({ type: 'review', roomId: 'fit', command: { type: 'review/submit', designedBy: 'Ploy', at: AT } });
+    const problem = s.dispatch({ type: 'review', roomId: 'fit', command: { type: 'review/approve', reviewer: 'Nok', at: AT } });
+    if (problem) throw new Error(problem.message);
+    return 'fit';
+  }
+
+  it('lists partitions, air conditioning and display walls with size, height, fixing and the space to keep clear, under a title block', () => {
+    open(approvedRoom(true));
+    const table = screen.getByRole('table', { name: 'Room fittings' });
+    expect(table.querySelector('thead .sheet-title')).not.toBeNull();
+    expect([...table.querySelectorAll('thead tr:last-child th')].map((th) => th.textContent)).toEqual(['Name', 'Type', 'Size (m)', 'Height (m)', 'Fixing', 'Keep clear']);
+    const row = (name: string) => [...within(table).getByText(name).closest('tr')!.querySelectorAll('td')].map((td) => td.textContent);
+    expect(row('PT-01')).toEqual(['PT-01', 'Partition', '2.00 × 0.10', '2.40', 'On the floor', '']);
+    expect(row('AC-01')).toEqual(['AC-01', 'Wall split AC', '0.90 × 0.25', '0.30', 'On the wall, bottom at 2.20 m', 'Airflow 1.00 m']);
+    expect(row('PAC-01')).toEqual(['PAC-01', 'Precision AC', '0.80 × 0.80', '1.95', 'On the floor', 'Service 1.00 m']);
+    expect(row('DW-01')).toEqual(['DW-01', 'Display wall', '3.00 × 0.15', '1.70', 'On the wall, bottom at 1.00 m', 'Viewing 1.50 m']);
+  });
+
+  it('prints no fittings page for a room without any', () => {
+    open(approvedRoom(false));
+    expect(screen.queryByRole('table', { name: 'Room fittings' })).toBeNull();
+  });
 });

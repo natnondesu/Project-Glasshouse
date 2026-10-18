@@ -48,6 +48,11 @@ export const DEFAULT_SIZES: Record<SimpleObjectType, { w: number; d: number }> =
   ups: { w: 0.6, d: 0.85 },
   /** A third-party PDU is a power bar: a 19-inch strip of sockets. */
   pdu: { w: 0.48, d: 0.1 },
+  /** w is the length, d the thickness. */
+  partition: { w: 2, d: 0.1 },
+  wall_split_ac: { w: 0.9, d: 0.25 },
+  precision_ac: { w: 0.8, d: 0.8 },
+  display_wall: { w: 3, d: 0.15 },
 };
 
 export const DEFAULT_HEIGHTS_M: Record<SimpleObjectType, number> = {
@@ -60,7 +65,30 @@ export const DEFAULT_HEIGHTS_M: Record<SimpleObjectType, number> = {
   floor_box: 0.03,
   ups: 1.6,
   pdu: 0.05,
+  partition: 2.4,
+  wall_split_ac: 0.3,
+  precision_ac: 1.95,
+  display_wall: 1.7,
 };
+
+/** Objects hung on a wall at a height, like a wall rack: they carry `wallBottomM`, which these are created with. */
+export const DEFAULT_WALL_BOTTOM_M: Partial<Record<SimpleObjectType, number>> = {
+  wall_split_ac: 2.2,
+  display_wall: 0.8,
+};
+
+/** An object hung with its underside at or above this is walked and worked under, so it is not in the way of a rack's aisle. */
+export const CLEARANCE_HEADROOM_M = 2.0;
+
+/** How deep, in front of an object, the planner keeps watch (metres). */
+export const ENVIRONMENT_ZONE_M = {
+  /** Air blown by a wall split AC. */
+  splitAcAirflow: 1,
+  /** Service access in front of a precision AC. */
+  precisionAcService: 1,
+  /** Viewing area in front of a display wall. */
+  displayWallViewing: 1.5,
+} as const;
 
 export const NAME_PREFIX: Record<RoomObjectType, string> = {
   rack: 'RK',
@@ -73,4 +101,8 @@ export const NAME_PREFIX: Record<RoomObjectType, string> = {
   floor_box: 'FB',
   ups: 'UPS',
   pdu: 'PDU',
+  partition: 'PT',
+  wall_split_ac: 'AC',
+  precision_ac: 'PAC',
+  display_wall: 'DW',
 };

@@ -126,6 +126,16 @@ export function PlanLegend({ view, clearance = true, onClose }: { view: View; cl
         {m.plan.rackFront}
       </span>
       <span className="plan-legend__item">
+        <span className="plan-legend__swatch plan-legend__swatch--partition" />
+        {m.objects.type.partition}
+      </span>
+      {clearance ? (
+        <span className="plan-legend__item">
+          <span className="plan-legend__swatch plan-legend__swatch--zone" />
+          {m.plan.unitZone}
+        </span>
+      ) : null}
+      <span className="plan-legend__item">
         <span className="plan-legend__swatch plan-legend__swatch--block" />
         {m.plan.blocksApproval}
       </span>

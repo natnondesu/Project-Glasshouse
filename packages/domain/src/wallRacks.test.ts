@@ -49,3 +49,35 @@ describe('wall-mounted racks', () => {
     expect(applyPlanCommand(desk1, { type: 'object/update', id: 'desk', patch: { wallBottomM: 1 } })).toMatchObject({ ok: false, error: { message: 'DESK-01 is not a rack.' } });
   });
 });
+
+describe('a height off the floor belongs to wall racks and wall-hung objects only', () => {
+  const raisedDesk = (): RoomObject => ({ ...desk(1, 0), wallBottomM: 3 });
+
+  it('is refused on furniture when added, updated or pasted', () => {
+    const c = room([]);
+    expect(applyPlanCommand(c, { type: 'object/add', object: raisedDesk() })).toMatchObject({ ok: false, error: { code: 'invalid_value' } });
+    const withDesk = room([desk(1, 0)]);
+    expect(applyPlanCommand(withDesk, { type: 'object/update', id: 'desk', patch: { wallBottomM: 3 } })).toMatchObject({ ok: false });
+    expect(applyPlanCommand(c, { type: 'object/paste', id: 'copy', source: raisedDesk(), at: { x: 2, y: 2 }, ids: {}, templates: [] })).toMatchObject({ ok: false, error: { code: 'invalid_value' } });
+  });
+
+  it('is still accepted on wall racks, split ACs and display walls', () => {
+    const c = room([]);
+    for (const object of [rack('w', 1, 1, { wallBottomM: 1.2 }), createObject('wall_split_ac', { x: 1, y: 0 }, []), createObject('display_wall', { x: 0, y: 3 }, [])]) {
+      const added = applyPlanCommand(c, { type: 'object/add', object });
+      expect(added.ok ? 'ok' : added.error.message).toBe('ok');
+    }
+  });
+
+  it('is ignored for furniture from an imported file, so a raised desk cannot hide an overlap', () => {
+    const c = room([rack('f', 1, 0, { capacityU: 42 }), raisedDesk()]);
+    expect(verticalSpan(raisedDesk())[0]).toBe(0);
+    expect(codes(c)).toContain('object_overlap');
+  });
+
+  it('is dropped when such an object is next edited, so it can still be renamed', () => {
+    const edited = applyPlanCommand(room([raisedDesk()]), { type: 'object/update', id: 'desk', patch: { name: 'DESK-02' } });
+    if (!edited.ok) throw new Error(edited.error.message);
+    expect(edited.value.objects[0]).not.toHaveProperty('wallBottomM');
+  });
+});

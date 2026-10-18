@@ -2,7 +2,7 @@ import { centerOf, placementPolygon, type Dimension, type Issue, type PlanConten
 import { useMemo, type DOMAttributes } from 'react';
 import type { ViewportApi } from '../../viewport/useViewport';
 import { toScreen } from '../../viewport/math';
-import { flaggedObjectIds } from './flagged';
+import { flaggedObjectIds, warnedObjectIds, zoneWarnedObjectIds } from './flagged';
 import '../search/search.css';
 import { CalloutLayer, GapLayer } from './drafting';
 import { DimensionLayer } from './DimensionLayer';
@@ -15,18 +15,21 @@ import type { MeasureState } from './usePlanGestures';
 import {
   ClearanceLayer,
   DimensionsLayer,
+  EnvironmentLayer,
   FloorPreview,
   FootprintLayer,
   GridLayer,
   HatchDefs,
   ObjectsLayer,
   SelectionLayer,
+  ZoneLabelLayer,
+  WallPreview,
   type Preview,
 } from './layers';
 
 export type SvgHandlers = Pick<
   DOMAttributes<SVGSVGElement>,
-  'onPointerDown' | 'onPointerMove' | 'onPointerUp' | 'onPointerCancel' | 'onPointerLeave' | 'onContextMenu'
+  'onPointerDown' | 'onPointerMove' | 'onPointerUp' | 'onPointerCancel' | 'onPointerLeave' | 'onContextMenu' | 'onMouseDown'
 >;
 
 /** Width the glass inspector covers on the right of the canvas. */
@@ -57,6 +60,8 @@ interface PlanCanvasProps {
   pulse?: { id: string; n: number } | null;
 }
 
+const NONE: ReadonlySet<string> = new Set();
+
 const withPreview = (objects: RoomObject[], preview: Preview | null): RoomObject[] =>
   preview?.kind === 'object' ? objects.map((o) => (o.id === preview.id ? { ...o, ...preview.patch } : o)) : objects;
 
@@ -66,6 +71,8 @@ export function PlanCanvas({ content, issues, selectedId, viewport, preview, mea
   const calloutClearance = inspectorOpen ? INSPECTOR_CLEARANCE_PX : RAIL_CLEARANCE_PX;
   const { view } = viewport;
   const flagged = useMemo(() => flaggedObjectIds(issues), [issues]);
+  const warned = useMemo(() => warnedObjectIds(issues), [issues]);
+  const zoneWarned = useMemo(() => zoneWarnedObjectIds(issues), [issues]);
   const objects = withPreview(content.objects, preview);
   const selected = objects.find((o) => o.id === selectedId) ?? null;
   const moving = preview?.kind === 'object' ? (objects.find((o) => o.id === preview.id) ?? null) : null;
@@ -90,19 +97,24 @@ export function PlanCanvas({ content, issues, selectedId, viewport, preview, mea
       <GridLayer survey={content.survey} view={view} />
       <FootprintLayer survey={content.survey} view={view} />
       {layers.clearance ? <ClearanceLayer objects={objects} view={view} /> : null}
+      {layers.clearance ? <EnvironmentLayer objects={objects} view={view} selectedId={selectedId} warned={zoneWarned} /> : null}
       {layers.feeds ? <FeedLayer content={liveContent} view={view} /> : null}
-      <ObjectsLayer objects={objects} view={view} flagged={flagged} selectedId={selectedId} onFocusObject={onFocusObject} />
+      <ObjectsLayer objects={objects} view={view} flagged={flagged} warned={warned} selectedId={selectedId} onFocusObject={onFocusObject} />
       {selected ? <SelectionLayer object={selected} view={view} /> : null}
       {layers.dimensions ? <DimensionsLayer survey={content.survey} view={view} /> : null}
       {preview?.kind === 'rect' ? <FloorPreview preview={preview} view={view} /> : null}
+      {preview?.kind === 'wall' ? <WallPreview object={preview.object} view={view} /> : null}
       <DimensionLayer content={liveContent} view={view} selectedId={selectedId} onFocusDimension={onFocusObject} />
       {ghost ? (
         <g className="ghost" aria-hidden="true">
           {layers.clearance ? <ClearanceLayer objects={[ghost]} view={view} /> : null}
+          {layers.clearance ? <EnvironmentLayer objects={[ghost]} view={view} selectedId={ghost.id} warned={NONE} /> : null}
           <path className="ghost__body" d={polygonPath(placementPolygon(ghost), view)} />
         </g>
       ) : null}
       {active && showGaps ? <GapLayer object={active} content={liveContent} view={view} /> : null}
+      {layers.clearance ? <ZoneLabelLayer objects={objects} view={view} selectedId={selectedId} warned={zoneWarned} /> : null}
+      {ghost && layers.clearance ? <ZoneLabelLayer objects={[ghost]} view={view} selectedId={ghost.id} warned={NONE} /> : null}
       {pulsed && pulse ? (
         <circle
           key={pulse.n}

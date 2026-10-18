@@ -1,4 +1,4 @@
-import { BOM_COLUMNS, formatDemand, formatURange, panelOf, racksOf, wayPhase, type BomRow, type Chassis, type Rack, type Revision, type CableRow, type PlanContent } from '@glasshouse/domain';
+import { BOM_COLUMNS, effectiveHeight, ENVIRONMENT_ZONE_M, formatDemand, formatMetres, formatURange, isWallHung, panelOf, racksOf, wallBottomOf, wayPhase, type BomRow, type Chassis, type Rack, type Revision, type CableRow, type PlanContent, type RoomObject } from '@glasshouse/domain';
 import type { ReactNode } from 'react';
 import { useT } from '../../i18n';
 import { usePeople } from '../../people/peopleStore';
@@ -17,6 +17,13 @@ const SHORT = new Set<string>(['slot', 'position', 'heightU', 'depthMm', 'demand
  */
 const BOM_WIDTHS: Partial<Record<string, number>> = { rack: 10, chassis: 10, slot: 4, name: 13, model: 13, category: 8, position: 7, depthMm: 5, demandW: 6, ports: 8, config: 11, notes: 5 };
 const CABLE_WIDTHS = [12, 23, 12, 23, 11, 8, 11];
+const FITTING_WIDTHS = [11, 17, 15, 11, 28, 18];
+
+/** What the sheet lists besides racks and power: things that stand or hang in the room and need a place, a height and sometimes space kept clear. */
+const FITTING_TYPES = new Set<RoomObject['type']>(['partition', 'wall_split_ac', 'precision_ac', 'display_wall']);
+export const fittingsOf = (content: PlanContent): RoomObject[] => content.objects.filter((o) => FITTING_TYPES.has(o.type));
+
+const ZONE_DEPTH_M = { wall_split_ac: ENVIRONMENT_ZONE_M.splitAcAirflow, precision_ac: ENVIRONMENT_ZONE_M.precisionAcService, display_wall: ENVIRONMENT_ZONE_M.displayWallViewing } as const;
 
 /**
  * Long tables carry the title block in <thead>: browsers repeat <thead> on every printed page,
@@ -221,6 +228,45 @@ export function VlanTable({ content }: { content: PlanContent }) {
             <td className="mono is-short">{m.vlans.usedBy(usage.get(v.vid) ?? 0)}</td>
           </tr>
         ))}
+      </tbody>
+    </table>
+  );
+}
+
+/** Partitions, air conditioning and display walls: where each one is fixed, how big, how high, and the space to leave in front of it. */
+export function FittingsTable({ objects, titleBlock }: { objects: RoomObject[]; titleBlock: ReactNode }) {
+  const m = useT();
+  return (
+    <table className="sheet-table sheet-table--fixed" aria-label={m.sheet.fittings.title}>
+      <colgroup>
+        {FITTING_WIDTHS.map((w, i) => (
+          <col key={i} style={{ width: `${w}%` }} />
+        ))}
+      </colgroup>
+      <TitleHead span={6} titleBlock={titleBlock}>
+        <tr>
+          <th scope="col">{m.sheet.fittings.name}</th>
+          <th scope="col">{m.sheet.fittings.type}</th>
+          <th scope="col">{m.sheet.fittings.size}</th>
+          <th scope="col">{m.sheet.fittings.height}</th>
+          <th scope="col">{m.sheet.fittings.fixing}</th>
+          <th scope="col">{m.sheet.fittings.clear}</th>
+        </tr>
+      </TitleHead>
+      <tbody>
+        {objects.map((o) => {
+          const depth = ZONE_DEPTH_M[o.type as keyof typeof ZONE_DEPTH_M];
+          return (
+            <tr key={o.id}>
+              <td className="mono">{o.name}</td>
+              <td>{m.objects.type[o.type]}</td>
+              <td className="mono is-short">{`${formatMetres(o.w)} × ${formatMetres(o.d)}`}</td>
+              <td className="mono is-short">{formatMetres(effectiveHeight(o))}</td>
+              <td>{isWallHung(o) ? m.sheet.fittings.onWall(formatMetres(wallBottomOf(o))) : m.sheet.fittings.onFloor}</td>
+              <td className="mono">{depth === undefined ? '' : `${m.plan.zone[o.type as keyof typeof m.plan.zone]} ${formatMetres(depth)} m`}</td>
+            </tr>
+          );
+        })}
       </tbody>
     </table>
   );

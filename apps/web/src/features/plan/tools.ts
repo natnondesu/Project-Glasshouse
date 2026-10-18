@@ -4,6 +4,7 @@ import {
   IconArea,
   IconCut,
   IconDimension,
+  IconDisplayWall,
   IconDoor,
   IconExistingRack,
   IconFloorBox,
@@ -12,19 +13,22 @@ import {
   IconMcb,
   IconMeasure,
   IconPan,
+  IconPartition,
   IconPdu,
+  IconPrecisionAc,
   IconRack,
   IconSelect,
   IconSlidingDoor,
   IconUps,
   IconWallRack,
   IconWallPlug,
+  IconWallSplitAc,
 } from '../../ui/icons';
 
 /** What a placement tool drops: an object type, or a door that slides instead of swinging. */
 export type PlacementTool = RoomObjectType | 'sliding_door' | 'wall_rack';
 export type Tool = 'select' | 'pan' | 'measure' | 'dimension' | 'area' | 'cut' | PlacementTool;
-export type ToolGroupId = 'floor' | 'racks' | 'doors' | 'furniture' | 'measure' | 'power';
+export type ToolGroupId = 'floor' | 'racks' | 'walls' | 'furniture' | 'cooling' | 'measure' | 'power';
 
 /** Wording (label, flyout name, hint) lives in the message catalogues under `tools.spec`. */
 interface ToolSpec {
@@ -58,6 +62,10 @@ export const TOOL_SPECS: Record<Tool, ToolSpec> = {
   floor_box: { id: 'floor_box', shortcut: null, Icon: IconFloorBox },
   ups: { id: 'ups', shortcut: null, Icon: IconUps },
   pdu: { id: 'pdu', shortcut: null, Icon: IconPdu },
+  partition: { id: 'partition', shortcut: null, Icon: IconPartition },
+  wall_split_ac: { id: 'wall_split_ac', shortcut: null, Icon: IconWallSplitAc },
+  precision_ac: { id: 'precision_ac', shortcut: null, Icon: IconPrecisionAc },
+  display_wall: { id: 'display_wall', shortcut: null, Icon: IconDisplayWall },
 };
 
 export const SOLO_TOOLS: Tool[] = ['select', 'pan'];
@@ -65,8 +73,9 @@ export const SOLO_TOOLS: Tool[] = ['select', 'pan'];
 export const TOOL_GROUPS: ToolGroup[] = [
   { id: 'floor', tools: ['area', 'cut'] },
   { id: 'racks', tools: ['rack', 'wall_rack', 'existing_rack'] },
-  { id: 'doors', tools: ['door', 'sliding_door'] },
-  { id: 'furniture', tools: ['furniture'] },
+  { id: 'walls', tools: ['door', 'sliding_door', 'partition'] },
+  { id: 'furniture', tools: ['furniture', 'display_wall'] },
+  { id: 'cooling', tools: ['wall_split_ac', 'precision_ac'] },
   { id: 'measure', tools: ['measure', 'dimension'] },
   { id: 'power', tools: ['mcb', 'wall_plug', 'industrial_socket', 'floor_box', 'ups', 'pdu'] },
 ];
