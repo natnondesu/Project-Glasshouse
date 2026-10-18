@@ -149,6 +149,18 @@
   stroke-dasharray: 3 3;
 }
 
+/* A panel the survey drew but the room won't use: grey and dashed, quieter than anything live. */
+.obj--off .obj__body {
+  fill: #eef1f3;
+  stroke: var(--ink-3);
+  stroke-width: 1.25;
+  stroke-dasharray: 4 3;
+}
+
+.obj--off .mcb__bolt {
+  stroke: var(--ink-3);
+}
+
 .obj--furniture .obj__body {
   stroke-width: 1.25;
 }

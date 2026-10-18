@@ -257,3 +257,15 @@
 .inspector__lock:disabled .icon-btn--sm {
   visibility: hidden;
 }
+
+/* A panel marked not in use: dashed like its drawing, grey rather than a warning colour. */
+.inspector__status {
+  align-self: flex-start;
+  margin: 0;
+  padding: 2px 8px;
+  border: 1px dashed var(--ink-3);
+  border-radius: 999px;
+  font-size: var(--text-2xs);
+  font-weight: 600;
+  color: var(--ink-2);
+}

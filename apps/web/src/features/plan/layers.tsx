@@ -7,6 +7,7 @@ import {
   footprintOf,
   formatMetres,
   frontEdge,
+  isInUse,
   localToWorld,
   placementPolygon,
   rotatedBoundsSize,
@@ -234,7 +235,8 @@ export function ObjectsLayer({ objects, view, flagged, warned, selectedId, onFoc
         // The PAC's fan sits in the middle of the cabinet: its name goes under it.
         const labelDy = o.type === 'precision_ac' ? pacNameDropPx(o, view) : 0;
         const alongName = ALONG_NAMED.has(o.type) ? alongLabel(o, view) : null;
-        const classes = ['obj', `obj--${o.type}`, o.type === 'rack' && o.owner === 'customer' ? 'obj--customer' : '', o.type === 'rack' && o.wallBottomM !== undefined ? 'obj--wall' : '', flagged.has(o.id) ? 'is-flagged' : '', warned?.has(o.id) ? 'is-warned' : '', o.id === selectedId ? 'is-selected' : '']
+        const off = !isInUse(o);
+        const classes = ['obj', `obj--${o.type}`, off ? 'obj--off' : '', o.type === 'rack' && o.owner === 'customer' ? 'obj--customer' : '', o.type === 'rack' && o.wallBottomM !== undefined ? 'obj--wall' : '', flagged.has(o.id) ? 'is-flagged' : '', warned?.has(o.id) ? 'is-warned' : '', o.id === selectedId ? 'is-selected' : '']
           .filter(Boolean)
           .join(' ');
         return (
@@ -244,7 +246,7 @@ export function ObjectsLayer({ objects, view, flagged, warned, selectedId, onFoc
             data-object-id={o.id}
             {...(isStatic
               ? {}
-              : { role: 'button', tabIndex: 0, 'aria-label': `${o.name}, ${m.objects.type[o.type]}`, 'aria-pressed': o.id === selectedId, onFocus: () => onFocusObject(o.id) })}
+              : { role: 'button', tabIndex: 0, 'aria-label': `${o.name}, ${m.objects.type[o.type]}${off ? `, ${m.panelMgr.notInUse.toLowerCase()}` : ''}`, 'aria-pressed': o.id === selectedId, onFocus: () => onFocusObject(o.id) })}
           >
             <path className="obj__body" d={polygonPath(placementPolygon(o), view)} />
             {o.type === 'existing_rack' ? <path className="obj__cross" d={crossPath(o, view)} /> : null}
@@ -271,7 +273,7 @@ export function ObjectsLayer({ objects, view, flagged, warned, selectedId, onFoc
                 {sub}
               </text>
             ) : null}
-            {isStatic ? null : <HoverTag name={o.name} x={cx} y={topY} />}
+            {isStatic ? null : <HoverTag name={off ? `${o.name} · ${m.panelMgr.notInUse}` : o.name} x={cx} y={topY} />}
           </g>
         );
       })}

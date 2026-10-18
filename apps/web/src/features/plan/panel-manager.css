@@ -32,9 +32,96 @@
 
 .panel-mgr__config {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 14px;
+  gap: 8px 16px;
   padding: 10px 16px;
+}
+
+/* A real checkbox (focusable, announced as a switch) laid over a drawn track. */
+.panel-mgr__use {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.panel-mgr__use input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.panel-mgr__switch {
+  position: relative;
+  flex: none;
+  width: 30px;
+  height: 18px;
+  border-radius: 9px;
+  background: var(--ink-3);
+  transition: background var(--duration-fast) ease-out;
+}
+
+.panel-mgr__switch::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 2px rgb(14 24 36 / 0.35);
+  transition: transform var(--duration-fast) ease-out;
+}
+
+.panel-mgr__use input:checked + .panel-mgr__switch {
+  background: var(--acc);
+}
+
+.panel-mgr__use input:checked + .panel-mgr__switch::after {
+  transform: translateX(12px);
+}
+
+.panel-mgr__use input:focus-visible + .panel-mgr__switch {
+  box-shadow: var(--focus-ring);
+}
+
+.panel-mgr__warn {
+  margin: 0 16px 8px;
+  padding: 6px 10px;
+  border: 1px solid var(--warn-border);
+  border-radius: 6px;
+  background: var(--warn-bg);
+  color: var(--warn);
+  font-size: var(--text-xs);
+  font-weight: 600;
+}
+
+.panel-mgr__way {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  padding: 10px 16px;
+  border-top: 1px solid var(--line);
+  background: var(--acc-tint);
+}
+
+.panel-mgr__way h3 {
+  font-size: var(--text-sm);
+  font-weight: 700;
+}
+
+.panel-mgr__way .panel-mgr__label {
+  width: 180px;
 }
 
 .panel-mgr__count {
@@ -46,6 +133,7 @@
 }
 
 .panel-mgr select,
+.panel-mgr__main,
 .panel-mgr__label {
   font: inherit;
   font-size: var(--text-xs);
@@ -57,8 +145,11 @@
 }
 
 .panel-mgr__label {
-  width: 100%;
   min-width: 80px;
+}
+
+.panel-mgr__main {
+  width: 72px;
 }
 
 .panel-mgr__error {
@@ -85,38 +176,7 @@
   flex: 1 1 auto;
   min-height: 0;
   overflow: auto;
-  padding: 0 8px;
-}
-
-.panel-mgr__table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: var(--text-sm);
-}
-
-.panel-mgr__table th {
-  position: sticky;
-  top: 0;
-  z-index: 1;
-  padding: 6px 8px;
-  background: rgb(247 249 251 / 0.98);
-  text-align: left;
-  font-size: var(--text-2xs);
-  font-weight: 600;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  color: var(--ink-2);
-  border-bottom: 1px solid var(--line-strong);
-}
-
-.panel-mgr__table td {
-  padding: 4px 8px;
-  border-bottom: 1px solid var(--line);
-  vertical-align: middle;
-}
-
-.panel-mgr__table tr.is-used td:first-child {
-  font-weight: 700;
+  padding: 4px 16px 12px;
 }
 
 .panel-mgr__feed {

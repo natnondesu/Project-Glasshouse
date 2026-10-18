@@ -98,3 +98,48 @@ it('re-sources or disconnects an existing input', async () => {
   await user.selectOptions(within(input).getByLabelText('Fed from'), '');
   expect(commit).toHaveBeenLastCalledWith({ type: 'feed/remove', id: 'in' });
 });
+
+const unused = (c: PlanContent, id: string): PlanContent => ({
+  ...c,
+  objects: c.objects.map((o) => (o.id === id && o.type === 'mcb' ? { ...o, panel: { ...(o.panel ?? { phase: 'three' as const, ways: [] }), inUse: false } } : o)),
+});
+
+it('shows a panel that is not in use disabled in the feed source picker, and never adds a feed to it', async () => {
+  const user = userEvent.setup();
+  const commit = vi.fn<(command: unknown, coalesceKey?: string) => string | null>(() => null);
+  const c = unused(content(false), 'm1');
+  render(<Inspector content={c} selected={rack} commit={commit} onDeleted={() => {}} />);
+  const feeds = screen.getByRole('group', { name: 'Power feeds' });
+  await user.click(within(feeds).getByRole('button', { name: 'Add power feed' }));
+  expect(commit.mock.lastCall?.[0]).toMatchObject({ type: 'feed/add', feed: { sourceId: 'm2' } });
+});
+
+it('marks a panel not in use on a feed already wired to it', () => {
+  const c = unused(content(), 'm2');
+  render(<Inspector content={c} selected={rack} commit={() => null} onDeleted={() => {}} />);
+  const select = within(screen.getByRole('group', { name: 'Power feeds' })).getByLabelText('Feed B source');
+  expect(within(select).getByRole('option', { name: 'MCB-02 (not in use)' })).toBeDisabled();
+  expect(within(select).getByRole('option', { name: 'MCB-01' })).toBeEnabled();
+  expect(select).toHaveValue('m2');
+});
+
+it('disables adding a feed when every panel is not in use', () => {
+  const c = unused(unused(content(false), 'm1'), 'm2');
+  render(<Inspector content={c} selected={rack} commit={() => null} onDeleted={() => {}} />);
+  expect(screen.getByRole('button', { name: 'Add power feed' })).toBeDisabled();
+});
+
+it('says a panel is not in use in its inspector', () => {
+  const c = unused(content(false), 'm1');
+  render(<Inspector content={c} selected={c.objects.find((o) => o.id === 'm1')!} commit={() => null} onDeleted={() => {}} />);
+  expect(screen.getByText('Not in use')).toBeInTheDocument();
+});
+
+it('offers an input choice of a panel not in use disabled on a UPS', () => {
+  const ups: RoomObject = { ...createObject('ups', { x: 4, y: 3 }, []), id: 'u', name: 'UPS-01' };
+  const c = unused({ ...content(false), objects: [...content(false).objects, ups] }, 'm1');
+  render(<Inspector content={c} selected={ups} commit={() => null} onDeleted={() => {}} />);
+  const input = screen.getByRole('group', { name: 'Power input' }).querySelector('select')!;
+  expect(within(input).getByRole('option', { name: 'MCB-01 (not in use)' })).toBeDisabled();
+  expect(within(input).getByRole('option', { name: 'MCB-02' })).toBeEnabled();
+});

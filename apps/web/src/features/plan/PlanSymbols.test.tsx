@@ -233,3 +233,15 @@ describe('drawing a partition', () => {
     expect(container.querySelector('.wall-preview__length')?.textContent).toBe('3.20 m');
   });
 });
+
+it('draws an MCB panel that is not in use greyed and dashed, still named on hover and to screen readers', () => {
+  const on = at(createObject('mcb', { x: 0, y: 4 }, []), 'on', { name: 'MCB-01' });
+  const off = at(createObject('mcb', { x: 0, y: 6 }, []), 'off', { name: 'MCB-02', panel: { phase: 'three', ways: [], inUse: false } } as Partial<RoomObject>);
+  const { container } = render(<Harness objects={[on, off]} />);
+  expect(container.querySelector('[data-object-id="on"]')).not.toHaveClass('obj--off');
+  const greyed = container.querySelector('[data-object-id="off"]')!;
+  expect(greyed).toHaveClass('obj--off');
+  expect(greyed).toHaveAccessibleName('MCB-02, MCB panel, not in use');
+  expect(greyed.querySelector('.obj__hover')!.textContent).toBe('MCB-02 · Not in use');
+  expect(greyed.querySelector('.mcb__bolt')).not.toBeNull();
+});

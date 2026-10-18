@@ -1,4 +1,4 @@
-import { feedRoute, isPowerSource, newId, nextFeedLabel, panelOf, type PlanContent, type PowerFeed, type RoomObject } from '@glasshouse/domain';
+import { feedRoute, isInUse, isPowerSource, newId, nextFeedLabel, panelOf, type PlanContent, type PowerFeed, type RoomObject } from '@glasshouse/domain';
 import { useState } from 'react';
 import { IconPlus, IconTrash } from '../../ui/icons';
 import { toScreen, type View } from '../../viewport/math';
@@ -56,6 +56,7 @@ export function RackFeeds({ rack, content, commit }: { rack: RoomObject; content
   const [error, setError] = useState<string | null>(null);
   const m = useT();
   const panels = content.objects.filter(isPowerSource);
+  const usable = panels.filter(isInUse);
   const feeds = content.feeds.filter((f) => f.targetId === rack.id);
   const act = (problem: string | null): void => setError(problem);
   return (
@@ -77,8 +78,8 @@ export function RackFeeds({ rack, content, commit }: { rack: RoomObject; content
               onChange={(e) => act(commit({ type: 'feed/update', id: f.id, patch: { sourceId: e.target.value } }))}
             >
               {panels.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
+                <option key={p.id} value={p.id} disabled={!isInUse(p)}>
+                  {isInUse(p) ? p.name : m.feeds.notInUseOption(p.name)}
                 </option>
               ))}
             </select>
@@ -96,13 +97,13 @@ export function RackFeeds({ rack, content, commit }: { rack: RoomObject; content
       <button
         type="button"
         className="btn btn--sm"
-        disabled={panels.length === 0}
-        onClick={() => act(commit({ type: 'feed/add', feed: { id: newId(), targetId: rack.id, sourceId: panels[0]!.id, label: nextFeedLabel(content, rack.id) } }))}
+        disabled={usable.length === 0}
+        onClick={() => act(commit({ type: 'feed/add', feed: { id: newId(), targetId: rack.id, sourceId: usable[0]!.id, label: nextFeedLabel(content, rack.id) } }))}
       >
         <IconPlus />
         {m.feeds.add}
       </button>
-      {panels.length === 0 ? <p className="inspector__note">{m.feeds.needSource}</p> : null}
+      {usable.length === 0 ? <p className="inspector__note">{panels.length === 0 ? m.feeds.needSource : m.feeds.allNotInUse}</p> : null}
       {error ? (
         <p role="alert" className="field__error">
           {error}
@@ -149,8 +150,8 @@ function SourceInput({ panel, content, commit }: { panel: RoomObject; content: P
         <select id={`${panel.id}-input`} className="feed-list__select" value={input?.sourceId ?? ''} onChange={(e) => pick(e.target.value)}>
           <option value="">{m.feeds.notConnectedOption}</option>
           {upstream.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.name}
+            <option key={p.id} value={p.id} disabled={!isInUse(p)}>
+              {isInUse(p) ? p.name : m.feeds.notInUseOption(p.name)}
             </option>
           ))}
         </select>
@@ -176,6 +177,7 @@ export function PanelFeeds({ panel, content, commit, onManage }: { panel: RoomOb
       <SourceInput panel={panel} content={content} commit={commit} />
       <fieldset className="inspector__group">
         <legend className="lbl">{m.feeds.out}</legend>
+        {isInUse(panel) ? null : <p className="inspector__status">{m.panelMgr.notInUse}</p>}
         {panel.type === 'mcb' && onManage ? (
           <button type="button" className="btn btn--sm" onClick={() => onManage(panel.id)}>
             {m.feeds.manageWays}

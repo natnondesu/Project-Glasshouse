@@ -1,0 +1,274 @@
+/* The panel face: a paper-and-ink drawing of the enclosure, like the drawing canvases around it. */
+.panel-face {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  width: max-content;
+  margin: 0 auto;
+  padding: 22px 24px 24px;
+  border: 2px solid var(--d-ink);
+  border-radius: 6px;
+  background:
+    radial-gradient(circle, var(--d-ink-2) 2.5px, transparent 3px) left 8px top 8px / 8px 8px no-repeat,
+    radial-gradient(circle, var(--d-ink-2) 2.5px, transparent 3px) right 8px top 8px / 8px 8px no-repeat,
+    radial-gradient(circle, var(--d-ink-2) 2.5px, transparent 3px) left 8px bottom 8px / 8px 8px no-repeat,
+    radial-gradient(circle, var(--d-ink-2) 2.5px, transparent 3px) right 8px bottom 8px / 8px 8px no-repeat,
+    var(--paper);
+  box-shadow: inset 0 0 0 6px var(--paper), inset 0 0 0 7px var(--d-rule);
+}
+
+.panel-face__main {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  width: 132px;
+  padding: 6px 8px 5px;
+  border: 1.5px solid var(--d-ink);
+  border-radius: 4px;
+  background: #fff;
+  font-size: var(--text-sm);
+  font-weight: 700;
+  color: var(--d-ink);
+}
+
+.panel-face__main-lever {
+  width: 78%;
+  height: 11px;
+  border-radius: 2px;
+  background: var(--d-ink);
+}
+
+.panel-face__grid {
+  display: grid;
+  gap: 4px 0;
+}
+
+.panel-face--two_column .panel-face__grid {
+  grid-template-columns: repeat(2, 226px);
+  column-gap: 32px;
+}
+
+.panel-face--column .panel-face__grid {
+  grid-template-columns: 226px;
+}
+
+.panel-face--row .panel-face__grid {
+  grid-auto-columns: 62px;
+  column-gap: 3px;
+}
+
+.way-tile {
+  display: grid;
+  grid-template-columns: 16px 1fr;
+  grid-template-rows: auto auto auto;
+  align-items: center;
+  column-gap: 8px;
+  min-height: 44px;
+  padding: 5px 8px 5px 6px;
+  border: 1px solid var(--d-ink-2);
+  border-radius: 4px;
+  background: #fff;
+  color: var(--d-ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: box-shadow var(--duration-fast) ease-out;
+}
+
+.way-tile > :not(.way-tile__lever) {
+  grid-column: 2;
+  min-width: 0;
+}
+
+.way-tile.is-right {
+  grid-template-columns: 1fr 16px;
+  padding: 5px 6px 5px 8px;
+}
+
+.way-tile.is-right > :not(.way-tile__lever) {
+  grid-column: 1;
+}
+
+.way-tile.is-right .way-tile__lever {
+  grid-column: 2;
+}
+
+.way-tile:hover {
+  box-shadow: 0 0 0 1px var(--d-ink-2);
+}
+
+.way-tile:focus-visible,
+.way-tile.is-selected {
+  border-color: var(--acc);
+  box-shadow: var(--focus-ring);
+  outline: none;
+}
+
+/* The toggle: a slot with the knob up when the way carries a feed, down when it is spare. */
+.way-tile__lever {
+  position: relative;
+  grid-column: 1;
+  grid-row: 1 / -1;
+  align-self: stretch;
+  min-height: 26px;
+  border: 1px solid var(--d-ink-2);
+  border-radius: 3px;
+  background: var(--d-rule);
+}
+
+.way-tile__lever::after {
+  content: '';
+  position: absolute;
+  left: -1px;
+  right: -1px;
+  bottom: -1px;
+  height: 48%;
+  border: 1px solid var(--d-ink-2);
+  border-radius: 3px;
+  background: #fff;
+}
+
+.way-tile.is-fed .way-tile__lever::after {
+  top: -1px;
+  bottom: auto;
+  background: var(--d-ink);
+}
+
+.way-tile__head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.way-tile__n {
+  font-size: var(--text-md);
+  font-weight: 700;
+}
+
+.way-tile__spec {
+  font-size: var(--text-2xs);
+  color: var(--d-ink-2);
+}
+
+.way-tile__feed {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 5px;
+  font-size: var(--text-2xs);
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.way-tile__feed > span:nth-child(3)::before {
+  content: '· ';
+}
+
+.way-tile__feed.is-spare {
+  font-weight: 400;
+  color: var(--ink-3);
+}
+
+.way-tile__swatch {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+}
+
+.way-tile__label {
+  font-size: var(--text-2xs);
+  color: var(--ink-2);
+  line-height: 1.3;
+}
+
+/* One row: breakers stand upright side by side like the small enclosure. */
+.panel-face--row .way-tile {
+  grid-template-columns: 1fr;
+  grid-template-rows: none;
+  justify-items: center;
+  align-content: start;
+  row-gap: 4px;
+  min-height: 112px;
+  padding: 6px 3px;
+  text-align: center;
+}
+
+.panel-face--row .way-tile > :not(.way-tile__lever) {
+  grid-column: 1;
+}
+
+.panel-face--row .way-tile__lever {
+  grid-row: auto;
+  align-self: auto;
+  width: 22px;
+  height: 34px;
+}
+
+.panel-face--row .way-tile__head {
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+}
+
+.panel-face--row .way-tile__feed {
+  flex-direction: column;
+  justify-content: center;
+  gap: 1px;
+}
+
+.panel-face--row .way-tile__feed > span:nth-child(3)::before {
+  content: none;
+}
+
+.panel-face--row .way-tile__lever::after {
+  height: 52%;
+}
+
+/* Not in use: the same panel drawn dashed and grey. */
+.panel-face.is-off {
+  border-style: dashed;
+  border-color: var(--ink-3);
+  background:
+    radial-gradient(circle, var(--ink-3) 2.5px, transparent 3px) left 8px top 8px / 8px 8px no-repeat,
+    radial-gradient(circle, var(--ink-3) 2.5px, transparent 3px) right 8px top 8px / 8px 8px no-repeat,
+    radial-gradient(circle, var(--ink-3) 2.5px, transparent 3px) left 8px bottom 8px / 8px 8px no-repeat,
+    radial-gradient(circle, var(--ink-3) 2.5px, transparent 3px) right 8px bottom 8px / 8px 8px no-repeat,
+    #eef1f3;
+  box-shadow: none;
+}
+
+.panel-face.is-off .panel-face__main,
+.panel-face.is-off .way-tile {
+  border-style: dashed;
+  border-color: var(--ink-3);
+  background: transparent;
+  color: var(--ink-3);
+}
+
+.panel-face.is-off .panel-face__main-lever,
+.panel-face.is-off .way-tile.is-fed .way-tile__lever::after {
+  background: var(--ink-3);
+}
+
+.panel-face.is-off .way-tile__lever,
+.panel-face.is-off .way-tile__lever::after {
+  border-color: var(--ink-3);
+}
+
+.panel-face.is-off .way-tile__lever {
+  background: transparent;
+}
+
+.panel-face.is-off .way-tile__spec,
+.panel-face.is-off .way-tile__label {
+  color: var(--ink-3);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .way-tile {
+    transition: none;
+  }
+}
