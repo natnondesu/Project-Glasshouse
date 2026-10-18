@@ -20,15 +20,14 @@ export function Inspector({ content, selected, commit, onDeleted, readOnly = fal
   const m = useT();
   return (
     <aside className="inspector glass" aria-label={dimension ? m.inspector.dimensionDetails : selected ? m.inspector.details(selected.name) : m.inspector.surveyLabel}>
-      <fieldset className="inspector__lock" disabled={readOnly}>
-        {dimension ? (
-          <DimensionInspector key={dimension.id} content={content} dimension={dimension} commit={commit} onDeleted={onDeleted} />
-        ) : selected ? (
-          <ObjectInspector key={selected.id} object={selected} content={content} commit={commit} onDeleted={onDeleted} onManagePanel={onManagePanel} />
-        ) : (
-          <SurveyPanel survey={content.survey} commit={commit} readOnly={readOnly} />
-        )}
-      </fieldset>
+      {selected && !dimension ? (
+        // Locks its own controls: a frozen panel's ways can still be opened from here.
+        <ObjectInspector key={selected.id} object={selected} content={content} commit={commit} onDeleted={onDeleted} onManagePanel={onManagePanel} readOnly={readOnly} />
+      ) : (
+        <fieldset className="inspector__lock" disabled={readOnly}>
+          {dimension ? <DimensionInspector key={dimension.id} content={content} dimension={dimension} commit={commit} onDeleted={onDeleted} /> : <SurveyPanel survey={content.survey} commit={commit} readOnly={readOnly} />}
+        </fieldset>
+      )}
     </aside>
   );
 }

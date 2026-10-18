@@ -159,3 +159,27 @@ it('disables the way picker of a feed wired to a panel not in use, and says why'
   expect(way).toHaveAttribute('title', 'Mark this panel in use to wire feeds to its ways.');
   expect(way).toHaveValue('2');
 });
+
+it('lets a frozen revision open an MCB panel’s ways as "View ways", with every edit control locked', async () => {
+  const user = userEvent.setup();
+  const commit = vi.fn<(command: unknown, coalesceKey?: string) => string | null>(() => null);
+  const onManagePanel = vi.fn();
+  const c = content();
+  render(<Inspector content={c} selected={c.objects[0]!} commit={commit} onDeleted={() => {}} onManagePanel={onManagePanel} readOnly />);
+  expect(screen.queryByRole('button', { name: 'Manage ways' })).toBeNull();
+  const view = screen.getByRole('button', { name: 'View ways' });
+  expect(view).toBeEnabled();
+  await user.click(view);
+  expect(onManagePanel).toHaveBeenCalledWith('m1');
+  expect(screen.getByRole('textbox', { name: 'Name' })).toBeDisabled();
+  expect(screen.getByRole('button', { name: /^Remove / })).toBeDisabled();
+  expect(screen.getByLabelText('Fed from')).toBeDisabled();
+  expect(commit).not.toHaveBeenCalled();
+});
+
+it('keeps "Manage ways" where the revision can be edited', () => {
+  const c = content();
+  render(<Inspector content={c} selected={c.objects[0]!} commit={() => null} onDeleted={() => {}} onManagePanel={() => {}} />);
+  expect(screen.getByRole('button', { name: 'Manage ways' })).toBeEnabled();
+  expect(screen.queryByRole('button', { name: 'View ways' })).toBeNull();
+});

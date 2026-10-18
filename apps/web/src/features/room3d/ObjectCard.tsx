@@ -2,8 +2,8 @@ import { isInUse, panelOf, type RoomObject } from '@glasshouse/domain';
 import type { ReactNode } from 'react';
 import { useT } from '../../i18n';
 
-/** What the side panel says about a selected non-rack object; an MCB offers its ways. */
-export function ObjectCard({ object, onManageWays, children }: { object: RoomObject; onManageWays: () => void; children?: ReactNode }) {
+/** What the side panel says about a selected non-rack object; an MCB offers its ways (to read only, on a frozen revision). */
+export function ObjectCard({ object, onManageWays, readOnly = false, children }: { object: RoomObject; onManageWays: () => void; readOnly?: boolean; children?: ReactNode }) {
   const m = useT();
   const panel = object.type === 'mcb' ? panelOf(object) : null;
   return (
@@ -29,7 +29,7 @@ export function ObjectCard({ object, onManageWays, children }: { object: RoomObj
       </dl>
       {panel ? (
         <button type="button" className="btn btn--sm btn--ink" onClick={onManageWays}>
-          {m.room3d.manageWays}
+          {readOnly ? m.room3d.viewWays : m.room3d.manageWays}
         </button>
       ) : null}
       {children}

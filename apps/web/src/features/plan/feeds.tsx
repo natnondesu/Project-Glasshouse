@@ -131,7 +131,7 @@ function WayPicker({ feed, content, onPick }: { feed: PowerFeed; content: PlanCo
 }
 
 /** A power source's own input: the one source upstream of it (a UPS fed from an MCB way, a PDU from a UPS…). */
-function SourceInput({ panel, content, commit }: { panel: RoomObject; content: PlanContent; commit: CommitFn }) {
+export function SourceInput({ panel, content, commit }: { panel: RoomObject; content: PlanContent; commit: CommitFn }) {
   const [error, setError] = useState<string | null>(null);
   const m = useT();
   const input = content.feeds.find((f) => f.targetId === panel.id);
@@ -169,34 +169,34 @@ function SourceInput({ panel, content, commit }: { panel: RoomObject; content: P
   );
 }
 
-/** What a power source feeds (racks and other sources), and its own input. MCB panels also open their ways. */
-export function PanelFeeds({ panel, content, commit, onManage }: { panel: RoomObject; content: PlanContent; commit: CommitFn; onManage?: (id: string) => void }) {
+/**
+ * What a power source feeds (racks and other sources). An MCB panel also opens its ways: on a frozen revision
+ * as a read-only view, so this group holds no edit control and sits outside the inspector's lock.
+ */
+export function PanelOutputs({ panel, content, onManage, readOnly = false }: { panel: RoomObject; content: PlanContent; onManage?: (id: string) => void; readOnly?: boolean }) {
   const feeds = content.feeds.filter((f) => f.sourceId === panel.id);
   const m = useT();
   return (
-    <>
-      <SourceInput panel={panel} content={content} commit={commit} />
-      <fieldset className="inspector__group">
-        <legend className="lbl">{m.feeds.out}</legend>
-        {isInUse(panel) ? null : <p className="inspector__status">{m.panelMgr.notInUse}</p>}
-        {panel.type === 'mcb' && onManage ? (
-          <button type="button" className="btn btn--sm" onClick={() => onManage(panel.id)}>
-            {m.feeds.manageWays}
-          </button>
-        ) : null}
-        {feeds.length === 0 ? (
-          <p className="inspector__note">{m.feeds.nothingConnected}</p>
-        ) : (
-          <ul className="feed-list" aria-label={m.feeds.outOf(panel.name)}>
-            {feeds.map((f) => (
-              <li key={f.id} className="feed-list__item">
-                <span className="feed-list__swatch" style={{ background: feedColor(f, content) }} aria-hidden="true" />
-                <span>{`${content.objects.find((o) => o.id === f.targetId)?.name ?? m.feeds.removedObject} · ${f.label}${f.way ? m.feeds.onWay(f.way) : ''}`}</span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </fieldset>
-    </>
+    <fieldset className="inspector__group">
+      <legend className="lbl">{m.feeds.out}</legend>
+      {isInUse(panel) ? null : <p className="inspector__status">{m.panelMgr.notInUse}</p>}
+      {panel.type === 'mcb' && onManage ? (
+        <button type="button" className="btn btn--sm" onClick={() => onManage(panel.id)}>
+          {readOnly ? m.feeds.viewWays : m.feeds.manageWays}
+        </button>
+      ) : null}
+      {feeds.length === 0 ? (
+        <p className="inspector__note">{m.feeds.nothingConnected}</p>
+      ) : (
+        <ul className="feed-list" aria-label={m.feeds.outOf(panel.name)}>
+          {feeds.map((f) => (
+            <li key={f.id} className="feed-list__item">
+              <span className="feed-list__swatch" style={{ background: feedColor(f, content) }} aria-hidden="true" />
+              <span>{`${content.objects.find((o) => o.id === f.targetId)?.name ?? m.feeds.removedObject} · ${f.label}${f.way ? m.feeds.onWay(f.way) : ''}`}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </fieldset>
   );
 }
