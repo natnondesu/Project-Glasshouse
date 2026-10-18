@@ -45,6 +45,11 @@ it('refuses one character repeated', () => {
   expect(passwordProblem('aaaaaaab')).toBeNull();
 });
 
+it('refuses a password that is only spaces', () => {
+  expect(passwordProblem('        ')).toBe('That password is too common. Choose something harder to guess.');
+  expect(passwordProblem(' '.repeat(40))).toBe('That password is too common. Choose something harder to guess.');
+});
+
 it('makes temporary passwords that pass the rules and differ', () => {
   const a = temporaryPassword();
   expect(passwordProblem(a)).toBeNull();

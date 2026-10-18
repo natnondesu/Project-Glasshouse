@@ -116,6 +116,23 @@
   cursor: pointer;
 }
 
+/* The arrow is the only way to the variants, so its pointer target is 24 x 24 px around the 12 px drawing:
+   6 px into the toolbar's right padding, flush with the group's bottom edge (never into the next group). */
+.tool-group__more::after {
+  content: '';
+  position: absolute;
+  right: -6px;
+  bottom: -2px;
+  width: 24px;
+  height: 24px;
+}
+
+.tool-group__more:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+  background: rgb(14 24 36 / 0.08);
+}
+
 .tool-group__more:hover,
 .tool-group__more[aria-expanded='true'] {
   color: var(--ink);

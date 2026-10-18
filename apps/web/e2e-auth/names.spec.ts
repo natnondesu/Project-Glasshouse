@@ -2,7 +2,7 @@ import { expect, test, type Page } from '@playwright/test';
 import { signIn } from './helpers';
 
 const HEADERS = { 'x-glasshouse': '1' };
-const LONG_WAIT_MS = 30_000;
+const RESPONSE_WAIT_MS = 10_000;
 
 async function setRole(admin: Page, email: string, role: 'viewer' | 'editor'): Promise<void> {
   const users = (await (await admin.request.get('/api/admin/users')).json()) as { id: string; email: string }[];
@@ -77,10 +77,16 @@ test('an editor whose role was lowered finds out on their next refused edit, wit
 
   await setRole(admin, 'ed@company.test', 'viewer');
   try {
+    // Each step of the chain is awaited on its own, so a failure names the step that never happened.
+    const refused = editor.waitForResponse((r) => r.request().method() === 'POST' && new URL(r.url()).pathname === '/api/commands', { timeout: RESPONSE_WAIT_MS });
+    const recheck = editor.waitForResponse((r) => new URL(r.url()).pathname === '/auth/me', { timeout: RESPONSE_WAIT_MS });
     await editor.getByRole('button', { name: 'New project' }).click();
     await editor.getByRole('textbox', { name: 'Project name' }).fill('Too late');
     await editor.keyboard.press('Enter');
-    await expect(editor.getByText('You can view this workspace. Ask an admin for edit access.')).toBeVisible({ timeout: LONG_WAIT_MS });
+    const outcome = (await (await refused).json()) as { rejected?: { error: { code: string } } };
+    expect(outcome.rejected?.error.code).toBe('forbidden');
+    expect((await recheck).status()).toBe(200);
+    await expect(editor.getByText('You can view this workspace. Ask an admin for edit access.')).toBeVisible();
     await expect(editor.getByRole('button', { name: 'New project' })).toHaveCount(0);
   } finally {
     await setRole(admin, 'ed@company.test', 'editor');

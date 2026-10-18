@@ -54,7 +54,7 @@ export function passwordProblem(password: string, context: { email?: string; nam
   if (password.length < PASSWORD_MIN) return `Use at least ${PASSWORD_MIN} characters.`;
   if (password.length > PASSWORD_MAX) return `Use at most ${PASSWORD_MAX} characters.`;
   const candidate = normalise(password);
-  if (COMMON_PASSWORDS.has(candidate) || new Set(candidate).size === 1) return TOO_COMMON;
+  if (candidate === '' || COMMON_PASSWORDS.has(candidate) || new Set(candidate).size === 1) return TOO_COMMON;
   const email = normalise(context.email ?? '');
   const own = [email, email.split('@')[0] ?? '', normalise(context.name ?? '')].filter(Boolean);
   if (own.includes(candidate)) return OWN_DETAILS;

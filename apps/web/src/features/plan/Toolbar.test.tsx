@@ -119,12 +119,6 @@ it('offers only viewing tools on a frozen revision', () => {
   expect(within(bar).getAllByRole('button').map((b) => b.getAttribute('aria-label'))).toEqual(['Select', 'Pan', 'Measure']);
 });
 
-it('offers only viewing tools on a frozen revision', () => {
-  render(<Harness readOnly />);
-  const bar = screen.getByRole('toolbar', { name: 'Plan tools' });
-  expect(within(bar).getAllByRole('button').map((b) => b.getAttribute('aria-label'))).toEqual(['Select', 'Pan', 'Measure']);
-});
-
 it('moves through a group’s flyout with the arrow keys, and Escape hands focus back to its arrow', async () => {
   const user = userEvent.setup();
   render(<Harness />);
