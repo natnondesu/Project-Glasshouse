@@ -6,6 +6,7 @@ import { err, ok, type Result } from '../result';
 import { LIMITS } from '../model/defaults';
 import { validateName } from '../validation';
 import { canonicalJson } from '../canonical';
+import { applyArchiveCommand, archiveGuard, type ArchiveCommand } from '../archive';
 import { applyCatalogCommand, type CatalogCommand } from './catalog';
 import { applyPlanCommand, type PlanCommand } from './plan';
 import { applyReviewCommand, type ReviewCommand } from './review';
@@ -33,6 +34,7 @@ export type WorkspaceCommand =
   | { type: 'equipment/state'; roomId: Id; ids: Id[]; state: EquipmentState }
   | { type: 'rack/order'; roomId: Id; ids: Id[] | null }
   | { type: 'project/import'; file: ProjectFile; resolution: ImportResolution }
+  | ArchiveCommand
   | CatalogCommand;
 
 const gone = (what: string, id: Id) => err('not_found', `That ${what} no longer exists.`, [id]);
@@ -88,6 +90,8 @@ export function apply(ws: Workspace, cmd: WorkspaceCommand): Result<Workspace> {
   if (hasOverlongText(cmd, LIMITS.storedTextMaxLength)) {
     return err('invalid_value', `Text is limited to ${LIMITS.storedTextMaxLength.toLocaleString('en')} characters.`);
   }
+  const archived = archiveGuard(ws, cmd);
+  if (archived) return archived;
   switch (cmd.type) {
     case 'project/create': {
       const name = validateName(cmd.name, 'Project name');
@@ -150,6 +154,13 @@ export function apply(ws: Workspace, cmd: WorkspaceCommand): Result<Workspace> {
       return ok(produce(ws, (d) => {
         for (const p of d.projects) for (const s of p.sites) s.rooms = s.rooms.filter((r) => r.id !== cmd.roomId);
       }));
+    case 'project/archive':
+    case 'project/restore':
+    case 'site/archive':
+    case 'site/restore':
+    case 'room/archive':
+    case 'room/restore':
+      return applyArchiveCommand(ws, cmd);
     case 'template/create':
     case 'template/update':
     case 'template/delete':

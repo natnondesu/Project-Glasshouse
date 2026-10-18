@@ -374,6 +374,9 @@ export interface Room {
   name: string;
   notes: string;
   plan: Plan;
+  /** Set only on the item an admin archived; whatever sits below it is archived with it. See archive.ts. */
+  archivedAt?: string;
+  archivedBy?: string;
 }
 
 export interface Site {
@@ -381,6 +384,9 @@ export interface Site {
   name: string;
   notes: string;
   rooms: Room[];
+  /** Set only on the item an admin archived; whatever sits below it is archived with it. See archive.ts. */
+  archivedAt?: string;
+  archivedBy?: string;
 }
 
 export interface Project {
@@ -389,6 +395,9 @@ export interface Project {
   notes: string;
   isSample: boolean;
   sites: Site[];
+  /** Set only on the item an admin archived; whatever sits below it is archived with it. See archive.ts. */
+  archivedAt?: string;
+  archivedBy?: string;
 }
 
 export interface Workspace {

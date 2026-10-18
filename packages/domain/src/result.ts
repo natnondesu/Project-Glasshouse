@@ -1,6 +1,17 @@
 import type { Id } from './model/types';
 
-export type DomainErrorCode = 'not_found' | 'not_draft' | 'invalid_value' | 'out_of_bounds' | 'stale' | 'forbidden' | 'claimed';
+export type DomainErrorCode =
+  | 'not_found'
+  | 'not_draft'
+  | 'invalid_value'
+  | 'out_of_bounds'
+  | 'stale'
+  | 'forbidden'
+  | 'claimed'
+  /** A change to something an admin archived. */
+  | 'archived'
+  /** An archive refused because someone else is editing a room inside it. */
+  | 'room_busy';
 
 export interface DomainError {
   code: DomainErrorCode;
