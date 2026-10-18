@@ -9,6 +9,8 @@ import { pasteObject } from './objectPaste';
 import { isDoorInPartition, partitionFromPoints, snapDoorToPartition } from './partitions';
 import { snapDoor, snapPartitionEnd, snapToWall } from './walls';
 
+const snapEnd = (...args: Parameters<typeof snapPartitionEnd>) => snapPartitionEnd(...args).point;
+
 const content = (objects: RoomObject[] = []): PlanContent => {
   const base = emptyContent();
   return { ...base, survey: { ...base.survey, width: 6, length: 5, floorAreas: [{ id: 'a', x: 0, y: 0, w: 6, d: 5 }] }, objects };
@@ -67,14 +69,21 @@ describe('partitionFromPoints', () => {
 });
 
 describe('snapPartitionEnd', () => {
+  it('says whether it snapped, even when the snap lands on the very same spot', () => {
+    expect(snapPartitionEnd(content(), [0.08, 2], 0.15)).toEqual({ point: [0, 2], snapped: true });
+    expect(snapPartitionEnd(content(), [3, 2], 0.15)).toEqual({ point: [3, 2], snapped: false });
+    expect(snapPartitionEnd(content(), [3, 5], 0.15)).toEqual({ point: [3, 5], snapped: true });
+    expect(snapPartitionEnd(content(), [3, 4.93], 0.15, [1, 0])).toEqual({ point: [3, 4.93], snapped: false });
+  });
+
   it('snaps to the room walls within the distance, and leaves points beyond it alone', () => {
-    expect(snapPartitionEnd(content(), [0.08, 2], 0.15)).toEqual([0, 2]);
-    expect(snapPartitionEnd(content(), [3, 4.93], 0.15)).toEqual([3, 5]);
-    expect(snapPartitionEnd(content(), [3, 2], 0.15)).toEqual([3, 2]);
+    expect(snapEnd(content(), [0.08, 2], 0.15)).toEqual([0, 2]);
+    expect(snapEnd(content(), [3, 4.93], 0.15)).toEqual([3, 5]);
+    expect(snapEnd(content(), [3, 2], 0.15)).toEqual([3, 2]);
   });
 
   it('snaps to the face of another partition so a T-junction touches without overlapping', () => {
-    const [x, y] = snapPartitionEnd(content([wall]), [3, 1.9], 0.15);
+    const [x, y] = snapEnd(content([wall]), [3, 1.9], 0.15);
     expect(x).toBeCloseTo(3);
     expect(y).toBeCloseTo(2);
     const branch = partitionFromPoints([3, 0], [x, y], { snapAngle: false });
@@ -82,31 +91,31 @@ describe('snapPartitionEnd', () => {
   });
 
   it('takes the nearest of walls and partitions', () => {
-    expect(snapPartitionEnd(content([wall]), [2.05, 1.95], 0.2)).toEqual([2.05, 2]);
-    const near = snapPartitionEnd(content([make('partition', 'PT-01', 0.3, 2)]), [0.12, 2.05], 0.2);
+    expect(snapEnd(content([wall]), [2.05, 1.95], 0.2)).toEqual([2.05, 2]);
+    const near = snapEnd(content([make('partition', 'PT-01', 0.3, 2)]), [0.12, 2.05], 0.2);
     expect(near[0]).toBeCloseTo(0);
   });
 });
 
 describe('snapPartitionEnd only meeting a surface square-on', () => {
   it('snaps a partition that arrives at a wall within 10 degrees of perpendicular', () => {
-    expect(snapPartitionEnd(content(), [3, 4.93], 0.15, [0, 1])).toEqual([3, 5]);
+    expect(snapEnd(content(), [3, 4.93], 0.15, [0, 1])).toEqual([3, 5]);
     // 8 degrees off square: still a wall end.
     const tilted: [number, number] = [Math.sin((8 * Math.PI) / 180), Math.cos((8 * Math.PI) / 180)];
-    expect(snapPartitionEnd(content(), [3, 4.93], 0.15, tilted)).toEqual([3, 5]);
+    expect(snapEnd(content(), [3, 4.93], 0.15, tilted)).toEqual([3, 5]);
   });
 
   it('leaves an oblique end where it is, so a square end cannot poke through the wall', () => {
     const oblique: [number, number] = [Math.SQRT1_2, Math.SQRT1_2];
-    expect(snapPartitionEnd(content(), [3, 4.93], 0.15, oblique)).toEqual([3, 4.93]);
+    expect(snapEnd(content(), [3, 4.93], 0.15, oblique)).toEqual([3, 4.93]);
     const twelve: [number, number] = [Math.sin((12 * Math.PI) / 180), Math.cos((12 * Math.PI) / 180)];
-    expect(snapPartitionEnd(content(), [3, 4.93], 0.15, twelve)).toEqual([3, 4.93]);
+    expect(snapEnd(content(), [3, 4.93], 0.15, twelve)).toEqual([3, 4.93]);
   });
 
   it('applies to partitions too, and a partition running alongside a wall never snaps to it', () => {
-    const [x, y] = snapPartitionEnd(content([wall]), [3, 1.9], 0.15, [0, 1]);
+    const [x, y] = snapEnd(content([wall]), [3, 1.9], 0.15, [0, 1]);
     expect([x, y]).toEqual([expect.closeTo(3), expect.closeTo(2)]);
-    expect(snapPartitionEnd(content(), [3, 4.93], 0.15, [1, 0])).toEqual([3, 4.93]);
+    expect(snapEnd(content(), [3, 4.93], 0.15, [1, 0])).toEqual([3, 4.93]);
   });
 });
 

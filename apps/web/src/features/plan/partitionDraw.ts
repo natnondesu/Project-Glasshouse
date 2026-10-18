@@ -40,9 +40,9 @@ export function drawnPartition(content: PlanContent, rawA: Point, rawB: Point, {
   if (lead.w === 0) return null;
   const run: Point = [Math.cos(toRad(lead.angle)), Math.sin(toRad(lead.angle))];
   const end = (raw: Point, onGrid: Point): Point => {
-    if (snapPartitionEnd(content, raw, snapDistanceM, run) === raw) return onGrid;
+    if (!snapPartitionEnd(content, raw, snapDistanceM, run).snapped) return onGrid;
     // Onto the surface the pointer was near, but at the grid position along it, so walls end on round figures.
-    return snapPartitionEnd(content, onGrid, snapDistanceM + FLOOR_STEP_M, run);
+    return snapPartitionEnd(content, onGrid, snapDistanceM + FLOOR_STEP_M, run).point;
   };
   const a = end(a0, onGridA);
   const b = snapAngle ? end(b0, onGridB) : straightened(a, end(b0, onGridB));

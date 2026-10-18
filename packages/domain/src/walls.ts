@@ -110,8 +110,9 @@ const SQUARE_TOLERANCE_DEG = 10;
  * Where a partition end lands for a point near a wall of the room or the face of another partition:
  * on the nearest of them within `maxDistanceM`, otherwise where it was. Faces, not centre lines, so a T-junction touches without overlapping.
  * With `direction` (the way the partition runs towards this end), only surfaces it meets within 10 degrees of square count.
+ * `snapped` says whether it found a surface; the point alone can't, since a snap may land where the point already was.
  */
-export function snapPartitionEnd(content: Pick<PlanContent, 'survey' | 'objects'>, point: Point, maxDistanceM: number, direction?: Point): Point {
+export function snapPartitionEnd(content: Pick<PlanContent, 'survey' | 'objects'>, point: Point, maxDistanceM: number, direction?: Point): { point: Point; snapped: boolean } {
   const outlines: Ring[] = [
     ...footprintOf(content.survey).flat().filter((r) => r.length > 3),
     ...content.objects.filter(isPartition).flatMap((p) => placementPolygon(p)),
@@ -129,7 +130,7 @@ export function snapPartitionEnd(content: Pick<PlanContent, 'survey' | 'objects'
     .map((ring) => ({ ring, at: closestOnRing(ring, point) }))
     .filter(({ ring, at }) => square(ring, at.edge))
     .sort((a, b) => a.at.distance - b.at.distance)[0]?.at;
-  return nearest && nearest.distance <= maxDistanceM ? [snapTyped(nearest.point[0]), snapTyped(nearest.point[1])] : point;
+  return nearest && nearest.distance <= maxDistanceM ? { point: [snapTyped(nearest.point[0]), snapTyped(nearest.point[1])], snapped: true } : { point, snapped: false };
 }
 
 /**
