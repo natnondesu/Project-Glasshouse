@@ -47,9 +47,3 @@ export function roomGroups(workspace: Workspace): { project: Project; site: Site
         .map((site) => ({ project, site, rooms: site.rooms.filter((room) => room.archivedAt === undefined).map((room) => summarise(project, site, room)) })),
     );
 }
-
-/** The hero: the room last opened if it still exists, else the first room there is. */
-export function heroRoom(workspace: Workspace, lastRoomId: string | null): RoomSummary | null {
-  const all = roomGroups(workspace).flatMap((g) => g.rooms);
-  return all.find((r) => r.room.id === lastRoomId) ?? all[0] ?? null;
-}

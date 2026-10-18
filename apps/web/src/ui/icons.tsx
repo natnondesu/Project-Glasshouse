@@ -341,3 +341,10 @@ export const IconCloud = (p: IconProps) => (
     <path d="M4.25 11.25H10.5a2.5 2.5 0 0 0 .3-4.98A3.5 3.5 0 0 0 4 6.6a2.35 2.35 0 0 0 .25 4.65Z" />
   </svg>
 );
+/** A site's place on the map. */
+export const IconMapPin = (p: IconProps) => (
+  <svg {...frame(16)} strokeLinecap="round" strokeLinejoin="round" {...p}>
+    <path d="M8 14.5s4.75-4.2 4.75-8A4.75 4.75 0 0 0 3.25 6.5c0 3.8 4.75 8 4.75 8Z" />
+    <circle cx="8" cy="6.5" r="1.75" />
+  </svg>
+);

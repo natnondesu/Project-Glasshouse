@@ -6,7 +6,8 @@
 #   ne_50m_admin_0_countries.geojson         countries, 1:50m
 #   ne_10m_admin_1_states_provinces.geojson  first-level divisions, 1:10m; only Thailand's 77 provinces are kept
 # Kept fields: countries n (English name), a2 (ISO 3166-1 alpha-2, for the browser's own localised name);
-# provinces n (English name), t (Thai name from name_local, "จังหวัด" dropped), iso (ISO 3166-2).
+# provinces n (English name), t (Thai name), iso (ISO 3166-2). Natural Earth's name_local has wrong Thai names for
+# some provinces (Bangkok reads เชียงใหม่), so t comes from thai-province-names.json: the official names, by ISO code.
 # Tool: mapshaper 0.7.89 (MPL-2.0), run once here; nothing of it ships.
 #
 # Usage: scripts/geo/build-geo.sh <empty download dir>
@@ -27,7 +28,21 @@ $MAPSHAPER -i "$SRC/countries.geojson" name=countries \
 
 $MAPSHAPER -i "$SRC/admin1.geojson" name=provinces \
   -filter 'adm0_a3=="THA"' \
-  -each 'n=name=="Bangkok Metropolis" ? "Bangkok" : name, t=(name_local||"").replace(/^จังหวัด/,""), iso=iso_3166_2' \
-  -filter-fields n,t,iso \
+  -each 'n=name=="Bangkok Metropolis" ? "Bangkok" : name, iso=iso_3166_2' \
+  -filter-fields n,iso \
   -simplify 50% keep-shapes \
   -o "$OUT/thailand-provinces-10m.topo.json" format=topojson quantization=100000
+
+# Thai names by ISO code; every province must have one.
+node -e '
+const fs = require("fs");
+const [file, namesFile] = process.argv.slice(1);
+const topo = JSON.parse(fs.readFileSync(file, "utf8"));
+const names = JSON.parse(fs.readFileSync(namesFile, "utf8"));
+for (const g of topo.objects.provinces.geometries) {
+  const t = names[g.properties.iso];
+  if (!t) throw new Error("No Thai name for " + g.properties.iso + " " + g.properties.n);
+  g.properties = { n: g.properties.n, t, iso: g.properties.iso };
+}
+fs.writeFileSync(file, JSON.stringify(topo));
+' "$OUT/thailand-provinces-10m.topo.json" "$(dirname "$0")/thai-province-names.json"

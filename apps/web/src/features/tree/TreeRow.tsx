@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from 'react';
 import { Link } from 'react-router';
-import { IconArchive, IconChevronRight, IconPencil, IconPlus, IconRestore, IconTrash } from '../../ui/icons';
+import { IconArchive, IconChevronRight, IconMapPin, IconPencil, IconPlus, IconRestore, IconTrash } from '../../ui/icons';
 import { InlineRename } from './InlineRename';
 import { useT } from '../../i18n';
 
@@ -32,6 +32,8 @@ interface TreeRowProps {
   archived?: boolean;
   /** An admin's Archive or Restore; omitted for everyone else. `restoreFirst` is why Restore can't work yet. */
   archiveActions?: { onArchive: () => void; onRestore: () => void; restoreFirst: string | null };
+  /** A site's Location dialog (editors, live sites only). */
+  onLocate?: () => void;
   children?: ReactNode;
   /** Projects and sites fold; rooms don't. Undefined means not collapsible. */
   expanded?: boolean;
@@ -106,6 +108,11 @@ export function TreeRow(props: TreeRowProps) {
               onClick={archiveActions.onRestore}
             >
               <IconRestore />
+            </button>
+          ) : null}
+          {props.onLocate && canEdit && !archived ? (
+            <button type="button" className="icon-btn icon-btn--sm" aria-label={m.tree.locateOf(label)} onClick={props.onLocate}>
+              <IconMapPin />
             </button>
           ) : null}
           {canEdit && !archived ? (

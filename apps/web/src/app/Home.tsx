@@ -1,10 +1,11 @@
 import { liveCounts, newId } from '@glasshouse/domain';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
-import { HomeHero } from '../features/home/HomeHero';
+import { GlobeHero } from '../features/globe/GlobeHero';
+import { siteSummaries } from '../features/globe/sites';
 import { lastRoomId } from '../features/home/lastRoom';
 import { RoomCard } from '../features/home/RoomCard';
-import { heroRoom, roomGroups } from '../features/home/rooms';
+import { roomGroups } from '../features/home/rooms';
 import '../features/home/home.css';
 import { useCan } from '../auth/useCan';
 import { useT } from '../i18n';
@@ -21,10 +22,10 @@ export function Home() {
   useDocumentTitle(null);
   const [error, setError] = useState<string | null>(null);
   const [lastId] = useState(lastRoomId);
-  const hero = heroRoom(workspace, lastId);
-  const groups = roomGroups(workspace);
+  const groups = useMemo(() => roomGroups(workspace), [workspace]);
+  const sites = useMemo(() => siteSummaries(workspace), [workspace]);
 
-  if (!hero && liveCounts(workspace).projects === 0) {
+  if (sites.length === 0 && liveCounts(workspace).projects === 0) {
     return (
       <section className="home glass">
         <h1>{m.shell.homeTitle(false)}</h1>
@@ -40,7 +41,7 @@ export function Home() {
   };
   return (
     <div className="home-page">
-      {hero ? <HomeHero summary={hero} lastOpened={hero.room.id === lastId} /> : <h1 className="visually-hidden">{m.home.allRooms}</h1>}
+      {sites.length > 0 ? <GlobeHero sites={sites} lastRoomId={lastId} /> : <h1 className="visually-hidden">{m.home.allRooms}</h1>}
       {error ? (
         <p role="alert" className="field__error">
           {error}

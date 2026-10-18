@@ -72,6 +72,15 @@ describe('initialSiteId', () => {
     expect(initialSiteId(all, comms.room.id)).toBe(comms.site.id);
   });
 
+  it('never opens on an archived room, even when it was the last one opened', () => {
+    const ws = sample();
+    const mdf = siteSummaries(ws).flatMap((s) => s.rooms).find((r) => r.room.name === 'MDF-1')!;
+    const archived = run(ws, { type: 'site/archive', siteId: mdf.site.id, by: '', at: AT });
+    const all = siteSummaries(archived);
+    expect(initialSiteId(all, mdf.room.id)).not.toBe(mdf.site.id);
+    expect(all.some((s) => s.site.id === initialSiteId(all, mdf.room.id))).toBe(true);
+  });
+
   it('falls back to the first site with rooms, then the first site, then none', () => {
     const all = siteSummaries(sample());
     expect(initialSiteId(all, 'gone')).toBe(all[0]!.site.id);

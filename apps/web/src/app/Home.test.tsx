@@ -24,11 +24,16 @@ const open = (path = '/') => {
   return router;
 };
 
-it('leads with the last room opened, and lists every room with what holds its approval', () => {
+it('leads with the last room opened: its site, the room picked in the card, and every room with what holds its approval', () => {
   const mdf = useWorkspaceStore.getState().workspace.projects[0]!.sites[0]!.rooms.find((r) => r.name === 'MDF-1')!;
   localStorage.setItem('glasshouse:last-room', mdf.id);
   open();
-  expect(screen.getByRole('heading', { level: 1, name: 'MDF-1' })).toBeInTheDocument();
+  expect(screen.getByRole('heading', { level: 1, name: 'Bangna campus' })).toBeInTheDocument();
+  const card = screen.getByRole('list', { name: 'Rooms in Bangna campus' });
+  expect(within(card).getByRole('button', { name: 'Show MDF-1 in 3D' })).toHaveAttribute('aria-pressed', 'true');
+  // In the card, holds are links to Review, in the Review badge's terms.
+  expect(within(card).getByRole('link', { name: '1 blocking' })).toHaveAttribute('href', `/rooms/${mdf.id}/review`);
+  expect(within(card).getByRole('link', { name: '1 to acknowledge' })).toHaveAttribute('href', `/rooms/${mdf.id}/review`);
   const cards = screen.getByRole('region', { name: /Bangna campus/ });
   const mdfCard = within(cards).getByRole('link', { name: 'MDF-1' }).closest('article')!;
   // A note is for reading, not a hold.
@@ -40,6 +45,7 @@ it('leads with the last room opened, and lists every room with what holds its ap
   expect(within(cards).getByRole('link', { name: 'Server room A' }).closest('article')).toHaveTextContent('No issues · install sheet ready');
   // A room with holds leads with the way to them.
   expect(screen.getByRole('link', { name: /^Resolve 2 items/ })).toHaveAttribute('href', `/rooms/${mdf.id}/review`);
+  expect(screen.getByRole('link', { name: 'Open MDF-1' })).toHaveAttribute('href', `/rooms/${mdf.id}/plan`);
 });
 
 it('adds a room to a site from Home and opens it', async () => {
@@ -58,18 +64,4 @@ it.each([
   open();
   expect(screen.queryByRole('button', { name: /^New room in Bangna campus/ }) !== null).toBe(present);
   expect(screen.getByRole('region', { name: /Bangna campus/ })).toBeInTheDocument();
-});
-
-it.each([
-  [{}, 'Ploy (unverified)'],
-  [{ byId: 'u1' }, 'Ploy S.'],
-])('labels the hero person by whether they signed in (%j)', (who, label) => {
-  const s = useWorkspaceStore.getState();
-  const mdf = s.workspace.projects[0]!.sites[0]!.rooms.find((r) => r.name === 'MDF-1')!;
-  localStorage.setItem('glasshouse:last-room', mdf.id);
-  s.dispatch({ type: 'review', roomId: mdf.id, command: { type: 'review/submit', designedBy: 'byId' in who ? 'Ploy S.' : 'Ploy', ...who, at: '2026-10-15T09:00:00.000Z' } });
-  open();
-  const stamp = document.querySelector('.home-hero__stamp')!;
-  expect(stamp).toHaveTextContent(label);
-  if ('byId' in who) expect(stamp).not.toHaveTextContent('unverified');
 });

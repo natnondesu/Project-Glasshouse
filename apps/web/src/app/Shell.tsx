@@ -10,6 +10,7 @@ import { HintLayer } from './HintLayer';
 import { SyncNotice } from './SyncNotice';
 import { ClaimLostDialog } from '../claims/ClaimLostDialog';
 import { ConfirmDialog } from '../ui/confirm/ConfirmDialog';
+import { LocationDialog } from '../features/globe/LocationDialog';
 import { TitleBlock } from './TitleBlock';
 import { treePlacement, usePinnedTree } from '../features/roomnav/placement';
 import { useTreeDrawer } from '../features/roomnav/useTreeDrawer';
@@ -97,6 +98,7 @@ export function Shell() {
         </main>
       </div>
       <ConfirmDialog />
+      <LocationDialog />
       <ClaimLostDialog />
     </div>
   );
