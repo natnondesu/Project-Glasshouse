@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { emptyContent } from '../factories';
 import type { PlanContent, Rack, RoomObject, SimpleObject } from '../model/types';
-import { createObject } from '../objects';
+import { applyPlanCommand } from '../commands/plan';
+import { createObject, isWallHung, verticalSpan, wallBottomOf } from '../objects';
+import { isPowerSource } from '../sources';
 import { checkPlan } from './index';
 import { environmentZone } from './environment';
 
@@ -57,6 +59,20 @@ describe('wall split AC', () => {
   });
 });
 
+describe('wall-hung items', () => {
+  it('a split AC without a stored height gets the drip warning for a rack under it, not an overlap', () => {
+    const { wallBottomM: _gone, ...bare } = make('wall_split_ac', 'AC-01', 2.5, 0);
+    const issues = codes(content([bare, rack('RK-01', 2.5, 0)]));
+    expect(issues).toContain('wall_ac_drip');
+    expect(issues).not.toContain('object_overlap');
+  });
+
+  it('isWallHung is a plain yes/no: the split AC and display wall, nothing else', () => {
+    expect([isWallHung(make('wall_split_ac', 'A', 0, 0)), isWallHung(make('display_wall', 'D', 0, 0))]).toEqual([true, true]);
+    expect([isWallHung(make('furniture', 'F', 0, 0)), isWallHung(make('partition', 'P', 0, 0)), isWallHung(rack('R', 0, 0))]).toEqual([false, false, false]);
+  });
+});
+
 describe('precision AC', () => {
   const pac = make('precision_ac', 'PAC-01', 3, 2);
 
@@ -106,17 +122,35 @@ describe('display wall', () => {
     const c = content([dw]);
     expect(checkPlan(c)).toEqual([]);
     expect(c.feeds).toEqual([]);
+    expect(isPowerSource(dw)).toBe(false);
+    const fed = applyPlanCommand(content([dw, rack('RK-01', 5, 3)]), { type: 'feed/add', feed: { id: 'f', targetId: 'rk-01', sourceId: 'dw-01', label: 'Feed A' } });
+    expect(fed.ok).toBe(false);
+  });
+
+  it('without a stored height (an imported file) still hangs at its default height', () => {
+    const { wallBottomM: _gone, ...bare } = dw;
+    expect(wallBottomOf(bare)).toBe(0.8);
+    expect(verticalSpan(bare)[0]).toBe(0.8);
+    // Something lower than the screen's bottom edge fits under it; a full rack does not.
+    expect(codes(content([bare, rack('RK-01', 2.5, 0, { height: 0.7 })]))).not.toContain('object_overlap');
+    expect(codes(content([bare, rack('RK-01', 2.5, 0)]))).toContain('object_overlap');
   });
 });
 
 describe('environment zones', () => {
   it('are the front areas the checks use, null for everything else', () => {
-    const box = (z: ReturnType<typeof environmentZone>) => z && { xs: z.flat().map((p) => Math.min(p[0])), ys: z.flat().map((p) => p[1]) };
-    const ac = environmentZone(make('wall_split_ac', 'AC-01', 2.5, 0));
-    expect(Math.min(...box(ac)!.ys)).toBeCloseTo(0.25);
-    expect(Math.max(...box(ac)!.ys)).toBeCloseTo(1.25);
-    const dw = environmentZone(make('display_wall', 'DW-01', 2, 0));
-    expect(Math.max(...box(dw)!.ys)).toBeCloseTo(1.65);
+    const box = (z: ReturnType<typeof environmentZone>) => ({ xs: z!.flat().map((p) => p[0]), ys: z!.flat().map((p) => p[1]) });
+    const ac = box(environmentZone(make('wall_split_ac', 'AC-01', 2.5, 0)));
+    expect([Math.min(...ac.xs), Math.max(...ac.xs)]).toEqual([expect.closeTo(2.5), expect.closeTo(3.4)]);
+    expect(Math.min(...ac.ys)).toBeCloseTo(0.25);
+    expect(Math.max(...ac.ys)).toBeCloseTo(1.25);
+    const dw = box(environmentZone(make('display_wall', 'DW-01', 2, 0)));
+    expect([Math.min(...dw.xs), Math.max(...dw.xs)]).toEqual([expect.closeTo(2), expect.closeTo(5)]);
+    expect(Math.max(...dw.ys)).toBeCloseTo(1.65);
+    // Turned to the west wall, the zone runs east of the unit.
+    const west = box(environmentZone(make('wall_split_ac', 'AC-01', 0, 1.55, { angle: 270 })));
+    expect(Math.min(...west.xs)).toBeCloseTo(0.25);
+    expect(Math.max(...west.xs)).toBeCloseTo(1.25);
     expect(environmentZone(make('precision_ac', 'PAC-01', 3, 2))).not.toBeNull();
     expect(environmentZone(make('furniture', 'F-01', 3, 2))).toBeNull();
     expect(environmentZone(rack('RK-01', 1, 1))).toBeNull();

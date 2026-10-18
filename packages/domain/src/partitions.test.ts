@@ -7,7 +7,7 @@ import type { PlanContent, Rack, RoomObject, SimpleObject } from './model/types'
 import { createObject } from './objects';
 import { pasteObject } from './objectPaste';
 import { isDoorInPartition, partitionFromPoints, snapDoorToPartition } from './partitions';
-import { snapPartitionEnd, snapToWall } from './walls';
+import { snapDoor, snapPartitionEnd, snapToWall } from './walls';
 
 const content = (objects: RoomObject[] = []): PlanContent => {
   const base = emptyContent();
@@ -85,6 +85,55 @@ describe('snapPartitionEnd', () => {
     expect(snapPartitionEnd(content([wall]), [2.05, 1.95], 0.2)).toEqual([2.05, 2]);
     const near = snapPartitionEnd(content([make('partition', 'PT-01', 0.3, 2)]), [0.12, 2.05], 0.2);
     expect(near[0]).toBeCloseTo(0);
+  });
+});
+
+describe('snapPartitionEnd only meeting a surface square-on', () => {
+  it('snaps a partition that arrives at a wall within 10 degrees of perpendicular', () => {
+    expect(snapPartitionEnd(content(), [3, 4.93], 0.15, [0, 1])).toEqual([3, 5]);
+    // 8 degrees off square: still a wall end.
+    const tilted: [number, number] = [Math.sin((8 * Math.PI) / 180), Math.cos((8 * Math.PI) / 180)];
+    expect(snapPartitionEnd(content(), [3, 4.93], 0.15, tilted)).toEqual([3, 5]);
+  });
+
+  it('leaves an oblique end where it is, so a square end cannot poke through the wall', () => {
+    const oblique: [number, number] = [Math.SQRT1_2, Math.SQRT1_2];
+    expect(snapPartitionEnd(content(), [3, 4.93], 0.15, oblique)).toEqual([3, 4.93]);
+    const twelve: [number, number] = [Math.sin((12 * Math.PI) / 180), Math.cos((12 * Math.PI) / 180)];
+    expect(snapPartitionEnd(content(), [3, 4.93], 0.15, twelve)).toEqual([3, 4.93]);
+  });
+
+  it('applies to partitions too, and a partition running alongside a wall never snaps to it', () => {
+    const [x, y] = snapPartitionEnd(content([wall]), [3, 1.9], 0.15, [0, 1]);
+    expect([x, y]).toEqual([expect.closeTo(3), expect.closeTo(2)]);
+    expect(snapPartitionEnd(content(), [3, 4.93], 0.15, [1, 0])).toEqual([3, 4.93]);
+  });
+});
+
+describe('snapDoor', () => {
+  const room = content([wall]);
+
+  it('stands a door against the nearest outer wall, swinging into the room', () => {
+    const top = snapDoor(room, [3, 0.2], 0.9, 0.1, 0.3)!;
+    expect(top).toMatchObject({ x: 2.55, y: 0, angle: 0 });
+    expect(top.partitionId).toBeUndefined();
+    expect(snapDoor(room, [5.85, 1], 0.9, 0.1, 0.3)).toMatchObject({ angle: 90 });
+  });
+
+  it('snaps into a partition, on the side the pointer is on', () => {
+    expect(snapDoor(room, [3, 1.8], 0.9, 0.1, 0.3)).toMatchObject({ partitionId: 'pt-01', angle: 180 });
+    expect(snapDoor(room, [3, 2.3], 0.9, 0.1, 0.3)).toMatchObject({ partitionId: 'pt-01', angle: 0 });
+  });
+
+  it('takes whichever of wall and partition is nearer the pointer', () => {
+    const tight = content([make('partition', 'PT-01', 2, 0.4)]);
+    expect(snapDoor(tight, [3, 0.1], 0.9, 0.1, 0.5)?.partitionId).toBeUndefined();
+    expect(snapDoor(tight, [3, 0.45], 0.9, 0.1, 0.5)?.partitionId).toBe('pt-01');
+  });
+
+  it('stays free when dropped away from every wall', () => {
+    expect(snapDoor(room, [4.5, 3.8], 0.9, 0.1, 0.3)).toBeNull();
+    expect(snapDoor(content(), [3, 2.5], 0.9, 0.1, 0.3)).toBeNull();
   });
 });
 

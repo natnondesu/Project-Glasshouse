@@ -1,6 +1,6 @@
 import { newId } from './ids';
 import { DEFAULT_CLEARANCE, DEFAULT_HEIGHTS_M, DEFAULT_RACK, DEFAULT_SIZES, DEFAULT_WALL_BOTTOM_M, NAME_PREFIX } from './model/defaults';
-import type { Metres, RoomObject, RoomObjectType, SimpleObject } from './model/types';
+import type { Metres, RoomObject, RoomObjectType } from './model/types';
 import { rackAutoHeightM } from './units';
 
 export function nextName(objects: Pick<RoomObject, 'name'>[], type: RoomObjectType): string {
@@ -35,7 +35,13 @@ export function createObject(type: RoomObjectType, at: { x: Metres; y: Metres },
 }
 
 /** A split AC or display wall: hung on a wall with its bottom at `wallBottomM`, like a wall rack. */
-export const isWallHung = (o: RoomObject): o is SimpleObject => o.type !== 'rack' && DEFAULT_WALL_BOTTOM_M[o.type] !== undefined;
+export const isWallHung = (o: RoomObject): boolean => o.type !== 'rack' && DEFAULT_WALL_BOTTOM_M[o.type] !== undefined;
+
+/** Height of the object's bottom above the floor. A hung item from a file with no height keeps its default, so it still hangs. */
+export function wallBottomOf(o: RoomObject): Metres {
+  if (o.wallBottomM !== undefined) return o.wallBottomM;
+  return o.type === 'rack' ? 0 : (DEFAULT_WALL_BOTTOM_M[o.type] ?? 0);
+}
 
 export function effectiveHeight(o: RoomObject): Metres {
   if (o.height !== null) return o.height;
@@ -44,7 +50,7 @@ export function effectiveHeight(o: RoomObject): Metres {
 
 /** The heights an object fills: a wall rack, split AC or display wall from its bottom up, everything else from the floor. */
 export function verticalSpan(o: RoomObject): [Metres, Metres] {
-  const bottom = o.wallBottomM ?? 0;
+  const bottom = wallBottomOf(o);
   return [bottom, bottom + effectiveHeight(o)];
 }
 

@@ -44,7 +44,7 @@ export { createShowcaseProject, SHOWCASE_PROJECT_NAME } from './sampleShowcase';
 export * from './dimensions';
 export * from './feeds';
 export * from './sources';
-export { snapToWall, snapPartitionEnd, type WallSnap } from './walls';
+export { snapToWall, snapPartitionEnd, snapDoor, type WallSnap } from './walls';
 export * from './partitions';
 export * from './catalogFile';
 export * from './equipmentState';
