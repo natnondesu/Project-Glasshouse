@@ -1,4 +1,4 @@
-import { BOM_COLUMNS, effectiveHeight, formatDemand, formatMetres, formatURange, isWallHung, keepClearOf, panelOf, racksOf, wallBottomOf, wayPhase, type BomRow, type Chassis, type Rack, type Revision, type CableRow, type PlanContent, type RoomObject } from '@glasshouse/domain';
+import { BOM_COLUMNS, DEFAULT_KEEP_CLEAR_M, effectiveHeight, formatDemand, formatMetres, formatURange, isWallHung, keepClearOf, panelOf, racksOf, wallBottomOf, wayPhase, type BomRow, type Chassis, type Rack, type Revision, type CableRow, type PlanContent, type RoomObject } from '@glasshouse/domain';
 import type { ReactNode } from 'react';
 import { useT, type Messages } from '../../i18n';
 import { usePeople } from '../../people/peopleStore';
@@ -233,7 +233,8 @@ export function VlanTable({ content }: { content: PlanContent }) {
 
 /** The default depth reads plainly; a depth someone set is marked, so an exception shows to reviewers and installers. */
 function keepClearText(m: Messages, o: RoomObject, depth: number): string {
-  const isSet = o.type !== 'rack' && o.keepClearM !== undefined;
+  // Marked only when it differs from the type's default: typing the default in is not an exception.
+  const isSet = o.type !== 'rack' && depth !== DEFAULT_KEEP_CLEAR_M[o.type];
   if (depth === 0) return m.sheet.fittings.clearNone;
   const zone = m.plan.zone[o.type as keyof typeof m.plan.zone];
   return isSet ? m.sheet.fittings.clearSet(zone, formatMetres(depth)) : `${zone} ${formatMetres(depth)} m`;

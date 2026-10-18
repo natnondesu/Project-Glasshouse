@@ -114,3 +114,21 @@ describe('keep-clear validation', () => {
     expect(r.ok && 'keepClearM' in r.value.objects[0]!).toBe(false);
   });
 });
+
+describe('keep-clear depth from an imported file', () => {
+  it('ignores a stored depth outside 0–5 m, so a hand-edited file cannot draw a 50 m zone or hide one', () => {
+    expect(keepClearOf(make('precision_ac', 'P', 1, 0, { keepClearM: 50 }))).toBe(1);
+    expect(keepClearOf(make('precision_ac', 'P', 1, 0, { keepClearM: -1 }))).toBe(1);
+    expect(keepClearOf(make('display_wall', 'D', 1, 0, { keepClearM: Number.NaN }))).toBe(1.5);
+  });
+
+  it('still lets the object be edited, dropping the bad depth', () => {
+    const pac = make('precision_ac', 'P', 1, 0, { keepClearM: 50 });
+    const moved = run(content([pac]), { type: 'object/update', id: pac.id, patch: { x: 2 } });
+    expect(moved.ok).toBe(true);
+    if (!moved.ok) return;
+    const after = moved.value.objects[0] as SimpleObject;
+    expect(after.x).toBe(2);
+    expect(after.keepClearM).toBeUndefined();
+  });
+});

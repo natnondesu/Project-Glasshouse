@@ -183,7 +183,7 @@ describe('room fittings', () => {
       add(createObject('partition', { x: 2, y: 3 }, []), 'pt', 'PT-01');
       add(createObject('wall_split_ac', { x: 1, y: 0 }, []), 'ac', 'AC-01', extras.ac);
       add(createObject('precision_ac', { x: 3, y: 0.5 }, []), 'pac', 'PAC-01', extras.pac);
-      add(createObject('display_wall', { x: 1, y: 3.8 }, []), 'dw', 'DW-01', { wallBottomM: 1 });
+      add(createObject('display_wall', { x: 1, y: 3.8 }, []), 'dw', 'DW-01', { wallBottomM: 1, ...extras.dw });
     }
     s.dispatch({ type: 'review', roomId: 'fit', command: { type: 'review/submit', designedBy: 'Ploy', at: AT } });
     const problem = s.dispatch({ type: 'review', roomId: 'fit', command: { type: 'review/approve', reviewer: 'Nok', at: AT } });
@@ -209,6 +209,14 @@ describe('room fittings', () => {
     const clear = (name: string) => within(table).getByText(name).closest('tr')!.querySelectorAll('td')[5]!.textContent;
     expect(clear('PAC-01')).toBe('Service 0.60 m (set)');
     expect(clear('AC-01')).toBe('None (set)');
+    expect(clear('DW-01')).toBe('Viewing 1.50 m');
+  });
+
+  it('reads a depth equal to the default plainly, even when it was typed in', () => {
+    open(approvedRoom(true, { pac: { keepClearM: 1 }, dw: { keepClearM: 1.5 } }));
+    const table = screen.getByRole('table', { name: 'Room fittings' });
+    const clear = (name: string) => within(table).getByText(name).closest('tr')!.querySelectorAll('td')[5]!.textContent;
+    expect(clear('PAC-01')).toBe('Service 1.00 m');
     expect(clear('DW-01')).toBe('Viewing 1.50 m');
   });
 

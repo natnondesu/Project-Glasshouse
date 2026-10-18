@@ -5,7 +5,7 @@ import { LIMITS } from '../model/defaults';
 import type { Id, Metres, Millimetres, PlanContent, Rack, RackOwner, RoomObject, Survey, Units, DoorHinge, DoorOpening } from '../model/types';
 import { err, ok, withTarget, type Failure, type Result } from '../result';
 import { formatMetres, normalizeAngle, rackAutoHeightM, snapTyped } from '../units';
-import { hasKeepClear, isWallHung } from '../objects';
+import { hasKeepClear, isKeepClearInRange, isWallHung } from '../objects';
 import { rackSpans, topU } from '../occupancy';
 import { definedOnly, inRange, isWholeInRange, validateName } from '../validation';
 
@@ -89,11 +89,11 @@ function withWallBottom(rack: Rack, bottom: Metres | null | undefined): Rack {
   return { ...rack, wallBottomM: bottom };
 }
 
-/** A floor object from an old file may carry a height it never used; editing it drops that, rather than refusing the edit. */
+/** A floor object from an old file may carry a height it never used, or a keep-clear depth out of range; editing drops those rather than refusing the edit. */
 function withoutStrayHeight(o: RoomObject): RoomObject {
   if (o.type === 'rack') return o;
   const { wallBottomM, keepClearM, ...rest } = o;
-  return { ...rest, ...(wallBottomM !== undefined && isWallHung(o) ? { wallBottomM } : {}), ...(keepClearM !== undefined && hasKeepClear(o.type) ? { keepClearM } : {}) };
+  return { ...rest, ...(wallBottomM !== undefined && isWallHung(o) ? { wallBottomM } : {}), ...(keepClearM !== undefined && hasKeepClear(o.type) && isKeepClearInRange(keepClearM) ? { keepClearM } : {}) };
 }
 
 /** undefined leaves the depth alone; null returns to the type's default. */
