@@ -76,6 +76,6 @@ test('place a UPS, feed a rack from it, feed the UPS from the MCB, and wire feed
   expect(footBox.y + footBox.height).toBeLessThanOrEqual(panelBox.y + panelBox.height + 1);
   await table.hover();
   // Firefox caps how far one wheel event scrolls, so scroll in steps like a trackpad would.
-  for (let i = 0; i < 8; i += 1) await page.mouse.wheel(0, 600);
+  for (let i = 0; i < 40; i += 1) await page.mouse.wheel(0, 600);
   await expect(manager.getByRole('button', { name: /^Way 72,/ })).toBeInViewport();
 });
