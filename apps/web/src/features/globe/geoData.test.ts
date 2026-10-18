@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import countries from './data/countries-50m.topo.json';
+import seaDetail from './data/sea-detail-10m.topo.json';
 import provinces from './data/thailand-provinces-10m.topo.json';
-import { parseGeo, regionAt, regionName } from './geoData';
+import worldDetail from './data/world-detail-110m.topo.json';
+import { parseGeo, pointName, regionAt, regionName } from './geoData';
 
-const geo = parseGeo(countries as never, provinces as never);
+const geo = parseGeo(countries as never, provinces as never, seaDetail as never, worldDetail as never);
 
 describe('the shipped outlines', () => {
   it('has every country and all 77 Thai provinces, each with its own Thai name', () => {
@@ -38,5 +40,47 @@ describe('the shipped outlines', () => {
     // Russia reaches past 180° into Chukotka: its box wraps (west > east).
     const russia = geo.countries.find((c) => c.code === 'RU')!;
     expect(russia.box[0][0]).toBeGreaterThan(russia.box[1][0]);
+  });
+});
+
+describe('the map detail', () => {
+  const { places, airports, rivers, lakes } = geo.detail;
+  const place = (name: string) => places.find((p) => p.name === name)!;
+
+  it('has the rivers and lakes of South-East Asia, and coarse ones elsewhere', () => {
+    const names = new Set(rivers.map((r) => r.name));
+    for (const river of ['Chao Phraya', 'Mekong', 'Ping', 'Yom']) expect(names).toContain(river);
+    expect(lakes.map((l) => l.name)).toContain('Tonlé Sap');
+    // Coarse world rivers: the Amazon is far outside the detailed box.
+    expect(names).toContain('Amazonas');
+  });
+
+  it('names Thai places from the checked table, and Bangkok is Bangkok', () => {
+    const bangkok = place('Bangkok');
+    expect(bangkok).toMatchObject({ capital: true, nameTh: 'กรุงเทพมหานคร' });
+    expect(bangkok.lat).toBeCloseTo(13.75, 1);
+    expect(bangkok.lon).toBeCloseTo(100.52, 1);
+    expect(pointName(bangkok, 'th')).toBe('กรุงเทพมหานคร');
+    expect(pointName(place('Chiang Mai'), 'th')).toBe('เชียงใหม่');
+    expect(pointName(place('Hat Yai'), 'th')).toBe('หาดใหญ่');
+    // Natural Earth's misspelling is corrected.
+    expect(place('Suphan Buri').nameTh).toBe('สุพรรณบุรี');
+    // A place without a Thai name keeps its English one in Thai.
+    expect(pointName(place('Sydney'), 'th')).toBe('Sydney');
+  });
+
+  it('lists capitals first, then by importance, so minor names give way', () => {
+    expect(places[0]!.capital).toBe(true);
+    const ranks = places.filter((p) => !p.capital).map((p) => p.rank);
+    expect(ranks).toEqual([...ranks].sort((a, b) => a - b));
+  });
+
+  it('has Bangkok’s two airports under their own names, in Thai too', () => {
+    const bkk = airports.find((a) => a.iata === 'BKK')!;
+    const dmk = airports.find((a) => a.iata === 'DMK')!;
+    expect([bkk.name, bkk.nameTh]).toEqual(['Suvarnabhumi', 'สุวรรณภูมิ']);
+    expect([dmk.name, dmk.nameTh]).toEqual(['Don Mueang', 'ดอนเมือง']);
+    expect(bkk.lon).toBeCloseTo(100.75, 1);
+    expect(dmk.lat).toBeCloseTo(13.92, 1);
   });
 });

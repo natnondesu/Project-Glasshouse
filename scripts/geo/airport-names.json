@@ -1,0 +1,11 @@
+{
+  "BKK": { "n": "Suvarnabhumi", "t": "สุวรรณภูมิ" },
+  "DMK": { "n": "Don Mueang", "t": "ดอนเมือง" },
+  "CNX": { "n": "Chiang Mai", "t": "เชียงใหม่" },
+  "HKT": { "n": "Phuket", "t": "ภูเก็ต" },
+  "HDY": { "n": "Hat Yai", "t": "หาดใหญ่" },
+  "UTP": { "n": "U-Tapao", "t": "อู่ตะเภา" },
+  "PNH": { "n": "Phnom Penh" },
+  "RGN": { "n": "Yangon" },
+  "DAC": { "n": "Dhaka" }
+}

@@ -1,7 +1,11 @@
 import { geoDistance, geoGraticule, geoPath, type GeoProjection } from 'd3-geo';
 import { LEVEL_PPD, type Camera, type Size } from './camera';
+import { drawAirports, drawPlaces, drawWater } from './drawDetail';
 import { regionName, type GeoData, type Region } from './geoData';
+import { intersects, type Rect } from './labels';
 import { boxTouches, projectionFor, visibleBox } from './projection';
+
+export type { Rect } from './labels';
 
 /** Read once from the map's CSS custom properties, so the drawing follows the design tokens. */
 export interface MapPalette {
@@ -15,6 +19,9 @@ export interface MapPalette {
   border: string;
   province: string;
   hatch: string;
+  lake: string;
+  water: string;
+  river: string;
   font: string;
 }
 
@@ -32,6 +39,9 @@ export function readPalette(el: Element): MapPalette {
     border: v('--map-border', '#7d8792'),
     province: v('--map-province', '#9aa4ae'),
     hatch: v('--map-hatch', '#3b4552'),
+    lake: v('--map-lake', '#dbe6ef'),
+    water: v('--map-water', '#8fb0cf'),
+    river: v('--map-river', '#5b8fcf'),
     font: css.fontFamily || 'system-ui, sans-serif',
   };
 }
@@ -48,13 +58,6 @@ export interface DrawInput {
   lang: 'en' | 'th';
   /** Screen boxes labels must stay clear of (the markers and their names). */
   avoid: Rect[];
-}
-
-export interface Rect {
-  x: number;
-  y: number;
-  w: number;
-  h: number;
 }
 
 /** One graticule step so lines sit at least ~50 px apart: 15° on the world view down to a hundredth of a degree. */
@@ -89,9 +92,7 @@ function hatch(ctx: CanvasRenderingContext2D, dpr: number, color: string): Canva
   return hatchTile.pattern ?? color;
 }
 
-const intersects = (a: Rect, b: Rect): boolean => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
-
-function drawLabels(ctx: CanvasRenderingContext2D, projection: GeoProjection, regions: Region[], input: DrawInput, style: { size: number; weight: number; caps: boolean; color: string }, placed: Rect[]): void {
+function drawLabels(ctx: CanvasRenderingContext2D, projection: GeoProjection, regions: Region[], input: DrawInput, style: { size: number; weight: number; caps: boolean; color: string }, placed: Rect[], skip: ReadonlySet<string> = new Set()): void {
   const path = geoPath(projection);
   ctx.font = `${style.weight} ${style.size}px ${input.palette.font}`;
   ctx.textAlign = 'center';
@@ -101,6 +102,8 @@ function drawLabels(ctx: CanvasRenderingContext2D, projection: GeoProjection, re
   for (const region of regions) {
     const [[x0, y0], [x1, y1]] = path.bounds(region.feature);
     const name = regionName(region, input.lang);
+    // A province named like the city already labelled there (Bangkok) is said once.
+    if (skip.has(name)) continue;
     const text = style.caps ? name.toLocaleUpperCase(input.lang) : name;
     const w = ctx.measureText(text).width + (style.caps ? text.length * 1.2 : 0);
     if (!Number.isFinite(x0) || x1 - x0 < w + 12 || y1 - y0 < style.size + 6) continue;
@@ -181,6 +184,8 @@ export function drawMap(input: DrawInput): void {
     ctx.setLineDash([]);
   }
 
+  drawWater(ctx, projection, geo.detail, camera, view, palette);
+
   ctx.strokeStyle = palette.border;
   ctx.lineWidth = camera.ppd < LEVEL_PPD.country ? 0.7 : 1.1;
   ctx.stroke(land);
@@ -199,9 +204,16 @@ export function drawMap(input: DrawInput): void {
   ctx.lineWidth = 1.5;
   ctx.stroke();
 
+  // Names, most useful first for the zoom: countries lead on the country view, cities and airports closer in.
   const placed: Rect[] = [];
-  if (camera.ppd >= LEVEL_PPD.province * 0.32 && provinces.length > 0) drawLabels(ctx, projection, provinces, input, { size: 12, weight: 500, caps: false, color: palette.ink2 }, placed);
-  if (camera.ppd >= LEVEL_PPD.country) drawLabels(ctx, projection, countries, input, { size: 11, weight: 600, caps: true, color: palette.ink3 }, placed);
+  const points = { ctx, projection, camera, size, detail: geo.detail, palette, lang: input.lang, avoid: input.avoid, placed };
+  const countryStyle = { size: 11, weight: 600, caps: true, color: palette.ink3 };
+  const closer = camera.ppd >= LEVEL_PPD.province * 0.32;
+  if (!closer && camera.ppd >= LEVEL_PPD.country) drawLabels(ctx, projection, countries, input, countryStyle, placed);
+  const cities = new Set(drawPlaces(points));
+  drawAirports(points);
+  if (closer && provinces.length > 0) drawLabels(ctx, projection, provinces, input, { size: 12, weight: 500, caps: false, color: palette.ink2 }, placed, cities);
+  if (closer) drawLabels(ctx, projection, countries, input, countryStyle, placed);
 }
 
 export { gridStep };
