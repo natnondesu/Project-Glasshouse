@@ -1,6 +1,7 @@
 import { newId, parseWorkspace, type DomainError, type Result, type Workspace, type WorkspaceCommand } from '@glasshouse/domain';
 import { AuthError } from '../auth/authApi';
 import type { Claim } from '../claims/claimsStore';
+import type { RoomEdit } from './roomEdits';
 import type { SaveState } from '../store/workspaceStore';
 import { SyncEngine, type Dropped, type ServerEvent } from './syncEngine';
 
@@ -25,7 +26,7 @@ export interface EventHandlers {
 }
 
 export interface Transport {
-  fetchWorkspace(): Promise<{ seq: number; workspace: unknown; claims?: Claim[]; generation?: string }>;
+  fetchWorkspace(): Promise<{ seq: number; workspace: unknown; claims?: Claim[]; edits?: RoomEdit[]; generation?: string }>;
   /** Throws NetworkError when the server can't be reached or fails (5xx); the batch is then retried as is. */
   postCommands(clientId: string, commands: { commandId: string; command: WorkspaceCommand }[]): Promise<BatchOutcome>;
   openEvents(after: number, handlers: EventHandlers): () => void;
@@ -45,6 +46,10 @@ export interface SyncCallbacks {
   /** The session ended (or needs a new password): the client has stopped; unsent edits stay in `pendingCommands()`. */
   onAuthLost(): void;
   onClaims?(claims: Claim[]): void;
+  /** Who edited each room last, from a fresh snapshot (replaces what was known). */
+  onEdits?(edits: RoomEdit[]): void;
+  /** One room's latest edit, from the event stream. */
+  onEdit?(edit: RoomEdit): void;
   /** Someone else holds the room: this tab's edits to it were refused. `workspace` is this tab's version from before they were dropped. */
   onClaimLost?(lost: { roomId: string; workspace: Workspace; changes: number }): void;
 }
@@ -212,6 +217,7 @@ export class SyncClient {
       },
       onCommand: (event) => {
         this.resetWatchdog();
+        if (event.edit) this.callbacks.onEdit?.(event.edit);
         const result = this.engine.remote(event);
         if (result.kind === 'resync') void this.resync('out-of-step');
         else if (result.kind === 'applied') {
@@ -283,6 +289,7 @@ export class SyncClient {
         this.report(this.engine.reset({ seq: snapshot.seq, workspace: parsed.value }));
         this.generation = snapshot.generation ?? this.generation;
         this.callbacks.onClaims?.(snapshot.claims ?? []);
+        this.callbacks.onEdits?.(snapshot.edits ?? []);
         this.paused = false;
         break;
       } catch (e) {

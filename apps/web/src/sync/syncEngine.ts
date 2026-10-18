@@ -1,10 +1,13 @@
 import { apply, draftEditRoom, type DomainError, type Workspace, type WorkspaceCommand } from '@glasshouse/domain';
+import type { RoomEdit } from './roomEdits';
 
 export interface ServerEvent {
   seq: number;
   clientId: string;
   commandId: string;
   command: WorkspaceCommand;
+  /** Who changed a room, when someone signed in did: Home's "edited by". */
+  edit?: RoomEdit;
 }
 
 export interface Dropped {

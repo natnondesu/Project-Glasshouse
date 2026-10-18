@@ -153,3 +153,17 @@ it('serves the web manifest as a manifest, and a missing static file falls back 
     await rm(dir, { recursive: true, force: true });
   }
 });
+
+it('serves who edited each room last with the workspace', async () => {
+  const ada = { id: 'u-ada', name: 'Ada', role: 'admin' as const, verified: true };
+  const { app, service } = await setup(async () => ada);
+  for (const [i, command] of [
+    { type: 'project/create' as const, id: 'p', name: 'P' },
+    { type: 'site/create' as const, projectId: 'p', id: 's', name: 'S' },
+    { type: 'room/create' as const, siteId: 's', id: 'r', floorAreaId: 'f', name: 'MDF' },
+  ].entries()) {
+    await service.submit({ clientId: 'a', commandId: String(i), command }, ada);
+  }
+  const body = (await app.inject({ url: '/api/workspace' })).json();
+  expect(body.edits).toEqual([{ roomId: 'r', userId: 'u-ada', name: 'Ada', at: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T/) }]);
+});

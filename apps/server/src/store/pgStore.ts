@@ -1,5 +1,6 @@
 import type { Workspace, WorkspaceCommand } from '@glasshouse/domain';
 import pg from 'pg';
+import type { RoomEdit } from '../roomEdits';
 import type { ApprovalRecord, CommandStore, LoggedCommand, StoredSnapshot } from './commandStore';
 import { migrate } from './migrations';
 
@@ -35,6 +36,7 @@ interface CommandRow {
   actor_id: string;
   actor_name: string;
   command: WorkspaceCommand;
+  received_at: Date;
 }
 
 const toLogged = (r: CommandRow): LoggedCommand => ({
@@ -43,9 +45,11 @@ const toLogged = (r: CommandRow): LoggedCommand => ({
   commandId: r.command_id,
   actor: { id: r.actor_id, name: r.actor_name, role: 'viewer', verified: true },
   command: r.command,
+  receivedAt: r.received_at.toISOString(),
 });
 
 const COLUMNS = 'seq, client_id, command_id, actor_id, actor_name, command';
+const READ_COLUMNS = `${COLUMNS}, received_at`;
 
 export class PgCommandStore implements CommandStore {
   private constructor(private readonly pool: pg.Pool, private readonly lock: pg.PoolClient) {}
@@ -80,12 +84,12 @@ export class PgCommandStore implements CommandStore {
   }
 
   async commandsAfter(seq: number, limit: number): Promise<LoggedCommand[]> {
-    const r = await this.pool.query<CommandRow>(`select ${COLUMNS} from commands where seq > $1 order by seq limit $2`, [seq, limit]);
+    const r = await this.pool.query<CommandRow>(`select ${READ_COLUMNS} from commands where seq > $1 order by seq limit $2`, [seq, limit]);
     return r.rows.map(toLogged);
   }
 
   async findCommand(clientId: string, commandId: string): Promise<LoggedCommand | null> {
-    const r = await this.pool.query<CommandRow>(`select ${COLUMNS} from commands where client_id = $1 and command_id = $2`, [clientId, commandId]);
+    const r = await this.pool.query<CommandRow>(`select ${READ_COLUMNS} from commands where client_id = $1 and command_id = $2`, [clientId, commandId]);
     return r.rows[0] ? toLogged(r.rows[0]) : null;
   }
 
@@ -94,8 +98,8 @@ export class PgCommandStore implements CommandStore {
     let discard: Error | undefined;
     try {
       await client.query('begin');
-      await client.query(`insert into commands (${COLUMNS}) values ($1, $2, $3, $4, $5, $6)`, [
-        e.seq, e.clientId, e.commandId, e.actor.id, e.actor.name, JSON.stringify(e.command),
+      await client.query(`insert into commands (${COLUMNS}, received_at) values ($1, $2, $3, $4, $5, $6, coalesce($7::timestamptz, now()))`, [
+        e.seq, e.clientId, e.commandId, e.actor.id, e.actor.name, JSON.stringify(e.command), e.receivedAt ?? null,
       ]);
       if (approval) {
         await client.query(
@@ -120,6 +124,17 @@ export class PgCommandStore implements CommandStore {
       'select seq, room_id, revision, content_hash, approver_id, approver_name, approved_at from approvals order by seq',
     );
     return r.rows.map((x) => ({ seq: Number(x.seq), roomId: x.room_id, revision: x.revision, contentHash: x.content_hash, approverId: x.approver_id, approverName: x.approver_name, approvedAt: x.approved_at }));
+  }
+
+  async lastRoomEdits(): Promise<RoomEdit[]> {
+    // The dev stand-in's id starts with "dev:" and is never verified: its edits name nobody (the log doesn't keep the flag).
+    const r = await this.pool.query<{ room_id: string; actor_id: string; actor_name: string; received_at: Date }>(
+      `select distinct on (room_id) room_id, actor_id, actor_name, received_at from (
+         select coalesce(command->>'roomId', case when command->>'type' = 'room/create' then command->>'id' end) as room_id, actor_id, actor_name, received_at, seq
+         from commands where actor_id not like 'dev:%'
+       ) edits where room_id is not null order by room_id, seq desc`,
+    );
+    return r.rows.map((x) => ({ roomId: x.room_id, userId: x.actor_id, name: x.actor_name, at: x.received_at.toISOString() })).sort((a, b) => b.at.localeCompare(a.at));
   }
 
   async saveSnapshot(seq: number, workspace: Workspace): Promise<void> {

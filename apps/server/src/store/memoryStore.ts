@@ -1,4 +1,5 @@
 import type { Workspace } from '@glasshouse/domain';
+import { RoomEdits, type RoomEdit } from '../roomEdits';
 import type { ApprovalRecord, CommandStore, LoggedCommand, StoredSnapshot } from './commandStore';
 
 /** For tests and the e2e server: same contract as Postgres, gone on restart. */
@@ -34,6 +35,12 @@ export class MemoryCommandStore implements CommandStore {
 
   async listApprovals(): Promise<ApprovalRecord[]> {
     return structuredClone(this.approvals);
+  }
+
+  async lastRoomEdits(): Promise<RoomEdit[]> {
+    const edits = new RoomEdits();
+    for (const entry of this.log) edits.record(entry);
+    return edits.list(() => true);
   }
 
   async saveSnapshot(seq: number, workspace: Workspace): Promise<void> {

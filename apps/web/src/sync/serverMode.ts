@@ -4,6 +4,7 @@ import { useAuthStore } from '../auth/authStore';
 import { AuthError, type AuthUser } from '../auth/authApi';
 import { usePeopleStore, resetPeopleStore } from '../people/peopleStore';
 import { resetClaimsStore, useClaimsStore, type Claim } from '../claims/claimsStore';
+import { resetRoomEditsStore, useRoomEditsStore, type RoomEdit } from './roomEdits';
 import { messagesFor, useLangStore } from '../i18n';
 import { useWorkspaceStore, setCommit } from '../store/workspaceStore';
 import { httpTransport } from './httpTransport';
@@ -55,7 +56,7 @@ export async function startServerSync(transport: Transport = httpTransport(), is
       }
     }
   }
-  let snapshot: { seq: number; workspace: unknown; claims?: Claim[]; generation?: string };
+  let snapshot: { seq: number; workspace: unknown; claims?: Claim[]; edits?: RoomEdit[]; generation?: string };
   try {
     snapshot = await transport.fetchWorkspace();
   } catch (e) {
@@ -74,6 +75,7 @@ export async function startServerSync(transport: Transport = httpTransport(), is
     return () => {};
   }
   useClaimsStore.getState().setClaims(snapshot.claims ?? []);
+  useRoomEditsStore.getState().setAll(snapshot.edits ?? []);
   const viewOnly = (): boolean => useAuthStore.getState().user?.role === 'viewer';
   const loadPeople = (): void => {
     usePeopleStore.getState().load().catch((e: unknown) => console.warn('Could not load the people list; names show without email.', e));
@@ -112,6 +114,8 @@ export async function startServerSync(transport: Transport = httpTransport(), is
       useAuthStore.getState().signedOut(true);
     },
     onClaims: (claims) => useClaimsStore.getState().setClaims(claims),
+    onEdits: (edits) => useRoomEditsStore.getState().setAll(edits),
+    onEdit: (edit) => useRoomEditsStore.getState().record(edit),
     onClaimLost: ({ roomId, workspace, changes }) => {
       const loc = findRoom(workspace, roomId);
       const file = loc ? exportProjectFile(workspace, loc.project.id, new Date().toISOString()) : null;
@@ -177,6 +181,7 @@ export async function startServerSync(transport: Transport = httpTransport(), is
     if (activeSync === client) activeSync = null;
     unloadGuard.dispose();
     resetClaimsStore();
+    resetRoomEditsStore();
     resetPeopleStore();
     setCommit(apply);
     useWorkspaceStore.getState().setConnection('local');
