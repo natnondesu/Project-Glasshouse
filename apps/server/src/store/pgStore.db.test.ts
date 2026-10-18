@@ -44,12 +44,13 @@ it('refuses a repeated seq and a repeated client command id', async () => {
   await store.close();
 });
 
+// Seqs 500–502: clear of the ranges the other tests read back (1–3 before this test, 2000 and up after it).
 it('keeps when each command arrived and who edited each room last, leaving the dev stand-in out', async () => {
   const store = await PgCommandStore.connect(container.getConnectionUri());
   const ada = { id: 'u-ada', name: 'Ada', role: 'viewer' as const, verified: true };
-  await store.append({ seq: 3000, clientId: 'e', commandId: '1', actor: ada, command: { type: 'room/create', siteId: 's', id: 'r-edit', floorAreaId: 'f', name: 'MDF' }, receivedAt: '2026-10-18T01:00:00.000Z' });
-  await store.append({ seq: 3001, clientId: 'e', commandId: '2', actor, command: { type: 'room/rename', roomId: 'r-edit', name: 'MDF-1' }, receivedAt: '2026-10-18T02:00:00.000Z' });
-  await store.append({ seq: 3002, clientId: 'e', commandId: '3', actor: ada, command: { type: 'room/rename', roomId: 'r-other', name: 'IDF' }, receivedAt: '2026-10-18T03:00:00.000Z' });
+  await store.append({ seq: 500, clientId: 'e', commandId: '1', actor: ada, command: { type: 'room/create', siteId: 's', id: 'r-edit', floorAreaId: 'f', name: 'MDF' }, receivedAt: '2026-10-18T01:00:00.000Z' });
+  await store.append({ seq: 501, clientId: 'e', commandId: '2', actor, command: { type: 'room/rename', roomId: 'r-edit', name: 'MDF-1' }, receivedAt: '2026-10-18T02:00:00.000Z' });
+  await store.append({ seq: 502, clientId: 'e', commandId: '3', actor: ada, command: { type: 'room/rename', roomId: 'r-other', name: 'IDF' }, receivedAt: '2026-10-18T03:00:00.000Z' });
   expect((await store.findCommand('e', '2'))?.receivedAt).toBe('2026-10-18T02:00:00.000Z');
   const edits = (await store.lastRoomEdits()).filter((e) => e.roomId.startsWith('r-'));
   expect(edits).toEqual([
