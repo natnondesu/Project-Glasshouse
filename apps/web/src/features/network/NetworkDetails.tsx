@@ -3,6 +3,7 @@ import { Link } from 'react-router';
 import { useT } from '../../i18n';
 import { useWorkspaceStore } from '../../store/workspaceStore';
 import { StateIcon } from '../../ui/StateIcon';
+import { memberPort } from './memberPort';
 import type { TopoSelection } from './TopologyDiagram';
 import type { Topology } from './topology';
 
@@ -94,7 +95,7 @@ export function NetworkDetails({ content, stateOf, roomId, topology, selection, 
       <ul className="net-details__cables">
         {edge.links.map((l) => (
           <li key={l.id}>
-            <span className="mono">{`${describeEnd(content, l.a).device} ${l.a.port} ↔ ${describeEnd(content, l.b).device} ${l.b.port}`}</span>
+            <span className="mono">{`${describeEnd(content, l.a).device} ${memberPort(content, l.a)} ↔ ${describeEnd(content, l.b).device} ${memberPort(content, l.b)}`}</span>
             <span className="net-details__meta">{[l.label, vlanLabel(describeEnd(content, l.a).port?.vlan)].filter(Boolean).join(' · ')}</span>
           </li>
         ))}
@@ -127,7 +128,7 @@ function PortsTable({ content, id, stateOf }: { content: PlanContent; id: Id; st
                 {vlan ? vlanLabel(vlan.vlan) : ''}
               </td>
               <td>
-                {far ? m.topology.to(describeEnd(content, far).device, far.port) : p.remote ? <span className="net-details__uplink">{uplinkText(p.remote)}</span> : <span className="net-details__none">{m.topology.notCabled}</span>}
+                {far ? m.topology.to(describeEnd(content, far).device, memberPort(content, far)) : p.remote ? <span className="net-details__uplink">{uplinkText(p.remote)}</span> : <span className="net-details__none">{m.topology.notCabled}</span>}
                 {far && stateOf(far.deviceId) === 'maintenance' ? (
                   <span className="net-details__maint">
                     <StateIcon state="maintenance" />

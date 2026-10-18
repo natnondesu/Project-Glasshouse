@@ -92,8 +92,7 @@ export function TopologyDiagram({ content, topology, vid = null, scale = 1, sele
   const lagAt = (r: { deviceId: Id; port: string }): string | undefined => describeEnd(content, r).port?.lag;
   const ownerOf = new Map(topology.nodes.flatMap((n) => (n.memberIds ?? []).map((id) => [id, n.id] as const)));
   const memberNo = new Map(stacksOf(content).flatMap((st) => st.members.map((x) => [x.deviceId, x.member] as const)));
-  const focusIsStack = Boolean(focusId && byId.get(focusId)?.memberIds);
-  const tags = focusId ? portTags(focusId, topology.edges, byId, m.topology.morePorts, lagAt, m.topology.links, (id) => ownerOf.get(id) ?? id, (id) => (focusIsStack ? (memberNo.get(id) ?? null) : null)) : [];
+  const tags = focusId ? portTags(focusId, topology.edges, byId, m.topology.morePorts, lagAt, m.topology.links, (id) => ownerOf.get(id) ?? id, (id) => memberNo.get(id) ?? null) : [];
   // One LAG on either end: the bundle is named after it.
   const bundleName = (e: TopoEdge): string | null => {
     for (const device of [e.a, e.b]) {
