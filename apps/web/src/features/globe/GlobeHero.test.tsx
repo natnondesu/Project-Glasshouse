@@ -71,6 +71,17 @@ describe('Home’s globe hero', () => {
     expect(screen.getByRole('region', { name: /Bangna campus/ })).toBeInTheDocument();
   });
 
+  it('offers the Location dialog when Place on the map was chosen but the map can’t load', async () => {
+    silenceBoundary();
+    geo.fail = true;
+    load(sample());
+    send({ type: 'project/create', id: 'p', name: 'Acme' });
+    send({ type: 'site/create', projectId: 'p', id: 's', name: 'Warehouse 2' });
+    useLocationStore.getState().place('s');
+    open();
+    expect(await screen.findByRole('dialog', { name: 'Where is Warehouse 2?' })).toBeInTheDocument();
+  });
+
   it('opens framed on the country of the sites with the last room’s site selected and its room in the card', async () => {
     const ws = sample();
     load(ws);

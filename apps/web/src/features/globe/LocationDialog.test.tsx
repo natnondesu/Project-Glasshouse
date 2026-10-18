@@ -2,11 +2,19 @@ import { createWorkspace, findSite } from '@glasshouse/domain';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { createMemoryRouter, RouterProvider } from 'react-router';
-import { beforeEach, expect, it } from 'vitest';
+import { beforeEach, expect, it, vi } from 'vitest';
 import { routes } from '../../app/routes';
 import { resetAuthStore, useAuthStore } from '../../auth/authStore';
 import { resetWorkspaceStore, useWorkspaceStore } from '../../store/workspaceStore';
+import countries from './data/countries-50m.topo.json';
+import provinces from './data/thailand-provinces-10m.topo.json';
 import { useLocationStore } from './locationStore';
+
+// The outlines load as in a browser (jsdom can't fetch them), so Home's map is there to place on.
+vi.mock('./geoData', async (importOriginal) => {
+  const real = await importOriginal<typeof import('./geoData')>();
+  return { ...real, loadGeo: () => Promise.resolve(real.parseGeo(countries as never, provinces as never)) };
+});
 
 beforeEach(() => {
   localStorage.clear();
@@ -74,6 +82,7 @@ it('goes to Home to place a site on the map from inside a room', async () => {
   await user.click(screen.getByRole('button', { name: 'Place on the map' }));
   expect(router.state.location.pathname).toBe('/');
   expect(useLocationStore.getState().placing).toBe('s');
+  expect(await screen.findByRole('region', { name: 'Place Warehouse 2 on the map' })).toBeInTheDocument();
 });
 
 it('offers no Location action to viewers, nor on an archived site', async () => {
