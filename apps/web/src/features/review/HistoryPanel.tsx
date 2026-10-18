@@ -56,7 +56,7 @@ export function HistoryPanel({ plan, roomId }: { plan: Plan; roomId: string }) {
           <li key={`${e.at}-${i}`}>
             <span className="events__time mono">{formatTime(e.at)}</span>
             <span className="mono events__rev">{`R${pad2(e.revision)}`}</span>
-            <span>{historyText(m, e)}</span>
+            <span>{historyText(m, e, people)}</span>
           </li>
         ))}
       </ol>

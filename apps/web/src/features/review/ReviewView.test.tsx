@@ -2,7 +2,8 @@ import { createObject, currentRevision, findRoom, type Rack, type ReviewCommand,
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { createMemoryRouter, RouterProvider } from 'react-router';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { useLangStore } from '../../i18n';
 import { routes } from '../../app/routes';
 import { resetAuthStore, useAuthStore } from '../../auth/authStore';
 import { resetPeopleStore, usePeopleStore } from '../../people/peopleStore';
@@ -287,5 +288,61 @@ describe('signed in on the shared server', () => {
     const row = within(screen.getByRole('region', { name: 'Revisions and history' })).getAllByRole('listitem')[0]!;
     expect(row).toHaveTextContent('Designed by Ploy (unverified) · approved by Nok P.');
     expect(row).not.toHaveTextContent('Nok P. (unverified)');
+  });
+});
+
+describe('people whose account was removed', () => {
+  const gone = () => usePeopleStore.setState({ loaded: true, byId: { viewer: { name: 'Vee', email: 'v@x.test' } }, gone: ['designer', 'approver'] });
+  afterEach(() => vi.restoreAllMocks());
+
+  const approvedByRemoved = (): void => {
+    review({ type: 'review/submit', designedBy: 'Ploy S.', byId: 'designer', at: AT });
+    review({ type: 'review/approve', reviewer: 'Nok R.', byId: 'approver', at: AT });
+    review({ type: 'note/add', id: 'n9', text: 'Checked the PDU', by: 'Nok R.', byId: 'approver', at: AT });
+    signInAs('viewer', 'viewer');
+    gone();
+  };
+
+  it('keeps their recorded name on the stamp and the revision list, marked removed', () => {
+    approvedByRemoved();
+    open();
+    expect(screen.getByRole('status')).toHaveTextContent('by Nok R. (removed)');
+    const row = within(screen.getByRole('region', { name: 'Revisions and history' })).getAllByRole('listitem')[0]!;
+    expect(row).toHaveTextContent('Designed by Ploy S. (removed) · approved by Nok R. (removed)');
+    expect(row).not.toHaveTextContent(/undefined|\bdesigner\b|\bapprover\b/);
+  });
+
+  it('marks them on history lines and notes too, never blank', () => {
+    approvedByRemoved();
+    open();
+    const history = screen.getByRole('region', { name: 'Revisions and history' });
+    expect(within(history).getByRole('list', { name: 'What happened, newest first' })).toHaveTextContent('Approved by Nok R. (removed)');
+    expect(within(history).getByRole('list', { name: 'What happened, newest first' })).toHaveTextContent('Submitted for review by Ploy S. (removed)');
+    expect(within(history).getByRole('list', { name: 'What happened, newest first' })).toHaveTextContent('Nok R. (removed) added a note');
+    expect(screen.getByRole('region', { name: 'Notes on R01' })).toHaveTextContent('Nok R. (removed) ·');
+  });
+
+  it('reads in Thai', async () => {
+    approvedByRemoved();
+    await useLangStore.getState().setLang('th');
+    try {
+      open();
+      expect(screen.getByRole('status')).toHaveTextContent('Nok R. (ลบแล้ว)');
+      expect(screen.getByText('อนุมัติโดย Nok R. (ลบแล้ว)')).toBeInTheDocument();
+      expect(screen.getByText(/^Nok R\. \(ลบแล้ว\) · /)).toBeInTheDocument();
+      expect(document.body).not.toHaveTextContent('(removed)');
+    } finally {
+      await useLangStore.getState().setLang('en');
+    }
+  });
+
+  it('does not mark a person present in the directory, or anyone while the directory is unconfirmed', () => {
+    review({ type: 'review/submit', designedBy: 'Ploy S.', byId: 'designer', at: AT });
+    review({ type: 'review/approve', reviewer: 'Nok R.', byId: 'approver', at: AT });
+    signInAs('viewer', 'viewer');
+    usePeopleStore.setState({ loaded: false, byId: {}, gone: [] });
+    open();
+    expect(screen.getByRole('status')).toHaveTextContent('by Nok R.');
+    expect(screen.getByRole('status')).not.toHaveTextContent('removed');
   });
 });

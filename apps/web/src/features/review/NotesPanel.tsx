@@ -5,15 +5,18 @@ import { pad2 } from '../../ui/StatusStamp';
 import { formatTime } from '../../ui/time';
 import { useCan } from '../../auth/useCan';
 import { useT } from '../../i18n';
+import { usePeople } from '../../people/peopleStore';
+import { recordedName } from '../../ui/person';
 
 function NoteList({ notes }: { notes: ReviewNote[] }) {
   const m = useT();
+  const people = usePeople();
   return (
     <ul className="notes">
       {[...notes].reverse().map((n) => (
         <li key={n.id} className="notes__item">
           <p className="notes__text">{n.text}</p>
-          <span className="notes__meta">{n.by ? (n.byId ? m.review.noteByVerified : m.review.noteBy)(n.by, formatTime(n.createdAt)) : formatTime(n.createdAt)}</span>
+          <span className="notes__meta">{n.by ? (n.byId ? m.review.noteByVerified : m.review.noteBy)(recordedName(m, n.by, n.byId, people), formatTime(n.createdAt)) : formatTime(n.createdAt)}</span>
         </li>
       ))}
     </ul>
