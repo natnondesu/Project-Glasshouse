@@ -6,13 +6,102 @@ import { resetAuthStore, useAuthStore } from './authStore';
 import { SignInScreen } from './SignInScreen';
 
 beforeEach(() => resetAuthStore());
-afterEach(() => vi.restoreAllMocks());
+afterEach(async () => {
+  vi.restoreAllMocks();
+  await useLangStore.getState().setLang('en');
+});
 
 it('offers the company sign-in and the password form the server allows', () => {
   useAuthStore.setState({ status: 'signed-out', config: { mode: 'on', localLogin: true, sso: true } });
   render(<SignInScreen />);
-  expect(screen.getByRole('link', { name: 'Sign in with your company account' })).toHaveAttribute('href', expect.stringMatching(/^\/auth\/oidc\/start\?returnTo=/));
-  expect(screen.getByLabelText('Email')).toBeInTheDocument();
+  expect(screen.getByRole('link', { name: 'Continue with company account' })).toHaveAttribute('href', expect.stringMatching(/^\/auth\/oidc\/start\?returnTo=/));
+  expect(screen.getByLabelText('Work email')).toBeInTheDocument();
+  expect(screen.getByText('OR WITH EMAIL')).toBeInTheDocument();
+});
+
+it('shows only the company button, no form and no divider, when passwords are switched off', () => {
+  useAuthStore.setState({ status: 'signed-out', config: { mode: 'on', localLogin: false, sso: true } });
+  render(<SignInScreen />);
+  expect(screen.getByRole('link', { name: 'Continue with company account' })).toBeInTheDocument();
+  expect(screen.queryByLabelText('Work email')).toBeNull();
+  expect(screen.queryByText('OR WITH EMAIL')).toBeNull();
+});
+
+it('shows only the password form, no company button and no divider, when the company sign-in is off', () => {
+  useAuthStore.setState({ status: 'signed-out', config: { mode: 'on', localLogin: true, sso: false } });
+  render(<SignInScreen />);
+  expect(screen.queryByRole('link', { name: 'Continue with company account' })).toBeNull();
+  expect(screen.queryByText('OR WITH EMAIL')).toBeNull();
+  expect(screen.getByLabelText('Work email')).toBeInTheDocument();
+  expect(screen.getByLabelText('Password')).toBeInTheDocument();
+});
+
+it('wears the brand: the lockup, the headline, the four steps and one page heading', () => {
+  useAuthStore.setState({ status: 'signed-out', config: { mode: 'on', localLogin: true, sso: true } });
+  render(<SignInScreen />);
+  expect(screen.getByRole('img', { name: 'Glasshouse' })).toHaveAttribute('src', '/brand/glasshouse-lockup-horizontal-dark.svg');
+  expect(screen.getByText(/Survey the room\./)).toBeInTheDocument();
+  expect(screen.getAllByRole('listitem').map((li) => li.textContent)).toEqual(['01Survey', '02Plan', '03Approve', '04Install']);
+  expect(screen.getAllByRole('heading', { level: 1 }).map((h) => h.textContent)).toEqual(['Sign in to Glasshouse']);
+  expect(screen.getByText('Use your work account.')).toBeInTheDocument();
+});
+
+it('says a forgotten password is the admin’s to reset, without a link, a remember box or a help link', () => {
+  useAuthStore.setState({ status: 'signed-out', config: { mode: 'on', localLogin: true, sso: false } });
+  render(<SignInScreen />);
+  expect(screen.getByText('Forgot it? Ask an admin to reset it.')).toBeInTheDocument();
+  expect(screen.getByText('No account yet? Ask your workspace admin for an invite.')).toBeInTheDocument();
+  expect(screen.queryByRole('checkbox')).toBeNull();
+  expect(screen.queryByRole('link', { name: /help|forgot/i })).toBeNull();
+});
+
+it('reveals and hides the password with a real button', async () => {
+  useAuthStore.setState({ status: 'signed-out', config: { mode: 'on', localLogin: true, sso: false } });
+  render(<SignInScreen />);
+  const field = screen.getByLabelText('Password');
+  expect(field).toHaveAttribute('type', 'password');
+  await userEvent.click(screen.getByRole('button', { name: 'Show password' }));
+  expect(field).toHaveAttribute('type', 'text');
+  await userEvent.click(screen.getByRole('button', { name: 'Hide password' }));
+  expect(field).toHaveAttribute('type', 'password');
+});
+
+it('shows Signing in… and disables the button while the server answers, then marks both fields when it refuses', async () => {
+  useAuthStore.setState({ status: 'signed-out', config: { mode: 'on', localLogin: true, sso: false } });
+  let refuse: (r: Response) => void = () => {};
+  vi.spyOn(globalThis, 'fetch').mockReturnValue(new Promise<Response>((resolve) => (refuse = resolve)));
+  render(<SignInScreen />);
+  await userEvent.type(screen.getByLabelText('Work email'), 'p@company.test');
+  await userEvent.type(screen.getByLabelText('Password'), 'wrong-password-1{Enter}');
+  const busy = screen.getByRole('button', { name: 'Signing in…' });
+  expect(busy).toBeDisabled();
+  expect(screen.getByLabelText('Work email')).not.toHaveAttribute('aria-invalid');
+  refuse(new Response(JSON.stringify({ error: { message: 'That email and password don’t match an account.' } }), { status: 401 }));
+  expect(await screen.findByRole('alert')).toHaveTextContent('don’t match');
+  expect(screen.getByLabelText('Work email')).toHaveAttribute('aria-invalid', 'true');
+  expect(screen.getByLabelText('Password')).toHaveAttribute('aria-invalid', 'true');
+  expect(screen.getByRole('button', { name: 'Sign in' })).toBeEnabled();
+});
+
+it('leaves the fields unmarked when the refusal is not about the credentials', () => {
+  window.history.replaceState(null, '', '/?signin_error=expired');
+  useAuthStore.setState({ status: 'signed-out', config: { mode: 'on', localLogin: true, sso: true } });
+  render(<SignInScreen />);
+  expect(screen.getByRole('alert')).toHaveTextContent('expired');
+  expect(screen.getByLabelText('Work email')).not.toHaveAttribute('aria-invalid');
+  window.history.replaceState(null, '', '/');
+});
+
+it('speaks Thai, copy included, when the page is in Thai', async () => {
+  await useLangStore.getState().setLang('th');
+  useAuthStore.setState({ status: 'signed-out', config: { mode: 'on', localLogin: true, sso: true } });
+  render(<SignInScreen />);
+  expect(screen.getByRole('link', { name: 'ดำเนินการต่อด้วยบัญชีบริษัท' })).toBeInTheDocument();
+  expect(screen.getByText('หรือใช้อีเมล')).toBeInTheDocument();
+  expect(screen.getByLabelText('อีเมลที่ทำงาน')).toBeInTheDocument();
+  expect(screen.getByText('ลืมรหัสผ่าน? ขอให้ผู้ดูแลรีเซ็ตให้')).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'แสดงรหัสผ่าน' })).toBeInTheDocument();
+  await useLangStore.getState().setLang('en');
 });
 
 it('shows the server’s reason when a password sign-in fails, and why the session ended', async () => {
@@ -20,7 +109,7 @@ it('shows the server’s reason when a password sign-in fails, and why the sessi
   vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({ error: { message: 'That email and password don’t match an account.' } }), { status: 401 }));
   render(<SignInScreen />);
   expect(screen.getByText(/Your session ended/)).toBeInTheDocument();
-  await userEvent.type(screen.getByLabelText('Email'), 'p@company.test');
+  await userEvent.type(screen.getByLabelText('Work email'), 'p@company.test');
   await userEvent.type(screen.getByLabelText('Password'), 'wrong-password-1');
   await userEvent.click(screen.getByRole('button', { name: 'Sign in' }));
   expect(await screen.findByRole('alert')).toHaveTextContent('don’t match');
@@ -74,7 +163,7 @@ it('returns to the same page minus the refusal, and clears the refusal from the 
   window.history.replaceState(null, '', '/?signin_error=x&a=1#h');
   useAuthStore.setState({ status: 'signed-out', config: { mode: 'on', localLogin: false, sso: true } });
   render(<SignInScreen />);
-  expect(screen.getByRole('link', { name: 'Sign in with your company account' })).toHaveAttribute('href', `/auth/oidc/start?returnTo=${encodeURIComponent('/?a=1#h')}`);
+  expect(screen.getByRole('link', { name: 'Continue with company account' })).toHaveAttribute('href', `/auth/oidc/start?returnTo=${encodeURIComponent('/?a=1#h')}`);
   expect(window.location.search + window.location.hash).toBe('?a=1#h');
   window.history.replaceState(null, '', '/');
 });

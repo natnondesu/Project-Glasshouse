@@ -41,7 +41,7 @@ test('an admin adds a person, who must choose their own password', async ({ page
 
 test('a company sign-in creates a viewer, who can look but not change', async ({ page }) => {
   await page.goto('/');
-  await page.getByRole('link', { name: 'Sign in with your company account' }).click();
+  await page.getByRole('link', { name: 'Continue with company account' }).click();
   await expect(page.getByText('You can view this workspace. Ask an admin for edit access.')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Account menu for Ploy SSO' })).toBeVisible();
   const refused = await page.request.post('/api/commands', { headers: { 'x-glasshouse': '1' }, data: { clientId: 'x', commands: [{ commandId: 'v1', command: { type: 'project/create', id: 'pv', name: 'Nope' } }] } });

@@ -1,9 +1,11 @@
 import { useState, type FormEvent } from 'react';
 import { useT } from '../i18n';
+import { IconAlertCircle } from '../ui/icons';
 import '../ui/fields.css';
+import { AuthShell } from './AuthShell';
 import { changePassword } from './authApi';
 import { useAuthStore } from './authStore';
-import './auth.css';
+import { Swiftlet } from './brand/Swiftlet';
 
 export function ChangePasswordScreen() {
   const m = useT();
@@ -33,16 +35,29 @@ export function ChangePasswordScreen() {
     </div>
   );
   return (
-    <main className="signin" aria-labelledby="pw-h">
-      <form className="signin__card glass review-form" onSubmit={(e) => void submit(e)}>
-        <h1 id="pw-h">{m.auth.changeTitle}</h1>
-        <p className="signin__note">{m.auth.changeNote}</p>
-        {error ? <p role="alert" className="field__error">{error}</p> : null}
-        {field('pw-current', m.auth.temporary, current, setCurrent, 'current-password')}
-        {field('pw-next', m.auth.newPassword, next, setNext, 'new-password')}
-        {field('pw-again', m.auth.newAgain, again, setAgain, 'new-password')}
-        <button type="submit" className="btn btn--ink" disabled={busy}>{m.auth.change}</button>
+    <AuthShell labelledBy="pw-h">
+      <form className="signin__card" onSubmit={(e) => void submit(e)}>
+        <header className="signin__head">
+          <img src="/brand/glasshouse-mark-color.svg" width="40" height="40" alt="" />
+          <h1 id="pw-h">{m.auth.changeTitle}</h1>
+          <p className="signin__lead">{m.auth.changeNote}</p>
+        </header>
+        {error ? (
+          <p role="alert" className="signin__alert">
+            <IconAlertCircle />
+            {error}
+          </p>
+        ) : null}
+        <div className="signin__form">
+          {field('pw-current', m.auth.temporary, current, setCurrent, 'current-password')}
+          {field('pw-next', m.auth.newPassword, next, setNext, 'new-password')}
+          {field('pw-again', m.auth.newAgain, again, setAgain, 'new-password')}
+        </div>
+        <button type="submit" className="signin__submit" disabled={busy} aria-busy={busy}>
+          {busy ? <Swiftlet /> : null}
+          {m.auth.change}
+        </button>
       </form>
-    </main>
+    </AuthShell>
   );
 }

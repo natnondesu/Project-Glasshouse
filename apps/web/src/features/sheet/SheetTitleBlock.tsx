@@ -18,11 +18,15 @@ export function SheetTitleBlock({ location, revision, printedAt, section }: Shee
   const unverified = (n: { name: string; userId?: string } | null): string => (n ? personLabel(m, n, people) : m.sheet.notRecorded);
   return (
     <header className="sheet-title">
-      <h2 className="sheet-title__main">
-        <span className="sheet-title__kicker">{m.sheet.kicker(section)}</span>
-        <span className="visually-hidden">: </span>
-        <strong>{`${location.project.name} / ${location.site.name} / ${location.room.name}`}</strong>
-      </h2>
+      <div className="sheet-title__top">
+        {/* The small cut (it is under 24 px), in mono ink so it prints the same in black and white. */}
+        <img className="sheet-title__mark" src="/brand/glasshouse-mark-small-mono-ink.svg" width="24" height="24" alt="" />
+        <h2 className="sheet-title__main">
+          <span className="sheet-title__kicker">{m.sheet.kicker(section)}</span>
+          <span className="visually-hidden">: </span>
+          <strong>{`${location.project.name} / ${location.site.name} / ${location.room.name}`}</strong>
+        </h2>
+      </div>
       <dl className="sheet-title__cells">
         <div>
           <dt>{m.sheet.revision}</dt>

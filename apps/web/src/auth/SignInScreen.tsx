@@ -1,12 +1,12 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { useT, type Messages } from '../i18n';
-import { LanguageSwitch } from '../i18n/LanguageSwitch';
-import { GlasshouseMark } from '../ui/icons';
+import { IconAlertCircle, IconBuilding } from '../ui/icons';
 import '../ui/fields.css';
 import { stashCount } from '../sync/pendingStash';
 import { login, ssoUrl } from './authApi';
+import { AuthShell } from './AuthShell';
 import { useAuthStore } from './authStore';
-import './auth.css';
+import { Swiftlet } from './brand/Swiftlet';
 
 function pathWithoutSigninError(): string {
   const url = new URL(window.location.href);
@@ -33,6 +33,7 @@ export function SignInScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const [urlCode] = useState(() => signinErrorCode(m.auth.signinError));
   const [dismissedUrl, setDismissedUrl] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -59,46 +60,65 @@ export function SignInScreen() {
       setBusy(false);
     }
   };
+  const credentialsRefused = error !== null;
+  const alertId = 'signin-alert';
+  // Above the password form when there is one (as in the design); otherwise straight under the title, ahead of the company button.
+  const alert = shownError ? (
+    <p role="alert" id={alertId} className="signin__alert">
+      <IconAlertCircle />
+      {shownError}
+    </p>
+  ) : null;
   return (
-    <main className="signin" aria-labelledby="signin-h">
-      <div className="signin__card glass">
+    <AuthShell labelledBy="signin-h">
+      <div className="signin__card">
         <header className="signin__head">
-          <GlasshouseMark />
+          <img src="/brand/glasshouse-mark-color.svg" width="40" height="40" alt="" />
           <h1 id="signin-h">{m.auth.title}</h1>
-          <LanguageSwitch />
+          <p className="signin__lead">{m.auth.useWork}</p>
         </header>
         {sessionEnded ? <p className="signin__note">{m.auth.sessionEnded}</p> : null}
         {unsent > 0 ? <p className="signin__note">{m.auth.unsent(unsent)}</p> : null}
-        {shownError ? (
-          <p role="alert" className="field__error">
-            {shownError}
-          </p>
+        {local ? null : alert}
+        {sso ? (
+          <a className="signin__sso" href={ssoUrl(here)}>
+            <IconBuilding />
+            {m.auth.sso}
+          </a>
         ) : null}
+        {sso && local ? <p className="signin__or">{m.auth.or}</p> : null}
+        {local ? alert : null}
         {startupError ? (
           <button type="button" className="btn" onClick={() => void init()}>
             {m.auth.tryAgain}
           </button>
         ) : null}
-        {sso ? (
-          <a className="btn btn--ink signin__sso" href={ssoUrl(here)}>
-            {m.auth.sso}
-          </a>
-        ) : null}
-        {sso && local ? <p className="signin__or">{m.auth.or}</p> : null}
         {local ? (
-          <form className="review-form" onSubmit={(e) => void submit(e)}>
+          <form className="signin__form" onSubmit={(e) => void submit(e)}>
             <div className="field">
               <label htmlFor="signin-email" className="field__label">{m.auth.email}</label>
-              <div className="field__box"><input id="signin-email" className="field__input" type="email" autoComplete="username" value={email} onChange={(e) => setEmail(e.target.value)} required /></div>
+              <div className={`field__box${credentialsRefused ? ' field__box--error' : ''}`}>
+                <input id="signin-email" className="field__input" type="email" autoComplete="username" placeholder="name@company.com" value={email} onChange={(e) => setEmail(e.target.value)} aria-invalid={credentialsRefused || undefined} aria-describedby={credentialsRefused ? alertId : undefined} required />
+              </div>
             </div>
             <div className="field">
               <label htmlFor="signin-password" className="field__label">{m.auth.password}</label>
-              <div className="field__box"><input id="signin-password" className="field__input" type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} required /></div>
+              <div className={`field__box${credentialsRefused ? ' field__box--error' : ''}`}>
+                <input id="signin-password" className="field__input" type={showPassword ? 'text' : 'password'} autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} aria-invalid={credentialsRefused || undefined} aria-describedby={credentialsRefused ? alertId : undefined} required />
+                <button type="button" className="signin__reveal" aria-label={showPassword ? m.auth.hidePassword : m.auth.showPassword} onClick={() => setShowPassword((v) => !v)}>
+                  {showPassword ? m.auth.hide : m.auth.show}
+                </button>
+              </div>
+              <p className="signin__hint">{m.auth.forgot}</p>
             </div>
-            <button type="submit" className="btn" disabled={busy}>{m.auth.signIn}</button>
+            <button type="submit" className="signin__submit" disabled={busy} aria-busy={busy}>
+              {busy ? <Swiftlet /> : null}
+              {busy ? m.auth.signingIn : m.auth.signIn}
+            </button>
           </form>
         ) : null}
+        <p className="signin__noaccount">{m.auth.noAccount}</p>
       </div>
-    </main>
+    </AuthShell>
   );
 }
