@@ -1,3 +1,4 @@
+import { openRoom as openFromTree } from './nav';
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import { fileURLToPath } from 'node:url';
 import { pickTool } from './tools';
@@ -6,7 +7,7 @@ const SHOTS = fileURLToPath(new URL('../../../.superpowers/polish-shots/', impor
 
 async function openRoom(page: Page, room: RegExp): Promise<void> {
   await page.goto('/');
-  await page.getByRole('complementary', { name: 'Projects' }).getByRole('link', { name: room }).click();
+  await openFromTree(page, room);
   await expect(page.getByTestId('zoom-value')).not.toHaveText('100 px/m');
 }
 
@@ -165,6 +166,8 @@ test('the name of a panel in a stack of MCB panels reads whole, on top, and insi
   await page.getByRole('link', { name: /^Review/ }).click();
   await page.getByRole('button', { name: 'Start new draft' }).click();
   await page.getByRole('link', { name: 'Plan' }).click();
+  // The new draft's plan fits itself once measured; with the full width for the drawing that is a real change of scale.
+  await expect(page.getByTestId('zoom-value')).not.toHaveText('100 px/m');
   const floor = (await page.getByTestId('footprint').boundingBox())!;
   // Three panels 0.2 m apart, the lowest placed first: the later ones are drawn over it, right where its name goes.
   for (const [name, y] of [['MCB-03', 3.4], ['MCB-04', 3.2], ['MCB-05', 3.0]] as const) {

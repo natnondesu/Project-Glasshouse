@@ -1,3 +1,4 @@
+import { openRoom } from './nav';
 import { expect, test, type Page } from '@playwright/test';
 
 /**
@@ -13,8 +14,10 @@ async function selected(page: Page): Promise<string> {
 
 test('3D clicks pick the rack under the pointer and nothing beside it', async ({ page, browserName }) => {
   test.skip(browserName !== 'chromium', 'Pixel positions are measured in Chromium');
+  // The positions were measured with the project tree docked beside the room, so pin it to keep that canvas size.
+  await page.addInitScript(() => localStorage.setItem('glasshouse:tree-pinned', 'true'));
   await page.goto('/');
-  await page.getByRole('complementary', { name: 'Projects' }).getByRole('link', { name: /MDF-1/ }).click();
+  await openRoom(page, /MDF-1/);
   await page.getByRole('link', { name: '3D' }).click();
   const canvas = page.locator('.room3d canvas');
   await canvas.waitFor({ timeout: 20_000 });

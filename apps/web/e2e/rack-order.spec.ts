@@ -1,8 +1,9 @@
+import { openRoom } from './nav';
 import { expect, test } from '@playwright/test';
 
 test('drags a rack by its name to reorder Elevation, and resets to plan order', async ({ page }) => {
   await page.goto('/');
-  await page.getByRole('complementary', { name: 'Projects' }).getByRole('link', { name: /Server room A/ }).click();
+  await openRoom(page, /Server room A/);
   await page.getByRole('link', { name: 'Elevation' }).click();
   const area = page.getByRole('region', { name: 'Rack elevations' });
   const names = () => area.locator('[data-rack-slot] .rack-elev__name').allTextContents();

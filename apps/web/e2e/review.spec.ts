@@ -1,3 +1,4 @@
+import { projectTree, projectsButton, showProjects } from './nav';
 import { pickTool } from './tools';
 import { expect, test, type Page } from '@playwright/test';
 
@@ -35,7 +36,7 @@ test('AC13/AC16: submit, freeze, self-approve, start a new draft', async ({ page
   await page.getByRole('button', { name: 'Confirm approval' }).click();
   await expect(page.getByText('Self-approved', { exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Start new draft' }).click();
-  await expect(page.getByRole('link', { name: 'MDF-1 R02 DRAFT' })).toBeVisible();
+  await expect((await showProjects(page)).getByRole('link', { name: 'MDF-1 R02 DRAFT' })).toBeVisible();
 });
 
 test('AC14: an unknown reserved range blocks approval until acknowledged', async ({ page }) => {
@@ -53,7 +54,7 @@ test('AC14: an unknown reserved range blocks approval until acknowledged', async
   await expect(page.getByRole('button', { name: 'Approve revision' })).toBeEnabled();
   await page.getByRole('button', { name: 'Approve revision' }).click();
   await page.getByRole('button', { name: 'Confirm approval' }).click();
-  await expect(page.getByRole('complementary', { name: 'Projects' }).getByRole('link', { name: /MDF-1/ }).last()).toContainText('R01 APPROVED');
+  await expect((await showProjects(page)).getByRole('link', { name: /MDF-1/ }).last()).toContainText('R01 APPROVED');
 });
 
 test('AC15: export a project file, change the room, import and take incoming', async ({ page }) => {
@@ -63,6 +64,7 @@ test('AC15: export a project file, change the room, import and take incoming', a
   const file = await (await downloading).path();
   await page.getByRole('link', { name: 'Plan' }).click();
   await page.getByLabel('Width', { exact: true }).fill('7');
+  await showProjects(page);
   await page.getByRole('button', { name: 'Import project file' }).click();
   await page.getByLabel('Choose a project file').setInputFiles(file);
   const dialog = page.getByRole('dialog', { name: 'Import “Northgate”' });
@@ -74,6 +76,9 @@ test('AC15: export a project file, change the room, import and take incoming', a
 
 test('backup reminder, backup and confirmed restore', async ({ page }) => {
   await roomWithServer(page);
+  // The backup panel lives in the project tree; in a room the Projects button carries its warning.
+  await expect(projectsButton(page)).toHaveAccessibleName('Projects, workspace not backed up');
+  await showProjects(page);
   await expect(page.getByText('Not backed up yet.')).toBeVisible();
   const downloading = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Back up workspace' }).click();
@@ -83,5 +88,5 @@ test('backup reminder, backup and confirmed restore', async ({ page }) => {
   await page.getByRole('button', { name: 'Delete', exact: true }).click();
   await page.getByLabel('Choose a backup file').setInputFiles(backup);
   await page.getByRole('button', { name: 'Replace workspace' }).click();
-  await expect(page.getByRole('complementary', { name: 'Projects' }).getByRole('link', { name: /MDF-1/ }).last()).toBeVisible();
+  await expect(projectTree(page).getByRole('link', { name: /MDF-1/ }).last()).toBeVisible();
 });

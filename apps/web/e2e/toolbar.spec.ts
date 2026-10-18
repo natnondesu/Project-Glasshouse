@@ -1,10 +1,11 @@
+import { openRoom as openFromTree } from './nav';
 import { expect, test } from '@playwright/test';
 
 import { groupButton, pickTool } from './tools';
 
 const openRoom = async (page: import('@playwright/test').Page): Promise<void> => {
   await page.goto('/');
-  await page.getByRole('complementary', { name: 'Projects' }).getByRole('link', { name: /MDF-1/ }).click();
+  await openFromTree(page, /MDF-1/);
   await expect(page.getByTestId('zoom-value')).not.toHaveText('100 px/m');
 };
 

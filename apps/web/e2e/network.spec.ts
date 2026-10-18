@@ -1,8 +1,9 @@
+import { openRoom } from './nav';
 import { expect, test } from '@playwright/test';
 
 test('the Network tab draws the sample cabling, fits it, and opens a device’s ports', async ({ page }) => {
   await page.goto('/');
-  await page.getByRole('complementary', { name: 'Projects' }).getByRole('link', { name: /Server room A/ }).click();
+  await openRoom(page, /Server room A/);
   await page.getByRole('link', { name: 'Network' }).click();
   const diagram = page.getByRole('group', { name: 'Network diagram' });
   await expect(diagram.getByRole('button', { name: /^CORE-01, / })).toBeVisible();

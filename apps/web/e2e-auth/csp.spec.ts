@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { signIn, signOut } from './helpers';
+import { showProjects } from '../e2e/nav';
 
 // Sign-in, password change, admin and file-import screens under the server's Content-Security-Policy.
 // (The plan, 3D and Install sheet screens are covered in e2e-server/csp.spec.ts.)
@@ -42,12 +43,13 @@ test('the sign-in, password, Users and import screens run under the content secu
   await page.getByRole('textbox', { name: 'Room name' }).fill('CSP-I');
   await page.keyboard.press('Enter');
   // Wait for the room itself: until it opens, Home's room cards (one per earlier spec's room) also draw footprints.
-  await expect(page.getByRole('banner').getByRole('definition').filter({ hasText: 'CSP-I' })).toBeVisible();
+  await expect(page.getByRole('navigation', { name: 'Breadcrumb' }).getByRole('button', { name: 'CSP-I' })).toBeVisible();
   await expect(page.getByRole('main').getByTestId('footprint')).toBeVisible();
   const downloading = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Export project file' }).click();
   const saved = testInfo.outputPath('csp-import.json');
   await (await downloading).saveAs(saved);
+  await showProjects(page);
   await page.getByRole('button', { name: 'Import project file' }).click();
   await page.getByLabel('Choose a project file').setInputFiles(saved);
   await expect(page.getByRole('dialog', { name: /^Import/ })).toBeVisible();

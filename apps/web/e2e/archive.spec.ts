@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { showProjects } from './nav';
 
 async function seed(page: Page, tag: string): Promise<{ project: string; site: string }> {
   const project = `Harbour ${tag}`;
@@ -11,10 +12,12 @@ async function seed(page: Page, tag: string): Promise<{ project: string; site: s
   await page.getByRole('textbox', { name: 'Site name' }).fill(site);
   await page.keyboard.press('Enter');
   for (const room of ['Core', 'Edge']) {
+    // From the second room on, the tree is the drawer over the room just made.
+    await showProjects(page);
     await page.getByRole('button', { name: `Add room to ${site}` }).click();
     await page.getByRole('textbox', { name: 'Room name' }).fill(`${room} ${tag}`);
     await page.keyboard.press('Enter');
-    await expect(page.getByRole('link', { name: new RegExp(`^${room} ${tag}`) })).toBeVisible();
+    await expect(page.getByRole('navigation', { name: 'Breadcrumb' }).getByRole('button', { name: `${room} ${tag}` })).toBeVisible();
   }
   return { project, site };
 }
@@ -23,7 +26,7 @@ const treeOf = (page: Page) => page.getByRole('complementary', { name: 'Projects
 
 test('archive a room: hidden, then shown greyed, read-only when opened, and restorable', async ({ page }) => {
   const { site } = await seed(page, 'a');
-  const tree = treeOf(page);
+  const tree = await showProjects(page);
   await tree.getByRole('button', { name: 'Archive Core a' }).click();
   await expect(page.getByRole('alertdialog', { name: 'Archive Core a?' })).toBeVisible();
   await page.getByRole('alertdialog').getByRole('button', { name: 'Archive' }).click();
@@ -55,6 +58,7 @@ test('archive a room: hidden, then shown greyed, read-only when opened, and rest
   await expect(page.getByLabel('Width')).toBeEnabled();
 
   // With nothing archived left the toggle goes away as it is switched off, so click it rather than wait for it to settle.
+  await showProjects(page);
   await tree.getByRole('checkbox', { name: /Show archived/ }).click();
   await expect(tree.getByRole('checkbox', { name: /Show archived/ })).toHaveCount(0);
   await expect(tree.getByRole('link', { name: /^Core a/ })).toBeVisible();

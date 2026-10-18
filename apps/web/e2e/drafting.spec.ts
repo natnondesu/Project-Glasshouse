@@ -1,9 +1,10 @@
+import { openRoom } from './nav';
 import { expect, test } from '@playwright/test';
 import { pickTool } from './tools';
 
 test('draw a saved dimension from the wall to a rack; it follows the rack and survives a reload', async ({ page }) => {
   await page.goto('/');
-  await page.getByRole('complementary', { name: 'Projects' }).getByRole('link', { name: /MDF-1/ }).click();
+  await openRoom(page, /MDF-1/);
   // The first fit runs after the canvas is measured; read the footprint only once it has settled.
   await expect(page.getByTestId('zoom-value')).not.toHaveText('100 px/m');
   const box = await page.getByTestId('footprint').boundingBox();

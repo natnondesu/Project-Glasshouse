@@ -1,21 +1,22 @@
+import { openRoom, projectTree, showProjects } from './nav';
 import { expect, test, type Page } from '@playwright/test';
 
 const SAMPLE = 'Sample · Northgate DC';
 
 async function openSampleRoom(page: Page, name: RegExp): Promise<string> {
   await page.goto('/');
-  await page.getByRole('complementary', { name: 'Projects' }).getByRole('link', { name }).click();
+  await openRoom(page, name);
   await page.waitForURL(/\/rooms\/[^/]+\/plan/);
   return new URL(page.url()).pathname.split('/')[2]!;
 }
 
 test('AC18: a fresh workspace lists the Sample Project with working checks', async ({ page }) => {
   await page.goto('/');
-  await expect(page.getByRole('complementary', { name: 'Projects' }).getByText(SAMPLE)).toBeVisible();
+  await expect(projectTree(page).getByText(SAMPLE)).toBeVisible();
   await expect(page.getByText('SAMPLE', { exact: true }).first()).toBeVisible();
   await openSampleRoom(page, /MDF-1/);
   await expect(page.getByText('EX-01 sits inside the front clearance zone of RK-C1.')).toBeVisible();
-  await expect(page.getByRole('complementary', { name: 'Projects' }).getByRole('link', { name: /Server room A/ })).toContainText('R01 APPROVED');
+  await expect((await showProjects(page)).getByRole('link', { name: /Server room A/ })).toContainText('R01 APPROVED');
 });
 
 test('AC17: the Install sheet prints from the Approved room and is unavailable for a Draft', async ({ page }) => {
