@@ -66,6 +66,17 @@ describe('clearance checks', () => {
     ]);
   });
 
+  it('only things hung at head height or above are out of the aisle: a low wall rack or display wall still blocks it', () => {
+    const rack = rackAt('RK-C1', 3.4, 0.6, { capacityU: 12 });
+    const aisle = { x: 3.5, y: 2.0 };
+    const wallRack = rackAt('WR-01', aisle.x, aisle.y, { capacityU: 12, w: 0.6, d: 0.5, wallBottomM: 1.0, clearance: { front: 0, rear: 0 } });
+    expect(codes(content([rack, wallRack]))).toContain('block:clearance_obstructed');
+    const wall = { ...(createObject('display_wall', aisle, []) as SimpleObject), name: 'DW-01', wallBottomM: 0.8 };
+    expect(codes(content([rack, wall]))).toContain('block:clearance_obstructed');
+    const ac = { ...(createObject('wall_split_ac', aisle, []) as SimpleObject), name: 'AC-01', wallBottomM: 2.2 };
+    expect(codes(content([rackAt('RK-48', 3.4, 0.6, { capacityU: 48 }), ac]))).not.toContain('block:clearance_obstructed');
+  });
+
   it('allows racks sharing an aisle (overlapping zones)', () => {
     const top = rackAt('RK-01', 1, 0.6);
     const bottom = rackAt('RK-02', 1, 2.87, { angle: 180 });

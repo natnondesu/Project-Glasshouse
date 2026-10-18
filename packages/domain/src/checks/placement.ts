@@ -3,6 +3,7 @@ import { footprintOf, isDisconnected } from '../footprint';
 import { area, containedIn, EPS_AREA, overlaps, placementPolygon, type Poly } from '../geometry/polygon';
 import type { PlanContent, RoomObject } from '../model/types';
 import type { Issue } from './types';
+import { CLEARANCE_HEADROOM_M } from '../model/defaults';
 import { isFlush } from '../sources';
 import { heightsOverlap, verticalSpan } from '../objects';
 import { isDoorInPartition } from '../partitions';
@@ -76,7 +77,6 @@ export function placementIssues(content: PlanContent): Issue[] {
   for (const { object: rack } of shapes) {
     if (rack.type !== 'rack') continue;
     const zones = clearanceZones(rack);
-    const rackTop = verticalSpan(rack)[1];
     for (const side of ['front', 'rear'] as const) {
       const zone = zones[side];
       if (!zone) continue;
@@ -92,8 +92,8 @@ export function placementIssues(content: PlanContent): Issue[] {
         });
       }
       for (const other of shapes) {
-        // Hung above the rack (a split AC on the wall over an aisle) is not in the way.
-        if (other.object.id === rack.id || isFlush(other.object) || verticalSpan(other.object)[0] >= rackTop || !overlaps(zone, other.poly)) continue;
+        // Hung out of head's reach (a split AC on the wall over an aisle) is not in the way.
+        if (other.object.id === rack.id || isFlush(other.object) || verticalSpan(other.object)[0] >= CLEARANCE_HEADROOM_M || !overlaps(zone, other.poly)) continue;
         const isDoor = other.object.type === 'door';
         const isSliding = isDoor && other.object.type !== 'rack' && other.object.opening === 'slide';
         issues.push({

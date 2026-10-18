@@ -1,4 +1,4 @@
-import { pointInPolygon } from '@glasshouse/domain';
+import { CLEARANCE_HEADROOM_M, pointInPolygon } from '@glasshouse/domain';
 import { rotateY, type Scene3D } from './scene';
 
 /** Standing in the room: where (plan x, z), which way (heading), and how far up or down you look. */
@@ -33,9 +33,6 @@ export function look(c: WalkCamera, dx: number, dy: number): WalkCamera {
   return { ...c, heading: c.heading - dx * LOOK_RAD_PER_PX, pitch: Math.max(-MAX_PITCH, Math.min(MAX_PITCH, c.pitch - dy * LOOK_RAD_PER_PX)) };
 }
 
-/** Something hung with its underside above this is walked under, like a split AC over an aisle. */
-const HEAD_M = 1.9;
-
 interface Blocker {
   position: [number, number, number];
   size: [number, number, number];
@@ -46,7 +43,7 @@ interface Blocker {
 function solidBoxes(scene: Scene3D): Blocker[] {
   const boxes: Blocker[] = [...scene.racks, ...scene.columns.map((c) => ({ ...c, yaw: 0 }))];
   for (const o of scene.others) {
-    if (o.type === 'door' || o.position[1] - o.size[1] / 2 >= HEAD_M) continue;
+    if (o.type === 'door' || o.position[1] - o.size[1] / 2 >= CLEARANCE_HEADROOM_M) continue;
     if (o.type !== 'partition') {
       boxes.push(o);
       continue;

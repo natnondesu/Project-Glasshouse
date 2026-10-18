@@ -77,6 +77,9 @@ export const DEFAULT_WALL_BOTTOM_M: Partial<Record<SimpleObjectType, number>> = 
   display_wall: 0.8,
 };
 
+/** An object hung with its underside at or above this is walked and worked under, so it is not in the way of a rack's aisle. */
+export const CLEARANCE_HEADROOM_M = 2.0;
+
 /** How deep, in front of an object, the planner keeps watch (metres). */
 export const ENVIRONMENT_ZONE_M = {
   /** Air blown by a wall split AC. */
