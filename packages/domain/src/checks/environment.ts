@@ -26,7 +26,8 @@ export function environmentIssues(content: PlanContent): Issue[] {
     if (unit.type === 'wall_split_ac') {
       for (const rack of solids.filter(isRackLike)) {
         const poly = placementPolygon(rack);
-        if (overlaps(footprint, poly)) {
+        // Condensate falls: only what stands below the unit's underside is at risk, not a rack hung above it.
+        if (overlaps(footprint, poly) && verticalSpan(rack)[1] <= verticalSpan(unit)[0]) {
           issues.push({
             key: `wall_ac_drip:${unit.id}:${rack.id}`,
             code: 'wall_ac_drip',

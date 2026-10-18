@@ -28,6 +28,13 @@ describe('wall split AC', () => {
     }
   });
 
+  it('does not warn about a wall rack hung above the AC, only about what stands below its underside', () => {
+    const above = rack('WR-01', 2.5, 0, { wallBottomM: 2.5, capacityU: 6, w: 0.6, d: 0.5 });
+    expect(codes(content([ac, above]))).not.toContain('wall_ac_drip');
+    const under = rack('WR-02', 2.5, 0, { wallBottomM: 1.2, capacityU: 12, w: 0.6, d: 0.5 });
+    expect(codes(content([ac, under]))).toContain('wall_ac_drip');
+  });
+
   it('does not treat a desk or a rack beside the AC as under it', () => {
     expect(codes(content([ac, make('furniture', 'F-01', 2.5, 0)]))).not.toContain('wall_ac_drip');
     expect(codes(content([ac, rack('RK-01', 3.4, 0)]))).not.toContain('wall_ac_drip');
