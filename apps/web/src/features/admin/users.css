@@ -44,7 +44,7 @@
 }
 
 .users__table th {
-  padding: 8px 12px;
+  padding: 8px 8px;
   text-align: left;
   font-size: var(--text-2xs);
   font-weight: 600;
@@ -56,13 +56,13 @@
 
 .users__table td {
   height: 40px;
-  padding: 4px 12px;
+  padding: 4px 8px;
   border-top: 1px solid var(--line);
   vertical-align: middle;
 }
 
 .users__table td:first-child {
-  min-width: 220px;
+  min-width: 200px;
 }
 
 .users__name {
@@ -159,8 +159,17 @@
 
 .users__actions {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 2px;
+  gap: 0 2px;
+  min-width: 13rem;
+}
+
+.users__actions .btn {
+  white-space: nowrap;
+}
+
+.users__table td.mono {
   white-space: nowrap;
 }
 
