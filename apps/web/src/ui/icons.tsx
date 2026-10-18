@@ -335,3 +335,9 @@ export const IconPin = (p: IconProps) => (
     <path d="M5 1.75H9M5.75 1.75V5.5L3.75 7.75V8.75H10.25V7.75L8.25 5.5V1.75M7 8.75V12.5" />
   </svg>
 );
+/** Stored on the shared server. */
+export const IconCloud = (p: IconProps) => (
+  <svg {...frame(14)} strokeLinecap="round" strokeLinejoin="round" {...p}>
+    <path d="M4.25 11.25H10.5a2.5 2.5 0 0 0 .3-4.98A3.5 3.5 0 0 0 4 6.6a2.35 2.35 0 0 0 .25 4.65Z" />
+  </svg>
+);

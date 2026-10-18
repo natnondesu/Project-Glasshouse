@@ -150,6 +150,36 @@ describe('the project drawer', () => {
   });
 });
 
+describe('the save status on room screens', () => {
+  it('is short beside the breadcrumb, with the full sentence in its hint and for screen readers', () => {
+    useWorkspaceStore.setState({ save: { kind: 'saved', at: new Date('2026-10-18T15:37:00') } });
+    open();
+    const status = document.querySelector<HTMLElement>('.title-block .save-status')!;
+    expect(status).toHaveClass('save-status--compact');
+    expect(status.querySelector('span[aria-hidden="true"]')).toHaveTextContent(/^Saved \d/);
+    expect(status.querySelector('.visually-hidden')).toHaveTextContent(/^Saved in this browser · /);
+    expect(status.dataset.hint).toMatch(/^Saved in this browser · /);
+  });
+
+  it('keeps a failed save in full and as an alert', () => {
+    useWorkspaceStore.setState({ save: { kind: 'failed', reason: 'disk full' } });
+    open();
+    expect(banner().getByRole('alert')).toHaveTextContent("Couldn't save: disk full");
+  });
+
+  it('stays in full on Home', () => {
+    open('/');
+    expect(document.querySelector('.title-block .save-status')).not.toHaveClass('save-status--compact');
+  });
+
+  it('speaks Thai', async () => {
+    useWorkspaceStore.setState({ save: { kind: 'saved', at: new Date('2026-10-18T15:37:00') } });
+    open();
+    await act(() => useLangStore.getState().setLang('th'));
+    expect(document.querySelector('.title-block .save-status span[aria-hidden="true"]')).toHaveTextContent(/^บันทึกแล้ว /);
+  });
+});
+
 describe('the breadcrumb switcher', () => {
   const crumbs = () => within(screen.getByRole('navigation', { name: 'Breadcrumb' }));
   const switcher = () => screen.queryByRole('dialog', { name: 'Rooms in Northgate' });

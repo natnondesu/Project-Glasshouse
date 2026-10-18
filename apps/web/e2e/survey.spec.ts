@@ -27,7 +27,7 @@ test('AC01: survey values persist without Save and the drawing keeps its proport
   await createRoom(page);
   await page.getByLabel('Width', { exact: true }).fill('5');
   await page.getByLabel('Length', { exact: true }).fill('4');
-  await expect(page.getByText(/Saved in this browser/)).toBeVisible();
+  await expect(page.getByText(/^Saved \d/)).toBeVisible();
   await page.reload();
   await expect(page.getByLabel('Width', { exact: true })).toHaveValue('5.00');
   const box = await page.getByTestId('footprint').boundingBox();

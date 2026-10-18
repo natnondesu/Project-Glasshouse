@@ -8,7 +8,7 @@ import { useT } from '../i18n';
 import { useRoomLocation, useViewedRevisionNumber } from '../store/hooks';
 import { useWorkspaceStore, type SaveState } from '../store/workspaceStore';
 import { downloadJson, slugify } from '../ui/files';
-import { IconCatalog, IconDownload } from '../ui/icons';
+import { IconCatalog, IconCheck, IconCloud, IconDownload } from '../ui/icons';
 import { pad2, StatusStamp } from '../ui/StatusStamp';
 import { ProjectsButton } from '../features/roomnav/ProjectsButton';
 import { RoomCrumbs } from '../features/roomnav/RoomCrumbs';
@@ -25,15 +25,32 @@ function Cell({ label, children, mono = false }: { label: string; children: Reac
 
 const time = (d: Date): string => d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
-function SaveStatus({ save }: { save: SaveState }) {
+/** On room screens the status is short so the breadcrumb keeps the names; the full sentence stays in the hint and for screen readers. */
+function Compact({ full, short, icon }: { full: string; short: string; icon?: ReactNode }) {
+  return (
+    <span className="save-status save-status--compact" data-hint={full}>
+      {icon}
+      <span aria-hidden="true">{short}</span>
+      <span className="visually-hidden">{full}</span>
+    </span>
+  );
+}
+
+function SaveStatus({ save, compact }: { save: SaveState; compact: boolean }) {
   const m = useT();
   switch (save.kind) {
-    case 'idle':
-      return <span className="save-status">{SERVER_MODE ? m.shell.serverIdle : m.shell.saveIdle}</span>;
+    case 'idle': {
+      const full = SERVER_MODE ? m.shell.serverIdle : m.shell.saveIdle;
+      if (!compact) return <span className="save-status">{full}</span>;
+      return <Compact full={full} short={SERVER_MODE ? m.shell.serverIdleShort : m.shell.saveIdleShort} icon={SERVER_MODE ? <IconCloud aria-hidden="true" /> : undefined} />;
+    }
     case 'saving':
       return <span className="save-status">{m.shell.saving}</span>;
-    case 'saved':
-      return <span className="save-status">{SERVER_MODE ? m.shell.savedServer(time(save.at)) : m.shell.saved(time(save.at))}</span>;
+    case 'saved': {
+      const full = SERVER_MODE ? m.shell.savedServer(time(save.at)) : m.shell.saved(time(save.at));
+      if (!compact) return <span className="save-status">{full}</span>;
+      return <Compact full={full} short={m.shell.savedShort(time(save.at))} icon={<IconCheck aria-hidden="true" className="save-status__ok" />} />;
+    }
     case 'failed':
       return (
         <span className="save-status save-status--failed" role="alert">
@@ -100,7 +117,7 @@ export function TitleBlock({ roomId, drawer = null }: { roomId: string | null; d
             {exportError}
           </span>
         ) : null}
-        <SaveStatus save={save} />
+        <SaveStatus save={save} compact={location !== null} />
         <LanguageSwitch />
         {/* The workspace's own tools sit at the far right; user settings join them here later. */}
         <span className="title-block__tools">

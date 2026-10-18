@@ -17,7 +17,7 @@ async function createRoom(page: Page): Promise<void> {
   await expect(page.getByTestId('footprint')).toBeVisible();
   await page.getByLabel('Width', { exact: true }).fill(String(ROOM.width));
   await page.getByLabel('Length', { exact: true }).fill(String(ROOM.length));
-  await expect(page.getByText(/Saved in this browser/)).toBeVisible();
+  await expect(page.getByText(/^Saved \d/)).toBeVisible();
   // The bigger room was not fitted when its size changed: fit it so every point of it is on screen.
   await page.getByRole('button', { name: 'Fit room' }).click();
   await page.mouse.move(700, 500);

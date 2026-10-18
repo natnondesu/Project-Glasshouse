@@ -4,7 +4,7 @@
   min-width: 0;
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
 }
 
 .projects-btn {
@@ -291,4 +291,13 @@
   padding: 10px;
   color: var(--ink-2);
   font-size: var(--text-sm);
+}
+
+/* Room screens: tighter rhythm in the bar so the names, not the spacing, get the width. */
+.title-block:has(.title-block__where) {
+  column-gap: 14px;
+}
+
+.title-block:has(.title-block__where) .title-block__actions {
+  gap: 8px;
 }

@@ -42,6 +42,10 @@ export const en = {
     otherTab: 'Glasshouse is open in another tab, so this tab is read-only. Close the other tab and reload to edit here.',
     equipmentDetails: 'Equipment details',
     serverIdle: 'Connected to the Glasshouse server',
+    /** Room screens: the save status gives its width to the breadcrumb; the sentence above stays in its hint. */
+    savedShort: (time: string) => `Saved ${time}`,
+    saveIdleShort: 'In this browser',
+    serverIdleShort: 'Connected',
     savedServer: (time: string) => `Saved to the server · ${time}`,
     offlineRefused: "You're offline. Edits come back when the connection does.",
     viewOnly: 'You can view this workspace. Ask an admin for edit access.',

@@ -131,6 +131,17 @@
   color: var(--ink-2);
 }
 
+.save-status--compact {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+}
+
+.save-status__ok {
+  color: var(--ok);
+}
+
 .save-status--failed {
   color: var(--block);
   font-weight: 600;
