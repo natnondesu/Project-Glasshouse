@@ -9,6 +9,8 @@ export interface RoomSummary {
   devices: number;
   knownW: number;
   limitW: number;
+  /** Devices and reserved ranges whose draw nobody knows yet: never counted as zero. */
+  unknownDemand: number;
   /** What still holds approval, counted the way the Review badge counts it; all zero once approved. */
   holds: { blocks: number; needsAck: number };
 }
@@ -27,6 +29,7 @@ function summarise(project: Project, site: Site, room: Room): RoomSummary {
     devices: racks.reduce((n, r) => n + r.devices.length, 0),
     knownW: power.knownW,
     limitW: power.limitW,
+    unknownDemand: power.unknownDevices + power.unknownReserved,
     holds: {
       blocks: issues.filter((i) => i.severity === 'block').length,
       needsAck: issues.filter((i) => i.severity === 'needs_ack').length,
