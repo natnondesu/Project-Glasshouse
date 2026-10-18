@@ -53,4 +53,17 @@ describe('ClaimRegistry', () => {
     expect(seen).toEqual([1, 2, 2, 1]);
     expect(reg.list().map((x) => x.roomId)).toEqual(['q']);
   });
+
+  it('releases every claim a person holds, leaves others, and tells subscribers once', () => {
+    const reg = new ClaimRegistry(clock().now);
+    reg.touch('r', ploy);
+    reg.touch('q', ploy);
+    reg.touch('s', eddie);
+    const seen: number[] = [];
+    reg.subscribe((claims) => seen.push(claims.length));
+    expect(reg.releaseAllFor(ploy.id)).toBe(2);
+    expect(reg.list().map((x) => x.roomId)).toEqual(['s']);
+    expect(reg.releaseAllFor(ploy.id)).toBe(0);
+    expect(seen).toEqual([1]);
+  });
 });

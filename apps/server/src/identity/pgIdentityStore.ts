@@ -1,11 +1,12 @@
 import pg from 'pg';
 import { migrate } from '../store/migrations';
-import { DuplicateUserError, type IdentityStore, type Role, type Session, type User, type UserPatch } from './types';
+import { DuplicateUserError, type IdentityStore, type RemovedSignIn, type Role, type Session, type User, type UserPatch } from './types';
 
 interface UserRow {
   id: string; email: string; display_name: string; role: Role; source: 'oidc' | 'local'; oidc_subject: string | null;
   password_hash: string | null; must_change_password: boolean; name_locked: boolean; active: boolean; created_at: Date; last_login_at: Date | null;
 }
+interface RemovalRow { subject_hash: string | null; email_hash: string; removed_at: Date; removed_by: string }
 interface SessionRow { token_hash: string; user_id: string; created_at: Date; last_seen_at: Date; expires_at: Date }
 
 const toUser = (r: UserRow): User => ({
@@ -76,6 +77,35 @@ export class PgIdentityStore implements IdentityStore {
       if (isUniqueViolation(e)) throw new DuplicateUserError('That email or sign-in is already used by another user.');
       throw e;
     }
+  }
+  async deleteUser(id: string, removal: RemovedSignIn) {
+    const client = await this.pool.connect();
+    try {
+      await client.query('begin');
+      // sessions.user_id is ON DELETE CASCADE, so the sign-ins go in the same statement.
+      const deleted = ((await client.query('delete from users where id = $1', [id])).rowCount ?? 0) > 0;
+      if (deleted) {
+        await client.query('insert into removed_signins (subject_hash, email_hash, removed_at, removed_by) values ($1, $2, $3, $4)', [removal.subjectHash, removal.emailHash, removal.removedAt, removal.removedBy]);
+      }
+      await client.query('commit');
+      return deleted;
+    } catch (e) {
+      await client.query('rollback').catch((err: unknown) => console.error('Rolling back the user deletion failed', err));
+      throw e;
+    } finally {
+      client.release();
+    }
+  }
+  async findRemoval(subjectHash: string | null, emailHash: string | null) {
+    const r = await this.pool.query<RemovalRow>(
+      'select subject_hash, email_hash, removed_at, removed_by from removed_signins where ($1::text is not null and subject_hash = $1) or ($2::text is not null and email_hash = $2) limit 1',
+      [subjectHash, emailHash],
+    );
+    const row = r.rows[0];
+    return row ? { subjectHash: row.subject_hash, emailHash: row.email_hash, removedAt: row.removed_at.toISOString(), removedBy: row.removed_by } : null;
+  }
+  async clearRemovals(emailHash: string) {
+    return (await this.pool.query('delete from removed_signins where email_hash = $1', [emailHash])).rowCount ?? 0;
   }
   async countActiveAdmins() {
     const r = await this.pool.query<{ n: string }>("select count(*) as n from users where active and role = 'admin'");

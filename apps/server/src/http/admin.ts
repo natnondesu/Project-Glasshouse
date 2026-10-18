@@ -2,8 +2,10 @@ import { randomUUID } from 'node:crypto';
 import type { FastifyInstance, FastifyReply } from 'fastify';
 import { z } from 'zod';
 import { exportBackup } from '@glasshouse/domain';
+import { removalFor, hashEmail } from '../identity/removed';
 import { hashPassword, temporaryPassword } from '../identity/passwords';
 import { DuplicateUserError, ROLES, type IdentityStore, type User } from '../identity/types';
+import type { ClaimRegistry } from '../claims';
 import type { WorkspaceService } from '../workspaceService';
 
 const toAdminUser = ({ passwordHash: _hash, oidcSubject: _sub, ...rest }: User) => rest;
@@ -14,7 +16,7 @@ const refuse = (reply: FastifyReply, status: number, code: string, message: stri
 /** The server's own calendar day (TZ in the container is Asia/Bangkok), which is the day the admin sees on the wall. */
 const localDay = (d: Date): string => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
-export function registerAdmin(api: FastifyInstance, { store, service, localLogin, now }: { store: IdentityStore; service: WorkspaceService; localLogin: boolean; now: () => Date }): void {
+export function registerAdmin(api: FastifyInstance, { store, service, claims, localLogin, now }: { store: IdentityStore; service: WorkspaceService; claims?: ClaimRegistry; localLogin: boolean; now: () => Date }): void {
   // One instance by design (see the P1 design doc), so an in-process queue is enough to make
   // "count the admins, then change one" atomic.
   let queue: Promise<unknown> = Promise.resolve();
@@ -52,6 +54,8 @@ export function registerAdmin(api: FastifyInstance, { store, service, localLogin
         if (e instanceof DuplicateUserError) return refuse(reply, 409, 'invalid_value', 'Someone with this email already has an account.');
         throw e;
       }
+      // Adding the person again lifts the block a deletion left on their company sign-in; it links to this account.
+      await store.clearRemovals(hashEmail(user.email));
       return reply.code(201).send({ user: toAdminUser(user), temporaryPassword: temp });
     }));
 
@@ -67,6 +71,22 @@ export function registerAdmin(api: FastifyInstance, { store, service, localLogin
       const updated = await store.updateUser(id, { ...body.data, ...(body.data.displayName !== undefined ? { nameLocked: true } : {}) });
       if (body.data.active === false) await store.deleteUserSessions(id);
       return updated ? toAdminUser(updated) : refuse(reply, 404, 'not_found', 'That user no longer exists.');
+    }));
+
+    admin.delete('/api/admin/users/:id', (request, reply) => serialized(async () => {
+      const { id } = request.params as { id: string };
+      const target = await store.findUserById(id);
+      if (!target) return refuse(reply, 404, 'not_found', 'That user no longer exists.');
+      if (id === request.actor!.id) return refuse(reply, 409, 'invalid_value', 'You can’t delete your own account. Ask another admin.');
+      if (target.active) return refuse(reply, 409, 'invalid_value', `Switch ${target.displayName} off before deleting the account.`);
+      if (!(await store.deleteUser(id, removalFor(target, request.actor!.id, now().toISOString())))) return refuse(reply, 404, 'not_found', 'That user no longer exists.');
+      claims?.releaseAllFor(id);
+      // Who did it is the only record of an admin action; history on rooms keeps the name as recorded, not a link to this row.
+      request.log.info(
+        { event: 'user_deleted', actorId: request.actor!.id, actorName: request.actor!.name, userId: target.id, userEmail: target.email, userName: target.displayName, userRole: target.role, source: target.source, at: now().toISOString() },
+        'Account deleted',
+      );
+      return reply.code(204).send();
     }));
 
     admin.post('/api/admin/users/:id/reset-password', (request, reply) => serialized(async () => {

@@ -18,7 +18,7 @@ export interface OidcLogin {
 }
 
 /** What the sign-in screen is told when a company sign-in fails. The browser words these itself, in the reader's language. */
-export type SigninErrorCode = 'cancelled' | 'expired' | 'unavailable' | 'refused' | 'exists' | 'switched_off' | 'generic';
+export type SigninErrorCode = 'cancelled' | 'expired' | 'unavailable' | 'refused' | 'exists' | 'switched_off' | 'removed' | 'generic';
 
 export class OidcError extends Error {
   constructor(readonly code: SigninErrorCode) {

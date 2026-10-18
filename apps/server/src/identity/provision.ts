@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import type { OidcClaims, SigninErrorCode } from '../http/auth/oidc';
+import { hashEmail, hashSubject } from './removed';
 import { DuplicateUserError, type IdentityStore, type Role, type User } from './types';
 
 const NAME_MAX = 80;
@@ -16,11 +17,16 @@ export async function provisionOidcUser(
     const byEmail = await store.findUserByEmail(claims.email);
     if (byEmail && byEmail.oidcSubject === null) {
       if (!claims.emailVerified) return { refused: 'exists' };
-      user = await store.updateUser(byEmail.id, { oidcSubject: claims.sub });
+      // An account an admin just added still holds an unused temporary password. The company sign-in replaces it, so they are not asked to change a password they never saw.
+      user = await store.updateUser(byEmail.id, { oidcSubject: claims.sub, ...(byEmail.mustChangePassword ? { mustChangePassword: false, passwordHash: null } : {}) });
     }
   }
   try {
     if (!user) {
+      // An admin deleted this account: the sign-in stays blocked until an admin adds the person again (which links above).
+      // An unverified email proves nothing, so only the subject can match then.
+      const removed = await store.findRemoval(hashSubject(claims.sub), claims.email && claims.emailVerified ? hashEmail(claims.email) : null);
+      if (removed) return { refused: 'removed' };
       const isBootstrap = bootstrapAdmin !== null && claims.emailVerified && claims.email !== null && claims.email.toLowerCase() === bootstrapAdmin.toLowerCase();
       const created: User = {
         id: randomUUID(), email: claims.email ?? `${claims.sub}@sso.invalid`, displayName, role: isBootstrap ? 'admin' : defaultRole, source: 'oidc',

@@ -1,4 +1,4 @@
-import { DuplicateUserError, type IdentityStore, type Session, type User, type UserPatch } from './types';
+import { DuplicateUserError, type IdentityStore, type RemovedSignIn, type Session, type User, type UserPatch } from './types';
 
 const sameEmail = (a: string, b: string): boolean => a.toLowerCase() === b.toLowerCase();
 
@@ -6,6 +6,7 @@ const sameEmail = (a: string, b: string): boolean => a.toLowerCase() === b.toLow
 export class MemoryIdentityStore implements IdentityStore {
   private users: User[] = [];
   private sessions = new Map<string, Session>();
+  private removals: RemovedSignIn[] = [];
 
   async findUserById(id: string) {
     return structuredClone(this.users.find((u) => u.id === id) ?? null);
@@ -34,6 +35,22 @@ export class MemoryIdentityStore implements IdentityStore {
     const next = { ...current, ...defined };
     this.users = this.users.map((u) => (u.id === id ? next : u));
     return structuredClone(next);
+  }
+  async deleteUser(id: string, removal: RemovedSignIn) {
+    if (!this.users.some((u) => u.id === id)) return false;
+    this.users = this.users.filter((u) => u.id !== id);
+    this.removals = [...this.removals, { ...removal }];
+    await this.deleteUserSessions(id);
+    return true;
+  }
+  async findRemoval(subjectHash: string | null, emailHash: string | null) {
+    const found = this.removals.find((r) => (subjectHash !== null && r.subjectHash === subjectHash) || (emailHash !== null && r.emailHash === emailHash));
+    return found ? { ...found } : null;
+  }
+  async clearRemovals(emailHash: string) {
+    const before = this.removals.length;
+    this.removals = this.removals.filter((r) => r.emailHash !== emailHash);
+    return before - this.removals.length;
   }
   async countActiveAdmins() {
     return this.users.filter((u) => u.active && u.role === 'admin').length;

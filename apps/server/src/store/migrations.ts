@@ -75,6 +75,19 @@ export const MIGRATIONS: { name: string; sql: string }[] = [
     name: '004_user_names',
     sql: `alter table users add column name_locked boolean not null default false;`,
   },
+  {
+    name: '005_removed_signins',
+    sql: `
+      create table removed_signins (
+        id bigserial primary key,
+        subject_hash text,
+        email_hash text not null,
+        removed_at timestamptz not null,
+        removed_by text not null
+      );
+      create index removed_signins_subject on removed_signins (subject_hash);
+      create index removed_signins_email on removed_signins (email_hash);`,
+  },
 ];
 
 const LOCK_KEY = 727274;

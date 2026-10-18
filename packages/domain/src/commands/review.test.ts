@@ -177,6 +177,12 @@ describe('verified people (server mode)', () => {
     expect(history[1]!.params).toMatchObject({ by: 'Nok P.', verified: 1 });
   });
 
+  it('keeps the user id on each history line, so a view can tell when that account is later removed', () => {
+    let ws = run(ready(), review({ type: 'review/submit', designedBy: 'Ploy S.', at: AT, byId: 'u-ploy' }));
+    ws = run(ws, review({ type: 'review/approve', reviewer: 'Nok P.', at: AT, byId: 'u-nok' }));
+    expect(findRoom(ws, 'r')!.room.plan.history.slice(-2).map((h) => h.params?.byId)).toEqual(['u-ploy', 'u-nok']);
+  });
+
   it('refuses an approval by the person who submitted', () => {
     const ws = run(ready(), review({ type: 'review/submit', designedBy: 'Ploy S.', at: AT, byId: 'u-ploy' }));
     const r = apply(ws, review({ type: 'review/approve', reviewer: 'Ploy S.', at: AT, byId: 'u-ploy' }));

@@ -1,12 +1,12 @@
 import { useState } from 'react';
 import { Link } from 'react-router';
-import { isSelfApproved, type Plan } from '@glasshouse/domain';
+import { isSelfApproved, type HistoryEvent, type Plan } from '@glasshouse/domain';
 import { pad2, StatusStamp } from '../../ui/StatusStamp';
 import { formatTime } from '../../ui/time';
 import { useT } from '../../i18n';
 import { usePeople } from '../../people/peopleStore';
 import { personLabel } from '../../ui/person';
-import { historyText } from '../plan/issueText';
+import { historySignerId, historyText } from '../plan/issueText';
 
 /** Events per page, newest first. */
 const PAGE = 20;
@@ -25,6 +25,11 @@ export function HistoryPanel({ plan, roomId }: { plan: Plan; roomId: string }) {
   const pages = Math.max(1, Math.ceil(all.length / PAGE));
   const at = Math.min(page, pages - 1);
   const events = all.slice(at * PAGE, at * PAGE + PAGE);
+  /** Older lines carry no user id: borrow it from the revision or note they produced, so the line agrees with the stamp. */
+  const withSigner = (e: HistoryEvent): HistoryEvent => {
+    const byId = historySignerId(plan, e);
+    return byId && e.params?.byId === undefined ? { ...e, params: { ...e.params, byId } } : e;
+  };
   return (
     <section className="review-card glass" aria-labelledby="history-h">
       <h2 id="history-h">{m.review.history}</h2>
@@ -56,7 +61,7 @@ export function HistoryPanel({ plan, roomId }: { plan: Plan; roomId: string }) {
           <li key={`${e.at}-${i}`}>
             <span className="events__time mono">{formatTime(e.at)}</span>
             <span className="mono events__rev">{`R${pad2(e.revision)}`}</span>
-            <span>{historyText(m, e)}</span>
+            <span>{historyText(m, withSigner(e), people)}</span>
           </li>
         ))}
       </ol>

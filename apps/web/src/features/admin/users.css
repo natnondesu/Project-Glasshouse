@@ -38,13 +38,13 @@
 
 .users__table {
   width: 100%;
-  min-width: 760px;
+  min-width: 900px;
   border-collapse: collapse;
   font-size: var(--text-sm);
 }
 
 .users__table th {
-  padding: 8px 12px;
+  padding: 8px 8px;
   text-align: left;
   font-size: var(--text-2xs);
   font-weight: 600;
@@ -56,13 +56,13 @@
 
 .users__table td {
   height: 40px;
-  padding: 4px 12px;
+  padding: 4px 8px;
   border-top: 1px solid var(--line);
   vertical-align: middle;
 }
 
 .users__table td:first-child {
-  min-width: 220px;
+  min-width: 200px;
 }
 
 .users__name {
@@ -122,12 +122,86 @@
   box-shadow: var(--focus-ring);
 }
 
-.users__status.users__status--on {
+/* Status is a reading, not a control: a dot and a word, no button chrome. The actions sit in their own column. */
+.users__status {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.users__status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentcolor;
+}
+
+.users__status--on {
   color: var(--ok);
 }
 
-.users__status.users__status--off {
+/* Switched off reads as a hollow dot, so colour is not the only signal. */
+.users__status--off {
   color: var(--ink-3);
+}
+
+.users__status--off .users__status-dot {
+  background: transparent;
+  box-shadow: inset 0 0 0 1.5px currentcolor;
+}
+
+.users__table tr:has(.users__status--off) .users__name {
+  color: var(--ink-2);
+}
+
+.users__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 2px;
+  min-width: 13rem;
+}
+
+.users__actions .btn {
+  white-space: nowrap;
+}
+
+.users__table td.mono {
+  white-space: nowrap;
+}
+
+.users__delete {
+  color: var(--block);
+}
+
+.users__delete:hover:not(:disabled) {
+  background: var(--block-bg);
+}
+
+.users__show-off {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  align-self: flex-start;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--ink-2);
+  cursor: pointer;
+}
+
+.users__show-off input {
+  accent-color: var(--acc);
+}
+
+.users__notice {
+  padding: 8px 12px;
+  border-left: 3px solid var(--acc);
+  border-radius: var(--radius-field);
+  background: var(--acc-tint);
+  font-size: var(--text-sm);
 }
 
 .users__flag {

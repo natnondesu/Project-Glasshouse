@@ -31,6 +31,7 @@ async function call<T>(url: string, init?: RequestInit): Promise<T> {
     const body = (await res.json().catch(() => null)) as { error?: { message?: string } } | null;
     throw new Error(body?.error?.message ?? text.requestFailed(res.status));
   }
+  if (res.status === 204) return undefined as T;
   return (await res.json()) as T;
 }
 
@@ -40,3 +41,4 @@ export const createUser = (input: { email: string; displayName: string; role: Ro
 export const updateUser = (id: string, patch: { role?: Role; active?: boolean; displayName?: string }) =>
   call<AdminUser>(`/api/admin/users/${encodeURIComponent(id)}`, { method: 'PATCH', headers: HEADERS, body: JSON.stringify(patch) });
 export const resetPassword = (id: string) => call<{ temporaryPassword: string }>(`/api/admin/users/${encodeURIComponent(id)}/reset-password`, { method: 'POST', headers: BODILESS_HEADERS });
+export const deleteUser = (id: string) => call<void>(`/api/admin/users/${encodeURIComponent(id)}`, { method: 'DELETE', headers: BODILESS_HEADERS });

@@ -1,10 +1,13 @@
 import type { FastifyInstance } from 'fastify';
+import { Writable } from 'node:stream';
+import { ClaimRegistry } from '../claims';
 import { afterEach, describe, expect, it } from 'vitest';
 import { MemoryIdentityStore } from '../identity/memoryIdentityStore';
 import type { Role, User } from '../identity/types';
 import { MemoryCommandStore } from '../store/memoryStore';
 import { WorkspaceService } from '../workspaceService';
-import { BACKUP_FORMAT, parseBackup } from '@glasshouse/domain';
+import { BACKUP_FORMAT, createObject, createWorkspace, findRoom, parseBackup, type Rack, type Template, type WorkspaceCommand } from '@glasshouse/domain';
+import { hashEmail, hashSubject } from '../identity/removed';
 import { registerAdmin } from './admin';
 import { buildApp } from './app';
 import { registerDevAuthRoutes } from './devAuth';
@@ -27,16 +30,19 @@ class SlowCountStore extends MemoryIdentityStore {
 
 async function setup(as: User, others: User[] = [], at = NOW) {
   const store = new SlowCountStore();
+  const claims = new ClaimRegistry();
+  const logLines: string[] = [];
+  const logStream = new Writable({ write: (chunk, _enc, done) => (logLines.push(String(chunk)), done()) });
   for (const u of [as, ...others]) await store.createUser(u);
   const service = await WorkspaceService.open(new MemoryCommandStore());
   const app = await buildApp({
-    service, publicOrigin: null, authRoutes: registerDevAuthRoutes,
+    service, publicOrigin: null, logStream, authRoutes: registerDevAuthRoutes,
     authenticate: async (request) => { const u = await store.findUserById(String(request.headers['x-test-user'] ?? as.id)); return u && u.active ? { id: u.id, name: u.displayName, role: u.role, verified: true } : null; },
-    admin: (api) => registerAdmin(api, { store, service, localLogin: true, now: () => new Date(at) }),
+    admin: (api) => registerAdmin(api, { store, service, claims, localLogin: true, now: () => new Date(at) }),
   });
   apps.push(app);
-  const call = (method: 'GET' | 'POST' | 'PATCH', url: string, payload?: object, asUser?: string) => app.inject({ method, url, headers: { 'x-glasshouse': '1', ...(asUser ? { 'x-test-user': asUser } : {}) }, ...(payload ? { payload } : {}) });
-  return { app, store, call };
+  const call = (method: 'GET' | 'POST' | 'PATCH' | 'DELETE', url: string, payload?: object, asUser?: string) => app.inject({ method, url, headers: { 'x-glasshouse': '1', ...(asUser ? { 'x-test-user': asUser } : {}) }, ...(payload ? { payload } : {}) });
+  return { app, store, call, claims, logLines, service };
 }
 
 describe('admin users API', () => {
@@ -124,5 +130,132 @@ describe('admin users API', () => {
       if (zone === undefined) delete process.env.TZ;
       else process.env.TZ = zone;
     }
+  });
+
+  describe('deleting an account', () => {
+    const off = (id: string, over: Partial<User> = {}) => user(id, 'editor', { active: false, displayName: 'Ploy', ...over });
+
+    it('removes a switched-off user, ends their sessions and frees the email for a fresh account', async () => {
+      const { call, store } = await setup(user('ad', 'admin'), [off('ploy', { email: 'ploy@company.test' })]);
+      await store.createSession({ tokenHash: 'h', userId: 'ploy', createdAt: NOW, lastSeenAt: NOW, expiresAt: '2026-10-25T00:00:00.000Z' });
+      const res = await call('DELETE', '/api/admin/users/ploy');
+      expect(res.statusCode).toBe(204);
+      expect(await store.findUserById('ploy')).toBeNull();
+      expect(await store.findSession('h')).toBeNull();
+      expect((await call('GET', '/api/admin/users')).json().map((u: User) => u.id)).toEqual(['ad']);
+      const again = await call('POST', '/api/admin/users', { email: 'ploy@company.test', displayName: 'Ploy', role: 'editor' });
+      expect(again.statusCode).toBe(201);
+      expect(again.json().user.id).not.toBe('ploy');
+    });
+
+    it('refuses while the person is still switched on, naming them', async () => {
+      const { call, store } = await setup(user('ad', 'admin'), [off('ploy', { active: true })]);
+      const res = await call('DELETE', '/api/admin/users/ploy');
+      expect(res.statusCode).toBe(409);
+      expect(res.json()).toMatchObject({ error: { code: 'invalid_value', message: 'Switch Ploy off before deleting the account.' } });
+      expect(await store.findUserById('ploy')).not.toBeNull();
+    });
+
+    it('refuses your own account, and says what is missing for an unknown id', async () => {
+      const { call, store } = await setup(user('ad', 'admin'), [off('other-admin', { role: 'admin' })]);
+      expect((await call('DELETE', '/api/admin/users/ad')).statusCode).toBe(409);
+      expect(await store.findUserById('ad')).not.toBeNull();
+      expect((await call('DELETE', '/api/admin/users/nobody')).statusCode).toBe(404);
+    });
+
+    it('is for admins only', async () => {
+      const { call, store } = await setup(user('ed', 'editor'), [off('ploy')]);
+      expect((await call('DELETE', '/api/admin/users/ploy')).statusCode).toBe(403);
+      expect(await store.findUserById('ploy')).not.toBeNull();
+    });
+
+    it('releases the editing claims the person held, and leaves other claims', async () => {
+      const { call, claims } = await setup(user('ad', 'admin'), [off('ploy')]);
+      claims.touch('room-a', { id: 'ploy', name: 'Ploy' });
+      claims.touch('room-b', { id: 'ad', name: 'ad' });
+      await call('DELETE', '/api/admin/users/ploy');
+      expect(claims.list().map((c) => c.roomId)).toEqual(['room-b']);
+    });
+
+    it('writes who deleted whom, with the email and time, to the server log', async () => {
+      const { call, logLines } = await setup(user('ad', 'admin'), [off('ploy', { email: 'ploy@company.test' })]);
+      await call('DELETE', '/api/admin/users/ploy');
+      const entry = logLines.map((l) => JSON.parse(l)).find((l) => l.event === 'user_deleted');
+      expect(entry).toMatchObject({
+        event: 'user_deleted', actorId: 'ad', actorName: 'ad', userId: 'ploy', userEmail: 'ploy@company.test', userName: 'Ploy', userRole: 'editor', source: 'local', at: NOW,
+      });
+    });
+
+    it('does not touch the workspace: a submitted revision and its history keep the person as recorded', async () => {
+      const { call, service } = await setup(user('ad', 'admin'), [off('ploy')]);
+      const ploy = { id: 'ploy', name: 'Ploy', role: 'reviewer' as const, verified: true };
+      const rack = { ...(createObject('rack', { x: 1, y: 0.6 }, []) as Rack), id: 'rk', name: 'RK-01' };
+      const template = createWorkspace().catalog.find((t) => t.id === 'tpl-server-2u') as Template;
+      const commands: WorkspaceCommand[] = [
+        { type: 'project/create', id: 'p', name: 'P' },
+        { type: 'site/create', projectId: 'p', id: 's', name: 'S' },
+        { type: 'room/create', siteId: 's', id: 'r', floorAreaId: 'fa-r', name: 'MDF-1' },
+        { type: 'plan', roomId: 'r', command: { type: 'object/add', object: rack } },
+        { type: 'plan', roomId: 'r', command: { type: 'device/place', id: 'srv', rackId: 'rk', bottomU: 1, template } },
+        { type: 'review', roomId: 'r', command: { type: 'review/submit', designedBy: '', at: 'x' } },
+      ];
+      for (const [i, command] of commands.entries()) expect(await service.submit({ clientId: 'ploy', commandId: `c${i}`, command }, ploy)).toMatchObject({ kind: 'accepted' });
+      const recorded = (): unknown => findRoom(service.state.workspace, 'r')!.room.plan;
+      expect(JSON.stringify(recorded())).toContain('"userId":"ploy"');
+      const before = JSON.stringify(service.state.workspace);
+      expect((await call('DELETE', '/api/admin/users/ploy')).statusCode).toBe(204);
+      expect(JSON.stringify(service.state.workspace)).toBe(before);
+    });
+
+    it('is refused without the Glasshouse header, like every other change', async () => {
+      const { app, store } = await setup(user('ad', 'admin'), [off('ploy')]);
+      const res = await app.inject({ method: 'DELETE', url: '/api/admin/users/ploy' });
+      expect(res.statusCode).toBe(403);
+      expect(res.json()).toMatchObject({ error: { code: 'csrf' } });
+      expect(await store.findUserById('ploy')).not.toBeNull();
+    });
+
+    it('serializes with a switch-on sent at the same time: whichever lands second sees the other’s result', async () => {
+      const { call, store } = await setup(user('ad', 'admin'), [off('ploy')]);
+      const [patch, del] = await Promise.all([call('PATCH', '/api/admin/users/ploy', { active: true }), call('DELETE', '/api/admin/users/ploy')]);
+      const outcome = [patch.statusCode, del.statusCode];
+      if (outcome[0] === 200) {
+        expect(outcome).toEqual([200, 409]);
+        expect(await store.findUserById('ploy')).toMatchObject({ active: true });
+      } else {
+        expect(outcome).toEqual([404, 204]);
+        expect(await store.findUserById('ploy')).toBeNull();
+      }
+    });
+
+    it('keeps a company sign-in blocked: records hashes of the subject and email, never the plain values', async () => {
+      const { call, store } = await setup(user('ad', 'admin'), [off('sso', { source: 'oidc', passwordHash: null, oidcSubject: 'sub-sso', email: 'Sso@company.test' })]);
+      expect((await call('DELETE', '/api/admin/users/sso')).statusCode).toBe(204);
+      const removal = await store.findRemoval(hashSubject('sub-sso'), null);
+      expect(removal).toEqual({ subjectHash: hashSubject('sub-sso'), emailHash: hashEmail('sso@company.test'), removedAt: NOW, removedBy: 'ad' });
+      expect(JSON.stringify(removal)).not.toMatch(/sub-sso|company\.test/);
+    });
+
+    it('records the email for a password account too, with no subject', async () => {
+      const { call, store } = await setup(user('ad', 'admin'), [off('ploy', { email: 'ploy@company.test' })]);
+      await call('DELETE', '/api/admin/users/ploy');
+      expect(await store.findRemoval(null, hashEmail('ploy@company.test'))).toMatchObject({ subjectHash: null, removedBy: 'ad' });
+    });
+
+    it('adding the person again lifts the block, and only for that email', async () => {
+      const { call, store } = await setup(user('ad', 'admin'), [off('a', { email: 'a@company.test' }), off('b', { email: 'b@company.test' })]);
+      await call('DELETE', '/api/admin/users/a');
+      await call('DELETE', '/api/admin/users/b');
+      expect((await call('POST', '/api/admin/users', { email: 'A@company.test', displayName: 'A', role: 'editor' })).statusCode).toBe(201);
+      expect(await store.findRemoval(null, hashEmail('a@company.test'))).toBeNull();
+      expect(await store.findRemoval(null, hashEmail('b@company.test'))).not.toBeNull();
+    });
+
+    it('keeps the block when adding the person fails', async () => {
+      const { call, store } = await setup(user('ad', 'admin', { email: 'taken@company.test' }), [off('ploy', { email: 'ploy@company.test' })]);
+      await call('DELETE', '/api/admin/users/ploy');
+      expect((await call('POST', '/api/admin/users', { email: 'taken@company.test', displayName: 'T', role: 'editor' })).statusCode).toBe(409);
+      expect(await store.findRemoval(null, hashEmail('ploy@company.test'))).not.toBeNull();
+    });
   });
 });

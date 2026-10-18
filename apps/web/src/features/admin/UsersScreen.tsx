@@ -1,11 +1,13 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Link } from 'react-router';
 import type { Role } from '../../auth/authApi';
 import { useCan } from '../../auth/useCan';
 import { useT } from '../../i18n';
 import { usePeopleStore } from '../../people/peopleStore';
+import { confirmAction } from '../../ui/confirm/confirmStore';
 import { formatTime } from '../../ui/time';
-import { createUser, listUsers, resetPassword, updateUser, type AdminUser } from './adminApi';
+import { usePersistentState } from '../../ui/usePersistentState';
+import { createUser, deleteUser, listUsers, resetPassword, updateUser, type AdminUser } from './adminApi';
 import '../../ui/fields.css';
 import '../review/review.css';
 import './users.css';
@@ -23,11 +25,26 @@ export function UsersScreen() {
   const [name, setName] = useState('');
   const [role, setRole] = useState<Role>('editor');
   const [renaming, setRenaming] = useState<{ id: string; draft: string } | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const section = useRef<HTMLElement>(null);
+  /** Where keyboard focus goes once the row it was on has gone: the next row's same action, else the toggle, else the table. */
+  const focusAfter = useRef<string[] | null>(null);
+  const [showOff, setShowOff] = usePersistentState('glasshouse:users-show-switched-off', false);
 
   useEffect(() => {
     if (!can.admin) return;
     listUsers().then(setUsers, (e: unknown) => setError(e instanceof Error ? e.message : String(e)));
   }, [can.admin]);
+
+  useEffect(() => {
+    const wanted = focusAfter.current;
+    if (!wanted) return;
+    focusAfter.current = null;
+    for (const key of wanted) {
+      const el = section.current?.querySelector<HTMLElement>(`[data-focus="${key}"]`);
+      if (el) return el.focus();
+    }
+  }, [users]);
 
   if (!can.admin) {
     return (
@@ -40,6 +57,7 @@ export function UsersScreen() {
 
   const run = async (work: () => Promise<void>): Promise<boolean> => {
     setError(null);
+    setNotice(null);
     try {
       await work();
       return true;
@@ -62,6 +80,36 @@ export function UsersScreen() {
       if (saved) setRenaming((current) => (current?.id === u.id ? null : current));
     });
   };
+  const refreshPeople = (): void => {
+    usePeopleStore.getState().load().catch((e: unknown) => console.warn('Could not refresh the people list after a change.', e));
+  };
+  const switchOn = (u: AdminUser): void => void run(async () => replace(await updateUser(u.id, { active: true })));
+  /** Focus keys to try once `u` leaves the list, in order: the next visible row offering the same action, then the toggle and the table. */
+  const focusKeysAfter = (u: AdminUser, action: 'off' | 'delete'): string[] => {
+    // Still listed (switched-off people are shown): the same person's Switch on takes over.
+    if (action === 'off' && showOff) return [`on-${u.id}`, 'toggle', 'table'];
+    const rows = shown.filter((x) => x.id !== can.me?.id && x.active === (action === 'off'));
+    const next = rows[rows.findIndex((x) => x.id === u.id) + 1];
+    return [...(next ? [`${action}-${next.id}`] : []), 'toggle', 'table'];
+  };
+  const switchOff = async (u: AdminUser): Promise<void> => {
+    if (!(await confirmAction({ title: m.users.switchOffTitle(u.displayName), body: m.users.switchOffBody, confirmLabel: m.users.switchOff, tone: 'primary' }))) return;
+    void run(async () => {
+      focusAfter.current = focusKeysAfter(u, 'off');
+      replace(await updateUser(u.id, { active: false }));
+      setNotice(m.users.switchedOffNotice(u.displayName));
+    });
+  };
+  const remove = async (u: AdminUser): Promise<void> => {
+    if (!(await confirmAction({ title: m.users.deleteTitle(u.displayName, u.email), body: m.users.deleteBody(u.source === 'oidc'), confirmLabel: m.users.deleteAccount, tone: 'danger' }))) return;
+    void run(async () => {
+      await deleteUser(u.id);
+      focusAfter.current = focusKeysAfter(u, 'delete');
+      setUsers((list) => (list ?? []).filter((x) => x.id !== u.id));
+      setNotice(m.users.deletedNotice(u.displayName));
+      refreshPeople();
+    });
+  };
   const add = (e: FormEvent): void => {
     e.preventDefault();
     void run(async () => {
@@ -73,8 +121,10 @@ export function UsersScreen() {
     });
   };
 
+  const switchedOff = (users ?? []).filter((u) => !u.active).length;
+  const shown = (users ?? []).filter((u) => u.active || showOff);
   return (
-    <section className="users glass" aria-labelledby="users-h">
+    <section ref={section} className="users glass" aria-labelledby="users-h">
       <h1 id="users-h">{m.users.title}</h1>
       <p className="review-note">{m.users.note}</p>
       {error ? <p role="alert" className="field__error">{error}</p> : null}
@@ -86,13 +136,20 @@ export function UsersScreen() {
           <button type="button" className="btn btn--sm" onClick={() => setSecret(null)}>{m.common.close}</button>
         </div>
       ) : null}
-      <div className="users__scroll" role="region" aria-label={m.users.title} tabIndex={0}>
+      {notice ? <p role="status" className="users__notice">{notice}</p> : null}
+      {switchedOff > 0 || showOff ? (
+        <label className="users__show-off">
+          <input type="checkbox" data-focus="toggle" checked={showOff} onChange={(e) => setShowOff(e.target.checked)} />
+          <span>{m.users.showOff(switchedOff)}</span>
+        </label>
+      ) : null}
+      <div className="users__scroll" data-focus="table" role="region" aria-label={m.users.title} tabIndex={0}>
         <table className="users__table">
           <thead>
-            <tr><th>{m.users.name}</th><th>{m.users.email}</th><th>{m.users.role}</th><th>{m.users.signIn}</th><th>{m.users.status}</th><th>{m.users.lastSignIn}</th><th /></tr>
+            <tr><th>{m.users.name}</th><th>{m.users.email}</th><th>{m.users.role}</th><th>{m.users.signIn}</th><th>{m.users.status}</th><th>{m.users.lastSignIn}</th><th>{m.users.actions}</th></tr>
           </thead>
           <tbody>
-            {(users ?? []).map((u) => (
+            {shown.map((u) => (
               <tr key={u.id} aria-label={u.displayName}>
                 <td>
                   {renaming?.id === u.id ? (
@@ -128,17 +185,28 @@ export function UsersScreen() {
                 </td>
                 <td>{u.source === 'oidc' ? m.users.sso : m.users.local}</td>
                 <td>
-                  <button type="button" className={`btn btn--sm btn--quiet users__status users__status--${u.active ? 'on' : 'off'}`} aria-label={`${u.active ? m.users.active : m.users.off} — ${m.users.toggleFor(u.displayName, u.active)}`} onClick={() => void run(async () => replace(await updateUser(u.id, { active: !u.active })))}>
+                  <span className={`users__status users__status--${u.active ? 'on' : 'off'}`}>
+                    <span className="users__status-dot" aria-hidden="true" />
                     {u.active ? m.users.active : m.users.off}
-                  </button>
+                  </span>
                 </td>
                 <td className="mono">{u.lastLoginAt ? formatTime(u.lastLoginAt) : m.common.none}</td>
                 <td>
-                  {u.source === 'local' ? (
-                    <button type="button" className="btn btn--sm btn--quiet" aria-label={m.users.resetFor(u.displayName)} onClick={() => void run(async () => setSecret({ who: u.email, password: (await resetPassword(u.id)).temporaryPassword }))}>
-                      {m.users.reset}
-                    </button>
-                  ) : null}
+                  <div className="users__actions">
+                    {u.source === 'local' ? (
+                      <button type="button" className="btn btn--sm btn--quiet" aria-label={m.users.resetFor(u.displayName)} onClick={() => void run(async () => setSecret({ who: u.email, password: (await resetPassword(u.id)).temporaryPassword }))}>
+                        {m.users.reset}
+                      </button>
+                    ) : null}
+                    {u.id === can.me?.id ? null : u.active ? (
+                      <button type="button" className="btn btn--sm btn--quiet" aria-label={m.users.toggleFor(u.displayName, true)} data-focus={`off-${u.id}`} onClick={() => void switchOff(u)}>{m.users.switchOff}</button>
+                    ) : (
+                      <>
+                        <button type="button" className="btn btn--sm btn--quiet" aria-label={m.users.toggleFor(u.displayName, false)} data-focus={`on-${u.id}`} onClick={() => switchOn(u)}>{m.users.switchOn}</button>
+                        <button type="button" className="btn btn--sm btn--quiet users__delete" aria-label={m.users.deleteFor(u.displayName)} data-focus={`delete-${u.id}`} onClick={() => void remove(u)}>{m.users.deleteAccount}</button>
+                      </>
+                    )}
+                  </div>
                 </td>
               </tr>
             ))}
