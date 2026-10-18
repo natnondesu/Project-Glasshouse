@@ -86,7 +86,7 @@ it('keeps Width and Depth for the cabinet and the screen', () => {
   expect(screen.getByLabelText('Width')).toHaveValue('0.80');
   expect(screen.getByLabelText('Depth')).toHaveValue('0.80');
   expect(screen.queryByLabelText('Height above floor')).toBeNull();
-  expect(screen.getByText(/within 1\.00 m in front/)).toBeInTheDocument();
+  expect(screen.getByText(/where it is serviced/)).toBeInTheDocument();
 });
 
 it('sets how high a wall split AC or a display wall hangs, from the floor to its bottom', async () => {
@@ -105,4 +105,40 @@ it('shows a display wall’s default height when the file stored none', () => {
   show(bare as ReturnType<typeof make>);
   expect(screen.getByLabelText('Height above floor')).toHaveValue('0.80');
   expect(screen.getByText(/takes no power/)).toBeInTheDocument();
+});
+
+it.each([
+  ['wall_split_ac', '1.00', 'Airflow in front of the AC'],
+  ['precision_ac', '1.00', 'Service access in front'],
+  ['display_wall', '1.50', 'Viewing area in front'],
+] as const)('offers a Keep clear depth for a %s, with its default as the placeholder and a hint', (type, fallback, hint) => {
+  show(make(type));
+  const field = screen.getByLabelText('Keep clear');
+  expect(field).toHaveValue('');
+  expect(field).toHaveAttribute('placeholder', fallback);
+  expect(screen.getByText(hint)).toBeInTheDocument();
+});
+
+it('sets, zeroes and clears the Keep clear depth', async () => {
+  const user = userEvent.setup();
+  const commit = show(make('precision_ac'));
+  const field = screen.getByLabelText('Keep clear');
+  await user.type(field, '0.5');
+  expect(commit).toHaveBeenLastCalledWith({ type: 'object/update', id: expect.any(String), patch: { keepClearM: 0.5 } }, expect.stringContaining('keepClear'));
+  await user.clear(field);
+  expect(commit).toHaveBeenLastCalledWith({ type: 'object/update', id: expect.any(String), patch: { keepClearM: null } }, expect.stringContaining('keepClear'));
+  await user.type(field, '0');
+  expect(commit).toHaveBeenLastCalledWith({ type: 'object/update', id: expect.any(String), patch: { keepClearM: 0 } }, expect.stringContaining('keepClear'));
+});
+
+it('says there is no zone when Keep clear is 0, and shows a stored depth', () => {
+  show({ ...make('display_wall'), keepClearM: 0 } as ReturnType<typeof make>);
+  expect(screen.getByLabelText('Keep clear')).toHaveValue('0.00');
+  expect(screen.getByText('No keep-clear zone')).toBeInTheDocument();
+  expect(screen.queryByText('Viewing area in front')).toBeNull();
+});
+
+it('has no Keep clear field for a partition or a rack', () => {
+  show(make('partition'));
+  expect(screen.queryByLabelText('Keep clear')).toBeNull();
 });

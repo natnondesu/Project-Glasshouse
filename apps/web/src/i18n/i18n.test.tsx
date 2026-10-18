@@ -70,9 +70,9 @@ describe('domain wording', () => {
       message: 'RK-01 อยู่ใต้แอร์ติดผนัง น้ำจากแอร์อาจหยดใส่แร็ค',
       hint: 'ย้าย RK-01 ออกจากใต้ AC-01 หรือย้ายแอร์ ยังอนุมัติได้',
     });
-    expect(issueText(th, { ...base, code: 'wall_ac_airflow', params: { rack: 'RK-01', ac: 'AC-01' } }).message).toBe('RK-01 ขวางทางลมด้านหน้าแอร์ติดผนัง');
-    expect(issueText(th, { ...base, code: 'precision_ac_service', params: { other: 'F-01', ac: 'PAC-01' } }).message).toBe('เว้นพื้นที่ด้านหน้าแอร์ Precision 1.00 ม. สำหรับงานบริการ แต่ F-01 ขวางอยู่');
-    expect(issueText(th, { ...base, code: 'display_wall_view', params: { rack: 'RK-01', screen: 'DW-01' } }).message).toBe('RK-01 อยู่หน้าจอแสดงผลขนาดใหญ่');
+    expect(issueText(th, { ...base, code: 'wall_ac_airflow', params: { rack: 'RK-01', ac: 'AC-01', depth: '2.00' } }).message).toBe('RK-01 ขวางทางลมด้านหน้าแอร์ติดผนังในระยะ 2.00 ม.');
+    expect(issueText(th, { ...base, code: 'precision_ac_service', params: { other: 'F-01', ac: 'PAC-01', depth: '0.60' } }).message).toBe('เว้นพื้นที่ด้านหน้าแอร์ Precision 0.60 ม. สำหรับงานบริการ แต่ F-01 ขวางอยู่');
+    expect(issueText(th, { ...base, code: 'display_wall_view', params: { rack: 'RK-01', screen: 'DW-01', depth: '1.50' } }).message).toBe('RK-01 อยู่หน้าจอแสดงผลขนาดใหญ่ในระยะ 1.50 ม.');
   });
 
   it('has Thai wording for every check code the domain can raise', () => {
