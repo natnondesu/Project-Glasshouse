@@ -60,18 +60,21 @@ test('switch off hides someone, delete removes them, and what they approved stil
   const fingerprintBefore = await ada.getByText(/^Fingerprint /).first().textContent();
   await shot(ada, 'history-before-removal');
 
-  // Switch off: asks first, then Rowan disappears from the list behind a counted toggle.
+  // Switch off: asks first (with the email), then Rowan leaves the Active view and is counted on the chip.
   await ada.goto('/admin/users');
-  const rowanRow = ada.getByRole('row', { name: 'Rowan Reviewer' });
+  const rowanRow = ada.getByRole('row', { name: 'Rowan Reviewer (rowan@company.test)' });
   await expect(rowanRow.getByText('Active', { exact: true })).toBeVisible();
   await shot(ada, 'users-default');
-  await rowanRow.getByRole('button', { name: 'Switch off Rowan Reviewer' }).click();
+  await rowanRow.getByRole('button', { name: 'Actions for Rowan Reviewer (rowan@company.test)' }).click();
+  await ada.getByRole('menuitem', { name: 'Switch off' }).click();
+  await expect(ada.getByRole('alertdialog')).toContainText('Switch off Rowan Reviewer (rowan@company.test)?');
   await expect(ada.getByRole('alertdialog')).toContainText("They're signed out now and can't sign in until you switch them back on.");
   await shot(ada, 'confirm-switch-off');
   await ada.getByRole('alertdialog').getByRole('button', { name: 'Switch off' }).click();
   await expect(rowanRow).toHaveCount(0);
-  const toggle = ada.getByRole('checkbox', { name: 'Show switched off (1)' });
-  await expect(toggle).not.toBeChecked();
+  const statusChips = ada.getByRole('group', { name: 'Filter by status' });
+  const offChip = statusChips.getByRole('button', { name: 'Switched off 1' });
+  await expect(offChip).toHaveAttribute('aria-pressed', 'false');
 
   // Rowan is signed out now and cannot come back.
   await rowan.reload();
@@ -81,20 +84,25 @@ test('switch off hides someone, delete removes them, and what they approved stil
   await rowan.getByRole('button', { name: 'Sign in' }).click();
   await expect(rowan.getByRole('alert')).toBeVisible();
 
-  // The choice survives a reload; Delete account is only on the switched-off row.
-  await toggle.check();
+  // The view is in the address and survives a reload; Delete account is only on the switched-off row.
+  await offChip.click();
+  await expect(ada).toHaveURL(/status=off/);
   await ada.reload();
-  await expect(ada.getByRole('checkbox', { name: 'Show switched off (1)' })).toBeChecked();
+  await expect(ada.getByRole('group', { name: 'Filter by status' }).getByRole('button', { name: 'Switched off 1' })).toHaveAttribute('aria-pressed', 'true');
   await expect(rowanRow.getByText('Switched off', { exact: true })).toBeVisible();
-  await expect(ada.getByRole('row', { name: 'Ada Admin' }).getByRole('button', { name: /Switch off|Delete/ })).toHaveCount(0);
   await shot(ada, 'users-show-switched-off');
-  await rowanRow.getByRole('button', { name: 'Delete Rowan Reviewer’s account' }).click();
+  await ada.getByRole('group', { name: 'Filter by status' }).getByRole('button', { name: 'Everyone' }).click();
+  await ada.getByRole('button', { name: 'Actions for Ada Admin (admin@company.test)' }).click();
+  await expect(ada.getByRole('menuitem')).toHaveText(['Rename', 'Reset password']);
+  await ada.keyboard.press('Escape');
+  await rowanRow.getByRole('button', { name: 'Actions for Rowan Reviewer (rowan@company.test)' }).click();
+  await ada.getByRole('menuitem', { name: 'Delete account' }).click();
   await expect(ada.getByRole('alertdialog')).toContainText('Delete Rowan Reviewer’s account (rowan@company.test)?');
   await expect(ada.getByRole('alertdialog')).toContainText("They can't sign in again with this account. Their name stays on past work, marked removed. This can't be undone.");
   await shot(ada, 'confirm-delete');
   await ada.getByRole('alertdialog').getByRole('button', { name: 'Delete account' }).click();
   await expect(rowanRow).toHaveCount(0);
-  await expect(ada.getByRole('status')).toContainText('Rowan Reviewer’s account was deleted.');
+  await expect(ada.getByRole('status').filter({ hasText: 'deleted' })).toContainText('Rowan Reviewer’s account was deleted.');
 
   // What Rowan approved still reads as Rowan's work, with the same fingerprint.
   await ada.goto('/rooms/r-users/review');
@@ -128,16 +136,22 @@ test('the Users list reads in Thai, and the server refuses to delete someone who
   expect(await refused.json()).toMatchObject({ error: { message: 'Switch Eddie Editor off before deleting the account.' } });
   await ada.evaluate(() => localStorage.setItem('glasshouse:lang', 'th'));
   await ada.goto('/admin/users');
-  await expect(ada.getByRole('row', { name: 'Eddie Editor' }).getByText('ใช้งานอยู่')).toBeVisible();
-  await expect(ada.getByRole('row', { name: 'Eddie Editor' }).getByRole('button', { name: 'ปิดใช้งาน Eddie Editor' })).toBeVisible();
+  const eddieRow = ada.getByRole('row', { name: 'Eddie Editor (ed@company.test)' });
+  await expect(eddieRow.getByText('ใช้งานอยู่')).toBeVisible();
   await shot(ada, 'users-default-th');
-  await ada.getByRole('row', { name: 'Eddie Editor' }).getByRole('button', { name: 'ปิดใช้งาน Eddie Editor' }).click();
+  await eddieRow.getByRole('button', { name: 'การดำเนินการสำหรับ Eddie Editor (ed@company.test)' }).click();
+  await ada.getByRole('menuitem', { name: 'ปิดใช้งาน' }).click();
+  await expect(ada.getByRole('alertdialog')).toContainText('ปิดใช้งาน Eddie Editor (ed@company.test)?');
   await ada.getByRole('alertdialog').getByRole('button', { name: 'ปิดใช้งาน' }).click();
-  await expect(ada.getByRole('checkbox', { name: 'แสดงผู้ที่ปิดใช้งาน (1)' })).toBeVisible();
-  await ada.getByRole('checkbox', { name: 'แสดงผู้ที่ปิดใช้งาน (1)' }).check();
+  await expect(eddieRow).toHaveCount(0);
+  await ada.getByRole('group', { name: 'กรองตามสถานะ' }).getByRole('button', { name: 'ปิดใช้งานแล้ว 1' }).click();
+  await expect(eddieRow.getByText('ปิดใช้งานแล้ว')).toBeVisible();
   await shot(ada, 'users-show-switched-off-th');
-  await ada.getByRole('row', { name: 'Eddie Editor' }).getByRole('button', { name: 'เปิดใช้งาน Eddie Editor' }).click();
-  await expect(ada.getByRole('row', { name: 'Eddie Editor' }).getByText('ใช้งานอยู่')).toBeVisible();
+  await eddieRow.getByRole('button', { name: 'การดำเนินการสำหรับ Eddie Editor (ed@company.test)' }).click();
+  await ada.getByRole('menuitem', { name: 'เปิดใช้งานอีกครั้ง' }).click();
+  await expect(eddieRow).toHaveCount(0);
+  await ada.getByRole('group', { name: 'กรองตามสถานะ' }).getByRole('button', { name: 'ทุกคน' }).click();
+  await expect(eddieRow.getByText('ใช้งานอยู่')).toBeVisible();
   await ctx.close();
 });
 
@@ -159,12 +173,15 @@ test('a deleted company account stays blocked until an admin adds the person aga
   await ployCtx.close();
 
   // Ada switches them off, then deletes the account; the confirmation says the company sign-in is blocked.
-  await ada.goto('/admin/users');
-  const row = ada.getByRole('row', { name: 'Ploy SSO' });
-  await row.getByRole('button', { name: 'Switch off Ploy SSO' }).click();
+  await ada.goto('/admin/users?status=all');
+  const row = ada.getByRole('row', { name: /^Ploy SSO \(/ });
+  const menu = row.getByRole('button', { name: /^Actions for Ploy SSO / });
+  await menu.click();
+  await ada.getByRole('menuitem', { name: 'Switch off' }).click();
   await ada.getByRole('alertdialog').getByRole('button', { name: 'Switch off' }).click();
-  await ada.getByRole('checkbox', { name: /Show switched off/ }).check();
-  await row.getByRole('button', { name: 'Delete Ploy SSO’s account' }).click();
+  await expect(row.getByText('Switched off', { exact: true })).toBeVisible();
+  await menu.click();
+  await ada.getByRole('menuitem', { name: 'Delete account' }).click();
   await expect(ada.getByRole('alertdialog')).toContainText('Their company sign-in is blocked from Glasshouse until an admin adds them again. Their name stays on past work, marked removed. This can\'t be undone.');
   await shot(ada, 'confirm-delete-sso');
   await ada.getByRole('alertdialog').getByRole('button', { name: 'Delete account' }).click();

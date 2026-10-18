@@ -15,16 +15,17 @@ test('an admin renames a person and the Users screen shows the new name', async 
   await signIn(page, 'admin@company.test', 'admin-password-1');
   await expect(page.getByText('Connected to the Glasshouse server')).toBeVisible();
   await page.goto('/admin/users');
-  const row = page.getByRole('row', { name: /Eddie Editor/ });
-  await row.getByRole('button', { name: 'Rename Eddie Editor' }).click();
-  await page.getByRole('textbox', { name: 'New name for Eddie Editor' }).fill('Eddie Editorson');
-  await page.keyboard.press('Enter');
-  await expect(page.getByRole('row', { name: /Eddie Editorson/ })).toBeVisible();
+  const rename = async (from: string, to: string): Promise<void> => {
+    await page.getByRole('button', { name: `Actions for ${from} (ed@company.test)` }).click();
+    await page.getByRole('menuitem', { name: 'Rename' }).click();
+    await page.getByRole('textbox', { name: `New name for ${from} (ed@company.test)` }).fill(to);
+    await page.keyboard.press('Enter');
+    await expect(page.getByRole('row', { name: `${to} (ed@company.test)` })).toBeVisible();
+  };
+  await rename('Eddie Editor', 'Eddie Editorson');
   // Put it back, so other specs that look for his name still find it.
-  await page.getByRole('button', { name: 'Rename Eddie Editorson' }).click();
-  await page.getByRole('textbox', { name: 'New name for Eddie Editorson' }).fill('Eddie Editor');
-  await page.keyboard.press('Enter');
-  await expect(page.getByRole('button', { name: 'Rename Eddie Editor', exact: true })).toBeVisible();
+  await rename('Eddie Editorson', 'Eddie Editor');
+  await expect(page.getByRole('button', { name: 'Actions for Eddie Editor (ed@company.test)' })).toBeFocused();
 });
 
 test('an admin can download a workspace backup', async ({ page }) => {

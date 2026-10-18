@@ -288,3 +288,30 @@ export const IconCatalog = (p: IconProps) => (
     <path d="M4.5 4h1.5M4.5 8h1.5M4.5 12h1.5" />
   </svg>
 );
+/** A row's actions menu: three drawn dots. */
+export const IconMore = (p: IconProps) => (
+  <svg {...frame(16)} stroke="none" fill="currentColor" {...p}>
+    {[3.5, 8, 12.5].map((x) => (
+      <circle key={x} cx={x} cy="8" r="1.4" />
+    ))}
+  </svg>
+);
+/** Switching an account off or on. */
+export const IconPower = (p: IconProps) => (
+  <svg {...frame(14)} strokeLinecap="round" {...p}>
+    <path d="M7 1.75V6.5" />
+    <path d="M4.2 3.6A4.6 4.6 0 1 0 9.8 3.6" />
+  </svg>
+);
+export const IconKey = (p: IconProps) => (
+  <svg {...frame(14)} strokeLinecap="round" strokeLinejoin="round" {...p}>
+    <circle cx="4.5" cy="9.5" r="2.75" />
+    <path d="M6.5 7.5L12 2M10 4L11.75 5.75M8.5 5.5L10 7" />
+  </svg>
+);
+/** A sorted column's direction; points down for descending. */
+export const IconSortArrow = (p: IconProps) => (
+  <svg {...frame(12)} strokeLinecap="round" strokeLinejoin="round" {...p}>
+    <path d="M6 2.5V9.5M3 6.5L6 9.5L9 6.5" />
+  </svg>
+);
