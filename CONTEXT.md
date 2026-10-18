@@ -18,6 +18,10 @@ _Avoid_: Location, branch, facility
 A single surveyed physical space within a Site where racks and equipment are installed.
 _Avoid_: Server room, closet, area
 
+**Archived**:
+A Project, Site or Room an Admin has retired without deleting it: read-only, hidden unless asked for, restorable any time. It is stored only on the item archived; what sits below is archived with it, and a Room archived on its own stays archived when its Site comes back.
+_Avoid_: Deleted, closed, decommissioned
+
 **Plan**:
 The installation design for exactly one Room; the unit that is revised, reviewed and exported.
 _Avoid_: Project (when meaning a single room's design), drawing, layout

@@ -146,6 +146,12 @@ Colour never works alone. Blocking issues use a solid circle icon, warnings a da
 - **Fingerprint**: the first 12 hex characters of the approved revision's hash, in the mono face and the muted ink, never a second stamp. It sits on the approval stamp in the review panel and in the title block of the Install sheet, so a printed sheet can be matched to what was approved.
 - **Claim-lost dialog**: the ordinary centred popup, narrowed to 480 px. It says who took over and how many changes were not saved, with "Download my version" as the primary action and Dismiss beside it. Discarding asks once more, because the copy lives only in that browser.
 
+## Archive
+
+- Admins archive a project, site or room from the tree's row actions, behind the ordinary primary-button confirmation that says what goes with it ("Archive Annex and its 2 rooms? They become read-only and hidden. You can restore them any time."). Restoring needs the parent restored first: the row's Restore reads "Restore Site Annex first." and says so when pressed.
+- Archived items leave the tree, the home page, the hero and the title block's counts. "Show archived" (with how many) sits under the tree, only once something is archived, and is kept in this browser; archived rows then read in the quiet ink with a dashed, hatched "Archived" stamp. Only the item that was archived wears the stamp; what is archived with it is greyed. The open room and the way to it never hide.
+- An archived room opens with one dashed neutral strip under the view tabs: "Archived by Ada on 18 Oct 2026. Read-only." with Restore for admins (or "Archived with site Annex … Restore Site Annex first."). Grey, not amber: it is filed, not blocked. Nothing is added to the drawing itself. Controls are disabled the way an approved revision's are, without Start new draft; the Install sheet still opens.
+
 ## Browser tab
 
 - The document title names the place: "Server room A · Network · Glasshouse", in the interface language.
