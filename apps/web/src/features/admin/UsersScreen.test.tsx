@@ -167,9 +167,9 @@ describe('switching people off and on', () => {
   const mockServer = (list: unknown[] = all) =>
     vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
       const url = String(input);
-      if (url === '/api/admin/users/b' && init?.method === 'PATCH') return json({ ...users[1], ...JSON.parse(init.body as string) });
-      if (url === '/api/admin/users/c' && init?.method === 'PATCH') return json({ ...eddie, ...JSON.parse(init.body as string) });
-      if (url === '/api/admin/users/c' && init?.method === 'DELETE') return new Response(null, { status: 204 });
+      const target = /^\/api\/admin\/users\/([^/]+)$/.exec(url);
+      if (target && init?.method === 'PATCH') return json({ ...(list as { id: string }[]).find((u) => u.id === target[1]), ...JSON.parse(init.body as string) });
+      if (target && init?.method === 'DELETE') return new Response(null, { status: 204 });
       if (url === '/api/people') return json({ people: [] });
       return json(list);
     });
@@ -249,7 +249,7 @@ describe('switching people off and on', () => {
     expect(screen.getByRole('row', { name: /Eddie/ })).toBeInTheDocument();
   });
 
-  it('keeps the server’s refusals, such as switching yourself off, and offers no switch-off on your own row', async () => {
+  it('offers no switch-off or delete on your own row', async () => {
     mockServer();
     render(<MemoryRouter><UsersScreen /><ConfirmDialog /></MemoryRouter>);
     const me = await screen.findByRole('row', { name: /Few/ });
@@ -272,7 +272,7 @@ describe('switching people off and on', () => {
     await userEvent.click(within(screen.getByRole('row', { name: /Eddie/ })).getByRole('button', { name: 'Delete Eddie’s account' }));
     const dialog = screen.getByRole('alertdialog');
     expect(dialog).toHaveTextContent('Delete Eddie’s account (eddie@company.test)?');
-    expect(dialog).toHaveTextContent("They can't sign in again with it. Their name stays on past work, marked removed. This can't be undone.");
+    expect(dialog).toHaveTextContent("They can't sign in again with this account. Their name stays on past work, marked removed. This can't be undone.");
     expect(verbs(spy, 'DELETE')).toHaveLength(0);
     expect(within(dialog).getByRole('button', { name: 'Delete account' })).toHaveClass('btn--danger-solid');
     await userEvent.click(within(dialog).getByRole('button', { name: 'Delete account' }));
@@ -319,5 +319,61 @@ describe('switching people off and on', () => {
     } finally {
       await useLangStore.getState().setLang('en');
     }
+  });
+
+  it('words the delete confirmation for a company account as a blocked sign-in', async () => {
+    const sso = { ...eddie, id: 'd', email: 'dao@company.test', displayName: 'Dao', source: 'oidc' };
+    mockServer([...users, sso]);
+    render(<MemoryRouter><UsersScreen /><ConfirmDialog /></MemoryRouter>);
+    await userEvent.click(await screen.findByRole('checkbox', { name: 'Show switched off (1)' }));
+    await userEvent.click(within(screen.getByRole('row', { name: /Dao/ })).getByRole('button', { name: 'Delete Dao’s account' }));
+    const dialog = screen.getByRole('alertdialog');
+    expect(dialog).toHaveTextContent("Their company sign-in is blocked from Glasshouse until an admin adds them again. Their name stays on past work, marked removed. This can't be undone.");
+    expect(dialog).not.toHaveTextContent("They can't sign in again");
+  });
+
+  it('shows the server’s refusal when a switch-off is refused, and keeps the row', async () => {
+    const zedAdmin = { ...users[0], id: 'z', displayName: 'Zed', email: 'zed@company.test' };
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (_input, init) => (init?.method === 'PATCH' ? json({ error: { message: 'This is the last admin. Make someone else an admin first.' } }, 409) : json([...users, zedAdmin])));
+    render(<MemoryRouter><UsersScreen /><ConfirmDialog /></MemoryRouter>);
+    await userEvent.click(within(await screen.findByRole('row', { name: /Zed/ })).getByRole('button', { name: 'Switch off Zed' }));
+    await userEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Switch off' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('last admin');
+    expect(within(screen.getByRole('row', { name: /Zed/ })).getByText('Active')).toBeInTheDocument();
+  });
+
+  describe('keyboard focus after a row goes away', () => {
+    const nok = { ...users[1], id: 'n', displayName: 'Nok', email: 'nok@company.test' };
+    const zed = { ...eddie, id: 'z', displayName: 'Zed', email: 'zed@company.test' };
+
+    it('moves to the next row’s Switch off after switching someone off', async () => {
+      mockServer([...users, nok]);
+      render(<MemoryRouter><UsersScreen /><ConfirmDialog /></MemoryRouter>);
+      await userEvent.click(within(await screen.findByRole('row', { name: /Ploy/ })).getByRole('button', { name: 'Switch off Ploy' }));
+      await userEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Switch off' }));
+      await vi.waitFor(() => expect(screen.queryByRole('row', { name: /Ploy/ })).toBeNull());
+      await vi.waitFor(() => expect(screen.getByRole('button', { name: 'Switch off Nok' })).toHaveFocus());
+    });
+
+    it('moves to the Show switched off checkbox when no row below has that action', async () => {
+      mockServer();
+      render(<MemoryRouter><UsersScreen /><ConfirmDialog /></MemoryRouter>);
+      await userEvent.click(within(await screen.findByRole('row', { name: /Ploy/ })).getByRole('button', { name: 'Switch off Ploy' }));
+      await userEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Switch off' }));
+      await vi.waitFor(() => expect(screen.getByRole('checkbox', { name: 'Show switched off (2)' })).toHaveFocus());
+    });
+
+    it('moves to the next switched-off row’s Delete account after deleting, else to the checkbox', async () => {
+      mockServer([...users, eddie, zed]);
+      render(<MemoryRouter><UsersScreen /><ConfirmDialog /></MemoryRouter>);
+      await userEvent.click(await screen.findByRole('checkbox', { name: 'Show switched off (2)' }));
+      await userEvent.click(within(screen.getByRole('row', { name: /Eddie/ })).getByRole('button', { name: 'Delete Eddie’s account' }));
+      await userEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Delete account' }));
+      await vi.waitFor(() => expect(screen.getByRole('button', { name: 'Delete Zed’s account' })).toHaveFocus());
+      await userEvent.click(screen.getByRole('button', { name: 'Delete Zed’s account' }));
+      await userEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Delete account' }));
+      await vi.waitFor(() => expect(screen.queryByRole('row', { name: /Zed/ })).toBeNull());
+      await vi.waitFor(() => expect(screen.getByRole('checkbox', { name: 'Show switched off (0)' })).toHaveFocus());
+    });
   });
 });

@@ -4,26 +4,28 @@ import userEvent from '@testing-library/user-event';
 import { createMemoryRouter, RouterProvider } from 'react-router';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { routes } from '../../app/routes';
+import { resetPeopleStore, usePeopleStore } from '../../people/peopleStore';
 import { resetWorkspaceStore, useWorkspaceStore } from '../../store/workspaceStore';
 
 const AT = '2026-10-14T00:00:00.000Z';
 let server = '';
 let mdf = '';
 
-function approveMdf(): void {
+function approveMdf(ids: { by?: string; designer?: string; reviewer?: string } = {}): void {
   const s = useWorkspaceStore.getState();
   const room = s.workspace.projects[0]!.sites[0]!.rooms[1]!;
   const content = currentRevision(room.plan).content;
   const ex = content.objects.find((o) => o.type === 'existing_rack')!;
   const range = content.objects.flatMap((o) => (o.type === 'rack' ? o.reserved : []))[0]!;
   s.dispatch({ type: 'plan', roomId: room.id, command: { type: 'object/remove', id: ex.id } });
-  s.dispatch({ type: 'review', roomId: room.id, command: { type: 'review/acknowledge', reservedRangeId: range.id, reason: 'Customer will not share figures', by: 'Somchai', at: AT } });
-  s.dispatch({ type: 'review', roomId: room.id, command: { type: 'review/submit', designedBy: 'Ploy', at: AT } });
-  const problem = s.dispatch({ type: 'review', roomId: room.id, command: { type: 'review/approve', reviewer: 'Nok', at: AT } });
+  s.dispatch({ type: 'review', roomId: room.id, command: { type: 'review/acknowledge', reservedRangeId: range.id, reason: 'Customer will not share figures', by: 'Somchai', ...(ids.by ? { byId: ids.by } : {}), at: AT } });
+  s.dispatch({ type: 'review', roomId: room.id, command: { type: 'review/submit', designedBy: 'Ploy', ...(ids.designer ? { byId: ids.designer } : {}), at: AT } });
+  const problem = s.dispatch({ type: 'review', roomId: room.id, command: { type: 'review/approve', reviewer: 'Nok', ...(ids.reviewer ? { byId: ids.reviewer } : {}), at: AT } });
   if (problem) throw new Error(problem.message);
 }
 
 beforeEach(() => {
+  resetPeopleStore();
   resetWorkspaceStore();
   const seeded = withSample(createWorkspace(), AT);
   if (!seeded.ok) throw new Error(seeded.error.message);
@@ -304,4 +306,15 @@ describe('panel schedules', () => {
     open(approvedRoom(false));
     expect(screen.queryByRole('table', { name: 'Panel schedules' })).toBeNull();
   });
+});
+
+it('keeps a removed person on the sheet as recorded, marked removed, in the title block and the acknowledged list', () => {
+  approveMdf({ by: 'u-som', designer: 'u-ploy', reviewer: 'u-nok' });
+  usePeopleStore.setState({ loaded: true, byId: {}, gone: ['u-som', 'u-ploy', 'u-nok'] });
+  const { container } = open(mdf);
+  const firstTitle = container.querySelector('.sheet-title')!;
+  expect(firstTitle).toHaveTextContent('Designed by Ploy (removed)');
+  expect(firstTitle).toHaveTextContent('Nok (removed)');
+  expect(container).toHaveTextContent('accepted by Somchai (removed)');
+  expect(container).not.toHaveTextContent(/undefined|u-ploy|u-nok|u-som/);
 });

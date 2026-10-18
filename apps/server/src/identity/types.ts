@@ -33,6 +33,15 @@ export interface Session {
   expiresAt: string;
 }
 
+/** What a deleted account leaves behind so its company sign-in stays blocked until an admin adds the person again. Hashes only. */
+export interface RemovedSignIn {
+  subjectHash: string | null;
+  emailHash: string;
+  removedAt: string;
+  /** User id of the admin who deleted the account. */
+  removedBy: string;
+}
+
 export class DuplicateUserError extends Error {}
 
 export interface IdentityStore {
@@ -42,8 +51,12 @@ export interface IdentityStore {
   listUsers(): Promise<User[]>;
   createUser(user: User): Promise<void>;
   updateUser(id: string, patch: UserPatch): Promise<User | null>;
-  /** Removes the row and its sessions; false when nobody had that id. The email and sign-in are free again afterwards. */
-  deleteUser(id: string): Promise<boolean>;
+  /** Removes the row and its sessions and records the removal in one step; false when nobody had that id. */
+  deleteUser(id: string, removal: RemovedSignIn): Promise<boolean>;
+  /** A removal matching the sign-in's subject or verified email hash, if any. */
+  findRemoval(subjectHash: string | null, emailHash: string | null): Promise<RemovedSignIn | null>;
+  /** Forgets removals for this email (and the subject recorded with it): an admin added the person again. */
+  clearRemovals(emailHash: string): Promise<number>;
   countActiveAdmins(): Promise<number>;
   createSession(session: Session): Promise<void>;
   findSession(tokenHash: string): Promise<Session | null>;

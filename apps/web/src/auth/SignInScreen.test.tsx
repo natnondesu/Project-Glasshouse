@@ -140,7 +140,7 @@ it('shows the server’s reason when a password sign-in fails, and why the sessi
   expect(await screen.findByRole('alert')).toHaveTextContent('don’t match');
 });
 
-const CODES = ['cancelled', 'expired', 'unavailable', 'refused', 'exists', 'switched_off', 'generic'] as const;
+const CODES = ['cancelled', 'expired', 'unavailable', 'refused', 'exists', 'switched_off', 'removed', 'generic'] as const;
 
 it.each(CODES)('words the company sign-in code %s itself, in English', (code) => {
   window.history.replaceState(null, '', `/?signin_error=${code}`);

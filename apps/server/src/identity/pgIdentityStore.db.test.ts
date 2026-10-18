@@ -1,6 +1,7 @@
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testcontainers/postgresql';
 import { afterAll, beforeAll, expect, it } from 'vitest';
 import { PgIdentityStore } from './pgIdentityStore';
+import { hashEmail, hashSubject } from './removed';
 import { DuplicateUserError, type User } from './types';
 
 let container: StartedPostgreSqlContainer;
@@ -36,10 +37,16 @@ it('deletes a user, cascades their sessions and frees the email and sign-in for 
   const s = await PgIdentityStore.connect(container.getConnectionUri());
   await s.createUser(user({ id: 'gone', email: 'gone@company.test', oidcSubject: 'sub-gone' }));
   await s.createSession({ tokenHash: 'gone-h', userId: 'gone', createdAt: '2026-10-18T00:00:00.000Z', lastSeenAt: '2026-10-18T00:00:00.000Z', expiresAt: '2026-10-19T00:00:00.000Z' });
-  expect(await s.deleteUser('gone')).toBe(true);
+  const removal = { subjectHash: hashSubject('sub-gone'), emailHash: hashEmail('gone@company.test'), removedAt: '2026-10-18T09:00:00.000Z', removedBy: 'admin' };
+  expect(await s.deleteUser('gone', removal)).toBe(true);
+  expect(await s.findRemoval(hashSubject('sub-gone'), null)).toEqual(removal);
+  expect(await s.findRemoval(null, hashEmail('GONE@company.test'))).toEqual(removal);
+  expect(await s.findRemoval(null, null)).toBeNull();
   expect(await s.findUserById('gone')).toBeNull();
   expect(await s.findSession('gone-h')).toBeNull();
-  expect(await s.deleteUser('gone')).toBe(false);
+  expect(await s.deleteUser('gone', removal)).toBe(false);
+  expect(await s.clearRemovals(hashEmail('gone@company.test'))).toBe(1);
+  expect(await s.findRemoval(hashSubject('sub-gone'), null)).toBeNull();
   await s.createUser(user({ id: 'back', email: 'Gone@company.test', oidcSubject: 'sub-gone' }));
   expect((await s.findUserByEmail('gone@company.test'))?.id).toBe('back');
   await s.close();

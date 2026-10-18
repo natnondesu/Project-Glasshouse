@@ -90,7 +90,7 @@ test('switch off hides someone, delete removes them, and what they approved stil
   await shot(ada, 'users-show-switched-off');
   await rowanRow.getByRole('button', { name: 'Delete Rowan Reviewer’s account' }).click();
   await expect(ada.getByRole('alertdialog')).toContainText('Delete Rowan Reviewer’s account (rowan@company.test)?');
-  await expect(ada.getByRole('alertdialog')).toContainText("Their name stays on past work, marked removed. This can't be undone.");
+  await expect(ada.getByRole('alertdialog')).toContainText("They can't sign in again with this account. Their name stays on past work, marked removed. This can't be undone.");
   await shot(ada, 'confirm-delete');
   await ada.getByRole('alertdialog').getByRole('button', { name: 'Delete account' }).click();
   await expect(rowanRow).toHaveCount(0);
@@ -139,4 +139,57 @@ test('the Users list reads in Thai, and the server refuses to delete someone who
   await ada.getByRole('row', { name: 'Eddie Editor' }).getByRole('button', { name: 'เปิดใช้งาน Eddie Editor' }).click();
   await expect(ada.getByRole('row', { name: 'Eddie Editor' }).getByText('ใช้งานอยู่')).toBeVisible();
   await ctx.close();
+});
+
+test('a deleted company account stays blocked until an admin adds the person again, then links with the role the admin chose', async ({ browser }) => {
+  const adaCtx = await browser.newContext();
+  const ada = await adaCtx.newPage();
+  await signIn(ada, 'admin@company.test', 'admin-password-1');
+  await expect(ada.getByText('Connected to the Glasshouse server')).toBeVisible();
+
+  // Ploy SSO signs in through the company account (a viewer, as defaults go).
+  const companySignIn = async (page: Page): Promise<void> => {
+    await page.goto('/');
+    await page.getByRole('link', { name: 'Continue with company account' }).click();
+  };
+  const ployCtx = await browser.newContext();
+  const ploy = await ployCtx.newPage();
+  await companySignIn(ploy);
+  await expect(ploy.getByRole('button', { name: 'Account menu for Ploy SSO' })).toBeVisible();
+  await ployCtx.close();
+
+  // Ada switches them off, then deletes the account; the confirmation says the company sign-in is blocked.
+  await ada.goto('/admin/users');
+  const row = ada.getByRole('row', { name: 'Ploy SSO' });
+  await row.getByRole('button', { name: 'Switch off Ploy SSO' }).click();
+  await ada.getByRole('alertdialog').getByRole('button', { name: 'Switch off' }).click();
+  await ada.getByRole('checkbox', { name: /Show switched off/ }).check();
+  await row.getByRole('button', { name: 'Delete Ploy SSO’s account' }).click();
+  await expect(ada.getByRole('alertdialog')).toContainText('Their company sign-in is blocked from Glasshouse until an admin adds them again. Their name stays on past work, marked removed. This can\'t be undone.');
+  await shot(ada, 'confirm-delete-sso');
+  await ada.getByRole('alertdialog').getByRole('button', { name: 'Delete account' }).click();
+  await expect(row).toHaveCount(0);
+
+  // Signing in again is refused with a reason, and creates nothing.
+  const blockedCtx = await browser.newContext();
+  const blocked = await blockedCtx.newPage();
+  await companySignIn(blocked);
+  await expect(blocked.getByRole('alert')).toContainText('Your Glasshouse account was removed. Ask an admin to add you again.');
+  await shot(blocked, 'signin-removed');
+  await blockedCtx.close();
+  const afterBlock = (await (await ada.request.get('/api/admin/users')).json()) as { email: string }[];
+  expect(afterBlock.some((u) => u.email === 'ploy.sso@company.test')).toBe(false);
+
+  // An admin adds the person again with the role they choose; their company sign-in then links to that account.
+  const added = await ada.request.post('/api/admin/users', { headers: API, data: { email: 'ploy.sso@company.test', displayName: 'Ploy SSO', role: 'editor' } });
+  expect(added.status()).toBe(201);
+  const backCtx = await browser.newContext();
+  const back = await backCtx.newPage();
+  await companySignIn(back);
+  await expect(back.getByRole('button', { name: 'Account menu for Ploy SSO' })).toBeVisible();
+  const me = (await (await back.request.get('/auth/me')).json()) as { role: string; mustChangePassword: boolean };
+  expect(me).toMatchObject({ role: 'editor', mustChangePassword: false });
+  await expect(back.getByText('You can view this workspace. Ask an admin for edit access.')).toHaveCount(0);
+  await backCtx.close();
+  await adaCtx.close();
 });

@@ -1057,6 +1057,7 @@ export const en = {
       refused: 'The company sign-in did not let you in. Sign in at the company sign-in page first, then try again.',
       exists: 'An account with this email already exists in Glasshouse. Ask an admin to link it.',
       switched_off: 'Your Glasshouse account is switched off. Ask an admin.',
+      removed: 'Your Glasshouse account was removed. Ask an admin to add you again.',
       generic: 'The company sign-in failed. Try again, or ask an admin.',
     },
     passwordFailed: 'The password could not be changed.',
@@ -1163,7 +1164,8 @@ export const en = {
     deleteAccount: 'Delete account',
     deleteFor: (name: string) => `Delete ${name}’s account`,
     deleteTitle: (name: string, email: string) => `Delete ${name}’s account (${email})?`,
-    deleteBody: "They can't sign in again with it. Their name stays on past work, marked removed. This can't be undone.",
+    deleteBody: (sso: boolean) =>
+      `${sso ? 'Their company sign-in is blocked from Glasshouse until an admin adds them again.' : "They can't sign in again with this account."} Their name stays on past work, marked removed. This can't be undone.`,
     deletedNotice: (name: string) => `${name}’s account was deleted.`,
     requestFailed: (status: number) => `The server answered ${status}.`,
     unreachable: 'Could not reach the Glasshouse server. Check your connection and try again.',

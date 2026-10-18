@@ -345,4 +345,38 @@ describe('people whose account was removed', () => {
     expect(screen.getByRole('status')).toHaveTextContent('by Nok R.');
     expect(screen.getByRole('status')).not.toHaveTextContent('removed');
   });
+
+  it('shows a person who is in the directory by their live name, even once the directory is confirmed', () => {
+    review({ type: 'review/submit', designedBy: 'Ploy S.', byId: 'designer', at: AT });
+    review({ type: 'review/approve', reviewer: 'Nok R.', byId: 'approver', at: AT });
+    signInAs('viewer', 'viewer');
+    usePeopleStore.setState({ loaded: true, byId: { approver: { name: 'Nok Rattana', email: 'nok@x.test' }, designer: { name: 'Ploy Sri', email: 'ploy@x.test' } }, gone: [] });
+    open();
+    expect(screen.getByRole('status')).toHaveTextContent('by Nok Rattana (nok@x.test)');
+    expect(document.body).not.toHaveTextContent('removed');
+  });
+
+  it('marks a removed person on history lines written before lines carried an id, so the line agrees with the stamp', () => {
+    review({ type: 'review/submit', designedBy: 'Ploy S.', byId: 'designer', at: AT });
+    review({ type: 'review/approve', reviewer: 'Nok R.', byId: 'approver', at: AT });
+    useWorkspaceStore.setState((state) => ({
+      workspace: JSON.parse(JSON.stringify(state.workspace, (key, value: unknown) => (key === 'byId' && typeof value === 'string' && ['designer', 'approver'].includes(value) ? undefined : value))),
+    }));
+    expect(JSON.stringify(useWorkspaceStore.getState().workspace.projects[0]!.sites[0]!.rooms[0]!.plan.history)).not.toContain('approver');
+    signInAs('viewer', 'viewer');
+    gone();
+    open();
+    const events = screen.getByRole('list', { name: 'What happened, newest first' });
+    expect(events).toHaveTextContent('Approved by Nok R. (removed)');
+    expect(events).toHaveTextContent('Submitted for review by Ploy S. (removed)');
+  });
+
+  it('marks who accepted unknown demand once their account is removed', () => {
+    seed({ reserved: true });
+    review({ type: 'review/acknowledge', reservedRangeId: 'rsv', reason: 'Customer will not share figures', by: 'Somchai', byId: 'designer', at: AT });
+    signInAs('viewer', 'viewer');
+    gone();
+    open();
+    expect(screen.getByText('Accepted by Somchai (removed): Customer will not share figures')).toBeInTheDocument();
+  });
 });

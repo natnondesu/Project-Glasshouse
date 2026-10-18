@@ -1,4 +1,4 @@
-import type { Blocker, HistoryEvent, Issue } from '@glasshouse/domain';
+import type { Blocker, HistoryEvent, Issue, Plan } from '@glasshouse/domain';
 import type { Messages } from '../../i18n';
 import { recordedName, type Directory } from '../../ui/person';
 
@@ -16,7 +16,7 @@ export function blockerText(m: Messages, blocker: Blocker): string {
 
 /** English wording as recorded, with the signer's name swapped for its marked form where the line puts it. */
 function markRecorded(event: HistoryEvent, by: string, marked: string): string {
-  if (event.code === 'submitted' || event.code === 'approved') return event.action.replace(`by ${by}`, `by ${marked}`);
+  if (event.code === 'submitted' || event.code === 'approved') return event.action.replace(`by ${by}`, () => `by ${marked}`);
   return event.action.startsWith(by) ? marked + event.action.slice(by.length) : event.action;
 }
 
@@ -33,4 +33,28 @@ export function historyText(m: Messages, event: HistoryEvent, people?: Directory
     return (phrase && phrase({ ...event.params, by: marked })) || markRecorded(event, by, marked);
   }
   return (event.code && m.history[event.code]?.(event.params ?? {})) || event.action;
+}
+
+/**
+ * Who signed a history line, by user id. Lines from before ids were recorded on them take it from the
+ * revision or note they produced (matched by name, and by time for acknowledgements and notes); otherwise unknown.
+ */
+export function historySignerId(plan: Plan, event: HistoryEvent): string | undefined {
+  const params = event.params;
+  if (typeof params?.byId === 'string') return params.byId;
+  const by = params?.by;
+  if (typeof by !== 'string') return undefined;
+  const revision = plan.revisions.find((r) => r.number === event.revision);
+  switch (event.code) {
+    case 'submitted':
+      return revision?.designedBy?.name === by ? revision.designedBy.userId : undefined;
+    case 'approved':
+      return revision?.approvedBy?.name === by ? revision.approvedBy.userId : undefined;
+    case 'acknowledged':
+      return revision?.acknowledgements.find((a) => a.by.name === by && a.by.at === event.at)?.by.userId;
+    case 'note_added':
+      return plan.notes.find((n) => n.revision === event.revision && n.by === by && n.createdAt === event.at)?.byId;
+    default:
+      return undefined;
+  }
 }

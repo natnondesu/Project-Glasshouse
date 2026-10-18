@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import type { FastifyInstance, FastifyReply } from 'fastify';
 import { z } from 'zod';
 import { exportBackup } from '@glasshouse/domain';
+import { removalFor, hashEmail } from '../identity/removed';
 import { hashPassword, temporaryPassword } from '../identity/passwords';
 import { DuplicateUserError, ROLES, type IdentityStore, type User } from '../identity/types';
 import type { ClaimRegistry } from '../claims';
@@ -53,6 +54,8 @@ export function registerAdmin(api: FastifyInstance, { store, service, claims, lo
         if (e instanceof DuplicateUserError) return refuse(reply, 409, 'invalid_value', 'Someone with this email already has an account.');
         throw e;
       }
+      // Adding the person again lifts the block a deletion left on their company sign-in; it links to this account.
+      await store.clearRemovals(hashEmail(user.email));
       return reply.code(201).send({ user: toAdminUser(user), temporaryPassword: temp });
     }));
 
@@ -75,10 +78,8 @@ export function registerAdmin(api: FastifyInstance, { store, service, claims, lo
       const target = await store.findUserById(id);
       if (!target) return refuse(reply, 404, 'not_found', 'That user no longer exists.');
       if (id === request.actor!.id) return refuse(reply, 409, 'invalid_value', 'You can’t delete your own account. Ask another admin.');
-      // A switched-off admin is not counted, so this only trips if the rules above are ever loosened.
-      if (target.role === 'admin' && target.active && (await store.countActiveAdmins()) <= 1) return refuse(reply, 409, 'invalid_value', 'This is the last admin. Make someone else an admin first.');
       if (target.active) return refuse(reply, 409, 'invalid_value', `Switch ${target.displayName} off before deleting the account.`);
-      if (!(await store.deleteUser(id))) return refuse(reply, 404, 'not_found', 'That user no longer exists.');
+      if (!(await store.deleteUser(id, removalFor(target, request.actor!.id, now().toISOString())))) return refuse(reply, 404, 'not_found', 'That user no longer exists.');
       claims?.releaseAllFor(id);
       // Who did it is the only record of an admin action; history on rooms keeps the name as recorded, not a link to this row.
       request.log.info(

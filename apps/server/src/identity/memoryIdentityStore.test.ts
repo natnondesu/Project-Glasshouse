@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { MemoryIdentityStore } from './memoryIdentityStore';
-import { DuplicateUserError, type User } from './types';
+import { hashEmail, hashSubject } from './removed';
+import { DuplicateUserError, type RemovedSignIn, type User } from './types';
 
 export const userFixture = (over: Partial<User> = {}): User => ({
   id: 'u1', email: 'ploy@company.test', displayName: 'Ploy S.', role: 'editor', source: 'local', oidcSubject: null,
@@ -42,17 +43,40 @@ describe('MemoryIdentityStore', () => {
   });
 });
 
+export const removalFixture = (over: Partial<RemovedSignIn> = {}): RemovedSignIn => ({ subjectHash: hashSubject('sub-1'), emailHash: hashEmail('ploy@company.test'), removedAt: '2026-10-18T09:00:00.000Z', removedBy: 'admin', ...over });
+
 describe('MemoryIdentityStore.deleteUser', () => {
   it('removes the user and their sessions, frees the email, and reports whether anyone was there', async () => {
     const s = new MemoryIdentityStore();
     await s.createUser(userFixture({ oidcSubject: 'sub-1' }));
     await s.createSession({ tokenHash: 'a', userId: 'u1', createdAt: '2026-10-18T00:00:00.000Z', lastSeenAt: '2026-10-18T00:00:00.000Z', expiresAt: '2026-10-25T00:00:00.000Z' });
-    expect(await s.deleteUser('u1')).toBe(true);
+    expect(await s.deleteUser('u1', removalFixture())).toBe(true);
     expect(await s.findUserById('u1')).toBeNull();
     expect(await s.findSession('a')).toBeNull();
-    expect(await s.deleteUser('u1')).toBe(false);
+    expect(await s.deleteUser('u1', removalFixture())).toBe(false);
+    expect(await s.findRemoval(null, hashEmail('PLOY@company.test'))).toMatchObject({ removedBy: 'admin' });
     await s.createUser(userFixture({ id: 'u2', oidcSubject: 'sub-1' }));
     expect((await s.findUserByEmail('ploy@company.test'))?.id).toBe('u2');
+  });
+});
+
+describe('MemoryIdentityStore removals', () => {
+  it('finds a removal by subject or by email, never by nothing, and forgets it by email', async () => {
+    const s = new MemoryIdentityStore();
+    await s.createUser(userFixture({ oidcSubject: 'sub-1' }));
+    await s.deleteUser('u1', removalFixture());
+    expect(await s.findRemoval(hashSubject('sub-1'), null)).not.toBeNull();
+    expect(await s.findRemoval(null, hashEmail('ploy@company.test'))).not.toBeNull();
+    expect(await s.findRemoval(null, null)).toBeNull();
+    expect(await s.findRemoval(hashSubject('other'), hashEmail('other@company.test'))).toBeNull();
+    expect(await s.clearRemovals(hashEmail('Ploy@Company.test'))).toBe(1);
+    expect(await s.findRemoval(hashSubject('sub-1'), null)).toBeNull();
+  });
+
+  it('records no removal when nobody had that id', async () => {
+    const s = new MemoryIdentityStore();
+    expect(await s.deleteUser('nobody', removalFixture())).toBe(false);
+    expect(await s.findRemoval(hashSubject('sub-1'), null)).toBeNull();
   });
 });
 
