@@ -571,12 +571,76 @@
     font-size: var(--text-md);
   }
 
-  .site-card__paper {
-    height: 112px;
+  /* The power figure's detail on one line, cut with an ellipsis (its full text stays in the room rows and the numbers). */
+  .site-card__facts > div {
+    padding-block: 6px;
+  }
+
+  .site-card__facts small {
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
+  .site-room {
+    padding: 4px 8px;
+  }
+
+  .site-room__pick {
+    min-height: 22px;
+  }
+
+  .site-card__strip {
+    min-height: 36px;
   }
 }
 
 
 .globe-notplaced[hidden] {
   display: none;
+}
+
+/* More to scroll to: the card's foot fades into its own glass instead of being cut. */
+.site-card.has-more::after {
+  content: '';
+  position: sticky;
+  bottom: -16px;
+  flex: none;
+  height: 36px;
+  margin: -36px -18px -16px;
+  background: linear-gradient(to bottom, rgb(247 249 251 / 0), rgb(247 249 251 / 0.96) 80%);
+  pointer-events: none;
+}
+
+/* The 3D folded on a short map: the room's name and the toggle in one line. */
+.site-card__strip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 4px 4px 4px 10px;
+  border: 1px solid var(--d-rule);
+  border-radius: 10px;
+  background: var(--paper);
+}
+
+.site-card__strip-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  font-size: var(--text-sm);
+  font-weight: 650;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.site-card__strip-name .mono {
+  margin-right: 4px;
+  font-size: var(--text-2xs);
+  color: var(--acc);
+}
+
+.site-card__fold {
+  flex: none;
+  white-space: nowrap;
 }

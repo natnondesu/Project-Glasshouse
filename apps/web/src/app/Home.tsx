@@ -22,6 +22,19 @@ import { useWorkspaceStore } from '../store/workspaceStore';
 import { SERVER_MODE } from '../sync/serverMode';
 import { useRoomEditsStore } from '../sync/roomEdits';
 import { useDocumentTitle } from '../ui/useDocumentTitle';
+import { usePrefersReducedMotion } from '../ui/usePrefersReducedMotion';
+
+/** How long the results settle before they are announced, so typing doesn't read out every keystroke. */
+const ANNOUNCE_MS = 400;
+
+function useAnnounced(text: string): string {
+  const [said, setSaid] = useState('');
+  useEffect(() => {
+    const timer = setTimeout(() => setSaid(text), ANNOUNCE_MS);
+    return () => clearTimeout(timer);
+  }, [text]);
+  return said;
+}
 
 /**
  * Home: the workspace bar, the globe of every site, and under it the numbers and the rooms of whatever the globe has
@@ -50,6 +63,7 @@ export function Home() {
   const [places, setPlaces] = useState<SitePlaces | null>(null);
   const [lastId] = useState(lastRoomId);
   const roomsHeading = useRef<HTMLHeadingElement>(null);
+  const reduced = usePrefersReducedMotion();
 
   const sites = useMemo(() => siteSummaries(workspace), [workspace]);
   const scope = useMemo(() => validScope(viewScope, sites), [viewScope, sites]);
@@ -58,6 +72,9 @@ export function Home() {
   const narrowed = useMemo(() => (inScope ? narrowSites(inScope, words) : null), [inScope, words]);
   const rooms = useMemo(() => (narrowed ? scopedRooms(narrowed) : []), [narrowed]);
   const matches = useMemo(() => (words.length > 0 ? new Set(narrowSites(sites, words).map((s) => s.site.id)) : null), [sites, words]);
+  const shown = useMemo(() => filterRooms(rooms, filter), [rooms, filter]);
+  const results = narrowed ? m.home.resultsStatus(shown.length, new Set(shown.map((r) => r.site.id)).size) : '';
+  const announced = useAnnounced(results);
   const pick = useMemo(() => pickUp(sites, lastId, SERVER_MODE ? edits : null, me), [sites, lastId, edits, me]);
 
   const onPlaces = useCallback((p: SitePlaces) => setPlaces(p), []);
@@ -106,12 +123,16 @@ export function Home() {
   };
   const showAttention = (): void => {
     setFilter('attention');
-    roomsHeading.current?.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
+    roomsHeading.current?.scrollIntoView?.({ behavior: reduced ? 'auto' : 'smooth', block: 'start' });
     roomsHeading.current?.focus({ preventScroll: true });
   };
 
   return (
     <div className="home-page">
+      {/* Always there, so a screen reader hears what the search, the scope and the chips leave. */}
+      <p className="visually-hidden home-results" role="status">
+        {announced}
+      </p>
       <WorkspaceBar projects={liveCounts(workspace).projects} sites={sites.length} rooms={sites.reduce((n, s) => n + s.rooms.length, 0)} pick={pick} />
       {sites.length > 0 ? (
         <GlobeHero sites={sites} lastRoomId={lastId} scope={scope} onScope={setScope} onCloseCard={closeCard} matches={matches} frame={frame} onPlaces={onPlaces} onMapFailed={onMapFailed} />
@@ -130,7 +151,7 @@ export function Home() {
             query={q}
             filter={filter}
             counts={filterCounts(rooms)}
-            rooms={filterRooms(rooms, filter)}
+            rooms={shown}
             inScope={inScope ? scopedRooms(inScope).length : null}
             lastRoomId={lastId}
             newRoomSite={scopeSite && can.edit ? { name: scopeSite.site.name, add: () => addRoom(scopeSite.site.id) } : null}

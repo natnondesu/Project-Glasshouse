@@ -2,10 +2,11 @@ import type { SiteSummary } from '../globe/sites';
 import type { RoomSummary } from './rooms';
 
 /**
- * Case- and accent-insensitive text for matching. Combining marks go on both sides, so "cafe" finds "Café" and a Thai
- * name typed without its tone marks still finds the room; Thai letters themselves are kept.
+ * Case- and accent-insensitive text for matching, on both sides: Latin accents go ("cafe" finds "Café"), and so do Thai
+ * tone marks and the thanthakhat (่ ้ ๊ ๋ ์), so a name typed without them still finds the room. Thai vowels stay:
+ * they tell words apart.
  */
-export const fold = (text: string): string => text.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase();
+export const fold = (text: string): string => text.normalize('NFD').replace(/[\u0300-\u036f\u0e48-\u0e4c]/g, '').toLowerCase();
 
 export const queryWords = (query: string): string[] => fold(query).split(/\s+/).filter(Boolean);
 

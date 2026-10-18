@@ -39,14 +39,24 @@ describe('a point label (a city or an airport)', () => {
 });
 
 describe('the space a marker keeps clear', () => {
+  it('fits a short name, so a city or airport right beside it keeps its label', () => {
+    const pin: Marker = { kind: 'site', key: 's', site, x: 300, y: 200 };
+    // Measured from the drawn label: a 2-room site's name is narrower than the generous guess.
+    const box = markerBox(pin, SIZE.width, { w: 104, h: 30 });
+    expect(box.x + box.w).toBeLessThanOrEqual(300 + 20 + 104 + 2);
+    const airport = placePointLabel({ x: 445, y: 205, width: 70, height: 15, gap: 10 }, [], [box], SIZE);
+    expect(airport).not.toBeNull();
+  });
+
   it('covers the pin and its name, on the side the name is drawn', () => {
     const right: Marker = { kind: 'site', key: 's', site, x: 200, y: 200 };
     const box = markerBox(right, SIZE.width);
     expect(box.x).toBeLessThan(200 - 12);
-    expect(box.x + box.w).toBeGreaterThan(200 + 150);
+    // Without a drawn label to measure, the name's width is guessed from its length ("Bangna campus").
+    expect(box.x + box.w).toBeGreaterThan(200 + 20 + 90);
     // Near the right edge the name flips to the left of the pin.
     const flipped = markerBox({ ...right, x: 750 }, SIZE.width);
-    expect(flipped.x).toBeLessThan(750 - 150);
+    expect(flipped.x).toBeLessThan(750 - 20 - 90);
     expect(flipped.x + flipped.w).toBeGreaterThan(750 + 12);
   });
 });

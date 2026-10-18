@@ -3,7 +3,7 @@
   position: relative;
   flex-shrink: 0;
   /* Shorter on a 1280×720 laptop but still a usable map; the numbers start just under it on a 1440×900 screen. */
-  height: clamp(400px, calc(100vh - 370px), 620px);
+  height: clamp(420px, calc(100vh - 370px), 620px);
   padding: 6px;
 }
 

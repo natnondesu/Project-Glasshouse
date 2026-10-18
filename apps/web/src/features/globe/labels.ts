@@ -13,13 +13,26 @@ export const intersects = (a: Rect, b: Rect): boolean => a.x < b.x + b.w && b.x 
 /** Room for a marker's name to the right of its pin before it flips to the left. */
 export const LABEL_ROOM_PX = 190;
 const PIN_PX = 24;
-const NAME_PX = 180;
+/** Where a marker's name starts, from the pin's centre (MapMarkers' label offset). */
+const LABEL_OFFSET_PX = 20;
+const NAME_PAD_PX = 2;
+/** A name's width guessed from its length, for when nothing drawn can be measured (13 px semibold). */
+const CHAR_PX = 7.5;
+const MAX_GUESS_PX = 220;
 const EDGE_PX = 4;
 
-/** The space a pin or count and its name take on screen, so nothing drawn on the map lands under them. */
-export function markerBox(marker: Marker, width: number): Rect {
+/**
+ * The space a pin or count and its name take on screen, so nothing drawn on the map lands under them. `label` is the
+ * name's drawn size when known; otherwise it is guessed from the name's length.
+ */
+export function markerBox(marker: Marker, width: number, label?: { w: number; h: number }): Rect {
   const flipped = marker.x > width - LABEL_ROOM_PX;
-  return { x: marker.x - PIN_PX - (flipped ? NAME_PX : 0), y: marker.y - PIN_PX, w: 2 * PIN_PX + NAME_PX, h: 2 * PIN_PX };
+  const name = marker.kind === 'site' ? marker.site.name : (marker.place ?? '');
+  const w = label?.w ?? Math.min(MAX_GUESS_PX, name.length * CHAR_PX + 12);
+  const h = Math.max(PIN_PX, label?.h ?? 32);
+  const reach = LABEL_OFFSET_PX + w + NAME_PAD_PX;
+  const pin = PIN_PX / 2 + NAME_PAD_PX;
+  return flipped ? { x: marker.x - reach, y: marker.y - h / 2, w: reach + pin, h } : { x: marker.x - pin, y: marker.y - h / 2, w: pin + reach, h };
 }
 
 export interface PointLabel {

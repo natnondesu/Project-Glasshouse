@@ -15,6 +15,9 @@ import { notPlaced, placed, type SiteSummary } from './sites';
 import './globe.css';
 import './site-card.css';
 
+/** The card's margin from the map's top and bottom edges together. */
+const CARD_MARGIN_PX = 24;
+
 // d3-geo and the outlines are Home-only and lazy: until they arrive (or if they fail) the card and rooms stand alone.
 const GlobeMap = lazy(() => import('./GlobeMap'));
 
@@ -52,6 +55,29 @@ export function GlobeHero({ sites, lastRoomId, scope, onScope, onCloseCard, matc
   const startPlacing = useLocationStore((s) => s.place);
   const finish = useLocationStore((s) => s.done);
   const pickSite = useCallback((id: string) => onScope({ kind: 'site', id }), [onScope]);
+  // The map's height decides how much of the card's 3D fits; the card's height tells the map where not to write.
+  const paper = useRef<HTMLDivElement>(null);
+  const [paperHeight, setPaperHeight] = useState<number | undefined>(undefined);
+  const [cardHeight, setCardHeight] = useState(0);
+  useEffect(() => {
+    const el = paper.current;
+    if (!el || typeof ResizeObserver === 'undefined') return;
+    const ro = new ResizeObserver(() => {
+      setPaperHeight(el.clientHeight || undefined);
+      setCardHeight(el.querySelector('.site-card')?.getBoundingClientRect().height ?? 0);
+    });
+    ro.observe(el);
+    const watchCard = new MutationObserver(() => {
+      const card = el.querySelector('.site-card');
+      if (card) ro.observe(card);
+      setCardHeight(card?.getBoundingClientRect().height ?? 0);
+    });
+    watchCard.observe(el, { childList: true });
+    return () => {
+      ro.disconnect();
+      watchCard.disconnect();
+    };
+  }, []);
 
   // Leaving Home ends "Place" mode; a Location dialog opened elsewhere is not Home's to close. StrictMode runs the
   // cleanup and the effect again at once on mount, so the clearing waits a tick and checks Home is really gone.
@@ -91,6 +117,22 @@ export function GlobeHero({ sites, lastRoomId, scope, onScope, onCloseCard, matc
   }, [placingId]);
 
   const site = scope.kind === 'site' ? (sites.find((s) => s.site.id === scope.id) ?? null) : null;
+
+  // Escape closes the card (not while a dialog, the chooser or Place mode has Escape), and focus goes to its pin.
+  const siteId = site?.site.id ?? null;
+  useEffect(() => {
+    if (!siteId) return;
+    const onKey = (e: KeyboardEvent): void => {
+      const t = e.target;
+      const typing = t instanceof HTMLElement && (t.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(t.tagName));
+      if (e.key !== 'Escape' || e.defaultPrevented || typing || useLocationStore.getState().placing || document.querySelector('dialog[open], .confirm-backdrop, .globe-chooser, .globe-notplaced.is-open')) return;
+      e.preventDefault();
+      onCloseCard();
+      requestAnimationFrame(() => (document.querySelector<HTMLElement>(`[data-site-id="${CSS.escape(siteId)}"]`) ?? document.querySelector<HTMLElement>('.globe-crumbs button[aria-current]'))?.focus());
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [siteId, onCloseCard]);
   const roomId = site ? (roomBySite[site.site.id] ?? (site.rooms.find((r) => r.room.id === lastRoomId) ?? site.rooms[0])?.room.id ?? null) : null;
   const mapSites = useMemo<MapSite[]>(() => placed(sites).map((s) => ({ id: s.site.id, name: s.site.name, project: s.project.name, rooms: s.rooms.length, location: s.location, sample: s.isSample })), [sites]);
   const waiting = notPlaced(sites);
@@ -127,7 +169,7 @@ export function GlobeHero({ sites, lastRoomId, scope, onScope, onCloseCard, matc
 
   return (
     <section className="globe-hero glass" aria-label={m.globe.map}>
-      <div className="globe-hero__paper">
+      <div className="globe-hero__paper" ref={paper}>
         <SceneBoundary
           title={m.globe.unavailable}
           message={m.globe.failed}
@@ -152,6 +194,7 @@ export function GlobeHero({ sites, lastRoomId, scope, onScope, onCloseCard, matc
               onPasteInstead={() => placing && editLocation(placing.site.id)}
               onReady={onReady}
               hasSamples={mapSites.some((s) => s.sample)}
+              cardHeight={site ? cardHeight : 0}
             />
           </Suspense>
         </SceneBoundary>
@@ -167,6 +210,7 @@ export function GlobeHero({ sites, lastRoomId, scope, onScope, onCloseCard, matc
             onPlace={() => place(site.site.id)}
             onNewRoom={newRoom}
             onClose={onCloseCard}
+            fitHeight={paperHeight === undefined ? undefined : paperHeight - CARD_MARGIN_PX}
           />
         ) : null}
         <NotPlacedList sites={waiting} selectedId={site?.site.id ?? null} canEdit={can.edit} onSelect={pickSite} onPlace={place} hidden={placing !== null} />

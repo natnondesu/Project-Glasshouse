@@ -170,6 +170,7 @@ export const en = {
     clearFilters: 'Clear filters',
     noRoomsIn: (scope: string) => `No rooms in ${scope} yet.`,
     findingSites: 'Finding the sites on the map…',
+    resultsStatus: (rooms: number, sites: number) => `${rooms} ${rooms === 1 ? 'room' : 'rooms'} in ${sites} ${sites === 1 ? 'site' : 'sites'}`,
     closeCard: (site: string) => `Close ${site}`,
   },
   globe: {
@@ -189,6 +190,9 @@ export const en = {
     matchingOf: (matching: number, n: number) => `${matching} of ${n} match`,
     siteMarker: (name: string, project: string, rooms: number) => `${name}, ${project}, ${rooms} ${rooms === 1 ? 'room' : 'rooms'}`,
     rooms: (n: number) => `${n} ${n === 1 ? 'room' : 'rooms'}`,
+    noMatch: ', no match',
+    show3d: 'Show in 3D',
+    hide3d: 'Fold away',
     pickSite: 'These sites share one spot',
     attribution: 'Map data: Natural Earth',
     sampleSpots: 'sample sites at illustrative spots',

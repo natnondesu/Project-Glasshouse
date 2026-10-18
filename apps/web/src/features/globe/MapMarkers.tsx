@@ -35,7 +35,7 @@ export function MapMarkers({ markers, selectedId, width, matches, pulse, onSite,
             return (
               <li key={marker.key} className={`globe-marker globe-marker--site${selected ? ' is-selected' : ''}${flip ? ' is-flipped' : ''}${dim ? ' is-dim' : ''}`} style={style}>
                 {selected && pulse ? <span className="globe-marker__pulse" aria-hidden="true" /> : null}
-                <button type="button" className="globe-marker__pin" data-site-id={site.id} aria-pressed={selected} aria-label={m.globe.siteMarker(site.name, site.project, site.rooms)} onClick={() => onSite(site)}>
+                <button type="button" className="globe-marker__pin" data-site-id={site.id} aria-pressed={selected} aria-label={dim ? `${m.globe.siteMarker(site.name, site.project, site.rooms)}${m.globe.noMatch}` : m.globe.siteMarker(site.name, site.project, site.rooms)} onClick={() => onSite(site)}>
                   <span className="globe-marker__dot" />
                 </button>
                 <span className="globe-marker__label" aria-hidden="true">

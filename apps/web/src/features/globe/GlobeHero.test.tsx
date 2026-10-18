@@ -361,6 +361,9 @@ describe('Home’s globe hero', () => {
     const { router } = open();
     await map();
     const scale = screen.queryByRole('img', { name: /^Scale bar/ })?.getAttribute('aria-label');
+    const marker = () => screen.getByRole('button', { name: /^Bangkok — / }).closest('li')!.style.transform;
+    const before = marker();
+    const trail = within(crumbs()).getAllByRole('button').map((b) => b.textContent);
     await user.keyboard('/');
     expect(screen.getByRole('searchbox', { name: 'Search sites and rooms' })).toHaveFocus();
     await user.keyboard('shaft');
@@ -368,10 +371,20 @@ describe('Home’s globe hero', () => {
     expect(screen.getByRole('heading', { level: 2, name: 'Everywhere · 1 site · matching “shaft”' })).toBeInTheDocument();
     const rooms = screen.getByRole('region', { name: 'All rooms' });
     expect(within(rooms).getAllByRole('article').map((a) => within(a).getByRole('heading').textContent)).toEqual(['Shaft L1', 'Shaft L2', 'Shaft L3']);
+    // The globe hasn't moved: same zoom, same marker position, same crumbs.
     expect(screen.queryByRole('img', { name: /^Scale bar/ })?.getAttribute('aria-label')).toBe(scale);
-    expect(screen.getByRole('button', { name: 'Show 1 match' })).toBeInTheDocument();
+    expect(marker()).toBe(before);
+    expect(within(crumbs()).getAllByRole('button').map((b) => b.textContent)).toEqual(trail);
+    // Assistive tech hears what is left.
+    const results = document.querySelector('.home-results')!;
+    expect(results).toHaveAttribute('role', 'status');
+    await waitFor(() => expect(results).toHaveTextContent('3 rooms in 1 site'));
     await waitFor(() => expect(router.state.location.search).toBe('?q=shaft'));
+    // Show 1 match flies to it.
+    await user.click(screen.getByRole('button', { name: 'Show 1 match' }));
+    await waitFor(() => expect(screen.queryByRole('img', { name: /^Scale bar/ })?.getAttribute('aria-label')).not.toBe(scale));
     // Escape clears it.
+    await user.click(screen.getByRole('searchbox', { name: 'Search sites and rooms' }));
     await user.keyboard('{Escape}');
     expect(screen.getByRole('heading', { level: 2, name: 'Everywhere · 3 sites' })).toBeInTheDocument();
     await user.keyboard('mdf{Enter}');
@@ -387,8 +400,13 @@ describe('Home’s globe hero', () => {
     await user.type(screen.getByRole('searchbox', { name: 'Search sites and rooms' }), 'riverside campus');
     expect(screen.getByRole('button', { name: /^Bangna campus,/ }).closest('li')).toHaveClass('is-dim');
     expect(document.querySelectorAll('.globe-marker:not(.is-dim)').length).toBeGreaterThan(0);
+    // A faded pin says so to assistive tech.
+    expect(screen.getByRole('button', { name: /^Bangna campus, .*, no match$/ })).toBeInTheDocument();
+    const scale = screen.getByRole('img', { name: /^Scale bar/ }).getAttribute('aria-label');
     await user.keyboard('{Enter}');
     expect(card('Riverside Campus')).toBeInTheDocument();
+    // Enter on a site flies to it.
+    await waitFor(() => expect(screen.getByRole('img', { name: /^Scale bar/ }).getAttribute('aria-label')).not.toBe(scale));
   });
 
   it('reads the search, the scope and the chip from the address, and offers Clear filters when nothing matches', async () => {
@@ -405,6 +423,37 @@ describe('Home’s globe hero', () => {
     await user.click(within(rooms).getByRole('button', { name: 'Clear filters' }));
     expect(within(rooms).getAllByRole('article')).toHaveLength(7);
     await waitFor(() => expect(router.state.location.search).toBe(''));
+  });
+
+  it('follows the address when it changes from outside: the logo resets Home, back and forward restore the view', async () => {
+    const user = userEvent.setup();
+    load(sample());
+    const { router } = open('/?q=shaft');
+    expect(screen.getByRole('searchbox', { name: 'Search sites and rooms' })).toHaveValue('shaft');
+    await user.click(screen.getAllByRole('link', { name: 'Glasshouse' })[0]!);
+    expect(screen.getByRole('searchbox', { name: 'Search sites and rooms' })).toHaveValue('');
+    const rooms = () => screen.getByRole('region', { name: 'All rooms' });
+    expect(within(rooms()).getAllByRole('article')).toHaveLength(7);
+    await user.click(within(rooms()).getByRole('button', { name: /^Draft/ }));
+    await waitFor(() => expect(router.state.location.search).toBe('?rooms=draft'));
+    await user.click(within(rooms()).getByRole('button', { name: /^Approved/ }));
+    await waitFor(() => expect(router.state.location.search).toBe('?rooms=approved'));
+    await act(() => router.navigate(-1));
+    expect(within(rooms()).getByRole('button', { name: /^Draft/ })).toHaveAttribute('aria-pressed', 'true');
+    expect(within(rooms()).getAllByRole('article')).toHaveLength(5);
+    await act(() => router.navigate(1));
+    expect(within(rooms()).getByRole('button', { name: /^Approved/ })).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  it('closes the card with Escape and gives focus to the site’s pin', async () => {
+    const user = userEvent.setup();
+    load(sample());
+    open(`/?scope=site:${siteId('Bangna campus')}`);
+    await map();
+    screen.getByRole('button', { name: 'Close Bangna campus' }).focus();
+    await user.keyboard('{Escape}');
+    expect(document.getElementById('home-site-name')).toBeNull();
+    await waitFor(() => expect(screen.getByRole('button', { name: /^Bangna campus,/ })).toHaveFocus());
   });
 
   it('leads the Before approval count to the rooms that need attention', async () => {

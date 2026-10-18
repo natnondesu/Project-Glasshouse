@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect } from 'react';
+import { useEffect, useLayoutEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router';
 import { create } from 'zustand';
 import { parseFilter, type RoomFilter } from './homeRooms';
@@ -37,7 +37,8 @@ export const useHomeView = create<HomeViewState>()((set) => ({
   setFilter: (filter) => set({ filter }),
   enter: () => set((s) => ({ enterSeq: s.enterSeq + 1 })),
   flyTo: (target) => set((s) => ({ frame: { seq: (s.frame?.seq ?? 0) + 1, target } })),
-  load: (params) => set({ ...EMPTY, q: params.get('q') ?? '', scope: parseScope(params.get('scope')), filter: parseFilter(params.get('rooms')) }),
+  // Enter presses and flights keep counting: a view read from the address must not replay or swallow one.
+  load: (params) => set({ q: params.get('q') ?? '', scope: parseScope(params.get('scope')), filter: parseFilter(params.get('rooms')) }),
   reset: () => set(EMPTY),
 }));
 
@@ -53,22 +54,60 @@ export function viewParams(view: { q: string; scope: Scope; filter: RoomFilter }
   return next;
 }
 
-/** Reads the view from the address when Home opens, mirrors it back as it changes, and forgets it when Home closes. */
+/** Typing settles this long before the address follows it. */
+export const URL_TYPING_MS = 150;
+
+/**
+ * Keeps the view and the address in step both ways. The view writes the address (typing settles first, and only a
+ * scope or chip change adds a history step); an address the view didn't write (the logo's plain "/", a pasted link,
+ * back and forward) is read into the view. The view is forgotten when Home closes.
+ */
 export function useHomeViewUrl(): void {
   const [params, setParams] = useSearchParams();
   const q = useHomeView((s) => s.q);
   const scope = useHomeView((s) => s.scope);
   const filter = useHomeView((s) => s.filter);
+  // The query string this hook last wrote, or read: anything else in the address came from outside.
+  const known = useRef<string | null>(null);
+  const written = useRef({ scope: scopeParam(scope), filter });
 
   useLayoutEffect(() => {
     useHomeView.getState().load(params);
+    known.current = params.toString();
+    const v = useHomeView.getState();
+    written.current = { scope: scopeParam(v.scope), filter: v.filter };
     return () => useHomeView.getState().reset();
-    // Only on opening Home: afterwards the view is the source and the address follows it.
+    // Only on opening Home; later address changes are handled below.
   }, []);
 
+  // The address changed and the view didn't do it: read it in.
+  useLayoutEffect(() => {
+    const current = params.toString();
+    if (known.current === null || current === known.current) return;
+    known.current = current;
+    useHomeView.getState().load(params);
+    const v = useHomeView.getState();
+    written.current = { scope: scopeParam(v.scope), filter: v.filter };
+  }, [params]);
+
   useEffect(() => {
-    // From the store, not this render: on opening, the address has just been read into it.
-    const next = viewParams(useHomeView.getState(), params);
-    if (next.toString() !== params.toString()) setParams(next, { replace: true });
+    const write = (): void => {
+      // From the store, not this render: it may have moved on since.
+      const v = useHomeView.getState();
+      const next = viewParams(v, params);
+      if (next.toString() === params.toString()) return;
+      const step = scopeParam(v.scope) !== written.current.scope || v.filter !== written.current.filter;
+      written.current = { scope: scopeParam(v.scope), filter: v.filter };
+      known.current = next.toString();
+      setParams(next, { replace: !step });
+    };
+    const typing = (useHomeView.getState().q.trim() ? useHomeView.getState().q : '') !== (params.get('q') ?? '');
+    const onlyTyping = typing && scopeParam(scope) === written.current.scope && filter === written.current.filter;
+    if (!onlyTyping) {
+      write();
+      return;
+    }
+    const timer = setTimeout(write, URL_TYPING_MS);
+    return () => clearTimeout(timer);
   }, [q, scope, filter, params, setParams]);
 }

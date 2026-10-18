@@ -9,6 +9,7 @@ import { scopeParam, WORLD, type Scope, type SitePlaces } from '../home/scope';
 import { drawMap, readPalette, type MapPalette, type Rect } from './drawMap';
 import { loadGeo, regionAt, regionName, type GeoData, type Region } from './geoData';
 import { markerBox } from './labels';
+import { overlayBoxes } from './overlays';
 import { MapCrumbs, type Crumb } from './MapCrumbs';
 import { MapMarkers } from './MapMarkers';
 import { markerGroups, markersFrom, splitsAt, type Marker, type MapSite, type Places } from './markers';
@@ -38,6 +39,8 @@ export interface GlobeMapProps {
   onReady?: () => void;
   /** Sample sites are on the map: the credit line says their spots are illustrative. */
   hasSamples: boolean;
+  /** The floating card's height: names are placed again when it grows or shrinks (a room switch, the 3D folding). */
+  cardHeight?: number;
 }
 
 /** jsdom and the first frame report no size: a laptop-sized guess until the real one arrives. */
@@ -95,17 +98,6 @@ function useDevicePixelRatio(): number {
   return dpr;
 }
 
-/** The map's own controls and what floats over it (the site card), in its coordinates: names drawn on the map stay clear of them. */
-function overlayBoxes(root: HTMLElement | null): Rect[] {
-  if (!root) return [];
-  const base = root.getBoundingClientRect();
-  const frame = root.closest('.globe-hero__paper') ?? root;
-  return [...frame.querySelectorAll<HTMLElement>('.globe-crumbs, .globe-zoom, .globe-spin, .globe-map__foot, .globe-place, .globe-map__empty, .globe-matches, .globe-sitecard, .globe-notplaced')].map((el) => {
-    const r = el.getBoundingClientRect();
-    return { x: r.left - base.left - 6, y: r.top - base.top - 6, w: r.width + 12, h: r.height + 12 };
-  });
-}
-
 function useInView(ref: React.RefObject<HTMLElement | null>): boolean {
   const [inView, setInView] = useState(true);
   useEffect(() => {
@@ -141,7 +133,7 @@ export default function GlobeMap(props: GlobeMapProps) {
   return <Globe {...props} geo={geo} />;
 }
 
-function Globe({ sites, scope, onScope, matches, frame, onPlaces, placing, onPlace, onCancelPlace, onPasteInstead, onReady, hasSamples, geo }: GlobeMapProps & { geo: GeoData }) {
+function Globe({ sites, scope, onScope, matches, frame, onPlaces, placing, onPlace, onCancelPlace, onPasteInstead, onReady, hasSamples, cardHeight = 0, geo }: GlobeMapProps & { geo: GeoData }) {
   const m = useT();
   const lang = useLangStore((s) => s.lang);
   const reduced = usePrefersReducedMotion();
@@ -271,9 +263,12 @@ function Globe({ sites, scope, onScope, matches, frame, onPlaces, placing, onPla
     const ctx = el.getContext('2d');
     if (!ctx) return;
     palette.current ??= readPalette(root.current ?? el);
-    const avoid: Rect[] = [...markers.map((mk) => markerBox(mk, size.width)), ...overlayBoxes(root.current)];
+    // Pins and their names as drawn; a guess from the names' length where nothing could be measured (no layout).
+    const drawn = overlayBoxes(root.current, { controls: false, markers: true });
+    const pins = drawn.length > 0 ? drawn : markers.map((mk) => markerBox(mk, size.width));
+    const avoid: Rect[] = [...pins, ...overlayBoxes(root.current)];
     drawMap({ ctx, size, dpr, camera, geo, palette: palette.current, highlight, lang, avoid });
-  }, [camera, size, geo, highlight, lang, markers, dpr, placing, paused, scopeKey, matches]);
+  }, [camera, size, geo, highlight, lang, markers, dpr, placing, paused, scopeKey, matches, cardHeight]);
 
   // A site picked elsewhere, or given a new location (the dialog, Place mode), comes into view if it isn't.
   const selectedKey = selected ? `${selected.id}@${selected.location.lat},${selected.location.lon}` : selectedId;

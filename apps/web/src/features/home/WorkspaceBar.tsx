@@ -1,5 +1,5 @@
 import { revisionIssues } from '@glasshouse/domain';
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router';
 import { useLangStore, useT } from '../../i18n';
 import { IconArrowRight, IconBlock, IconWarn } from '../../ui/icons';
@@ -11,6 +11,18 @@ import { RoomMiniPlan } from './RoomMiniPlan';
 /** Thai dates keep the Gregorian calendar, as everywhere else in the app. */
 const LOCALE = { en: undefined, th: 'th-TH-u-ca-gregory' } as const;
 
+const MINUTE_MS = 60_000;
+
+/** The time now, moving on each minute, so "2 minutes ago" doesn't stand still. */
+function useMinute(): number {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), MINUTE_MS);
+    return () => clearInterval(timer);
+  }, []);
+  return now;
+}
+
 function PickUpStrip({ pick }: { pick: PickUp }) {
   const m = useT();
   const lang = useLangStore((s) => s.lang);
@@ -18,7 +30,8 @@ function PickUpStrip({ pick }: { pick: PickUp }) {
   const { revision } = room;
   const blocked = useMemo(() => new Set(revisionIssues(revision).filter((i) => i.severity === 'block').flatMap((i) => i.targets)), [revision]);
   const approved = revision.state === 'approved';
-  const when = edit ? (relativeTime(edit.at, Date.now(), lang) ?? m.home.justNow) : null;
+  const now = useMinute();
+  const when = edit ? (relativeTime(edit.at, now, lang) ?? m.home.justNow) : null;
   const by = edit && when ? (edit.byMe ? m.home.editedByYou(when) : m.home.editedBy(edit.name, when)) : null;
   const rev = `R${pad2(revision.number)} ${m.revision.state[revision.state].toLocaleLowerCase(lang)}`;
   return (

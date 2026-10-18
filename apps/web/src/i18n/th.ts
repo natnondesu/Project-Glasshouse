@@ -169,6 +169,7 @@ export const th: Messages = {
     clearFilters: 'ล้างตัวกรอง',
     noRoomsIn: (scope) => `ยังไม่มีห้องใน ${scope}`,
     findingSites: 'กำลังหาไซต์บนแผนที่…',
+    resultsStatus: (rooms, sites) => `${rooms} ห้อง ใน ${sites} ไซต์`,
     closeCard: (site) => `ปิด ${site}`,
   },
   globe: {
@@ -188,6 +189,9 @@ export const th: Messages = {
     matchingOf: (matching, n) => `ตรงกัน ${matching} จาก ${n}`,
     siteMarker: (name, project, rooms) => `${name}, ${project}, ${rooms} ห้อง`,
     rooms: (n) => `${n} ห้อง`,
+    noMatch: ' ไม่ตรงกับคำค้น',
+    show3d: 'แสดง 3 มิติ',
+    hide3d: 'พับเก็บ',
     pickSite: 'ไซต์เหล่านี้อยู่จุดเดียวกัน',
     attribution: 'ข้อมูลแผนที่: Natural Earth',
     sampleSpots: 'ไซต์ตัวอย่างวางไว้ที่จุดสมมติ',

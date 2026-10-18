@@ -39,7 +39,9 @@ it('offers the last room opened in the workspace bar, and marks it among every r
   expect(strip).toHaveTextContent('1 blocking');
   expect(within(strip).getByRole('link', { name: 'Continue to MDF-1' })).toHaveAttribute('href', `/rooms/${mdf.id}/plan`);
   // No New project or New room in the bar: the tree has them.
-  expect(within(document.querySelector<HTMLElement>('.workspace-bar')!).queryByRole('button', { name: /^New/ })).toBeNull();
+  const bar = within(document.querySelector<HTMLElement>('.workspace-bar')!);
+  expect(bar.queryAllByRole('button')).toHaveLength(0);
+  expect(bar.getAllByRole('link').map((l) => l.getAttribute('aria-label'))).toEqual(['Continue to MDF-1']);
   const cards = screen.getByRole('region', { name: 'All rooms' });
   const mdfCard = within(cards).getByRole('link', { name: 'MDF-1' }).closest('article')!;
   // A note is for reading, not a hold.
@@ -111,4 +113,12 @@ it('stamps an approved room with its approver and offers its Install sheet', () 
   expect(stamp).toHaveTextContent('APPROVED');
   expect(stamp).toHaveTextContent(/R01 · \d{4}-\d{2}-\d{2} · .+/);
   expect(screen.getByRole('link', { name: 'Install sheet · R01' })).toHaveAttribute('href', expect.stringMatching(/install-sheet$/));
+});
+
+it('shows no search on a Home with nothing to search', () => {
+  resetWorkspaceStore();
+  useWorkspaceStore.getState().setLoad({ kind: 'ready' });
+  open();
+  expect(screen.getByRole('heading', { level: 1, name: 'Start with a project' })).toBeInTheDocument();
+  expect(screen.queryByRole('searchbox', { name: 'Search sites and rooms' })).toBeNull();
 });

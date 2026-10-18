@@ -32,9 +32,11 @@ describe('folding text for search', () => {
     expect(fold('Café RÉNOVÉ')).toBe('cafe renove');
   });
 
-  it('keeps Thai letters, so Thai names stay searchable with or without tone marks', () => {
-    expect(fold('ห้องเซิร์ฟเวอร์')).toBe(fold('ห้องเซิรฟเวอร'));
-    expect(fold('ห้องเซิร์ฟเวอร์')).toContain('หอง');
+  it('ignores Thai tone marks but keeps the vowels, which tell words apart', () => {
+    expect(fold('ห้องเซิร์ฟเวอร์')).toBe(fold('หองเซิรฟเวอร'));
+    expect(fold('ห้อง')).toBe('หอง');
+    expect(fold('กิน')).not.toBe(fold('กน'));
+    expect(fold('เซิร์ฟ')).toContain('ซิ');
   });
 
   it('splits a query into folded words and drops empty ones', () => {
