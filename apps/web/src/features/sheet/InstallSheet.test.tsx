@@ -237,3 +237,71 @@ describe('room fittings', () => {
     expect(screen.queryByRole('table', { name: 'Room fittings' })).toBeNull();
   });
 });
+
+describe('panel schedules', () => {
+  function approvedRoom(withPanels = true): string {
+    const s = useWorkspaceStore.getState();
+    const siteId = s.workspace.projects[0]!.sites[0]!.id;
+    const run = (command: PlanCommand) => {
+      const problem = s.dispatch({ type: 'plan', roomId: 'pan', command });
+      if (problem) throw new Error(problem.message);
+    };
+    s.dispatch({ type: 'room/create', siteId, id: 'pan', floorAreaId: 'fa-pan', name: 'Boards' });
+    const server = s.workspace.catalog.find((t) => t.id === 'tpl-server-2u')!;
+    run({ type: 'object/add', object: { ...(createObject('rack', { x: 4, y: 1.5 }, []) as Rack), id: 'rk', name: 'RK-01', clearance: { front: 0, rear: 0 } } });
+    run({ type: 'device/place', id: 'srv', rackId: 'rk', bottomU: 1, template: server });
+    if (withPanels) addPanels(run);
+    s.dispatch({ type: 'review', roomId: 'pan', command: { type: 'review/submit', designedBy: 'Ploy', at: AT } });
+    const problem = s.dispatch({ type: 'review', roomId: 'pan', command: { type: 'review/approve', reviewer: 'Nok', at: AT } });
+    if (problem) throw new Error(problem.message);
+    return 'pan';
+  }
+
+  function addPanels(run: (command: PlanCommand) => void): void {
+    for (const [id, name, y] of [['m1', 'MCB-01', 0.5], ['m2', 'MCB-02', 1.5], ['m3', 'MCB-03', 2.5]] as const) run({ type: 'object/add', object: { ...createObject('mcb', { x: 0, y }, []), id, name } });
+    run({ type: 'panel/configure', id: 'm1', patch: { wayCount: 14, layout: 'two_column', mainRatingA: 100 } });
+    run({ type: 'panel/way', id: 'm1', way: 2, patch: { ratingA: 32 } });
+    run({ type: 'feed/add', feed: { id: 'fa', targetId: 'rk', sourceId: 'm1', label: 'Feed A', way: 1 } });
+    run({ type: 'feed/add', feed: { id: 'fb', targetId: 'rk', sourceId: 'm1', label: 'Feed B', way: 2 } });
+    run({ type: 'panel/configure', id: 'm2', patch: { inUse: false } });
+  }
+
+  it('draws a schedule for each panel in use with feeds, in its arrangement, under a title block', () => {
+    open(approvedRoom());
+    const table = screen.getByRole('table', { name: 'Panel schedules' });
+    expect(table.querySelector('thead .sheet-title')).not.toBeNull();
+    const schedule = within(table).getByRole('group', { name: 'MCB-01 schedule' });
+    expect(schedule).toHaveTextContent('Main 100 A');
+    const ways = within(schedule).getAllByRole('listitem');
+    expect(ways).toHaveLength(14);
+    expect(ways[0]).toHaveTextContent('1');
+    expect(ways[0]).toHaveTextContent('16 A · L1');
+    expect(ways[0]).toHaveTextContent('RK-01 · Feed A');
+    expect(ways[1]).toHaveTextContent('32 A · L2');
+    expect(ways[1]).toHaveTextContent('RK-01 · Feed B');
+    expect(ways[2]).toHaveTextContent('spare');
+    // Way 2 sits at the top of the right-hand column, level with way 1.
+    expect([ways[0]!.style.gridColumnStart, ways[0]!.style.gridRowStart]).toEqual(['1', '1']);
+    expect([ways[1]!.style.gridColumnStart, ways[1]!.style.gridRowStart]).toEqual(['2', '1']);
+  });
+
+  it('lists a panel not in use as such, with no schedule, and leaves out a panel with no feeds', () => {
+    open(approvedRoom());
+    const table = screen.getByRole('table', { name: 'Panel schedules' });
+    expect(within(table).queryByRole('group', { name: 'MCB-02 schedule' })).toBeNull();
+    expect(within(table).queryByRole('group', { name: 'MCB-03 schedule' })).toBeNull();
+    expect(table).toHaveTextContent('MCB-02');
+    expect(table).toHaveTextContent('Not in use');
+    expect(table).not.toHaveTextContent('MCB-03');
+  });
+
+  it('keeps the existing power feeds table', () => {
+    open(approvedRoom());
+    expect(screen.getByRole('rowgroup', { name: 'Power feeds' })).toHaveTextContent('RK-01Feed AMCB-01 · way 1');
+  });
+
+  it('prints no panel schedules page for a room without panels in use or feeds', () => {
+    open(approvedRoom(false));
+    expect(screen.queryByRole('table', { name: 'Panel schedules' })).toBeNull();
+  });
+});

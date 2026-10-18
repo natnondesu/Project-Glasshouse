@@ -195,7 +195,7 @@ export function createShowcaseProject(at: string): Result<Project> {
   const mcbB = mcb('MCB-B', 5.0, 0, false);
   const ups = thing('ups', 'UPS-01', 6.9, 0.3);
   for (const o of [mcbA, mcbB, ups]) plan(srv, { type: 'object/add', object: o });
-  for (const board of [mcbA, mcbB]) plan(srv, { type: 'panel/configure', id: board.id, patch: { phase: 'three', wayCount: 24 } });
+  for (const board of [mcbA, mcbB]) plan(srv, { type: 'panel/configure', id: board.id, patch: { phase: 'three', wayCount: 24, mainRatingA: 125 } });
   plan(srv, { type: 'panel/way', id: mcbB.id, way: 1, patch: { ratingA: 63, label: 'UPS-01 in' } });
   plan(srv, { type: 'feed/add', feed: { id: newId(), targetId: ups.id, sourceId: mcbB.id, label: 'Feed A', way: 1 } });
   [net1, net2, ...serverRacks].forEach((r, i) => {

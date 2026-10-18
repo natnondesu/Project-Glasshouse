@@ -140,7 +140,7 @@ export function createSampleProject(at: string): Result<Project> {
   plan(serverId, { type: 'feed/add', feed: { id: newId(), targetId: s1.id, sourceId: board2.id, label: 'Feed B', way: 1 } });
   plan(serverId, { type: 'feed/add', feed: { id: newId(), targetId: s2.id, sourceId: board1.id, label: 'Feed A', way: 2 } });
   // MCB-01 as the site has it: three-phase, labelled ways.
-  plan(serverId, { type: 'panel/configure', id: board1.id, patch: { phase: 'three', wayCount: 12 } });
+  plan(serverId, { type: 'panel/configure', id: board1.id, patch: { phase: 'three', wayCount: 12, mainRatingA: 63 } });
   plan(serverId, { type: 'panel/way', id: board1.id, way: 1, patch: { label: 'RK-01 A' } });
   plan(serverId, { type: 'panel/way', id: board1.id, way: 2, patch: { label: 'RK-02 A' } });
   // Power chain: MCB-02 feeds a UPS, which carries RK-02's B feed.

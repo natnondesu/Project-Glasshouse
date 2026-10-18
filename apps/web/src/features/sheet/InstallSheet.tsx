@@ -8,6 +8,7 @@ import { pad2 } from '../../ui/StatusStamp';
 import { useT } from '../../i18n';
 import { RackElevation } from '../elevation/RackElevation';
 import { SheetPlan } from './SheetPlan';
+import { PanelSchedules, sheetPanels } from './PanelSchedules';
 import { BomTable, CableScheduleTable, FittingsTable, fittingsOf, SlotMapsTable, VlanTable } from './SheetTables';
 import { TopologyDiagram } from '../network/TopologyDiagram';
 import { buildTopology, fitTopology, type Remotes, type Topology } from '../network/topology';
@@ -176,6 +177,12 @@ export function InstallSheet() {
       {revision.content.links.length > 0 ? (
         <section className="sheet-page sheet-page--flow">
           <CableScheduleTable rows={cableSchedule(revision.content, farEndOf(workspace, m))} titleBlock={title(m.sheet.cableSchedule)} />
+        </section>
+      ) : null}
+
+      {sheetPanels(revision.content).length > 0 ? (
+        <section className="sheet-page sheet-page--flow">
+          <PanelSchedules content={revision.content} titleBlock={title(m.sheet.panels.title)} />
         </section>
       ) : null}
 
