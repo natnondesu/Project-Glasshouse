@@ -475,6 +475,7 @@ export const th: Messages = {
     legend: 'สถานะอุปกรณ์',
     note: 'บันทึกสิ่งที่อยู่หน้างานจริง เปลี่ยนได้แม้อนุมัติแล้ว',
     lockedNote: 'แสดงสถานะปัจจุบัน กลับไปที่ฉบับปัจจุบันเพื่อเปลี่ยน',
+    archivedNote: 'ห้องนี้เก็บถาวรอยู่ กู้คืนก่อนจึงจะเปลี่ยนสถานะได้',
   },
   elevation: {
     reorderHint: 'ลากชื่อเพื่อย้ายแร็คนี้ หรือกด Alt+← / Alt+→',
@@ -1190,6 +1191,23 @@ export const th: Messages = {
     backup: 'ดาวน์โหลดสำรองข้อมูลทั้งหมด',
     backupFailed: (status) => `ดาวน์โหลดสำรองข้อมูลไม่สำเร็จ (เซิร์ฟเวอร์ตอบกลับ ${status})`,
     role: { viewer: 'ผู้ดู', editor: 'ผู้แก้ไข', reviewer: 'ผู้ตรวจ', admin: 'ผู้ดูแล' },
+  },
+  archive: {
+    badge: 'เก็บถาวร',
+    show: 'แสดงที่เก็บถาวร',
+    archive: 'เก็บถาวร',
+    restore: 'กู้คืน',
+    archiveOf: (label) => `เก็บ ${label} ถาวร`,
+    restoreOf: (label) => `กู้คืน ${label}`,
+    kind: { project: 'โปรเจกต์', site: 'ไซต์', room: 'ห้อง' },
+    restoreFirst: (kind, name) => `กู้คืน${kind} ${name} ก่อน`,
+    confirmTitle: (name, sites, rooms) => {
+      const parts = [sites > 0 ? `${sites} ไซต์` : '', rooms > 0 ? `${rooms} ห้อง` : ''].filter(Boolean);
+      return parts.length === 0 ? `เก็บ ${name} ถาวรหรือไม่?` : `เก็บ ${name} พร้อม${parts.join('และ')}ถาวรหรือไม่?`;
+    },
+    confirmBody: (several) => (several ? 'ทั้งหมดจะอ่านได้อย่างเดียวและถูกซ่อน กู้คืนได้ทุกเมื่อ' : 'จะอ่านได้อย่างเดียวและถูกซ่อน กู้คืนได้ทุกเมื่อ'),
+    banner: (by, date, via) => `เก็บถาวร${via ? `พร้อม${via.kind} ${via.name}` : ''}${by ? ` โดย ${by}` : ''} เมื่อ ${date} อ่านได้อย่างเดียว`,
+    busy: (holder, room) => `${holder} กำลังแก้ไข ${room} ลองใหม่เมื่อเขาแก้เสร็จแล้ว`,
   },
   claims: {
     heldBy: (name) => `${name} กำลังแก้ไขห้องนี้`,

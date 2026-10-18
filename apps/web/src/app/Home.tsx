@@ -1,4 +1,4 @@
-import { newId } from '@glasshouse/domain';
+import { liveCounts, newId } from '@glasshouse/domain';
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
 import { HomeHero } from '../features/home/HomeHero';
@@ -24,7 +24,7 @@ export function Home() {
   const hero = heroRoom(workspace, lastId);
   const groups = roomGroups(workspace);
 
-  if (!hero && workspace.projects.length === 0) {
+  if (!hero && liveCounts(workspace).projects === 0) {
     return (
       <section className="home glass">
         <h1>{m.shell.homeTitle(false)}</h1>

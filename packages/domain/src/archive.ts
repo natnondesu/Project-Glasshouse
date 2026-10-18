@@ -94,6 +94,13 @@ export function archiveScope(ws: Workspace, kind: ArchiveKind, id: Id): { sites:
   return { sites: sites.length, rooms: sites.reduce((n, s) => n + live(s.rooms), 0) };
 }
 
+/** Projects and rooms still in use: what the home page and the header count. */
+export function liveCounts(ws: Workspace): { projects: number; rooms: number } {
+  const live = ws.projects.filter((p) => p.archivedAt === undefined);
+  const rooms = live.flatMap((p) => p.sites.filter((s) => s.archivedAt === undefined)).reduce((n, s) => n + s.rooms.filter((r) => r.archivedAt === undefined).length, 0);
+  return { projects: live.length, rooms };
+}
+
 /** The rooms an archive command would take out of use (for the server's claim check). Empty for restores. */
 export function roomsArchivedBy(ws: Workspace, cmd: WorkspaceCommand): Room[] {
   switch (cmd.type) {

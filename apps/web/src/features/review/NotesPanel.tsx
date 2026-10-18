@@ -1,6 +1,6 @@
 import { newId, type Plan, type ReviewNote } from '@glasshouse/domain';
 import { useState, type FormEvent } from 'react';
-import { useReviewCommit } from '../../store/hooks';
+import { useReviewCommit, useRoomArchived } from '../../store/hooks';
 import { pad2 } from '../../ui/StatusStamp';
 import { formatTime } from '../../ui/time';
 import { useCan } from '../../auth/useCan';
@@ -28,6 +28,7 @@ export function NotesPanel({ roomId, plan }: { roomId: string; plan: Plan }) {
   const review = useReviewCommit(roomId);
   const m = useT();
   const can = useCan();
+  const archived = useRoomArchived(roomId);
   const [text, setText] = useState('');
   const [by, setBy] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -44,7 +45,7 @@ export function NotesPanel({ roomId, plan }: { roomId: string; plan: Plan }) {
     <section className="review-card glass" aria-labelledby="notes-h">
       <h2 id="notes-h">{m.review.notesOn(pad2(current))}</h2>
       <p className="review-note">{m.review.notesNote}</p>
-      {can.edit ? (
+      {can.edit && !archived ? (
         <form className="review-form" onSubmit={add}>
           <div className="field">
             <label htmlFor="new-note" className="field__label">

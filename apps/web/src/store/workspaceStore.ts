@@ -4,6 +4,7 @@ import {
   currentRevision,
   draftEditRoom,
   findRoom,
+  roomsArchivedBy,
   type DomainError,
   type Id,
   type PlanContent,
@@ -42,6 +43,15 @@ const readOnlyError = (reason: ReadOnlyReason | null): DomainError => ({
 });
 
 const claimedError = (held: Claim): DomainError => ({ code: 'claimed', message: messagesFor(useLangStore.getState().lang).claims.heldBy(held.name), targets: [held.roomId] });
+
+/** Archiving waits for anyone else still editing a room inside it; the server checks too, this is the same answer in the viewer's language. */
+function archiveBusy(ws: Workspace, command: WorkspaceCommand): DomainError | null {
+  for (const room of roomsArchivedBy(ws, command)) {
+    const held = claimHeldByOther(room.id);
+    if (held) return { code: 'room_busy', message: messagesFor(useLangStore.getState().lang).archive.busy(held.name, room.name), targets: [room.id] };
+  }
+  return null;
+}
 
 type Commit = (ws: Workspace, command: WorkspaceCommand) => Result<Workspace>;
 let commit: Commit = apply;
@@ -114,6 +124,8 @@ export const useWorkspaceStore = create<WorkspaceState>()((set, get) => ({
     const claimedRoom = draftEditRoom(command);
     const held = claimedRoom ? claimHeldByOther(claimedRoom) : null;
     if (held) return claimedError(held);
+    const busy = archiveBusy(state.workspace, command);
+    if (busy) return busy;
     const result = commit(state.workspace, command);
     if (!result.ok) return result.error;
     if (command.type !== 'plan') {

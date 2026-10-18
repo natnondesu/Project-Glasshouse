@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from 'react';
 import { Link } from 'react-router';
-import { IconChevronRight, IconPencil, IconPlus, IconTrash } from '../../ui/icons';
+import { IconArchive, IconChevronRight, IconPencil, IconPlus, IconRestore, IconTrash } from '../../ui/icons';
 import { InlineRename } from './InlineRename';
 import { useT } from '../../i18n';
 
@@ -24,6 +24,10 @@ interface TreeRowProps {
   canDelete?: boolean;
   onDelete: () => void;
   deleteWarning: string;
+  /** Archived (itself or through a parent): greyed, and nothing here can be renamed or added to. */
+  archived?: boolean;
+  /** An admin's Archive or Restore; omitted for everyone else. `restoreFirst` is why Restore can't work yet. */
+  archiveActions?: { onArchive: () => void; onRestore: () => void; restoreFirst: string | null };
   children?: ReactNode;
   /** Projects and sites fold; rooms don't. Undefined means not collapsible. */
   expanded?: boolean;
@@ -31,7 +35,7 @@ interface TreeRowProps {
 }
 
 export function TreeRow(props: TreeRowProps) {
-  const { kind, label, to, active = false, badge, editing, onAdd, addLabel, children, expanded, onToggle, canEdit = true, canDelete = true } = props;
+  const { kind, label, to, active = false, badge, editing, onAdd, addLabel, children, expanded, onToggle, canEdit = true, canDelete = true, archived = false, archiveActions } = props;
   const [confirming, setConfirming] = useState(false);
   const m = useT();
 
@@ -83,7 +87,24 @@ export function TreeRow(props: TreeRowProps) {
               <IconPlus />
             </button>
           ) : null}
-          {canEdit ? (
+          {archiveActions && !archived ? (
+            <button type="button" className="icon-btn icon-btn--sm" aria-label={m.archive.archiveOf(label)} title={m.archive.archive} onClick={archiveActions.onArchive}>
+              <IconArchive />
+            </button>
+          ) : null}
+          {archiveActions && archived ? (
+            <button
+              type="button"
+              className="icon-btn icon-btn--sm"
+              aria-label={archiveActions.restoreFirst ? `${m.archive.restoreOf(label)}. ${archiveActions.restoreFirst}` : m.archive.restoreOf(label)}
+              aria-disabled={archiveActions.restoreFirst ? true : undefined}
+              title={archiveActions.restoreFirst ?? m.archive.restore}
+              onClick={archiveActions.onRestore}
+            >
+              <IconRestore />
+            </button>
+          ) : null}
+          {canEdit && !archived ? (
             <button type="button" className="icon-btn icon-btn--sm" aria-label={m.tree.renameOf(label)} title={m.tree.rename} onClick={props.onStartEdit}>
               <IconPencil />
             </button>
@@ -99,7 +120,7 @@ export function TreeRow(props: TreeRowProps) {
   }
 
   return (
-    <li className={`tree-row tree-row--${kind}`}>
+    <li className={`tree-row tree-row--${kind}${archived ? ' tree-row--archived' : ''}`}>
       {line}
       {expanded === false ? null : children}
     </li>

@@ -1,4 +1,4 @@
-import { currentRevision, exportProjectFile } from '@glasshouse/domain';
+import { currentRevision, exportProjectFile, liveCounts } from '@glasshouse/domain';
 import { useState, type ReactNode } from 'react';
 import { UserMenu } from '../auth/UserMenu';
 import { SERVER_MODE } from '../sync/serverMode';
@@ -47,6 +47,7 @@ export function TitleBlock({ roomId }: { roomId: string | null }) {
   const viewed = location && viewedNumber !== null ? location.room.plan.revisions.find((r) => r.number === viewedNumber) : undefined;
   const revision = viewed ?? (location ? currentRevision(location.room.plan) : null);
   const workspace = useWorkspaceStore((s) => s.workspace);
+  const counts = liveCounts(workspace);
   const [exportError, setExportError] = useState<string | null>(null);
   const m = useT();
   const templateCount = useWorkspaceStore((st) => st.workspace.catalog.length);
@@ -67,7 +68,7 @@ export function TitleBlock({ roomId }: { roomId: string | null }) {
       </Link>
       {location ? null : (
         <dl className="title-block__cells">
-          <Cell label={m.shell.workspace}>{m.shell.workspaceSummary(workspace.projects.length, workspace.projects.reduce((n, p) => n + p.sites.reduce((k, s) => k + s.rooms.length, 0), 0))}</Cell>
+          <Cell label={m.shell.workspace}>{m.shell.workspaceSummary(counts.projects, counts.rooms)}</Cell>
         </dl>
       )}
       {/* Outside a room the cells would all be blank: Home shows the workspace instead. */}

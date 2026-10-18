@@ -1,6 +1,6 @@
 import { formatURange, racksOf, type Rack, type ReservedRange, type Revision } from '@glasshouse/domain';
 import { useState, type FormEvent } from 'react';
-import { useReviewCommit } from '../../store/hooks';
+import { useReviewCommit, useRoomArchived } from '../../store/hooks';
 import { useCan } from '../../auth/useCan';
 import { useT } from '../../i18n';
 import { usePeople } from '../../people/peopleStore';
@@ -59,7 +59,9 @@ export function UnknownsPanel({ roomId, revision }: { roomId: string; revision: 
   const people = usePeople();
   const can = useCan();
   const [withdrawError, setWithdrawError] = useState<string | null>(null);
-  const frozen = revision.state === 'approved';
+  // Approved revisions and archived rooms both keep their acknowledgements as they are.
+  const archived = useRoomArchived(roomId);
+  const frozen = revision.state === 'approved' || archived;
   const items: { rack: Rack; range: ReservedRange }[] = racksOf(revision.content).flatMap((rack) =>
     rack.reserved.filter((r) => r.demand.kind === 'unknown').map((range) => ({ rack, range })),
   );

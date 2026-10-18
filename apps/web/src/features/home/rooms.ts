@@ -34,9 +34,15 @@ function summarise(project: Project, site: Site, room: Room): RoomSummary {
   };
 }
 
-/** Every room, grouped by project then site, in the tree's order. */
+/** Every room still in use, grouped by project then site, in the tree's order. Archived ones are the tree's to show, on request. */
 export function roomGroups(workspace: Workspace): { project: Project; site: Site; rooms: RoomSummary[] }[] {
-  return workspace.projects.flatMap((project) => project.sites.map((site) => ({ project, site, rooms: site.rooms.map((room) => summarise(project, site, room)) })));
+  return workspace.projects
+    .filter((project) => project.archivedAt === undefined)
+    .flatMap((project) =>
+      project.sites
+        .filter((site) => site.archivedAt === undefined)
+        .map((site) => ({ project, site, rooms: site.rooms.filter((room) => room.archivedAt === undefined).map((room) => summarise(project, site, room)) })),
+    );
 }
 
 /** The hero: the room last opened if it still exists, else the first room there is. */

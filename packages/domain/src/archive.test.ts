@@ -1,6 +1,6 @@
 import { produce } from 'immer';
 import { describe, expect, it } from 'vitest';
-import { archiveScope, archiveState } from './archive';
+import { archiveScope, archiveState, liveCounts } from './archive';
 import { exportBackup, parseBackup } from './backup';
 import { canonicalJson } from './canonical';
 import { apply, type WorkspaceCommand } from './commands/workspace';
@@ -160,6 +160,13 @@ describe('archive and restore commands', () => {
     expect(archiveScope(ws, 'project', 'p')).toEqual({ sites: 2, rooms: 2 });
     expect(archiveScope(ws, 'site', 's')).toEqual({ sites: 0, rooms: 1 });
     expect(archiveScope(ws, 'room', 'r2')).toEqual({ sites: 0, rooms: 0 });
+  });
+
+  it('counts only what is still in use', () => {
+    expect(liveCounts(seeded())).toEqual({ projects: 1, rooms: 3 });
+    expect(liveCounts(run(seeded(), archiveRoom('r1')))).toEqual({ projects: 1, rooms: 2 });
+    expect(liveCounts(run(seeded(), archiveSite('s')))).toEqual({ projects: 1, rooms: 1 });
+    expect(liveCounts(run(seeded(), archiveProject('p'), { type: 'project/create', id: 'q', name: 'Other' }))).toEqual({ projects: 1, rooms: 0 });
   });
 
   it('refuses unknown ids and over-long names', () => {
