@@ -322,6 +322,8 @@ export function usePlanGestures({ content, tool, setTool, selectedId, select, vi
 
   const onKeyDown = (e: KeyboardEvent<HTMLElement>): void => {
     if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+    // Floating panels (the panel manager) sit inside the canvas, so their keys bubble here; they belong to the panel.
+    if (e.target instanceof Element && e.target.closest('[role="dialog"], select')) return;
     if (e.key === ' ') {
       e.preventDefault();
       setSpaceHeld(true);

@@ -46,7 +46,15 @@ export function PanelManager({ panel, content, commit, onClose, readOnly = false
   const amps = !target ? 0 : target.type === 'rack' ? rackCurrentA(target) : loadA(content, target.id);
 
   return (
-    <section className="panel-mgr glass" role="dialog" aria-label={m.panelMgr.title(panel.name)} style={{ left: pos.x, top: pos.y, maxHeight: `calc(100% - ${pos.y + PANEL_BOTTOM_GAP_PX}px)` }}>
+    <section
+      className="panel-mgr glass"
+      role="dialog"
+      aria-label={m.panelMgr.title(panel.name)}
+      onKeyDown={(e) => {
+        // A native select handles its own Escape (closing its list) before this sees it.
+        if (e.key === 'Escape') onClose();
+      }}
+      style={{ left: pos.x, top: pos.y, maxHeight: `calc(100% - ${pos.y + PANEL_BOTTOM_GAP_PX}px)` }}>
       <header className="panel-mgr__head" title={m.panels.dragToMove} {...headProps}>
         <IconGrip className="panel-mgr__grip" />
         <h2>

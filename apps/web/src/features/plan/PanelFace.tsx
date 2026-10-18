@@ -60,7 +60,11 @@ export function PanelFace({ name, config, content, feeds, inUse, selected, onSel
               tabIndex={n === selected ? 0 : -1}
               aria-pressed={n === selected}
               aria-label={m.panelMgr.tile(n, way.ratingA, phase, feedText, way.label)}
-              onClick={() => onSelect(n)}
+              onClick={(e) => {
+                onSelect(n);
+                // Safari doesn't focus a clicked button; without this the arrow keys still drive whatever had focus before.
+                e.currentTarget.focus();
+              }}
               onKeyDown={(e) => move(e, n)}
             >
               <span className="way-tile__lever" aria-hidden="true" />
