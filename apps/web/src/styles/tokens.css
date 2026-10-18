@@ -94,6 +94,23 @@
   --text-xl: 20px;
   --text-print: 12px;
 
+  /* Brand (Glass Nest): the sign-in panel's dark ink room and its on-dark tints. */
+  --brand-ink: #0e1824;
+  --brand-acc-light: #7fa2e8;
+  --brand-top-dark: #c9d8f5;
+  --brand-on-ink-2: #b4c0cc;
+  --brand-on-ink-3: #7a8794;
+  --brand-grid: rgb(127 162 232 / 0.07);
+  --brand-chip-bg: rgb(127 162 232 / 0.08);
+  --brand-chip-border: rgb(127 162 232 / 0.22);
+  --brand-chip-num-bg: rgb(127 162 232 / 0.18);
+  --signin-floor: #e7edf1;
+  --signin-card-bg: rgb(255 255 255 / 0.86);
+  --signin-card-border: rgb(255 255 255 / 0.9);
+  --signin-card-shadow: inset 0 1px 0 #fff, 0 1px 2px rgb(14 24 36 / 0.06), 0 24px 56px -16px rgb(14 24 36 / 0.28);
+  --block-deep: #8f241e;
+  --acc-ring: rgb(28 100 200 / 0.18);
+
   --radius-panel: 16px;
   --radius-control: 10px;
   --radius-field: 8px;

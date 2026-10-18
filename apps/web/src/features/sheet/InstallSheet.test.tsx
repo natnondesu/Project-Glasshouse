@@ -35,6 +35,18 @@ beforeEach(() => {
 
 const open = (roomId: string) => render(<RouterProvider router={createMemoryRouter(routes, { initialEntries: [`/rooms/${roomId}/install-sheet`] })} />);
 
+it('puts the small mono-ink mark, 24 px or less, beside the title on every page so it prints in black and white', () => {
+  approveMdf();
+  const { container } = open(mdf);
+  const marks = container.querySelectorAll('.sheet-title__mark');
+  expect(marks.length).toBeGreaterThanOrEqual(4);
+  for (const mark of marks) {
+    expect(mark).toHaveAttribute('src', '/brand/glasshouse-mark-small-mono-ink.svg');
+    expect(mark).toHaveAttribute('alt', '');
+    expect(Number(mark.getAttribute('height'))).toBeLessThanOrEqual(24);
+  }
+});
+
 it('AC17: prints an Approved revision with a title block on every page, plan, elevations, slot maps and BOM', () => {
   approveMdf();
   const { container } = open(mdf);

@@ -1,35 +1,75 @@
+/* Sign-in and change-password: brand panel on the left, the card on the floor-grid panel on the right. */
 .signin {
   min-height: 100vh;
-  display: grid;
-  place-items: center;
-  padding: var(--gap);
+  display: flex;
+  align-items: stretch;
 }
 
-.signin__card {
+.signin__panel {
+  flex: 1 1 440px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+  padding: 32px 24px;
+  background-color: var(--signin-floor);
+  background-image:
+    linear-gradient(var(--grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+.signin__lang {
+  width: 100%;
+  max-width: 420px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.signin__lang .seg button {
+  min-height: 32px;
+  padding: 0 12px;
+}
+
+.signin__stage {
+  flex: 1;
   width: 100%;
   max-width: 420px;
   display: flex;
   flex-direction: column;
-  gap: 14px;
-  padding: 24px 22px 26px;
+  justify-content: center;
 }
 
-.signin__card h1 {
-  margin: 0;
-  font-size: var(--text-xl);
-  letter-spacing: -0.02em;
-  line-height: 1.2;
+.signin__card {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 32px;
+  border: 1px solid var(--signin-card-border);
+  border-radius: var(--radius-panel);
+  background: var(--signin-card-bg);
+  box-shadow: var(--signin-card-shadow);
 }
 
 .signin__head {
   display: flex;
-  align-items: center;
-  gap: 12px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
 }
 
 .signin__head h1 {
-  flex: 1;
-  min-width: 0;
+  margin: 8px 0 0;
+  font-size: 26px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+.signin__lead {
+  font-size: var(--text-md);
+  color: var(--ink-3);
 }
 
 .signin__note {
@@ -42,24 +82,155 @@
   font-size: var(--text-sm);
 }
 
-.signin .review-form {
+.signin__alert {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--block-border);
+  border-radius: var(--radius-control);
+  background: var(--block-bg);
+  color: var(--block-deep);
+  font-size: var(--text-sm);
+  font-weight: 500;
+}
+
+.signin__alert svg {
+  flex: none;
+}
+
+.signin__form {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 14px;
+}
+
+.signin .field {
+  gap: 6px;
+}
+
+.signin .field__label {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.signin .field__box {
+  height: 46px;
+  padding: 0 14px;
+  border-color: rgb(14 24 36 / 0.2);
+  border-radius: var(--radius-control);
+  background: #fff;
+}
+
+.signin .field__box:hover {
+  border-color: var(--line-strong);
+}
+
+.signin .field__box:focus-within {
+  border-color: var(--acc);
+  box-shadow: 0 0 0 3px var(--acc-ring);
+}
+
+.signin .field__box--error,
+.signin .field__box--error:focus-within {
+  border-color: var(--block);
+}
+
+/* The red border stays; the focus ring is still the accent ring so keyboard users see where they are. */
+.signin .field__box--error:focus-within {
+  box-shadow: 0 0 0 3px var(--acc-ring);
+}
+
+.signin .field__box--error:not(:focus-within) {
+  box-shadow: none;
+}
+
+.signin .field__input {
+  font-size: 15px;
+}
+
+.signin__hint {
+  font-size: var(--text-xs);
+  color: var(--ink-3);
+}
+
+.signin__reveal {
+  /* Sits inside the field box, 4px from its edge: the box's own padding is 14px. */
+  flex: none;
+  min-width: 52px;
+  height: 36px;
+  margin-right: -10px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 7px;
+  background: rgb(14 24 36 / 0.06);
+  color: var(--ink-2);
+  font-size: var(--text-xs);
+  font-weight: 600;
+}
+
+.signin__reveal:hover {
+  background: rgb(14 24 36 / 0.1);
+  color: var(--ink);
+}
+
+.signin__sso,
+.signin__submit {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  border-radius: var(--radius-control);
+  font-weight: 600;
+  text-decoration: none;
+  white-space: normal;
 }
 
 .signin__sso {
-  width: 100%;
-  height: 40px;
-  text-decoration: none;
+  min-height: 46px;
+  border: 1px solid rgb(14 24 36 / 0.16);
+  background: rgb(255 255 255 / 0.7);
+  color: var(--ink);
+  font-size: var(--text-md);
+  transition:
+    background var(--duration-fast) ease-out,
+    border-color var(--duration-fast) ease-out;
+}
+
+.signin__sso:hover {
+  background: #fff;
+  border-color: rgb(14 24 36 / 0.28);
+}
+
+.signin__submit {
+  min-height: 48px;
+  border: 0;
+  background: var(--acc);
+  color: #fff;
+  font-size: 15px;
+  box-shadow: 0 8px 20px -8px rgb(28 100 200 / 0.6);
+  transition: background var(--duration-fast) ease-out;
+}
+
+.signin__submit:hover:not(:disabled) {
+  background: var(--acc-hover);
+}
+
+.signin__submit:disabled {
+  cursor: progress;
+  opacity: 0.8;
 }
 
 .signin__or {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   margin: 0;
-  font-size: var(--text-xs);
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  letter-spacing: 0.06em;
   color: var(--ink-3);
 }
 
@@ -67,7 +238,75 @@
 .signin__or::after {
   content: '';
   flex: 1;
-  border-top: 1px solid var(--line);
+  border-top: 1px solid rgb(14 24 36 / 0.14);
+}
+
+.signin__noaccount {
+  font-size: var(--text-sm);
+  line-height: 1.5;
+  text-align: center;
+  color: var(--ink-3);
+}
+
+@keyframes signin-flap {
+  0%,
+  100% {
+    transform: scaleX(1);
+  }
+  50% {
+    transform: scaleX(0.5);
+  }
+}
+
+@keyframes signin-bob {
+  0%,
+  100% {
+    transform: translateY(1px);
+  }
+  50% {
+    transform: translateY(-2px);
+  }
+}
+
+.swiftlet {
+  overflow: visible;
+}
+
+.swiftlet__right {
+  fill: var(--brand-top-dark);
+}
+
+.swiftlet.bob {
+  animation: signin-bob 0.9s ease-in-out infinite;
+}
+
+.swiftlet .flap {
+  transform-box: view-box;
+  transform-origin: 32px 30px;
+  animation: signin-flap 0.45s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .swiftlet.bob,
+  .swiftlet .flap {
+    animation: none;
+  }
+}
+
+/* Under ~900 px the brand panel is a band above the form. */
+@media (max-width: 899px) {
+  .signin {
+    flex-direction: column;
+  }
+
+  .signin__panel {
+    flex: 1 1 auto;
+    padding: 20px 16px 28px;
+  }
+
+  .signin__card {
+    padding: 24px 20px;
+  }
 }
 
 .user-menu {

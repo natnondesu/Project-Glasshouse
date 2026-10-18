@@ -5,11 +5,15 @@ type IconProps = SVGProps<SVGSVGElement>;
 const frame = (size: number) =>
   ({ width: size, height: size, viewBox: `0 0 ${size} ${size}`, fill: 'none', stroke: 'currentColor', strokeWidth: 1.5, 'aria-hidden': true }) as const;
 
-export const GlasshouseMark = (p: IconProps) => (
-  <svg {...frame(22)} strokeWidth={1.75} {...p}>
-    <rect x="1.5" y="1.5" width="19" height="19" />
-    <path d="M11 1.5V20.5M1.5 11H20.5" />
-    <path d="M4 8L8 4M14 18L18 14" strokeWidth={1} />
+export const IconBuilding = (p: IconProps) => (
+  <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" aria-hidden {...p}>
+    <path d="M4 21V5l8-2v18M12 9h8v12M3 21h18M8 8h.01M8 12h.01M8 16h.01M16 13h.01M16 17h.01" />
+  </svg>
+);
+export const IconAlertCircle = (p: IconProps) => (
+  <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" aria-hidden {...p}>
+    <circle cx="12" cy="12" r="9" />
+    <path d="M12 7.5v5.5M12 16.5v.01" />
   </svg>
 );
 export const IconSelect = (p: IconProps) => (

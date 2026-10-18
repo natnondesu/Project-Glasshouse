@@ -21,6 +21,17 @@ it('undoes with ⌘Z even when focus has fallen back to the page body', () => {
   expect(currentRevision(findRoom(useWorkspaceStore.getState().workspace, 'r')!.room.plan).content.survey.width).toBe(5);
 });
 
+it('keeps the lockup big enough in the header: a mark of at least 24 px and a lockup of at least 96 px, with its clear space', () => {
+  render(<RouterProvider router={createMemoryRouter(routes, { initialEntries: ['/rooms/r/plan'] })} />);
+  const lockup = screen.getByRole('img', { name: 'Glasshouse' });
+  const height = Number(lockup.getAttribute('height'));
+  const width = Number(lockup.getAttribute('width'));
+  // The lockup file is 266.13 x 72 and its mark is 48 of those 72 units, with a quarter-mark margin built into the file.
+  expect(width).toBeGreaterThanOrEqual(96);
+  expect((height * 48) / 72).toBeGreaterThanOrEqual(24);
+  expect(width / height).toBeCloseTo(266.13 / 72, 1);
+});
+
 const bannerText = () => document.querySelector('.read-only-banner')?.textContent ?? null;
 
 it.each(['connecting', 'offline'] as const)('shows the offline banner, never the other-tab one, while read-only and %s in server mode', (connection) => {

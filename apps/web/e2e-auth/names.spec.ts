@@ -58,7 +58,7 @@ test('a viewer gets no New room card', async ({ browser }) => {
   const viewerCtx = await browser.newContext();
   const viewer = await viewerCtx.newPage();
   await viewer.goto('/');
-  await viewer.getByRole('link', { name: 'Sign in with your company account' }).click();
+  await viewer.getByRole('link', { name: 'Continue with company account' }).click();
   await expect(viewer.getByText('You can view this workspace. Ask an admin for edit access.')).toBeVisible();
   await expect(viewer.getByRole('region', { name: /Names site/ })).toBeVisible();
   await expect(viewer.getByRole('button', { name: /^New room in/ })).toHaveCount(0);

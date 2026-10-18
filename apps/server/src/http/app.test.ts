@@ -1,3 +1,6 @@
+import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { afterEach, expect, it } from 'vitest';
 import { MemoryCommandStore } from '../store/memoryStore';
 import { WorkspaceService } from '../workspaceService';
@@ -127,4 +130,26 @@ it('leaves server errors to Fastify: a 500 stays a 500', async () => {
   };
   const res = await app.inject({ method: 'POST', url: '/api/commands', headers: { 'x-glasshouse': '1' }, payload: { clientId: 'a', commands: [{ commandId: '1', command: { type: 'project/create', id: 'p', name: 'P' } }] } });
   expect(res.statusCode).toBe(500);
+});
+
+it('serves the web manifest as a manifest, and a missing static file falls back to the app', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'gh-web-'));
+  try {
+    await writeFile(join(dir, 'index.html'), '<!doctype html><title>app</title>');
+    await writeFile(join(dir, 'site.webmanifest'), '{"name":"Glasshouse"}');
+    await writeFile(join(dir, 'favicon.svg'), '<svg xmlns="http://www.w3.org/2000/svg"><style>.t{fill:red}</style></svg>');
+    const service = await WorkspaceService.open(new MemoryCommandStore());
+    const app = await buildApp({ service, authenticate: devAuthenticate, authRoutes: registerDevAuthRoutes, publicOrigin: null, webDir: dir });
+    apps.push(app);
+    const manifest = await app.inject({ url: '/site.webmanifest' });
+    expect(manifest.statusCode).toBe(200);
+    expect(String(manifest.headers['content-type'])).toMatch(/^application\/manifest\+json/);
+    expect(manifest.headers['x-content-type-options']).toBe('nosniff');
+    expect((await app.inject({ url: '/rooms/anything' })).body).toContain('<title>app</title>');
+    // Only a served SVG may style itself; a missing .svg falls back to the app and keeps the strict policy.
+    expect((await app.inject({ url: '/favicon.svg' })).headers['content-security-policy']).toBe("default-src 'none'; style-src 'unsafe-inline'");
+    for (const url of ['/', '/site.webmanifest', '/missing.svg']) expect(String((await app.inject({ url })).headers['content-security-policy']), url).toContain("default-src 'self'");
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
 });

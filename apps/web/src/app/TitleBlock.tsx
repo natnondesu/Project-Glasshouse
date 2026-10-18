@@ -8,7 +8,7 @@ import { useT } from '../i18n';
 import { useRoomLocation, useViewedRevisionNumber } from '../store/hooks';
 import { useWorkspaceStore, type SaveState } from '../store/workspaceStore';
 import { downloadJson, slugify } from '../ui/files';
-import { GlasshouseMark, IconCatalog, IconDownload } from '../ui/icons';
+import { IconCatalog, IconDownload } from '../ui/icons';
 import { pad2, StatusStamp } from '../ui/StatusStamp';
 
 function Cell({ label, children, mono = false }: { label: string; children: ReactNode; mono?: boolean }) {
@@ -63,8 +63,7 @@ export function TitleBlock({ roomId }: { roomId: string | null }) {
   return (
     <header className="title-block glass">
       <Link to="/" className="title-block__mark">
-        <GlasshouseMark />
-        <span>Glasshouse</span>
+        <img src="/brand/glasshouse-lockup-horizontal-color.svg" width="148" height="40" alt="Glasshouse" />
       </Link>
       {location ? null : (
         <dl className="title-block__cells">

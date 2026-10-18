@@ -22,3 +22,10 @@ it('checks the new password matches, then changes it and signs in', async () => 
   expect(fetchSpy).toHaveBeenCalledWith('/auth/password', expect.objectContaining({ method: 'POST' }));
   expect(init).toHaveBeenCalled();
 });
+
+it('sits in the same two-panel page as sign-in, with the lockup and a language switch', () => {
+  render(<ChangePasswordScreen />);
+  expect(screen.getByRole('img', { name: 'Glasshouse' })).toBeInTheDocument();
+  expect(screen.getByRole('heading', { level: 1, name: 'Choose your own password' })).toBeInTheDocument();
+  expect(screen.getByRole('group', { name: /Language/ })).toBeInTheDocument();
+});

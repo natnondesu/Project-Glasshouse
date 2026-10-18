@@ -1,0 +1,223 @@
+/* The sign-in brand panel: ink room, grid, headline, the four steps and the animated rack room. */
+.signin-brand {
+  flex: 1 1 560px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 36px;
+  padding: 40px 56px;
+  color: #fff;
+  background-color: var(--brand-ink);
+  background-image:
+    linear-gradient(var(--brand-grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--brand-grid) 1px, transparent 1px);
+  background-size: 48px 48px;
+}
+
+/* The lockup carries its own clear space (a quarter of the mark on every side); pull it back so the mark meets the panel padding. */
+.signin-brand__lockup {
+  display: block;
+  align-self: flex-start;
+  margin: -9px 0 -9px -9px;
+}
+
+.signin-brand__copy {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  max-width: 560px;
+}
+
+.signin-brand__headline {
+  font-size: 44px;
+  line-height: 1.12;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  white-space: pre-line;
+}
+
+.signin-brand__sub {
+  font-size: 17px;
+  line-height: 1.6;
+  color: var(--brand-on-ink-2);
+}
+
+.signin-brand__steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.signin-brand__step {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px 8px 8px;
+  border: 1px solid var(--brand-chip-border);
+  border-radius: var(--radius-control);
+  background: var(--brand-chip-bg);
+  font-size: var(--text-md);
+  font-weight: 500;
+  animation: signin-fade-in 0.5s ease both;
+}
+
+.signin-brand__step-n {
+  padding: 3px 6px;
+  border-radius: 6px;
+  background: var(--brand-chip-num-bg);
+  color: var(--brand-top-dark);
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  font-weight: 600;
+}
+
+/* The room fills what the headline leaves (never under 260 px), so lockup, copy and footer stay on one screen. */
+.signin-brand__stage {
+  position: relative;
+  flex: 1;
+  min-height: 260px;
+}
+
+.signin-brand__room {
+  position: absolute;
+  inset: auto 0 0;
+  width: 100%;
+  max-width: 640px;
+  height: 100%;
+  margin: 0 auto;
+}
+
+.signin-brand__footer {
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  letter-spacing: 0.08em;
+  color: var(--brand-on-ink-3);
+}
+
+@keyframes signin-rack-in {
+  from {
+    opacity: 0;
+    transform: translateY(-28px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes signin-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes signin-march {
+  to {
+    stroke-dashoffset: -14;
+  }
+}
+
+@keyframes signin-sweep {
+  from {
+    stroke-dashoffset: 840;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes signin-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+.signin-brand .rk {
+  animation: signin-rack-in 0.8s var(--ease-out-expo) both;
+}
+
+.signin-brand .zone {
+  animation: signin-fade-in 0.6s ease 1.1s both;
+}
+
+.signin-brand .ants {
+  animation: signin-march 1.1s linear infinite;
+}
+
+.signin-brand .sweep {
+  stroke-dasharray: 70 770;
+  animation: signin-sweep 5.5s linear 1s infinite;
+}
+
+.signin-brand .float {
+  animation: signin-float 7s ease-in-out infinite;
+}
+
+/* Short laptops (1366x768, 1280x720): tighter copy so lockup, steps, room and footer fit without scrolling. */
+@media (min-width: 900px) and (max-height: 819px) {
+  .signin-brand {
+    gap: 22px;
+    padding: 28px 56px 24px;
+  }
+
+  .signin-brand__headline {
+    font-size: 36px;
+  }
+
+  .signin-brand__sub {
+    font-size: var(--text-lg);
+    line-height: 1.5;
+  }
+
+  .signin-brand__stage {
+    min-height: 180px;
+  }
+}
+
+/* Narrow screens: a compact band above the form, lockup and headline only. */
+@media (max-width: 899px) {
+  .signin-brand {
+    flex: none;
+    gap: 14px;
+    padding: 20px 24px 22px;
+  }
+
+  .signin-brand__sub,
+  .signin-brand__steps,
+  .signin-brand__stage,
+  .signin-brand__footer {
+    display: none;
+  }
+
+  .signin-brand__headline {
+    font-size: 19px;
+    line-height: 1.3;
+    letter-spacing: -0.02em;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .signin-brand .rk,
+  .signin-brand .zone,
+  .signin-brand .ants,
+  .signin-brand .sweep,
+  .signin-brand .float,
+  .signin-brand__step {
+    animation: none;
+  }
+
+  .signin-brand .sweep,
+  .signin-brand .demo {
+    display: none;
+  }
+}

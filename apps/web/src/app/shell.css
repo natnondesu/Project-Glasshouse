@@ -31,16 +31,16 @@
   padding: 8px 12px 8px 18px;
 }
 
+/* The lockup file carries its own clear space (a quarter of the mark on every side); at 40 px high its mark is 26.7 px. */
 .title-block__mark {
   display: flex;
   align-items: center;
-  gap: 10px;
   min-height: 40px;
-  color: var(--ink);
-  text-decoration: none;
-  font-weight: 700;
-  font-size: 17px;
-  letter-spacing: -0.02em;
+  margin-left: -10px;
+}
+
+.title-block__mark img {
+  display: block;
 }
 
 .title-block__cells {
