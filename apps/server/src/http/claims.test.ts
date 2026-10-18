@@ -36,7 +36,8 @@ async function setup() {
   apps.push(app);
   const call = (method: 'GET' | 'POST' | 'DELETE', url: string, asUser: User | null, headers: Record<string, string> = { 'x-glasshouse': '1' }) =>
     app.inject({ method, url, headers: { ...headers, ...(asUser ? { 'x-test-user': asUser.id } : {}) } });
-  return { people, claims, call };
+  const archive = () => service.submit({ clientId: 'seed', commandId: 'arch', command: { type: 'room/archive', roomId: 'r', by: '', at: NOW } }, as(people.ada));
+  return { people, claims, call, archive };
 }
 
 describe('room claims API', () => {
@@ -60,6 +61,15 @@ describe('room claims API', () => {
     await call('POST', '/api/claims/r', people.ploy);
     expect((await call('POST', '/api/claims/r', people.ada)).statusCode).toBe(200);
     expect(claims.holder('r')).toMatchObject({ userId: 'ada' });
+  });
+
+  it('refuses to start editing an archived room', async () => {
+    const { people, claims, call, archive } = await setup();
+    await archive();
+    const res = await call('POST', '/api/claims/r', people.ploy);
+    expect(res.statusCode).toBe(409);
+    expect(res.json()).toMatchObject({ error: { code: 'archived', targets: ['r'], message: expect.stringMatching(/archived/) } });
+    expect(claims.holder('r')).toBeNull();
   });
 
   it('refuses a viewer, and an unknown room', async () => {

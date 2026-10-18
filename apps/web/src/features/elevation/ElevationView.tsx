@@ -27,7 +27,7 @@ import {
 } from '@glasshouse/domain';
 import { useEffect, useMemo, useState, useRef } from 'react';
 import { Link, useNavigate } from 'react-router';
-import { usePlanCommit, useSearchParamState } from '../../store/hooks';
+import { usePlanCommit, useRoomArchived, useSearchParamState } from '../../store/hooks';
 import { useWorkspaceStore } from '../../store/workspaceStore';
 import { ChecksStrip } from '../plan/ChecksStrip';
 import { flaggedObjectIds } from '../plan/flagged';
@@ -79,6 +79,8 @@ export function ElevationView({ location, readOnly = false, viewingPast = false 
   const content = revision.content;
   const roomId = location.room.id;
   const commit = usePlanCommit(roomId);
+  // Like an older revision, an archived room's on-site states and rack order can't change (an approved one's can).
+  const archived = useRoomArchived(roomId);
   const catalog = useWorkspaceStore((s) => s.workspace.catalog);
   const [selectedId, select] = useSearchParamState('sel');
   // Picking something to work on brings a folded inspector back.
@@ -121,7 +123,7 @@ export function ElevationView({ location, readOnly = false, viewingPast = false 
   const revealRight = (): void => racksArea.current?.scrollBy({ left: racksArea.current.clientWidth * 0.8, behavior: 'smooth' });
   const reveal = (dir: 1 | -1): void => racksArea.current?.scrollBy({ top: dir * racksArea.current.clientHeight * 0.8, behavior: 'smooth' });
   const racks = orderedRacks(content, location.room.plan.rackOrder);
-  const reorder = useRackReorder({ area: racksArea, racks, roomId, enabled: !viewingPast && racks.length > 1 });
+  const reorder = useRackReorder({ area: racksArea, racks, roomId, enabled: !viewingPast && !archived && racks.length > 1 });
   const customOrder = Boolean(location.room.plan.rackOrder?.length);
   const dragIndex = reorder.drag ? racks.findIndex((r) => r.id === reorder.drag!.id) : -1;
   const others = reorder.drag ? racks.filter((r) => r.id !== reorder.drag!.id) : [];
@@ -218,7 +220,7 @@ export function ElevationView({ location, readOnly = false, viewingPast = false 
           {customOrder ? (
             <span className="elev__order">
               {m.elevation.customOrder}
-              <button type="button" className="btn btn--sm btn--quiet" disabled={viewingPast} onClick={reorder.reset}>
+              <button type="button" className="btn btn--sm btn--quiet" disabled={viewingPast || archived} onClick={reorder.reset}>
                 {m.elevation.planOrder}
               </button>
             </span>
@@ -274,7 +276,7 @@ export function ElevationView({ location, readOnly = false, viewingPast = false 
                 onDeviceDragStart={readOnly ? undefined : drag.start}
                 onNamePointerDown={(e) => reorder.start(e, rack.id)}
                 onNameKeyDown={(e) => reorder.onKey(e, rack.id)}
-                nameTitle={racks.length > 1 && !viewingPast ? m.elevation.reorderHint : undefined}
+                nameTitle={racks.length > 1 && !viewingPast && !archived ? m.elevation.reorderHint : undefined}
                 onDropTemplate={(templateId, u) => {
                   const template = catalog.find((t) => t.id === templateId);
                   if (template) place(template, rack, u);

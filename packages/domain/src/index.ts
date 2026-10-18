@@ -17,6 +17,7 @@ export * from './objects';
 export * from './commands/objects';
 export * from './lookup';
 export * from './commands/workspace';
+export * from './archive';
 export * from './checks/index';
 export * from './migrations';
 export * from './schema';

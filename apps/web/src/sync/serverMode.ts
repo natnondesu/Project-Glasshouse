@@ -1,3 +1,4 @@
+import { localizeError } from '../store/errorText';
 import { apply, exportProjectFile, findRoom, parseWorkspace, type WorkspaceCommand } from '@glasshouse/domain';
 import { useAuthStore } from '../auth/authStore';
 import { AuthError, type AuthUser } from '../auth/authApi';
@@ -40,7 +41,7 @@ export async function startServerSync(transport: Transport = httpTransport(), is
       try {
         const outcome = await transport.postCommands(stash.clientId, stash.commands);
         const skipped = stash.commands.filter((c) => outcome.skipped.includes(c.commandId));
-        const notes = [outcome.rejected?.error.message, skipped.length > 0 ? t.skippedBefore(skipped.length) : null].filter((n): n is string => !!n);
+        const notes = [outcome.rejected ? localizeError(outcome.rejected.error).message : null, skipped.length > 0 ? t.skippedBefore(skipped.length) : null].filter((n): n is string => !!n);
         if (skipped.length > 0) keep(skipped);
         if (notes.length > 0) store.setNotice(notes.join(' '));
       } catch (e) {
@@ -124,7 +125,7 @@ export async function startServerSync(transport: Transport = httpTransport(), is
       useClaimsStore.getState().pushLost({ userId: me?.id ?? null, roomId, roomName: loc.room.name, holderName, changes, file: file.value });
     },
     onDropped: (dropped) => {
-      useWorkspaceStore.getState().setNotice(dropped.map((d) => d.error.message).join(' '));
+      useWorkspaceStore.getState().setNotice(dropped.map((d) => localizeError(d.error).message).join(' '));
       if (dropped.some((d) => d.error.code === 'forbidden')) recheckRole();
     },
     onConnection: (status) => {

@@ -585,3 +585,103 @@ describe('room claims', () => {
     expect(onError).toHaveBeenCalledWith(expect.stringContaining('claims'), expect.any(Error));
   });
 });
+
+describe('archiving', () => {
+  const NOW = '2026-10-18T09:00:00.000Z';
+  const ada = { id: 'u-a', name: 'Ada', role: 'admin' as const, verified: true };
+  const bea = { id: 'u-b', name: 'Bea', role: 'admin' as const, verified: true };
+  const ploy = { id: 'u-p', name: 'Ploy', role: 'editor' as const, verified: true };
+  const go = (svc: WorkspaceService, actor: typeof ada, id: string, command: WorkspaceCommand) => svc.submit({ clientId: actor.id, commandId: id, command }, actor);
+  const archiveRoom: WorkspaceCommand = { type: 'room/archive', roomId: 'r', by: 'Spoof', at: 'client' };
+  const vlan: WorkspaceCommand = { type: 'plan', roomId: 'r', command: { type: 'vlan/add', vlan: { vid: 10, name: 'V10' } } };
+
+  async function open() {
+    const claims = new ClaimRegistry(() => new Date(NOW));
+    const svc = await WorkspaceService.open(new MemoryCommandStore(), { now: () => NOW, claims });
+    for (const [i, c] of readyRoomCommands().slice(0, 3).entries()) await go(svc, ada, `s${i}`, c);
+    return { svc, claims };
+  }
+  const roomOf = (svc: WorkspaceService) => findRoom(svc.state.workspace, 'r')!.room;
+
+  it('lets an admin archive, stamped with their name and the server time, and logs it with who did it', async () => {
+    const { svc } = await open();
+    expect(await go(svc, ada, 'a1', archiveRoom)).toMatchObject({ kind: 'accepted' });
+    expect(roomOf(svc)).toMatchObject({ archivedAt: NOW, archivedBy: 'Ada' });
+    const logged = (await svc.commandsAfter(0, 100)).find((e) => e.commandId === 'a1')!;
+    expect(logged).toMatchObject({ actor: { id: 'u-a', name: 'Ada' }, command: { type: 'room/archive', by: 'Ada', at: NOW } });
+    expect(await go(svc, ada, 'a2', { type: 'room/restore', roomId: 'r' })).toMatchObject({ kind: 'accepted' });
+    expect(roomOf(svc)).not.toHaveProperty('archivedAt');
+  });
+
+  it('refuses an editor, whether archiving or restoring', async () => {
+    const { svc } = await open();
+    expect(await go(svc, ploy as never, 'a1', archiveRoom)).toMatchObject({ kind: 'rejected', error: { code: 'forbidden', message: expect.stringMatching(/Editors can't make this change/) } });
+    await go(svc, ada, 'a2', archiveRoom);
+    expect(await go(svc, ploy as never, 'a3', { type: 'room/restore', roomId: 'r' })).toMatchObject({ kind: 'rejected', error: { code: 'forbidden' } });
+    expect(roomOf(svc).archivedAt).toBe(NOW);
+  });
+
+  it('refuses edits to an archived room from anyone, and replays an archived workspace from the log', async () => {
+    const store = new MemoryCommandStore();
+    const svc = await WorkspaceService.open(store, { now: () => NOW });
+    for (const [i, c] of readyRoomCommands().slice(0, 3).entries()) await go(svc, ada, `s${i}`, c);
+    await go(svc, ada, 'a1', archiveRoom);
+    expect(await go(svc, ada, 'e1', vlan)).toMatchObject({ kind: 'rejected', error: { code: 'archived' } });
+    const reopened = await WorkspaceService.open(store, { now: () => NOW });
+    expect(findRoom(reopened.state.workspace, 'r')!.room.archivedAt).toBe(NOW);
+  });
+
+  it('refuses while someone else is editing the room, naming them, at every level that contains it', async () => {
+    const { svc, claims } = await open();
+    await go(svc, ploy as never, 'e1', vlan);
+    expect(claims.holder('r')).toMatchObject({ userId: 'u-p' });
+    const message = "Ploy is editing MDF-1. Try again when they're done.";
+    for (const command of [archiveRoom, { type: 'site/archive', siteId: 's', by: '', at: '' }, { type: 'project/archive', projectId: 'p', by: '', at: '' }] as WorkspaceCommand[]) {
+      expect(await go(svc, ada, `a-${command.type}`, command), command.type).toMatchObject({ kind: 'rejected', error: { code: 'room_busy', message, targets: ['r'] } });
+    }
+    expect(roomOf(svc)).not.toHaveProperty('archivedAt');
+    expect(claims.holder('r')).toMatchObject({ userId: 'u-p' });
+  });
+
+  it('archives once the other editor is done', async () => {
+    const { svc, claims } = await open();
+    await go(svc, ploy as never, 'e1', vlan);
+    claims.release('r', 'u-p', { admin: false });
+    expect(await go(svc, ada, 'a1', archiveRoom)).toMatchObject({ kind: 'accepted' });
+  });
+
+  it('releases the admin’s own claim as part of archiving, so the room is free after a restore', async () => {
+    const { svc, claims } = await open();
+    await go(svc, ada, 'e1', vlan);
+    expect(claims.holder('r')).toMatchObject({ userId: 'u-a' });
+    expect(await go(svc, ada, 'a1', { type: 'site/archive', siteId: 's', by: '', at: '' })).toMatchObject({ kind: 'accepted' });
+    expect(claims.holder('r')).toBeNull();
+    await go(svc, bea, 'a2', { type: 'site/restore', siteId: 's' });
+    expect(await go(svc, ploy as never, 'e2', { type: 'plan', roomId: 'r', command: { type: 'vlan/add', vlan: { vid: 11, name: 'V11' } } })).toMatchObject({ kind: 'accepted' });
+  });
+
+  it('drops a claim that someone took while the archive was being stored', async () => {
+    const claims = new ClaimRegistry(() => new Date(NOW));
+    class ClaimsDuringAppend extends MemoryCommandStore {
+      armed = false;
+      override async append(entry: LoggedCommand, approval: ApprovalRecord | null): Promise<void> {
+        if (this.armed) claims.claim('r', { id: 'u-p', name: 'Ploy' }, { admin: false });
+        return super.append(entry, approval);
+      }
+    }
+    const store = new ClaimsDuringAppend();
+    const svc = await WorkspaceService.open(store, { now: () => NOW, claims });
+    for (const [i, c] of readyRoomCommands().slice(0, 3).entries()) await go(svc, ada, `s${i}`, c);
+    store.armed = true;
+    expect(await go(svc, ada, 'a1', archiveRoom)).toMatchObject({ kind: 'accepted' });
+    expect(claims.holder('r')).toBeNull();
+  });
+
+  it('does not ask the dev stand-in about claims, and trusts the name it sends', async () => {
+    const { svc } = await open();
+    const dev = { id: 'dev:Dev', name: 'Dev', role: 'admin' as const, verified: false };
+    await go(svc, ploy as never, 'e1', vlan);
+    expect(await go(svc, dev as never, 'a1', { ...archiveRoom, by: 'Few', at: 'x' } as WorkspaceCommand)).toMatchObject({ kind: 'accepted' });
+    expect(roomOf(svc)).toMatchObject({ archivedBy: 'Few', archivedAt: 'x' });
+  });
+});

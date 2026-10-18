@@ -272,3 +272,54 @@
 .tree-row__line:focus-within .stamp {
   opacity: 0;
 }
+
+/* Archived: out of use, still readable. Greyed ink and a dashed stamp, like a drawing filed away. */
+.tree-row--archived > .tree-row__line .tree-row__label {
+  color: var(--ink-3);
+}
+
+.tree-row--archived > .tree-row__line .tree-row__name {
+  font-weight: 500;
+}
+
+.tree-row__label .stamp--archived {
+  background: transparent;
+  color: var(--ink-2);
+  box-shadow: inset 0 0 0 1px var(--line-strong);
+  background-image: repeating-linear-gradient(135deg, rgb(14 24 36 / 0.07) 0 2px, transparent 2px 5px);
+}
+
+.tree-row--archived > .tree-row__line .stamp:not(.stamp--archived) {
+  opacity: 0.65;
+}
+
+.tree__archived-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 10px 2px 0;
+  padding: 8px 8px 2px;
+  border-top: 1px dashed var(--line-strong);
+  font-size: var(--text-xs);
+  color: var(--ink-2);
+  cursor: pointer;
+}
+
+.tree__archived-toggle input {
+  accent-color: var(--acc);
+}
+
+.tree__archived-count {
+  margin-left: auto;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: rgb(14 24 36 / 0.07);
+  font-size: var(--text-2xs);
+  line-height: 18px;
+}
+
+/* Unavailable for now (restore the parent first, or restore before deleting): dimmed, but still pressable to explain why. */
+.tree-row__actions .icon-btn[aria-disabled='true'] {
+  opacity: 0.4;
+  cursor: not-allowed;
+}

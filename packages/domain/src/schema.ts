@@ -144,9 +144,10 @@ const plan = z.object({
   equipmentState: z.record(text, z.enum(['planned', 'deployed', 'maintenance'])),
   rackOrder: z.array(text).optional(),
 });
-const room = z.object({ id, name: text, notes: text, plan });
-const site = z.object({ id, name: text, notes: text, rooms: z.array(room) });
-const project = z.object({ id, name: text, notes: text, isSample: z.boolean(), sites: z.array(site) });
+const archiveStamp = { archivedAt: text.optional(), archivedBy: text.optional() };
+const room = z.object({ id, name: text, notes: text, plan, ...archiveStamp });
+const site = z.object({ id, name: text, notes: text, rooms: z.array(room), ...archiveStamp });
+const project = z.object({ id, name: text, notes: text, isSample: z.boolean(), sites: z.array(site), ...archiveStamp });
 
 export const workspaceSchema = z.object({
   schemaVersion: z.literal(CURRENT_SCHEMA_VERSION),

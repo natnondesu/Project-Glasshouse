@@ -127,6 +127,16 @@ export const IconTrash = (p: IconProps) => (
     <path d="M2 3.5H12M5.5 3.5V2H8.5V3.5M3.5 3.5L4 12H10L10.5 3.5" strokeLinejoin="round" />
   </svg>
 );
+export const IconArchive = (p: IconProps) => (
+  <svg {...frame(14)} {...p}>
+    <path d="M1.5 2.5H12.5V5H1.5ZM2.5 5V11.5H11.5V5M5.5 7.5H8.5" strokeLinejoin="round" />
+  </svg>
+);
+export const IconRestore = (p: IconProps) => (
+  <svg {...frame(14)} {...p}>
+    <path d="M2.5 7A4.5 4.5 0 1 1 4 10.4M2.5 3.5V7H6" strokeLinejoin="round" />
+  </svg>
+);
 export const IconRotateCw = (p: IconProps) => (
   <svg {...frame(16)} {...p}>
     <path d="M12.5 6A5 5 0 1 0 12 11" />

@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { apply, approvedRevisionChanges, createWorkspace, currentRevision, draftEditRoom, err, findRoom, newlyApprovedRevisions, parseWorkspace, withSample, type DomainError, type Workspace, type WorkspaceCommand } from '@glasshouse/domain';
+import { apply, approvedRevisionChanges, createWorkspace, currentRevision, draftEditRoom, err, findRoom, newlyApprovedRevisions, parseWorkspace, roomsArchivedBy, withSample, type DomainError, type Workspace, type WorkspaceCommand } from '@glasshouse/domain';
 import type { ClaimRegistry } from './claims';
 import { atLeast } from './identity/types';
 import { ROLE_LABEL, requiredRole, stampCommand } from './permissions';
@@ -221,6 +221,8 @@ export class WorkspaceService {
     // apply() returns undefined for a command type its switch does not know.
     if (result === undefined) return rejected(`Unknown change type "${toApply.type}".`);
     if (!result.ok) return { kind: 'rejected', error: result.error };
+    const busy = this.claims && actor.verified ? this.archiveBlockedByClaim(toApply, actor.id) : null;
+    if (busy) return { kind: 'rejected', error: busy };
     const checked = parseWorkspace(result.value);
     if (!checked.ok) return rejected(`That change would leave the workspace invalid: ${checked.error.message}`);
     const touched = approvedRevisionChanges(this.current.workspace, result.value);
@@ -250,11 +252,19 @@ export class WorkspaceService {
       this.recovering = true;
       throw e;
     }
+    const before = this.current.workspace;
     this.current = { seq: entry.seq, workspace: result.value };
     if (claimRoom) {
       const step = command.type === 'review' ? command.command.type : null;
       if (step === 'review/submit' || step === 'review/discard-draft') this.claims!.release(claimRoom, actor.id, { admin: false });
       else this.claims!.touch(claimRoom, actor);
+    }
+    // An archived room can't be edited, so no claim on it means anything: not the admin's own, and not one taken while this archive was being stored.
+    if (this.claims) {
+      for (const room of roomsArchivedBy(before, toApply)) {
+        const held = this.claims.holder(room.id);
+        if (held) this.claims.release(room.id, held.userId, { admin: false });
+      }
     }
     this.claims?.prune((roomId) => findRoom(this.current.workspace, roomId) !== null);
     this.notify(entry);
@@ -268,6 +278,15 @@ export class WorkspaceService {
       }
     }
     return { kind: 'accepted', seq: entry.seq, duplicate: false };
+  }
+
+  /** Archiving takes rooms out of use, so it waits for anyone else still editing one of them. */
+  private archiveBlockedByClaim(command: WorkspaceCommand, actorId: string): DomainError | null {
+    for (const room of roomsArchivedBy(this.current.workspace, command)) {
+      const held = this.claims!.holder(room.id);
+      if (held && held.userId !== actorId) return err('room_busy', `${held.name} is editing ${room.name}. Try again when they're done.`, [room.id], { holder: held.name, room: room.name }).error;
+    }
+    return null;
   }
 
   /** Brings memory up to the log after an append whose outcome was unknown. Subscribers hear about landed commands. */

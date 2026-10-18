@@ -44,3 +44,31 @@ it('links a port to a port in another room of the site, sets the far end to poin
   expect(portOf('mdf', 'Gi4').remote).toBeUndefined();
   expect(portOf('idf', 'Gi1').remote).toBeUndefined();
 });
+
+it('does not offer an archived room as the far end of an uplink', async () => {
+  const user = userEvent.setup();
+  useWorkspaceStore.getState().dispatch({ type: 'room/archive', roomId: 'idf', by: '', at: '2026-10-18T00:00:00.000Z' });
+  render(<RouterProvider router={createMemoryRouter(routes, { initialEntries: ['/rooms/mdf/elevation?sel=mdf-sw'] })} />);
+  await user.click(screen.getByRole('button', { name: 'Manage ports' }));
+  const mgr = screen.getByRole('dialog', { name: 'MDF-SW ports' });
+  await user.click(within(mgr).getByRole('button', { name: 'Port Gi4, free' }));
+  await user.click(within(mgr).getByRole('button', { name: 'Link to another room…' }));
+  expect(within(mgr).queryByRole('combobox', { name: 'Link to device' })).toBeNull();
+  expect(within(mgr).getByText(/no other room/i)).toBeInTheDocument();
+});
+
+it('unlinks this end of an uplink to a room that was archived since, leaving the archived room untouched', async () => {
+  const user = userEvent.setup();
+  const { dispatch } = useWorkspaceStore.getState();
+  dispatch({ type: 'plan', roomId: 'mdf', command: { type: 'port/remote', deviceId: 'mdf-sw', name: 'Gi4', remote: { roomId: 'idf', deviceId: 'idf-sw', port: 'Gi1' } } });
+  dispatch({ type: 'plan', roomId: 'idf', command: { type: 'port/remote', deviceId: 'idf-sw', name: 'Gi1', remote: { roomId: 'mdf', deviceId: 'mdf-sw', port: 'Gi4' } } });
+  dispatch({ type: 'room/archive', roomId: 'idf', by: '', at: '2026-10-18T00:00:00.000Z' });
+  render(<RouterProvider router={createMemoryRouter(routes, { initialEntries: ['/rooms/mdf/elevation?sel=mdf-sw'] })} />);
+  await user.click(screen.getByRole('button', { name: 'Manage ports' }));
+  const mgr = screen.getByRole('dialog', { name: 'MDF-SW ports' });
+  await user.click(within(mgr).getByRole('button', { name: /^Port Gi4, uplink/ }));
+  await user.click(within(mgr).getByRole('button', { name: 'Unlink uplink' }));
+  expect(within(mgr).queryByRole('alert')).toBeNull();
+  expect(portOf('mdf', 'Gi4').remote).toBeUndefined();
+  expect(portOf('idf', 'Gi1').remote).toEqual({ roomId: 'mdf', deviceId: 'mdf-sw', port: 'Gi4' });
+});

@@ -1,7 +1,8 @@
-import { currentRevision, newId, parseProjectFile, type ProjectFile, type WorkspaceCommand, missingSamples } from '@glasshouse/domain';
-import { useMemo, useRef, useState } from 'react';
+import { archiveScope, archiveState, currentRevision, newId, parseProjectFile, type ArchiveKind, type ProjectFile, type WorkspaceCommand, missingSamples } from '@glasshouse/domain';
+import { useMemo, useRef, useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router';
 import { useWorkspaceStore } from '../../store/workspaceStore';
+import { confirmAction } from '../../ui/confirm/confirmStore';
 import { readJsonFile } from '../../ui/files';
 import { usePersistentState } from '../../ui/usePersistentState';
 import { IconChevronLeft, IconPlus, IconUpload } from '../../ui/icons';
@@ -56,6 +57,13 @@ export function ProjectTree({ activeRoomId, onCollapse }: { activeRoomId: string
     projects.flatMap((p) => p.sites.flatMap((s) => (s.rooms.some((r) => r.id === activeRoomId) ? [p.id, s.id] : []))),
   );
   const isOpen = (id: string): boolean => activePath.has(id) || !collapsed.includes(id);
+  const [showArchived, setShowArchived] = usePersistentState('glasshouse:tree-show-archived', false);
+  const archivedItems = useMemo(
+    () => projects.reduce((n, p) => n + (p.archivedAt === undefined ? 0 : 1) + p.sites.reduce((k, s) => k + (s.archivedAt === undefined ? 0 : 1) + s.rooms.filter((r) => r.archivedAt !== undefined).length, 0), 0),
+    [projects],
+  );
+  // Archived items stay out of the way, except on the path to the room that is open: the tree never hides where you are.
+  const shown = (archived: boolean, id: string): boolean => showArchived || !archived || activePath.has(id) || id === activeRoomId;
   const toggle = (id: string): void => setCollapsed(isOpen(id) ? [...collapsed, id] : collapsed.filter((c) => c !== id));
 
   const editing = (id: string) => ({
@@ -71,6 +79,42 @@ export function ProjectTree({ activeRoomId, onCollapse }: { activeRoomId: string
       return;
     }
     for (const command of commands.value) if (!run(command)) return;
+  };
+
+  const archivedBadge = (own: boolean): ReactNode => (own ? <span className="stamp stamp--archived">{m.archive.badge}</span> : undefined);
+
+  const archiveActions = (kind: ArchiveKind, id: string, name: string) => {
+    if (!can.admin) return undefined;
+    const state = archiveState(workspace, kind, id);
+    const restoreFirst = state.source && state.by !== 'self' ? m.archive.restoreFirst(m.tree.kind[state.source.kind], state.source.name) : null;
+    return {
+      restoreFirst,
+      onArchive: () => {
+        const scope = archiveScope(workspace, kind, id);
+        void confirmAction({
+          title: m.archive.confirmTitle(name, scope.sites, scope.rooms),
+          body: m.archive.confirmBody(scope.sites + scope.rooms > 0),
+          confirmLabel: m.archive.archive,
+          tone: 'primary',
+        }).then((ok) => {
+          if (!ok) return;
+          const stamp = { by: can.me?.name ?? '', at: new Date().toISOString() };
+          run(kind === 'project' ? { type: 'project/archive', projectId: id, ...stamp } : kind === 'site' ? { type: 'site/archive', siteId: id, ...stamp } : { type: 'room/archive', roomId: id, ...stamp });
+        });
+      },
+      onRestore: () => {
+        if (restoreFirst) return setError(restoreFirst);
+        run(kind === 'project' ? { type: 'project/restore', projectId: id } : kind === 'site' ? { type: 'site/restore', siteId: id } : { type: 'room/restore', roomId: id });
+      },
+    };
+  };
+
+  /** Why this archived item can't be deleted yet (null while it is live). */
+  const deleteBlocked = (kind: ArchiveKind, id: string, name: string) => {
+    const state = archiveState(workspace, kind, id);
+    if (!state.source) return undefined;
+    const reason = m.archive.refused('delete', m.tree.kind[kind], name, state.by === 'self', m.tree.kind[state.source.kind], state.source.name);
+    return { reason, onExplain: () => setError(reason) };
   };
 
   const addProject = (): void => {
@@ -115,19 +159,27 @@ export function ProjectTree({ activeRoomId, onCollapse }: { activeRoomId: string
       <div className="tree__scroll">
       {projects.length === 0 ? <p className="tree__empty">{m.tree.empty}</p> : null}
       <ul className="tree__list">
-        {projects.map((project) => (
+        {projects.filter((project) => shown(project.archivedAt !== undefined, project.id)).map((project) => (
           <TreeRow
             key={project.id}
             kind="project"
             label={project.name}
             expanded={isOpen(project.id)}
             onToggle={() => toggle(project.id)}
-            badge={project.isSample ? <span className="stamp stamp--sample">{m.common.sample}</span> : undefined}
+            badge={
+              <>
+                {project.isSample ? <span className="stamp stamp--sample">{m.common.sample}</span> : null}
+                {archivedBadge(project.archivedAt !== undefined)}
+              </>
+            }
             {...editing(project.id)}
             canEdit={can.edit}
             canDelete={can.admin}
+            archived={project.archivedAt !== undefined}
+            archiveActions={archiveActions('project', project.id, project.name)}
+            deleteBlocked={deleteBlocked('project', project.id, project.name)}
             onRename={(name) => rename({ type: 'project/rename', projectId: project.id, name })}
-            onAdd={can.edit ? () => {
+            onAdd={can.edit && project.archivedAt === undefined ? () => {
               const id = newId();
               if (run({ type: 'site/create', projectId: project.id, id, name: m.tree.newSite })) setEditingId(id);
             } : undefined}
@@ -140,17 +192,21 @@ export function ProjectTree({ activeRoomId, onCollapse }: { activeRoomId: string
           >
             {project.sites.length > 0 ? (
               <ul className="tree__list">
-                {project.sites.map((site) => (
+                {project.sites.filter((site) => shown(project.archivedAt !== undefined || site.archivedAt !== undefined, site.id)).map((site) => (
                   <TreeRow
                     key={site.id}
                     kind="site"
                     label={site.name}
                     expanded={isOpen(site.id)}
                     onToggle={() => toggle(site.id)}
+                    badge={archivedBadge(site.archivedAt !== undefined)}
                     {...editing(site.id)}
                     canEdit={can.edit}
+                    archived={project.archivedAt !== undefined || site.archivedAt !== undefined}
+                    archiveActions={archiveActions('site', site.id, site.name)}
+                    deleteBlocked={deleteBlocked('site', site.id, site.name)}
                     onRename={(name) => rename({ type: 'site/rename', siteId: site.id, name })}
-                    onAdd={can.edit ? () => {
+                    onAdd={can.edit && project.archivedAt === undefined && site.archivedAt === undefined ? () => {
                       const id = newId();
                       if (run({ type: 'room/create', siteId: site.id, id, floorAreaId: newId(), name: m.tree.newRoom })) {
                         setEditingId(id);
@@ -166,7 +222,7 @@ export function ProjectTree({ activeRoomId, onCollapse }: { activeRoomId: string
                   >
                     {site.rooms.length > 0 ? (
                       <ul className="tree__list">
-                        {site.rooms.map((room) => {
+                        {site.rooms.filter((room) => shown(project.archivedAt !== undefined || site.archivedAt !== undefined || room.archivedAt !== undefined, room.id)).map((room) => {
                           const revision = currentRevision(room.plan);
                           return (
                             <TreeRow
@@ -175,9 +231,18 @@ export function ProjectTree({ activeRoomId, onCollapse }: { activeRoomId: string
                               label={room.name}
                               to={`/rooms/${room.id}/plan`}
                               active={room.id === activeRoomId}
-                              badge={<span className={`stamp stamp--${revision.state}`}>{`R${pad2(revision.number)} ${m.revision.stamp[revision.state]}`}</span>}
+                              badge={
+                                room.archivedAt !== undefined ? (
+                                  archivedBadge(true)
+                                ) : (
+                                  <span className={`stamp stamp--${revision.state}`}>{`R${pad2(revision.number)} ${m.revision.stamp[revision.state]}`}</span>
+                                )
+                              }
                               {...editing(room.id)}
                               canEdit={can.edit}
+                              archived={project.archivedAt !== undefined || site.archivedAt !== undefined || room.archivedAt !== undefined}
+                              archiveActions={archiveActions('room', room.id, room.name)}
+                              deleteBlocked={deleteBlocked('room', room.id, room.name)}
                               onRename={(name) => rename({ type: 'room/rename', roomId: room.id, name })}
                               onDelete={() => {
                                 if (run({ type: 'room/delete', roomId: room.id }) && room.id === activeRoomId) navigate('/');
@@ -195,6 +260,13 @@ export function ProjectTree({ activeRoomId, onCollapse }: { activeRoomId: string
           </TreeRow>
         ))}
       </ul>
+      {archivedItems > 0 || showArchived ? (
+        <label className="tree__archived-toggle">
+          <input type="checkbox" checked={showArchived} onChange={(e) => setShowArchived(e.target.checked)} />
+          <span>{m.archive.show}</span>
+          <span className="tree__archived-count mono">{archivedItems}</span>
+        </label>
+      ) : null}
       {error ? (
         <p role="alert" className="tree__error">
           {error}

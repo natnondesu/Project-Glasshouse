@@ -41,6 +41,15 @@ beforeAll(() => {
     { type: 'plan', roomId: 'r', command: { type: 'object/add', object: rack } },
     { type: 'plan', roomId: 'r', command: { type: 'object/add', object: wall } },
     { type: 'plan', roomId: 'r', command: { type: 'device/place', id: 'srv', rackId: 'rk', bottomU: 1, template: tpl } },
+    // Already archived, so there is something to restore.
+    { type: 'project/create', id: 'ax', name: 'Archived project' },
+    { type: 'project/archive', projectId: 'ax', by: 'A', at: AT },
+    { type: 'project/create', id: 'ay', name: 'Project with archived parts' },
+    { type: 'site/create', projectId: 'ay', id: 'ays', name: 'Archived site' },
+    { type: 'site/create', projectId: 'ay', id: 'ays2', name: 'Live site' },
+    { type: 'room/create', siteId: 'ays2', id: 'ayr', floorAreaId: 'fa-ayr', name: 'Archived room' },
+    { type: 'site/archive', siteId: 'ays', by: 'A', at: AT },
+    { type: 'room/archive', roomId: 'ayr', by: 'A', at: AT },
   );
   const other = must(
     createWorkspace(),
@@ -62,6 +71,12 @@ beforeAll(() => {
     'room/create': [{ type: 'room/create', siteId: 's', id: 'r9', floorAreaId: 'fa-r9', name: 'New room' }],
     'room/rename': [{ type: 'room/rename', roomId: 'r', name: 'MDF-X' }],
     'room/delete': [{ type: 'room/delete', roomId: 'r2' }],
+    'project/archive': [{ type: 'project/archive', projectId: 'p', by: 'A', at: AT }],
+    'project/restore': [{ type: 'project/restore', projectId: 'ax' }],
+    'site/archive': [{ type: 'site/archive', siteId: 's', by: 'A', at: AT }],
+    'site/restore': [{ type: 'site/restore', siteId: 'ays' }],
+    'room/archive': [{ type: 'room/archive', roomId: 'r', by: 'A', at: AT }],
+    'room/restore': [{ type: 'room/restore', roomId: 'ayr' }],
     plan: [
       { type: 'plan', roomId: 'r', command: { type: 'survey/update', patch: { width: 7 } } },
       { type: 'plan', roomId: 'r', command: { type: 'floor/add', rect: { id: 'f2', x: 0, y: 3, w: 2, d: 1 } } },
@@ -143,7 +158,7 @@ describe('copy import ids', () => {
     const file = fileOf(base, 'p');
     const ids = { project: 'np', sites: { s: 'ns' }, rooms: { r: 'nr', r2: 'nr2' } };
     const ws = must(base, { type: 'project/import', file, resolution: { mode: 'copy', ids } });
-    expect(ws.projects[1]).toMatchObject({ id: 'np', sites: [{ id: 'ns', rooms: [{ id: 'nr' }, { id: 'nr2' }] }] });
+    expect(ws.projects.at(-1)).toMatchObject({ id: 'np', sites: [{ id: 'ns', rooms: [{ id: 'nr' }, { id: 'nr2' }] }] });
   });
 
   it('rejects a copy with no ids', () => {

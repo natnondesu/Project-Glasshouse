@@ -3,7 +3,7 @@ import { useState, type FormEvent } from 'react';
 import { Link } from 'react-router';
 import { useCan } from '../../auth/useCan';
 import { useT } from '../../i18n';
-import { useReviewCommit } from '../../store/hooks';
+import { useReviewCommit, useRoomArchived } from '../../store/hooks';
 import { usePeople } from '../../people/peopleStore';
 import { personLabel } from '../../ui/person';
 import { pad2, StatusStamp } from '../../ui/StatusStamp';
@@ -19,7 +19,10 @@ export function ApprovalPanel({ roomId, plan }: { roomId: string; plan: Plan }) 
   const blockers = approvalBlockerItems(plan);
   const m = useT();
   const people = usePeople();
-  const can = useCan();
+  // An archived room is read-only: nobody submits, approves or starts a draft until it is restored.
+  const archived = useRoomArchived(roomId);
+  const realCan = useCan();
+  const can = { ...realCan, edit: realCan.edit && !archived, review: realCan.review && !archived };
   const [name, setName] = useState('');
   const [error, setError] = useState<string | null>(null);
   // Submit and Approve freeze the plan for good, so each asks once, in place, with what it will do.
@@ -72,7 +75,7 @@ export function ApprovalPanel({ roomId, plan }: { roomId: string; plan: Plan }) 
           <dt>{m.review.submitted}</dt>
           <dd>{formatTime(revision.submittedAt)}</dd>
         </dl>
-        <p className="review-note">{m.review.approvedNote}</p>
+        <p className="review-note">{archived ? m.archive.reviewNote : m.review.approvedNote}</p>
         <div className="review-form__actions">
           <Link to={`/rooms/${roomId}/install-sheet`} className="btn btn--ink">
             {m.review.openSheet}
@@ -138,7 +141,7 @@ export function ApprovalPanel({ roomId, plan }: { roomId: string; plan: Plan }) 
         </form>
       ) : null}
 
-      {revision.state === 'in_review' && !can.review ? (
+      {revision.state === 'in_review' && !can.review && !archived ? (
         <div className="review-form">
           <p className="review-note">{m.review.reviewersOnly}</p>
           {can.edit ? (

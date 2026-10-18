@@ -1,4 +1,4 @@
-import { findRoom, type Id, type PlanCommand, type ReviewCommand, type RoomLocation } from '@glasshouse/domain';
+import { archiveState, findRoom, type ArchiveKind, type ArchiveState, type Id, type PlanCommand, type ReviewCommand, type RoomLocation } from '@glasshouse/domain';
 import { useCallback, useMemo } from 'react';
 import { useSearchParams } from 'react-router';
 import { useWorkspaceStore } from './workspaceStore';
@@ -9,6 +9,14 @@ export function useRoomLocation(roomId: string | null): RoomLocation | null {
   const workspace = useWorkspaceStore((s) => s.workspace);
   return useMemo(() => (roomId ? findRoom(workspace, roomId) : null), [workspace, roomId]);
 }
+
+/** Whether the item, or anything above it, is archived: then it is read-only. */
+export function useArchiveState(kind: ArchiveKind, id: string | null): ArchiveState {
+  const workspace = useWorkspaceStore((s) => s.workspace);
+  return useMemo(() => archiveState(workspace, kind, id ?? ''), [workspace, kind, id]);
+}
+
+export const useRoomArchived = (roomId: string): boolean => useArchiveState('room', roomId).archived;
 
 /** Plan commands for one room; returns the domain error message or null. */
 export function usePlanCommit(roomId: Id): CommitFn {

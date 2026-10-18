@@ -16,6 +16,18 @@ describe('requiredRole', () => {
     expect(requiredRole({ type: 'catalog/import', templates: [] })).toBe('admin');
     expect(requiredRole({ type: 'project/delete', projectId: 'p' })).toBe('admin');
   });
+
+  it('keeps archive and restore for admins, at every level', () => {
+    const archiving: WorkspaceCommand[] = [
+      { type: 'project/archive', projectId: 'p', by: 'x', at: 't' },
+      { type: 'project/restore', projectId: 'p' },
+      { type: 'site/archive', siteId: 's', by: 'x', at: 't' },
+      { type: 'site/restore', siteId: 's' },
+      { type: 'room/archive', roomId: 'r', by: 'x', at: 't' },
+      { type: 'room/restore', roomId: 'r' },
+    ];
+    for (const command of archiving) expect(requiredRole(command), command.type).toBe('admin');
+  });
 });
 
 describe('stampCommand', () => {
@@ -24,6 +36,13 @@ describe('stampCommand', () => {
     expect(stampCommand(review({ type: 'review/approve', reviewer: 'Someone Else', at: 'client', byId: 'spoof' }), me, 'server')).toEqual(review({ type: 'review/approve', reviewer: 'Nok P.', at: 'server', byId: 'u-nok' }));
     expect(stampCommand(review({ type: 'note/add', id: 'n', text: 'x', at: 'client' }), me, 'server')).toEqual(review({ type: 'note/add', id: 'n', text: 'x', at: 'server', by: 'Nok P.', byId: 'u-nok' }));
     expect(stampCommand(review({ type: 'review/new-draft', at: 'client' }), me, 'server')).toEqual(review({ type: 'review/new-draft', at: 'server' }));
+  });
+  it('writes the signed-in admin and the server time on an archive, and leaves a restore alone', () => {
+    expect(stampCommand({ type: 'room/archive', roomId: 'r', by: 'Spoof', at: 'client' }, me, 'server')).toEqual({ type: 'room/archive', roomId: 'r', by: 'Nok P.', at: 'server' });
+    expect(stampCommand({ type: 'site/archive', siteId: 's', by: 'Spoof', at: 'client' }, me, 'server')).toEqual({ type: 'site/archive', siteId: 's', by: 'Nok P.', at: 'server' });
+    expect(stampCommand({ type: 'project/archive', projectId: 'p', by: 'Spoof', at: 'client' }, me, 'server')).toEqual({ type: 'project/archive', projectId: 'p', by: 'Nok P.', at: 'server' });
+    const restore: WorkspaceCommand = { type: 'room/restore', roomId: 'r' };
+    expect(stampCommand(restore, me, 'server')).toBe(restore);
   });
   it('leaves other commands untouched', () => {
     const c: WorkspaceCommand = { type: 'room/rename', roomId: 'r', name: 'X' };

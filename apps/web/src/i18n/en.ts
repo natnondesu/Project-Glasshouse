@@ -479,6 +479,7 @@ export const en = {
     legend: 'Equipment states',
     note: 'Records what is on site. It can change after approval.',
     lockedNote: 'Showing the current state; switch back to the current revision to change it.',
+    archivedNote: 'This room is archived. Restore it to change the state.',
   },
   elevation: {
     reorderHint: 'Drag the name to move this rack, or Alt+← / Alt+→',
@@ -1079,6 +1080,32 @@ export const en = {
     backup: 'Download workspace backup',
     backupFailed: (status: number) => `The backup could not be downloaded (server answered ${status}).`,
     role: { viewer: 'Viewer', editor: 'Editor', reviewer: 'Reviewer', admin: 'Admin' },
+  },
+  archive: {
+    badge: 'Archived',
+    show: 'Show archived',
+    archive: 'Archive',
+    restore: 'Restore',
+    archiveOf: (label: string) => `Archive ${label}`,
+    restoreOf: (label: string) => `Restore ${label}`,
+    kind: { project: 'project', site: 'site', room: 'room' },
+    restoreFirst: (kind: string, name: string) => `Restore ${kind} ${name} first.`,
+    confirmTitle: (name: string, sites: number, rooms: number) => {
+      const parts = [sites > 0 ? `${sites} ${sites === 1 ? 'site' : 'sites'}` : '', rooms > 0 ? `${rooms} ${rooms === 1 ? 'room' : 'rooms'}` : ''].filter(Boolean);
+      return parts.length === 0 ? `Archive ${name}?` : `Archive ${name} and its ${parts.join(' and ')}?`;
+    },
+    confirmBody: (several: boolean) => (several ? 'They become read-only and hidden. You can restore them any time.' : 'It becomes read-only and hidden. You can restore it any time.'),
+    banner: (by: string | null, date: string, via: { kind: string; name: string } | null) => `Archived${via ? ` with ${via.kind} ${via.name}` : ''}${by ? ` by ${by}` : ''} on ${date}. Read-only.`,
+    busy: (holder: string, room: string) => `${holder} is editing ${room}. Try again when they're done.`,
+    /** Why a change to archived work was refused. `kind` and `sourceKind` are the capitalised words (Room, Site, Project). */
+    refused: (purpose: 'edit' | 'import' | 'delete', kind: string, name: string, own: boolean, sourceKind: string, sourceName: string) => {
+      const lower = (word: string): string => word.toLowerCase();
+      if (purpose === 'delete') return own ? `Restore ${kind} ${name} before deleting it.` : `Restore ${sourceKind} ${sourceName} before deleting ${lower(kind)} ${name}.`;
+      const what = purpose === 'import' ? 'import into it' : 'make changes';
+      return own ? `${kind} ${name} is archived. Restore it to ${what}.` : `${kind} ${name} is archived with ${lower(sourceKind)} ${sourceName}. Restore ${sourceKind} ${sourceName} to ${what}.`;
+    },
+    reviewNote: 'Archived. Restore the room to make changes.',
+    importArchived: (name: string) => `${name} is archived here. Restore it to merge into it, or import the file as a copy.`,
   },
   claims: {
     heldBy: (name: string) => `${name} is editing this room.`,

@@ -368,3 +368,19 @@
   justify-content: space-between;
   gap: 12px;
 }
+
+/* Archived: filed away, not frozen. Neutral grey with a dashed edge, so it doesn't read as a warning. */
+.frozen-banner--archived {
+  border-style: dashed;
+  border-color: var(--line-strong);
+  background: rgb(232 237 241 / 0.92);
+}
+
+.frozen-banner__icon {
+  flex: none;
+  color: var(--ink-2);
+}
+
+.frozen-banner--archived .btn svg {
+  margin-right: 6px;
+}

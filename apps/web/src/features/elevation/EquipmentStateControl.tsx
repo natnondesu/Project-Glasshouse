@@ -1,11 +1,15 @@
 import { EQUIPMENT_STATES, equipmentStateOf, type EquipmentState, type Plan } from '@glasshouse/domain';
 import { useState } from 'react';
+import { useRoomArchived } from '../../store/hooks';
 import { useWorkspaceStore } from '../../store/workspaceStore';
 import { StateIcon } from '../../ui/StateIcon';
 import { useT } from '../../i18n';
 
 
-export function EquipmentStateControl({ roomId, plan, id, locked }: { roomId: string; plan: Plan; id: string; locked: boolean }) {
+export function EquipmentStateControl({ roomId, plan, id, locked: lockedByView }: { roomId: string; plan: Plan; id: string; locked: boolean }) {
+  // An approved room's states stay editable (they record the site); an archived room's don't.
+  const archived = useRoomArchived(roomId);
+  const locked = lockedByView || archived;
   const dispatch = useWorkspaceStore((s) => s.dispatch);
   const m = useT();
   const [error, setError] = useState<string | null>(null);
@@ -28,7 +32,7 @@ export function EquipmentStateControl({ roomId, plan, id, locked }: { roomId: st
           </button>
         ))}
       </div>
-      <p className="inspector__note">{locked ? m.equipment.lockedNote : m.equipment.note}</p>
+      <p className="inspector__note">{archived ? m.equipment.archivedNote : locked ? m.equipment.lockedNote : m.equipment.note}</p>
       {error ? (
         <p role="alert" className="field__error">
           {error}

@@ -1,4 +1,4 @@
-import { currentRevision, findRoom, linkAt, resolveRemote, siteRooms, type Id, type Port, type PortRef, type RemoteEnd } from '@glasshouse/domain';
+import { archiveState, currentRevision, findRoom, linkAt, resolveRemote, siteRooms, type Id, type Port, type PortRef, type RemoteEnd } from '@glasshouse/domain';
 import { useMemo, useState } from 'react';
 import { useT } from '../../i18n';
 import type { CommitFn } from '../../store/hooks';
@@ -15,7 +15,8 @@ export function RemotePicker({ roomId, deviceId, port, commit, onDone }: { roomI
   const m = useT();
   const ws = useWorkspaceStore((s) => s.workspace);
   const dispatch = useWorkspaceStore((s) => s.dispatch);
-  const rooms = siteRooms(ws, roomId);
+  // An archived room can't be linked to: it can't point back, and nothing there may change.
+  const rooms = siteRooms(ws, roomId).filter((r) => !archiveState(ws, 'room', r.id).archived);
   const site = findRoom(ws, roomId)?.site.name ?? '';
   const [farRoomId, setFarRoomId] = useState(rooms[0]?.id ?? '');
   const [farDevice, setFarDevice] = useState('');
@@ -126,7 +127,8 @@ export function RemoteLinked({ roomId, deviceId, port, commit }: { roomId: Id; d
   const unlink = (): void => {
     const problem = commit({ type: 'port/remote', deviceId, name: port.name, remote: null });
     if (problem) return setError(problem);
-    if (pointsBack && far.room && far.device && currentRevision(far.room.plan).state === 'draft') {
+    // The far room's end is cleared only while it can change: a draft that isn't archived.
+    if (pointsBack && far.room && far.device && currentRevision(far.room.plan).state === 'draft' && !archiveState(ws, 'room', far.room.id).archived) {
       const r = dispatch({ type: 'plan', roomId: far.room.id, command: { type: 'port/remote', deviceId: far.device.id, name: port.remote.port, remote: null } });
       if (r) setError(r.message);
     }

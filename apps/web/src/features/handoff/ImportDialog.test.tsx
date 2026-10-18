@@ -69,3 +69,20 @@ it('is a native modal dialog that closes on Escape and returns focus to the impo
   expect(await screen.findByRole('button', { name: 'Import project file' })).toHaveFocus();
   expect(screen.queryByRole('dialog')).toBeNull();
 });
+
+it('offers only a copy for a project that is archived here, and the copy arrives active', async () => {
+  const user = userEvent.setup();
+  useWorkspaceStore.getState().dispatch({ type: 'project/archive', projectId: 'p', by: 'Few', at: '2026-10-18T00:00:00.000Z' });
+  open();
+  await user.click(screen.getByRole('checkbox', { name: /Show archived/ }));
+  await user.upload(screen.getByLabelText('Choose a project file'), new File([exported], 'n.json'));
+  const dialog = await screen.findByRole('dialog');
+  expect(dialog).toHaveTextContent('Northgate is archived here. Restore it to merge into it, or import the file as a copy.');
+  expect(screen.getByRole('button', { name: 'Import as a copy' })).toHaveAttribute('aria-pressed', 'true');
+  expect(screen.getByRole('button', { name: 'Merge into this browser' })).toBeDisabled();
+  await user.click(screen.getByRole('button', { name: 'Import' }));
+  const { projects } = useWorkspaceStore.getState().workspace;
+  expect(projects.map((p) => p.name)).toEqual(['Northgate', 'Northgate (copy)']);
+  expect(projects[1]).not.toHaveProperty('archivedAt');
+  expect(projects[0]!.archivedAt).toBeDefined();
+});
