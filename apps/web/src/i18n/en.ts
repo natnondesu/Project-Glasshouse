@@ -993,7 +993,7 @@ export const en = {
     unsentBefore: (reason: string) => `Some changes from before you signed in aren’t sent yet: ${reason}`,
     skippedBefore: (n: number) => `${n} change${n === 1 ? '' : 's'} from before you signed in weren’t applied. They will be retried the next time Glasshouse opens.`,
     changeTitle: 'Choose your own password',
-    changeNote: 'You signed in with a temporary password. Choose a new one of at least 12 characters.',
+    changeNote: 'You signed in with a temporary password. Choose a new one of at least 8 characters.',
     temporary: 'Temporary password',
     newPassword: 'New password',
     newAgain: 'New password again',

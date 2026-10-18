@@ -104,6 +104,18 @@ describe('local sign-in', () => {
     expect((await app.inject({ url: '/api/workspace', headers: { cookie: cookieOf(changed) } })).statusCode).toBe(200);
   });
 
+  it('refuses a new password that is the account email or name', async () => {
+    const { app } = await setup([{ displayName: 'Ada Lovelace' }]);
+    const cookie = cookieOf(await login(app, 'user0@company.test', 'password-123456'));
+    const change = (next: string) => app.inject({ method: 'POST', url: '/auth/password', headers: { cookie, 'x-glasshouse': '1' }, payload: { current: 'password-123456', next } });
+    for (const next of ['USER0@company.test', 'ada lovelace']) {
+      const res = await change(next);
+      expect(res.statusCode).toBe(400);
+      expect(res.json()).toMatchObject({ error: { message: "Don't use your email or name as your password." } });
+    }
+    expect((await change('qwerty123')).json()).toMatchObject({ error: { message: expect.stringMatching(/too common/) } });
+  });
+
   it('slows down guessing', async () => {
     const { app } = await setup();
     for (let i = 0; i < MAX_FAILURES; i += 1) await login(app, 'user0@company.test', 'wrong-password-1');

@@ -38,7 +38,7 @@ browser (React app, server mode)                    apps/server (Node, Fastify) 
 ## Identity and access (Plan B)
 
 - **Authelia as OIDC provider**; the server is a confidential client (authorization code + PKCE, library `openid-client`). Users are provisioned on first sign-in by OIDC `sub`.
-- **Local accounts**: created by an admin with a temporary password (scrypt, see below), changed on first sign-in. No email reset flow — an admin resets. `GLASSHOUSE_LOCAL_LOGIN=off` disables local sign-in entirely.
+- **Local accounts**: created by an admin with a temporary password (scrypt, see below), changed on first sign-in.  Passwords need at least 8 characters and may not be a common password, the email, or the name. No email reset flow — an admin resets. `GLASSHOUSE_LOCAL_LOGIN=off` disables local sign-in entirely.
 - **One users table** for both sources; roles are managed in the app (not from Authelia groups — YAGNI until asked).
 - **Sessions** server-side in Postgres, cookie `gh_session` (HttpOnly, Secure, SameSite=Lax), 12 h idle / 7 d absolute. Mutating requests also require the `X-Glasshouse: 1` header and a same-origin `Origin`.
 - **Bootstrap**: `GLASSHOUSE_BOOTSTRAP_ADMIN=<email>` makes that person admin on first sign-in; afterwards admins manage users in the app.

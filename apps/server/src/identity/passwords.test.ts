@@ -12,9 +12,37 @@ it('hashes with a fresh salt and verifies only the right password', async () => 
 });
 
 it('explains passwords that are too short or too long', () => {
-  expect(passwordProblem('short')).toMatch(/at least 12/);
+  expect(passwordProblem('short')).toMatch(/at least 8/);
   expect(passwordProblem('x'.repeat(201))).toMatch(/at most 200/);
   expect(passwordProblem('long enough password')).toBeNull();
+});
+
+it('refuses 7 characters and accepts 8', () => {
+  expect(passwordProblem('Tr0ub4d')).toBe('Use at least 8 characters.');
+  expect(passwordProblem('Tr0ub4d&')).toBeNull();
+});
+
+it('refuses common passwords whatever the case or padding', () => {
+  const common = 'That password is too common. Choose something harder to guess.';
+  expect(passwordProblem('password')).toBe(common);
+  expect(passwordProblem('  PassWord1 ')).toBe(common);
+  expect(passwordProblem('12345678')).toBe(common);
+  expect(passwordProblem('Glasshouse')).toBe(common);
+});
+
+it('refuses the email, its local part, or the name as the password', () => {
+  const own = "Don't use your email or name as your password.";
+  const context = { email: 'Ada.Lovelace@company.test', name: 'Ada Lovelace' };
+  expect(passwordProblem('ada.lovelace@company.test', context)).toBe(own);
+  expect(passwordProblem('ADA.LOVELACE', context)).toBe(own);
+  expect(passwordProblem(' ada lovelace ', context)).toBe(own);
+  expect(passwordProblem('ada.lovelace', {})).toBeNull();
+  expect(passwordProblem('ada.lovelace1', context)).toBeNull();
+});
+
+it('refuses one character repeated', () => {
+  expect(passwordProblem('aaaaaaaa')).toBe('That password is too common. Choose something harder to guess.');
+  expect(passwordProblem('aaaaaaab')).toBeNull();
 });
 
 it('makes temporary passwords that pass the rules and differ', () => {
