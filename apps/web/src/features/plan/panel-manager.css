@@ -115,6 +115,11 @@
   background: var(--acc-tint);
 }
 
+.panel-mgr__off-note {
+  font-size: var(--text-xs);
+  color: var(--ink-3);
+}
+
 .panel-mgr__way h3 {
   font-size: var(--text-sm);
   font-weight: 700;

@@ -56,7 +56,7 @@ export function PanelManager({ panel, content, commit, onClose, readOnly = false
           ×
         </button>
       </header>
-      {/* Only the contents lock when frozen; closing the manager must still work. */}
+      {/* Frozen: the edit controls lock, but the breaker tiles and the close button stay live so every way can still be read. */}
       <fieldset className="inspector__lock panel-mgr__body" disabled={readOnly}>
         <div className="panel-mgr__config">
           <label className="panel-mgr__use">
@@ -108,7 +108,7 @@ export function PanelManager({ panel, content, commit, onClose, readOnly = false
         </div>
         {!inUse && feeds.length > 0 ? (
           <p role="status" className="panel-mgr__warn">
-            {m.panelMgr.stillWired(feeds.length, feeds.map((f) => `${f.label} of ${rackName(f.targetId)}`).join(', '))}
+            {m.panelMgr.stillWired(feeds.length, feeds.map((f) => m.feeds.feedOf(f.label, rackName(f.targetId))).join(', '))}
           </p>
         ) : null}
         {error ? (
@@ -116,11 +116,13 @@ export function PanelManager({ panel, content, commit, onClose, readOnly = false
             {error}
           </p>
         ) : null}
-        <div className="panel-mgr__scroll">
-          <PanelFace name={panel.name} config={config} content={content} feeds={feeds} inUse={inUse} selected={n} onSelect={setPicked} />
-        </div>
-        <section className="panel-mgr__way" aria-label={m.panelMgr.editing(n, wayPhase(config, n))}>
-          <h3 className="mono">{m.panelMgr.editing(n, wayPhase(config, n))}</h3>
+      </fieldset>
+      <div className="panel-mgr__scroll">
+        <PanelFace name={panel.name} config={config} content={content} feeds={feeds} inUse={inUse} selected={n} onSelect={setPicked} />
+      </div>
+      <section className="panel-mgr__way" aria-label={m.panelMgr.editing(n, wayPhase(config, n))}>
+        <h3 className="mono">{m.panelMgr.editing(n, wayPhase(config, n))}</h3>
+        <fieldset className="inspector__lock panel-mgr__body" disabled={readOnly}>
           <select aria-label={m.panelMgr.wayRating(n)} value={way.ratingA} onChange={(e) => act(commit({ type: 'panel/way', id: panel.id, way: n, patch: { ratingA: Number(e.target.value) } }))}>
             {[...new Set([...RATINGS_A, way.ratingA])].sort((a, b) => a - b).map((a) => (
               <option key={a} value={a}>{`${a} A`}</option>
@@ -131,6 +133,7 @@ export function PanelManager({ panel, content, commit, onClose, readOnly = false
             {feed ? <span className="panel-mgr__swatch" style={{ background: feedColor(feed, content) }} aria-hidden="true" /> : null}
             <select
               aria-label={m.panelMgr.wayFeed(n)}
+              disabled={!inUse}
               value={feed?.id ?? ''}
               onChange={(e) => {
                 const next = e.target.value;
@@ -146,13 +149,14 @@ export function PanelManager({ panel, content, commit, onClose, readOnly = false
                 ))}
             </select>
           </span>
+          {inUse ? null : <span className="panel-mgr__off-note">{m.panelMgr.feedOff}</span>}
           <span className={`mono panel-mgr__load${amps > way.ratingA ? ' is-over' : ''}`}>{feed ? `${amps.toFixed(1)} / ${way.ratingA} A` : ''}</span>
-        </section>
-        <footer className="panel-mgr__foot">
-          {unassigned > 0 ? m.panelMgr.unassigned(unassigned) : m.panelMgr.allAssigned}
-          <span className="panel-mgr__note">{m.panelMgr.loadNote}</span>
-        </footer>
-      </fieldset>
+        </fieldset>
+      </section>
+      <footer className="panel-mgr__foot">
+        {unassigned > 0 ? m.panelMgr.unassigned(unassigned) : m.panelMgr.allAssigned}
+        <span className="panel-mgr__note">{m.panelMgr.loadNote}</span>
+      </footer>
     </section>
   );
 }

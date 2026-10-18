@@ -151,10 +151,15 @@
 
 /* A panel the survey drew but the room won't use: grey and dashed, quieter than anything live. */
 .obj--off .obj__body {
-  fill: #eef1f3;
+  fill: var(--off-fill);
   stroke: var(--ink-3);
   stroke-width: 1.25;
   stroke-dasharray: 4 3;
+}
+
+.obj--off .obj__label--off {
+  fill: var(--ink-3);
+  font-weight: 500;
 }
 
 .obj--off .mcb__bolt {

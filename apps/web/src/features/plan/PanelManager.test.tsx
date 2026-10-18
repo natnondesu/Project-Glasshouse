@@ -206,3 +206,32 @@ it('shows a rejected change and closes', async () => {
   await user.click(screen.getByRole('button', { name: 'Close MCB-01 ways' }));
   expect(onClose).toHaveBeenCalled();
 });
+
+it('keeps one breaker tile in the tab order, following the picked way', async () => {
+  const user = userEvent.setup();
+  show();
+  const tabbable = () => screen.getAllByRole('button', { name: /^Way \d+,/ }).filter((b) => b.tabIndex === 0).map((b) => b.getAttribute('data-way'));
+  expect(tabbable()).toEqual(['1']);
+  await user.click(tile(/^Way 5,/));
+  expect(tabbable()).toEqual(['5']);
+});
+
+it('keeps tiles selectable on a frozen revision, and locks only the edit controls', async () => {
+  const user = userEvent.setup();
+  const commit = vi.fn<(command: unknown) => string | null>(() => null);
+  render(<PanelManager panel={panel} content={content()} commit={commit} onClose={() => {}} readOnly />);
+  await user.click(tile(/^Way 3,/));
+  expect(tile(/^Way 3,/)).toHaveAttribute('aria-pressed', 'true');
+  expect(screen.getByRole('heading', { name: 'Way 3 · L3' })).toBeInTheDocument();
+  for (const control of [screen.getByRole('switch', { name: 'In use' }), screen.getByLabelText('Ways'), screen.getByLabelText('Way 3 rating'), screen.getByLabelText('Way 3 label'), screen.getByLabelText('Way 3 feed')]) {
+    expect(control).toBeDisabled();
+  }
+  expect(screen.getByRole('button', { name: 'Close MCB-01 ways' })).toBeEnabled();
+});
+
+it('disables the way feed picker on a panel not in use and says why', () => {
+  show(panelWith({ inUse: false }));
+  expect(screen.getByLabelText('Way 1 feed')).toBeDisabled();
+  expect(screen.getByText('Mark this panel in use to wire feeds to its ways.')).toBeInTheDocument();
+  expect(screen.getByLabelText('Way 1 rating')).toBeEnabled();
+});

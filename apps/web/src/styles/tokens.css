@@ -38,6 +38,10 @@
   --desk: #e2d8ca;
   --desk-edge: #b4a794;
   --panel-light: #f6f8fa;
+  /* MCB panels: the cabinet's front, a breaker in the drawn faces, and the pale grey of anything not in use. */
+  --mcb-face: #e8edf1;
+  --breaker-bg: #fff;
+  --off-fill: #eef1f3;
 
   --server: #7fa2e8;
   --network: #b79af0;

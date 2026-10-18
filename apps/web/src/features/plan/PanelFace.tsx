@@ -49,7 +49,7 @@ export function PanelFace({ name, config, content, feeds, inUse, selected, onSel
           const pos = wayPosition(config, n);
           const feed = feeds.find((f) => f.way === n);
           const phase = wayPhase(config, n);
-          const feedText = feed ? `${feed.label} of ${rackName(feed.targetId)}` : null;
+          const feedText = feed ? m.feeds.feedOf(feed.label, rackName(feed.targetId)) : null;
           return (
             <button
               key={n}
@@ -57,6 +57,7 @@ export function PanelFace({ name, config, content, feeds, inUse, selected, onSel
               data-way={n}
               className={`way-tile${n === selected ? ' is-selected' : ''}${feed ? ' is-fed' : ''}${layout === 'two_column' && pos.column === 1 ? ' is-right' : ''}`}
               style={{ gridColumnStart: pos.column + 1, gridRowStart: pos.row + 1 }}
+              tabIndex={n === selected ? 0 : -1}
               aria-pressed={n === selected}
               aria-label={m.panelMgr.tile(n, way.ratingA, phase, feedText, way.label)}
               onClick={() => onSelect(n)}

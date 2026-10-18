@@ -28,7 +28,7 @@
   padding: 6px 8px 5px;
   border: 1.5px solid var(--d-ink);
   border-radius: 4px;
-  background: #fff;
+  background: var(--breaker-bg);
   font-size: var(--text-sm);
   font-weight: 700;
   color: var(--d-ink);
@@ -70,7 +70,7 @@
   padding: 5px 8px 5px 6px;
   border: 1px solid var(--d-ink-2);
   border-radius: 4px;
-  background: #fff;
+  background: var(--breaker-bg);
   color: var(--d-ink);
   font: inherit;
   text-align: left;
@@ -128,7 +128,7 @@
   height: 48%;
   border: 1px solid var(--d-ink-2);
   border-radius: 3px;
-  background: #fff;
+  background: var(--breaker-bg);
 }
 
 .way-tile.is-fed .way-tile__lever::after {
@@ -256,7 +256,7 @@
     radial-gradient(circle, var(--ink-3) 2.5px, transparent 3px) right 8px top 8px / 8px 8px no-repeat,
     radial-gradient(circle, var(--ink-3) 2.5px, transparent 3px) left 8px bottom 8px / 8px 8px no-repeat,
     radial-gradient(circle, var(--ink-3) 2.5px, transparent 3px) right 8px bottom 8px / 8px 8px no-repeat,
-    #eef1f3;
+    var(--off-fill);
   box-shadow: none;
 }
 

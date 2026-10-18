@@ -41,6 +41,24 @@ describe('language switch', () => {
   });
 });
 
+describe('panel wording', () => {
+  it('joins a feed to its rack with "of" in English and "ของ" in Thai', () => {
+    expect(en.feeds.feedOf('Feed A', 'RK-01')).toBe('Feed A of RK-01');
+    expect(th.feeds.feedOf('สายไฟ A', 'RK-01')).toBe('สายไฟ A ของ RK-01');
+  });
+
+  it('separates the parts of a breaker tile name with commas in both languages', () => {
+    expect(en.panelMgr.tile(7, 16, 'L1', 'Feed A of RK-03', 'Row 1')).toBe('Way 7, 16 A, L1, Feed A of RK-03, Row 1');
+    expect(th.panelMgr.tile(7, 16, 'L1', 'สายไฟ A ของ RK-03', 'แถว 1')).toBe('ช่อง 7, 16 A, L1, สายไฟ A ของ RK-03, แถว 1');
+    expect(th.panelMgr.tile(2, 16, 'L2', null, '')).toBe('ช่อง 2, 16 A, L2, ว่าง');
+  });
+
+  it('names a panel not in use in full for screen readers', () => {
+    expect(en.panelMgr.notInUseName('MCB-02', 'MCB panel')).toBe('MCB-02, MCB panel, not in use');
+    expect(th.panelMgr.notInUseName('MCB-02', 'ตู้ MCB')).toBe('MCB-02, ตู้ MCB, ไม่ได้ใช้งาน');
+  });
+});
+
 describe('domain wording', () => {
   const issue: Issue = {
     key: 'k',

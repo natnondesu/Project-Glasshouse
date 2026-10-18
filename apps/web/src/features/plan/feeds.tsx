@@ -119,9 +119,10 @@ function WayPicker({ feed, content, onPick }: { feed: PowerFeed; content: PlanCo
   const ways = panelOf(source).ways.length;
   const m = useT();
   const taken = new Map(content.feeds.filter((f) => f.sourceId === source.id && f.id !== feed.id && f.way !== undefined).map((f) => [f.way!, f]));
+  const off = !isInUse(source);
   return (
-    <select className="feed-list__select feed-list__way" aria-label={m.feeds.way(feed.label)} value={feed.way ?? ''} onChange={(e) => onPick(e.target.value ? Number(e.target.value) : null)}>
-      <option value="">{m.feeds.wayNone}</option>
+    <select className="feed-list__select feed-list__way" aria-label={m.feeds.way(feed.label)} value={feed.way ?? ''} disabled={off} title={off ? m.panelMgr.feedOff : undefined} onChange={(e) => onPick(e.target.value ? Number(e.target.value) : null)}>
+      <option value="">{off ? m.feeds.wayPanelOff : m.feeds.wayNone}</option>
       {Array.from({ length: ways }, (_, i) => i + 1).map((n) => (
         <option key={n} value={n} disabled={taken.has(n)}>{m.feeds.wayOption(n, taken.has(n))}</option>
       ))}

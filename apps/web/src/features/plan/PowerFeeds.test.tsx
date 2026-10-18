@@ -107,9 +107,10 @@ const unused = (c: PlanContent, id: string): PlanContent => ({
 it('shows a panel that is not in use disabled in the feed source picker, and never adds a feed to it', async () => {
   const user = userEvent.setup();
   const commit = vi.fn<(command: unknown, coalesceKey?: string) => string | null>(() => null);
-  const c = unused(content(false), 'm1');
+  const c = unused(content(), 'm1');
   render(<Inspector content={c} selected={rack} commit={commit} onDeleted={() => {}} />);
   const feeds = screen.getByRole('group', { name: 'Power feeds' });
+  expect(within(within(feeds).getByLabelText('Feed B source')).getByRole('option', { name: 'MCB-01 (not in use)' })).toBeDisabled();
   await user.click(within(feeds).getByRole('button', { name: 'Add power feed' }));
   expect(commit.mock.lastCall?.[0]).toMatchObject({ type: 'feed/add', feed: { sourceId: 'm2' } });
 });
@@ -142,4 +143,19 @@ it('offers an input choice of a panel not in use disabled on a UPS', () => {
   const input = screen.getByRole('group', { name: 'Power input' }).querySelector('select')!;
   expect(within(input).getByRole('option', { name: 'MCB-01 (not in use)' })).toBeDisabled();
   expect(within(input).getByRole('option', { name: 'MCB-02' })).toBeEnabled();
+});
+
+it('disables the way picker of a feed wired to a panel not in use, and says why', () => {
+  const base = content();
+  const ways = Array.from({ length: 12 }, () => ({ ratingA: 16, label: '' }));
+  const c: PlanContent = {
+    ...base,
+    objects: base.objects.map((o) => (o.id === 'm1' && o.type === 'mcb' ? { ...o, panel: { phase: 'three' as const, ways, inUse: false } } : o)),
+    feeds: [{ id: 'f1', targetId: 'rk', sourceId: 'm1', label: 'Feed A', way: 2 }],
+  };
+  render(<Inspector content={c} selected={rack} commit={() => null} onDeleted={() => {}} />);
+  const way = screen.getByLabelText('Feed A way');
+  expect(way).toBeDisabled();
+  expect(way).toHaveAttribute('title', 'Mark this panel in use to wire feeds to its ways.');
+  expect(way).toHaveValue('2');
 });

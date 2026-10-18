@@ -246,7 +246,7 @@ export function ObjectsLayer({ objects, view, flagged, warned, selectedId, onFoc
             data-object-id={o.id}
             {...(isStatic
               ? {}
-              : { role: 'button', tabIndex: 0, 'aria-label': `${o.name}, ${m.objects.type[o.type]}${off ? `, ${m.panelMgr.notInUse.toLowerCase()}` : ''}`, 'aria-pressed': o.id === selectedId, onFocus: () => onFocusObject(o.id) })}
+              : { role: 'button', tabIndex: 0, 'aria-label': off ? m.panelMgr.notInUseName(o.name, m.objects.type[o.type]) : `${o.name}, ${m.objects.type[o.type]}`, 'aria-pressed': o.id === selectedId, onFocus: () => onFocusObject(o.id) })}
           >
             <path className="obj__body" d={polygonPath(placementPolygon(o), view)} />
             {o.type === 'existing_rack' ? <path className="obj__cross" d={crossPath(o, view)} /> : null}
@@ -258,6 +258,7 @@ export function ObjectsLayer({ objects, view, flagged, warned, selectedId, onFoc
             <SourceSymbol o={o} view={view} />
             {o.type === 'rack' ? <RackFront rack={o} view={view} /> : null}
             {alongName ? <AlongLabel o={o} view={view} text={o.name} side={alongName.side} gapPx={alongName.gapPx} className={alongName.className} /> : null}
+            {off ? <AlongLabel o={o} view={view} text={`${o.name} · ${m.panelMgr.notInUse}`} side="front" gapPx={(o.d * view.scale) / 2 + BESIDE_GAP_PX} className="obj__label--beside obj__label--off" /> : null}
             {label ? (
               <text className="obj__label" x={cx} y={(sub && label ? cy - 7 : cy) + labelDy} textAnchor="middle" dominantBaseline="middle">
                 {label}

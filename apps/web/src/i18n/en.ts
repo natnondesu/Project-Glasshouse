@@ -409,6 +409,7 @@ export const en = {
     loadNote: 'Load assumes 230 V with each feed carrying everything downstream of it.',
     inUse: 'In use',
     notInUse: 'Not in use',
+    notInUseName: (name: string, type: string) => `${name}, ${type}, not in use`,
     status: 'Status',
     stillWired: (n: number, feeds: string) => `${n} ${n === 1 ? 'feed is' : 'feeds are'} still wired to this panel: ${feeds}`,
     layout: 'Layout',
@@ -423,6 +424,7 @@ export const en = {
     tile: (n: number, rating: number, phase: string, feed: string | null, label: string) => `Way ${n}, ${rating} A, ${phase}${feed ? `, ${feed}` : ', spare'}${label ? `, ${label}` : ''}`,
     editing: (n: number, phase: string) => `Way ${n} · ${phase}`,
     spare: 'Spare',
+    feedOff: 'Mark this panel in use to wire feeds to its ways.',
   },
   feeds: {
     group: 'Power feeds',
@@ -444,6 +446,8 @@ export const en = {
     nothingConnected: 'Nothing connected. Connect a rack from its inspector, or another source from its Power input.',
     outOf: (name: string) => `Feeds out of ${name}`,
     removedObject: 'Removed object',
+    wayPanelOff: 'Panel not in use',
+    feedOf: (label: string, target: string) => `${label} of ${target}`,
     onWay: (n: number) => ` · way ${n}`,
   },
   search: {
