@@ -27,7 +27,7 @@ export const fittingsOf = (content: PlanContent): RoomObject[] => content.object
  * Long tables carry the title block in <thead>: browsers repeat <thead> on every printed page,
  * so a page that a table spills onto still has its title block (FR12 item 1).
  */
-function TitleHead({ span, titleBlock, children }: { span: number; titleBlock: ReactNode; children: ReactNode }) {
+export function TitleHead({ span, titleBlock, children }: { span: number; titleBlock: ReactNode; children: ReactNode }) {
   return (
     <thead>
       <tr className="sheet-table__title">

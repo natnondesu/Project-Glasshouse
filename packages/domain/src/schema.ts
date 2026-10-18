@@ -3,6 +3,7 @@ import { migrate } from './migrations';
 import { CURRENT_SCHEMA_VERSION, LIMITS } from './model/defaults';
 import type { Workspace } from './model/types';
 import { err, ok, type Result } from './result';
+import { MAX_MAIN_RATING_A } from './sources';
 
 /** Every stored string has a ceiling, so one pasted blob can't bloat a shared workspace. */
 const text = z.string().max(LIMITS.storedTextMaxLength);
@@ -97,7 +98,16 @@ const rack = z.object({
 const simpleObject = z.object({ ...objectBase, type: z.enum(['existing_rack', 'door', 'mcb', 'furniture', 'wall_plug', 'industrial_socket', 'floor_box', 'ups', 'pdu', 'partition', 'wall_split_ac', 'precision_ac', 'display_wall']),
   hinge: z.enum(['left', 'right']).optional(),
   opening: z.enum(['swing', 'slide']).optional(),
-  panel: z.object({ phase: z.enum(['single', 'three']), ways: z.array(z.object({ ratingA: num, label: text })) }).optional(),
+  panel: z
+    .object({
+      phase: z.enum(['single', 'three']),
+      ways: z.array(z.object({ ratingA: num, label: text })).min(1),
+      inUse: z.boolean().optional(),
+      layout: z.enum(['row', 'column', 'two_column']).optional(),
+      numbering: z.enum(['odd_even', 'sequential']).optional(),
+      mainRatingA: num.positive().max(MAX_MAIN_RATING_A).optional(),
+    })
+    .optional(),
   wallBottomM: num.optional(),
   keepClearM: num.optional(),
 });

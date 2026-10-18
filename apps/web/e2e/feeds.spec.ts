@@ -55,14 +55,19 @@ test('place a UPS, feed a rack from it, feed the UPS from the MCB, and wire feed
   await page.mouse.dblclick(mcb.x + mcb.width / 2, mcb.y + mcb.height / 2);
   const manager = page.getByRole('dialog', { name: 'MCB-01 ways' });
   await expect(manager).toBeVisible();
+  // Pick a breaker on the panel face, then set its feed.
+  await manager.getByRole('button', { name: /^Way 2,/ }).click();
   await manager.getByLabel('Way 2 feed').selectOption('');
+  await manager.getByRole('button', { name: /^Way 5,/ }).click();
   await manager.getByLabel('Way 5 feed').selectOption({ label: 'RK-02 · Feed A' });
   await expect(manager.getByLabel('Way 5 feed')).not.toHaveValue('');
+  await manager.getByRole('button', { name: /^Way 6,/ }).click();
   await manager.getByLabel('Way 6 feed').selectOption({ label: 'UPS-01 · Feed A' });
   await expect(manager.getByText('Every feed from this panel is on a way.')).toBeVisible();
 
-  // A long panel scrolls its ways inside the manager; the footer stays inside the panel.
-  await manager.getByRole('combobox', { name: /^Ways/ }).selectOption('36');
+  // A long panel scrolls its face inside the manager; the footer stays inside the panel.
+  await manager.getByRole('combobox', { name: /^Ways/ }).selectOption('72');
+  await manager.getByRole('combobox', { name: 'Layout' }).selectOption('column');
   const table = manager.locator('.panel-mgr__scroll');
   const { scrolls } = await table.evaluate((el) => ({ scrolls: el.scrollHeight > el.clientHeight + 1 }));
   expect(scrolls).toBe(true);
@@ -71,6 +76,6 @@ test('place a UPS, feed a rack from it, feed the UPS from the MCB, and wire feed
   expect(footBox.y + footBox.height).toBeLessThanOrEqual(panelBox.y + panelBox.height + 1);
   await table.hover();
   // Firefox caps how far one wheel event scrolls, so scroll in steps like a trackpad would.
-  for (let i = 0; i < 8; i += 1) await page.mouse.wheel(0, 600);
-  await expect(manager.getByLabel('Way 36 feed')).toBeInViewport();
+  for (let i = 0; i < 40; i += 1) await page.mouse.wheel(0, 600);
+  await expect(manager.getByRole('button', { name: /^Way 72,/ })).toBeInViewport();
 });

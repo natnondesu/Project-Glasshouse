@@ -34,6 +34,12 @@ describe('the Riverside showcase sample', () => {
     expect(content.feeds.length).toBeGreaterThan(10);
   });
 
+  it('gives its panels a main breaker that holds the load', () => {
+    const boards = content.objects.filter((o) => o.type === 'mcb');
+    expect(boards.every((o) => o.type === 'mcb' && o.panel?.mainRatingA !== undefined)).toBe(true);
+    expect(revisionIssues(currentRevision(server.plan)).map((i) => i.code)).not.toContain('panel_main_overload');
+  });
+
   it('has an approved revision for the Install sheet, and a draft with a blocker, something to acknowledge and a note', () => {
     expect(latestApproved(server.plan)?.number).toBe(1);
     expect(currentRevision(server.plan)).toMatchObject({ number: 2, state: 'draft' });

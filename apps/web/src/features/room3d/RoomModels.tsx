@@ -2,7 +2,8 @@ import { useEffect, useMemo } from 'react';
 import { BoxGeometry, DoubleSide, EdgesGeometry, Shape, ShapeGeometry, Vector2 } from 'three';
 import { NO_PICK } from './picking';
 import type { Palette3D } from './palette';
-import type { Column3D, Object3D, Opening3D, Scene3D } from './scene';
+import { PanelBreakers } from './PanelBreakers';
+import type { Column3D, Object3D, Opening3D, Panel3D, Scene3D } from './scene';
 import { floorGridTexture } from './textures';
 
 const WALL_H_M = 0.32;
@@ -190,20 +191,22 @@ function Door({ size, color, wall, hinge = 'left', opening = 'swing' }: { size: 
   );
 }
 
-function Mcb({ size, color, wall }: { size: [number, number, number]; color: string; wall: string }) {
+function Mcb({ size, color, wall, panel, palette }: { size: [number, number, number]; color: string; wall: string; panel?: Panel3D; palette: Palette3D }) {
   const [w, h, d] = size;
   // Wall-mounted: the cabinet hangs at eye height rather than standing on the floor.
   const cabinetH = Math.min(0.8, h);
+  const inUse = panel?.inUse !== false;
   return (
     <group position={[0, h / 2 - cabinetH / 2, 0]}>
       <mesh castShadow>
         <boxGeometry args={[w, cabinetH, d]} />
-        <meshStandardMaterial color={color} roughness={0.55} metalness={0.2} />
+        <meshStandardMaterial color={inUse ? color : palette.mcb.offBody} roughness={0.55} metalness={0.2} />
       </mesh>
       <mesh position={[0, 0, d / 2 + 0.002]}>
-        <planeGeometry args={[w * 0.8, cabinetH * 0.7]} />
-        <meshStandardMaterial color="#e8edf1" roughness={0.4} />
+        <planeGeometry args={[w * 0.92, cabinetH * 0.92]} />
+        <meshStandardMaterial color={inUse ? palette.mcb.face : palette.mcb.offFace} roughness={0.4} />
       </mesh>
+      {panel ? <PanelBreakers panel={panel} w={w} h={cabinetH} faceZ={d / 2 + 0.002} palette={palette} /> : null}
       <Edges size={[w, cabinetH, d]} color={wall} />
     </group>
   );
@@ -444,7 +447,7 @@ export function ObjectModel({ object, palette }: { object: Object3D; palette: Pa
   else if (object.type === 'precision_ac') body = <PrecisionAc size={object.size} color={color} wall={palette.wall} />;
   else if (object.type === 'display_wall') body = <DisplayWall size={object.size} color={color} wall={palette.wall} />;
   else if (object.type === 'ups') body = <Cabinet size={object.size} color={color} wall={palette.wall} accent="#4cd17a" />;
-  else body = <Mcb size={object.size} color={color} wall={palette.wall} />;
+  else body = <Mcb size={object.size} color={color} wall={palette.wall} panel={object.panel} palette={palette} />;
   return (
     <group position={object.position} rotation={[0, object.yaw, 0]}>
       {body}

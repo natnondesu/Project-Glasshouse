@@ -216,7 +216,18 @@ export interface PanelWay {
 export interface PanelConfig {
   phase: PanelPhase;
   ways: PanelWay[];
+  /** False when the survey drew the panel but it won't be used. Absent means in use. */
+  inUse?: boolean;
+  /** How the breakers are arranged on the panel face. Absent means derived from the way count (see `panelLayout`). */
+  layout?: PanelLayout;
+  /** Two columns only: odd ways down the left and even down the right (default, Thai/IEC), or 1..n/2 down the left then the rest down the right. */
+  numbering?: WayNumbering;
+  /** Optional main breaker rating, above the ways. */
+  mainRatingA?: number;
 }
+
+export type PanelLayout = 'row' | 'column' | 'two_column';
+export type WayNumbering = 'odd_even' | 'sequential';
 
 export type DoorHinge = 'left' | 'right';
 export type DoorOpening = 'swing' | 'slide';

@@ -1,4 +1,4 @@
-import { centerOf, cutOutKind, effectiveHeight, feedRoute, footprintOf, isDoorInPartition, localToWorld, usedU, wallBottomOf, worldToLocal, type PowerFeed, type Point, type EquipmentState, type Category, type MultiPoly, type PlanContent, type Rack, type RoomObject, type SimpleObjectType } from '@glasshouse/domain';
+import { centerOf, cutOutKind, effectiveHeight, feedRoute, footprintOf, isDoorInPartition, isInUse, panelOf, wayPosition, localToWorld, usedU, wallBottomOf, worldToLocal, type PowerFeed, type Point, type EquipmentState, type Category, type MultiPoly, type PlanContent, type Rack, type RoomObject, type SimpleObjectType } from '@glasshouse/domain';
 
 /** One rack unit (EIA-310) in metres. */
 export const U_M = 0.04445;
@@ -71,6 +71,30 @@ export interface Object3D {
   door?: { hinge: 'left' | 'right'; opening: 'swing' | 'slide' };
   /** Partitions only: the doorways cut through it, measured along its length from its middle. */
   openings?: Opening3D[];
+  /** MCB panels only: the breakers on the front face. */
+  panel?: Panel3D;
+}
+
+/** An MCB panel's face: where each way's breaker sits (from `wayPosition`, so it agrees with the plan and the sheet), and whether it carries a feed. */
+export interface Panel3D {
+  inUse: boolean;
+  mainRatingA?: number;
+  columns: number;
+  rows: number;
+  cells: { way: number; column: number; row: number; fed: boolean }[];
+}
+
+function panelFace3D(o: RoomObject, content: PlanContent): Panel3D {
+  const config = panelOf(o);
+  const fed = new Set(content.feeds.filter((f) => f.sourceId === o.id && f.way !== undefined).map((f) => f.way));
+  const cells = config.ways.map((_, i) => ({ way: i + 1, ...wayPosition(config, i + 1), fed: fed.has(i + 1) }));
+  return {
+    inUse: isInUse(o),
+    ...(config.mainRatingA !== undefined ? { mainRatingA: config.mainRatingA } : {}),
+    columns: Math.max(...cells.map((c) => c.column)) + 1,
+    rows: Math.max(...cells.map((c) => c.row)) + 1,
+    cells,
+  };
 }
 
 export interface Opening3D {
@@ -208,7 +232,7 @@ export function buildScene(content: PlanContent, stateOf: StateOf = ALL_PLANNED)
   for (const o of content.objects) {
     const p = placement(o);
     if (o.type === 'rack') racks.push({ id: o.id, name: o.name, owner: o.owner, ...p, ...rackFaces(o, stateOf), capacityU: o.capacityU, usedU: usedU(o) });
-    else others.push({ id: o.id, name: o.name, type: o.type, ...p, ...(o.type === 'door' ? { door: { hinge: o.hinge ?? 'left', opening: o.opening ?? 'swing' } } : {}), ...(o.type === 'partition' ? { openings: openingsOf(o, content.objects) } : {}) });
+    else others.push({ id: o.id, name: o.name, type: o.type, ...p, ...(o.type === 'door' ? { door: { hinge: o.hinge ?? 'left', opening: o.opening ?? 'swing' } } : {}), ...(o.type === 'partition' ? { openings: openingsOf(o, content.objects) } : {}), ...(o.type === 'mcb' ? { panel: panelFace3D(o, content) } : {}) });
   }
   const columns = content.survey.cutOuts.filter((c) => cutOutKind(c) === 'solid').map((c) => ({ id: c.id, position: [c.x + c.w / 2, COLUMN_HEIGHT_M / 2, c.y + c.d / 2] as Vec3, size: [c.w, COLUMN_HEIGHT_M, c.d] as Vec3 }));
   const feeds = content.feeds.flatMap((feed) => {
