@@ -1,10 +1,11 @@
 import { castDraft, produce, type Draft } from 'immer';
 import { createPlan } from '../factories';
 import { currentRevision, findProject, findRoom, findSite } from '../lookup';
-import type { Id, PlanContent, Room, Site, Workspace, EquipmentState } from '../model/types';
+import type { GeoPoint, Id, PlanContent, Room, Site, Workspace, EquipmentState } from '../model/types';
 import { err, ok, type Result } from '../result';
 import { LIMITS } from '../model/defaults';
 import { validateName } from '../validation';
+import { validateLocation } from '../siteLocation';
 import { canonicalJson } from '../canonical';
 import { applyArchiveCommand, archiveGuard, type ArchiveCommand } from '../archive';
 import { applyCatalogCommand, type CatalogCommand } from './catalog';
@@ -21,6 +22,8 @@ export type WorkspaceCommand =
   | { type: 'project/delete'; projectId: Id }
   | { type: 'site/create'; projectId: Id; id: Id; name: string }
   | { type: 'site/rename'; siteId: Id; name: string }
+  /** Places a site on the map, moves it, or (null) takes it off. */
+  | { type: 'site/locate'; siteId: Id; location: GeoPoint | null }
   | { type: 'site/delete'; siteId: Id }
   | { type: 'room/create'; siteId: Id; id: Id; floorAreaId: Id; name: string }
   | { type: 'room/rename'; roomId: Id; name: string }
@@ -125,6 +128,13 @@ export function apply(ws: Workspace, cmd: WorkspaceCommand): Result<Workspace> {
       if (!name.ok) return name;
       if (!findSite(ws, cmd.siteId)) return gone('site', cmd.siteId);
       return ok(produce(ws, (d) => void (draftSite(d, cmd.siteId).name = name.value)));
+    }
+    case 'site/locate': {
+      if (!findSite(ws, cmd.siteId)) return gone('site', cmd.siteId);
+      if (cmd.location === null) return ok(produce(ws, (d) => void delete draftSite(d, cmd.siteId).location));
+      const location = validateLocation(cmd.location);
+      if (!location.ok) return location;
+      return ok(produce(ws, (d) => void (draftSite(d, cmd.siteId).location = location.value)));
     }
     case 'site/delete':
       if (!findSite(ws, cmd.siteId)) return gone('site', cmd.siteId);

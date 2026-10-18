@@ -14,6 +14,7 @@ import { SERVER_MODE } from '../../sync/serverMode';
 import { sampleCommands } from './sampleLoad';
 import { BackupPanel } from './BackupPanel';
 import { TreeRow } from './TreeRow';
+import { useLocationStore } from '../globe/locationStore';
 import './tree.css';
 
 interface ProjectTreeProps {
@@ -66,6 +67,7 @@ export function ProjectTree({ activeRoomId, onCollapse, variant = 'docked', pin,
     return problem === null;
   };
   const rename = (command: WorkspaceCommand): string | null => dispatch(command)?.message ?? null;
+  const editLocation = useLocationStore((s) => s.edit);
   const [collapsed, setCollapsed] = usePersistentState<string[]>('glasshouse:tree-collapsed', []);
   // The open room's project and site always show, so the current room is never hidden.
   const activePath = new Set(
@@ -236,6 +238,7 @@ export function ProjectTree({ activeRoomId, onCollapse, variant = 'docked', pin,
                     archiveActions={archiveActions('site', site.id, site.name)}
                     deleteBlocked={deleteBlocked('site', site.id, site.name)}
                     onRename={(name) => rename({ type: 'site/rename', siteId: site.id, name })}
+                    onLocate={() => editLocation(site.id)}
                     onAdd={can.edit && project.archivedAt === undefined && site.archivedAt === undefined ? () => {
                       const id = newId();
                       if (run({ type: 'room/create', siteId: site.id, id, floorAreaId: newId(), name: m.tree.newRoom })) {

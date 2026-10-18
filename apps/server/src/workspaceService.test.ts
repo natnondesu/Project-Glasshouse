@@ -214,6 +214,17 @@ describe('roles and stamped names', () => {
     expect(await go(svc, editor, '3', { type: 'project/delete', projectId: 'p' })).toMatchObject({ kind: 'rejected', error: { code: 'forbidden' } });
   });
 
+  it('lets an editor place a site on the map, not a viewer, and keeps the location in the shared workspace', async () => {
+    const svc = await open();
+    await go(svc, editor, '1', { type: 'project/create', id: 'p', name: 'P' });
+    await go(svc, editor, '2', { type: 'site/create', projectId: 'p', id: 's', name: 'S' });
+    const place = { type: 'site/locate', siteId: 's', location: { lat: 13.668, lon: 100.605 } } as const;
+    expect(await go(svc, viewer, '3', place)).toMatchObject({ kind: 'rejected', error: { code: 'forbidden' } });
+    expect(await go(svc, editor, '4', place)).toMatchObject({ kind: 'accepted' });
+    expect(svc.state.workspace.projects[0]!.sites[0]!.location).toEqual({ lat: 13.668, lon: 100.605 });
+    expect(await go(svc, editor, '5', { type: 'site/locate', siteId: 's', location: { lat: 91, lon: 0 } })).toMatchObject({ kind: 'rejected', error: { code: 'invalid_value' } });
+  });
+
   it('a reviewer can’t approve their own submission, whatever name they send', async () => {
     const svc = await open();
     for (const [i, c] of readyRoomCommands().entries()) await go(svc, reviewer, `s${i}`, c);

@@ -152,6 +152,7 @@ export function archiveGuard(ws: Workspace, cmd: WorkspaceCommand): Failure | nu
     case 'site/create':
       return readOnly(ws, 'project', cmd.projectId);
     case 'site/rename':
+    case 'site/locate':
     case 'room/create':
       return readOnly(ws, 'site', cmd.siteId);
     case 'room/rename':

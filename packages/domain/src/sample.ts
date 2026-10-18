@@ -47,6 +47,8 @@ export function createSampleProject(at: string): Result<Project> {
   const mdfId = newId();
   run({ type: 'project/create', id: projectId, name: SAMPLE_PROJECT_NAME });
   run({ type: 'site/create', projectId, id: siteId, name: 'Bangna campus' });
+  // Illustrative coordinates, like everything in the sample: a spot in Bang Na, Bangkok.
+  run({ type: 'site/locate', siteId, location: { lat: 13.668, lon: 100.605 } });
   run({ type: 'room/create', siteId, id: serverId, floorAreaId: newId(), name: 'Server room A' });
   run({ type: 'room/create', siteId, id: mdfId, floorAreaId: newId(), name: 'MDF-1' });
 

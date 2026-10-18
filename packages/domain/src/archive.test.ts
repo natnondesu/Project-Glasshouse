@@ -254,6 +254,7 @@ describe('an archived item is read-only', () => {
       'project/delete': { type: 'project/delete', projectId: 'p' },
       'site/create': { type: 'site/create', projectId: 'p', id: 's9', name: 'X' },
       'site/rename': { type: 'site/rename', siteId: 's', name: 'X' },
+      'site/locate': { type: 'site/locate', siteId: 's', location: { lat: 13.7, lon: 100.5 } },
       'site/delete': { type: 'site/delete', siteId: 's' },
       'room/create': { type: 'room/create', siteId: 's', id: 'r9', floorAreaId: 'fa-9', name: 'X' },
       'room/rename': { type: 'room/rename', roomId: 'r1', name: 'X' },

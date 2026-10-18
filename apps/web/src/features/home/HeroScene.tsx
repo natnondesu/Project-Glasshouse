@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { useT } from '../../i18n';
 import { IconPause, IconPlay } from '../../ui/icons';
+import { usePrefersReducedMotion } from '../../ui/usePrefersReducedMotion';
 import { defaultCamera, type OrbitCamera } from '../room3d/camera';
 import { readPalette } from '../room3d/palette';
 import { hasWebGL, Room3DCanvas } from '../room3d/Room3DCanvas';
@@ -13,26 +14,14 @@ import '../room3d/room3d.css';
 const SPIN_RAD_PER_S = 0.11;
 const RACK_LABELS = ['rack' as const];
 
-function usePrefersReducedMotion(): boolean {
-  const query = '(prefers-reduced-motion: reduce)';
-  const [reduced, setReduced] = useState(() => window.matchMedia?.(query).matches ?? false);
-  useEffect(() => {
-    const mq = window.matchMedia?.(query);
-    if (!mq) return;
-    const on = (e: MediaQueryListEvent): void => setReduced(e.matches);
-    mq.addEventListener('change', on);
-    return () => mq.removeEventListener('change', on);
-  }, []);
-  return reduced;
-}
-
 /**
  * The last room, live in 3D, turning slowly. It stops while the pointer is over it (so a drag looks
  * around from where it is), when paused, under reduced motion, and draws nothing once scrolled away.
  * Clicking a rack opens it in the elevation; the rack names under the scene do the same from the keyboard
  * and light their rack while pointed at.
  */
-export default function HeroScene({ location }: { location: RoomLocation }) {
+/** `caption` replaces the hint in the corner chip (the site card names the room there instead). */
+export default function HeroScene({ location, caption }: { location: RoomLocation; caption?: string }) {
   const m = useT();
   const navigate = useNavigate();
   const content = currentRevision(location.room.plan).content;
@@ -96,7 +85,7 @@ export default function HeroScene({ location }: { location: RoomLocation }) {
       <p className="home-hero__chip">
         <span className="home-hero__dot" aria-hidden="true" />
         <span className="mono">3D</span>
-        {reduced ? m.home.sceneStill : m.home.sceneHint}
+        {caption ?? (reduced ? m.home.sceneStill : m.home.sceneHint)}
       </p>
       {reduced ? null : (
         <button type="button" className="icon-btn home-hero__pause" aria-pressed={paused} aria-label={paused ? m.home.play : m.home.pause} title={paused ? m.home.play : m.home.pause} onClick={() => setPaused(!paused)}>

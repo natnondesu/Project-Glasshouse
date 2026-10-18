@@ -1,14 +1,15 @@
 import { openRoom } from './nav';
 import { expect, test } from '@playwright/test';
 
-test('home leads with the last room in 3D and opens any room from its card', async ({ page, browserName }) => {
+test('home leads with the last room’s site, that room in 3D, and opens any room from its card', async ({ page, browserName }) => {
   test.skip(browserName === 'firefox' && !!process.env.CI, "Playwright's Firefox has no WebGL in the CI image");
   await page.goto('/');
   await openRoom(page, /MDF-1/);
   await page.waitForURL(/\/rooms\/[^/]+\/plan/);
   await page.getByRole('link', { name: 'Glasshouse' }).first().click();
-  await expect(page.getByRole('heading', { level: 1, name: 'MDF-1' })).toBeVisible();
-  await expect(page.locator('.home-hero canvas')).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: 'Bangna campus' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Show MDF-1 in 3D' })).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.locator('.site-card__paper canvas')).toBeVisible();
   await page.getByRole('button', { name: 'Pause turning' }).click();
   await expect(page.getByRole('button', { name: 'Turn again' })).toHaveAttribute('aria-pressed', 'true');
   // A room with holds leads with the way to them.

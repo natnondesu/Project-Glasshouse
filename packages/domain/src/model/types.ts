@@ -379,11 +379,19 @@ export interface Room {
   archivedBy?: string;
 }
 
+/** Where a site is on Earth, in WGS 84 degrees (the numbers a Google Maps link carries). */
+export interface GeoPoint {
+  lat: number;
+  lon: number;
+}
+
 export interface Site {
   id: Id;
   name: string;
   notes: string;
   rooms: Room[];
+  /** Absent until someone places the site; not revision content, so approvals and their fingerprints never see it. */
+  location?: GeoPoint;
   /** Set only on the item an admin archived; whatever sits below it is archived with it. See archive.ts. */
   archivedAt?: string;
   archivedBy?: string;

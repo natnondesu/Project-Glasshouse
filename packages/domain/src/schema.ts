@@ -146,7 +146,8 @@ const plan = z.object({
 });
 const archiveStamp = { archivedAt: text.optional(), archivedBy: text.optional() };
 const room = z.object({ id, name: text, notes: text, plan, ...archiveStamp });
-const site = z.object({ id, name: text, notes: text, rooms: z.array(room), ...archiveStamp });
+const location = z.object({ lat: num.min(-90).max(90), lon: num.min(-180).max(180) });
+const site = z.object({ id, name: text, notes: text, rooms: z.array(room), location: location.optional(), ...archiveStamp });
 const project = z.object({ id, name: text, notes: text, isSample: z.boolean(), sites: z.array(site), ...archiveStamp });
 
 export const workspaceSchema = z.object({
