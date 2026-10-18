@@ -109,7 +109,7 @@ function Group({ group, tool, current, onTool }: GroupProps) {
         </button>
       ) : null}
       {open ? (
-        <span ref={flyout} className="tool-flyout glass" role="menu" aria-label={m.tools.groupTools(groupLabel)}>
+        <span ref={flyout} className="tool-flyout popover-surface" role="menu" aria-label={m.tools.groupTools(groupLabel)}>
           <span className="tool-flyout__title">{groupLabel}</span>
           {group.tools.map((t) => {
             const spec = TOOL_SPECS[t];

@@ -79,3 +79,11 @@ it('says in the app language when the backup download cannot reach the server', 
   await userEvent.click(screen.getByRole('menuitem', { name: 'Download workspace backup' }));
   await vi.waitFor(() => expect(useWorkspaceStore.getState().notice).toBe('Could not reach the Glasshouse server. Check your connection and try again.'));
 });
+
+it('draws the account menu on a solid surface so it stays readable over the page', async () => {
+  render(<MemoryRouter><UserMenu /></MemoryRouter>);
+  await userEvent.click(screen.getByRole('button', { name: 'Account menu for Ploy' }));
+  const menu = screen.getByRole('menu');
+  expect(menu).toHaveClass('popover-surface');
+  expect(menu).not.toHaveClass('glass');
+});

@@ -47,3 +47,12 @@ it('hides dimensions, clearance zones and power feeds from the View menu, and re
   await user.click(screen.getByRole('button', { name: 'View' }));
   expect(screen.getByRole('menuitemcheckbox', { name: 'Power feeds' })).toHaveAttribute('aria-checked', 'false');
 });
+
+it('draws the View menu on a solid surface, not glass', async () => {
+  const user = userEvent.setup();
+  open();
+  await user.click(screen.getByRole('button', { name: 'View' }));
+  const menu = screen.getByRole('menu');
+  expect(menu).toHaveClass('popover-surface');
+  expect(menu).not.toHaveClass('glass');
+});

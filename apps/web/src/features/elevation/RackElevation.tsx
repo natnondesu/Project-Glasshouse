@@ -274,7 +274,7 @@ export function RackElevation({ rack, active, selectedId, flagged, onSelect, onA
               {rack.name}
             </button>
             {showFacts ? (
-              <span className="rack-elev__facts glass" role="tooltip" id={factsId}>
+              <span className="rack-elev__facts popover-surface" role="tooltip" id={factsId}>
                 {facts}
               </span>
             ) : null}

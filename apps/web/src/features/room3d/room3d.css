@@ -166,7 +166,6 @@
   flex-direction: column;
   gap: 8px;
   border-radius: var(--radius-panel);
-  box-shadow: var(--shadow-float);
 }
 
 .label-menu__list legend {

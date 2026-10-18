@@ -99,9 +99,9 @@ export function SearchBox({ content, roomName, onPick, action, className, plan }
       </kbd>
       {showList ? (
         hits.length === 0 ? (
-          <p className="search__empty" role="status">{m.search.noMatches(roomName)}</p>
+          <p className="search__empty popover-surface" role="status">{m.search.noMatches(roomName)}</p>
         ) : (
-          <ul className="search__list" role="listbox" id={listId} aria-label={m.search.results}>
+          <ul className="search__list popover-surface" role="listbox" id={listId} aria-label={m.search.results}>
             {hits.map((hit, i) => (
               <li
                 key={hit.key}

@@ -93,7 +93,7 @@
   align-items: stretch;
   gap: 6px;
   padding: 12px;
-  box-shadow: var(--glass-shadow), var(--shadow-float);
+  border-radius: var(--radius-panel);
 }
 
 .user-menu__who {

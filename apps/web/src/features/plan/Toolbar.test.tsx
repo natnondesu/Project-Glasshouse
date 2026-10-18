@@ -84,3 +84,12 @@ it('moves through a group with the arrow keys, and Escape hands focus back to th
   expect(screen.queryByRole('menu')).toBeNull();
   expect(screen.getByRole('button', { name: 'Place rack' })).toHaveFocus();
 });
+
+it('draws a group’s flyout on a solid surface, not glass', async () => {
+  const user = userEvent.setup();
+  render(<Harness />);
+  await user.click(screen.getByRole('button', { name: 'More Power source tools' }));
+  const menu = screen.getByRole('menu', { name: 'Power source tools' });
+  expect(menu).toHaveClass('popover-surface');
+  expect(menu).not.toHaveClass('glass');
+});

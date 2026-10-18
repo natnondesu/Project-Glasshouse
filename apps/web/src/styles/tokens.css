@@ -48,6 +48,10 @@
   --glass-bg: rgb(247 249 251 / var(--glass-tint));
   --glass-border: rgb(255 255 255 / 0.75);
   --glass-shadow: inset 0 1px 0 rgb(255 255 255 / 0.9), 0 1px 2px rgb(14 24 36 / 0.06), 0 18px 48px -12px rgb(14 24 36 / 0.22);
+  /* Floating menus sit over the drawing: the glass colour, fully opaque, with a visible edge and a deeper shadow. */
+  --popover-bg: #f7f9fb;
+  --popover-border: rgb(14 24 36 / 0.2);
+  --popover-shadow: inset 0 1px 0 #fff, 0 1px 3px rgb(14 24 36 / 0.14), 0 22px 44px -14px rgb(14 24 36 / 0.45);
   --control-bg: rgb(255 255 255 / 0.72);
   --hover: rgb(255 255 255 / 0.6);
   /* One focus treatment everywhere: a solid 2px accent ring (inset where an outline would be clipped). */

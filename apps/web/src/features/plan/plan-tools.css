@@ -170,7 +170,6 @@
   flex-direction: column;
   padding: 6px;
   border-radius: 12px;
-  background: rgb(247 249 251 / 0.97);
 }
 
 .tool-flyout__title {
@@ -246,7 +245,6 @@
   flex-direction: column;
   padding: 6px;
   border-radius: 12px;
-  background: rgb(247 249 251 / 0.97);
 }
 
 .view-menu__item {

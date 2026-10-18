@@ -40,6 +40,7 @@ it('plan: finds a device and highlights the rack that holds it, with a way to it
   const box = screen.getByRole('combobox', { name: 'Search this room' });
   expect(box).toHaveFocus();
   await user.type(box, 'srv-01');
+  expect(screen.getByRole('listbox')).toHaveClass('popover-surface');
   const options = within(screen.getByRole('listbox')).getAllByRole('option');
   expect(options[0]).toHaveTextContent('SRV-01');
   expect(options[0]).toHaveTextContent('Server 2U in RK-01, U3–U4');
