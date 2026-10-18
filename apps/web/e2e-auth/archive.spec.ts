@@ -14,7 +14,7 @@ async function twoPeople(browser: Browser, tag: string) {
   await expect(eddie.getByText('Connected to the Glasshouse server')).toBeVisible();
   const commands = [
     { type: 'project/create', id: `ap-${tag}`, name: `Archive e2e ${tag}` },
-    { type: 'site/create', projectId: `ap-${tag}`, id: `as-${tag}`, name: `Site ${tag}` },
+    { type: 'site/create', projectId: `ap-${tag}`, id: `as-${tag}`, name: `Quay ${tag}` },
     { type: 'room/create', siteId: `as-${tag}`, id: `ar-${tag}`, floorAreaId: `afa-${tag}`, name: `Room ${tag}` },
   ].map((command, i) => ({ commandId: `archive-setup-${tag}-${i}`, command }));
   const setup = await ada.request.post('/api/commands', { headers: { 'x-glasshouse': '1' }, data: { clientId: `e2e-archive-setup-${tag}`, commands } });
