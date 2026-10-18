@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react';
 import { IconChevronCorner } from '../../ui/icons';
 import { useT } from '../../i18n';
 import { SOLO_TOOLS, TOOL_GROUPS, TOOL_SPECS, type Tool } from './tools';
@@ -28,17 +28,21 @@ interface ToolButtonProps {
   /** The tool the hint describes; the active variant for a group button. */
   hintTool?: Tool;
   hintHidden?: boolean;
+  /** A group owns the hover, so the hint also shows over its corner arrow; solo tools track their own. */
+  hovered?: boolean;
 }
 
-function ToolButton({ tool, active, onTool, label, hintTool = tool, hintHidden = false }: ToolButtonProps) {
+function ToolButton({ tool, active, onTool, label, hintTool = tool, hintHidden = false, hovered }: ToolButtonProps) {
   const spec = TOOL_SPECS[tool];
   const defaultName = useT().tools.spec[tool].label;
   const name = label ?? defaultName;
-  const [hover, setHover] = useState(false);
+  const [ownHover, setHover] = useState(false);
+  const hover = (hovered ?? false) || ownHover;
   const hintId = `hint-${hintTool}`;
   const hinted = hover && !hintHidden;
+  const tracksOwnHover = hovered === undefined;
   return (
-    <span className="tool-cell" onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}>
+    <span className="tool-cell" onMouseEnter={tracksOwnHover ? () => setHover(true) : undefined} onMouseLeave={tracksOwnHover ? () => setHover(false) : undefined}>
       <button
         type="button"
         className="tool"
@@ -62,8 +66,23 @@ interface GroupProps {
   onTool: (tool: Tool) => void;
 }
 
+/** Room left between the flyout and the edge of the area that clips it. */
+const FLYOUT_MARGIN = 8;
+
+/** The nearest ancestor that clips its content: the flyout must stay inside it. */
+function clippingBox(el: HTMLElement): DOMRect {
+  for (let node = el.parentElement; node; node = node.parentElement) {
+    const { overflow, overflowY } = getComputedStyle(node);
+    if (/(hidden|auto|scroll|clip)/.test(`${overflow} ${overflowY}`)) return node.getBoundingClientRect();
+  }
+  return new DOMRect(0, 0, window.innerWidth, window.innerHeight);
+}
+
 function Group({ group, tool, onTool }: GroupProps) {
   const [open, setOpen] = useState(false);
+  const [hover, setHover] = useState(false);
+  /** How far the flyout moves up so its bottom stays inside the plan area (the Power group sits low on the rail). */
+  const [lift, setLift] = useState(0);
   const cell = useRef<HTMLSpanElement>(null);
   const m = useT();
   const groupLabel = m.tools.group[group.id];
@@ -97,6 +116,19 @@ function Group({ group, tool, onTool }: GroupProps) {
     const el = flyout.current;
     (el?.querySelector<HTMLElement>('[aria-checked="true"]') ?? el?.querySelector<HTMLElement>('[role="menuitemradio"]'))?.focus();
   }, [open]);
+  useLayoutEffect(() => {
+    if (!open) {
+      setLift(0);
+      return;
+    }
+    const el = flyout.current;
+    if (!el) return;
+    const box = clippingBox(el);
+    const rect = el.getBoundingClientRect();
+    const overflow = rect.bottom - (box.bottom - FLYOUT_MARGIN);
+    const room = rect.top - (box.top + FLYOUT_MARGIN);
+    setLift(Math.max(0, Math.min(overflow, room)));
+  }, [open]);
   useEffect(() => {
     if (!open) return;
     const close = (e: PointerEvent): void => {
@@ -106,8 +138,9 @@ function Group({ group, tool, onTool }: GroupProps) {
     return () => window.removeEventListener('pointerdown', close);
   }, [open]);
   return (
-    <span ref={cell} className="tool-group" onKeyDown={onMenuKey}>
+    <span ref={cell} className="tool-group" onKeyDown={onMenuKey} onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}>
       <ToolButton
+        hovered={hover}
         tool={face}
         active={inGroup}
         onTool={onTool}
@@ -121,7 +154,7 @@ function Group({ group, tool, onTool }: GroupProps) {
         </button>
       ) : null}
       {open ? (
-        <span ref={flyout} className="tool-flyout popover-surface" role="menu" aria-label={m.tools.groupTools(groupLabel)}>
+        <span ref={flyout} className="tool-flyout popover-surface" role="menu" aria-label={m.tools.groupTools(groupLabel)} style={lift > 0 ? { transform: `translateY(${-lift}px)` } : undefined}>
           <span className="tool-flyout__title">{groupLabel}</span>
           {group.tools.map((t) => {
             const spec = TOOL_SPECS[t];
