@@ -159,7 +159,7 @@ describe('panels that are not in use', () => {
     });
     expect(blockingIssues(checkPlan(c))).toContainEqual(issue);
     expect(checkPlan(c).map((i) => i.code)).not.toContain('feed_no_way');
-    const plan = { revisions: [{ number: 1, state: 'draft', content: c }] } as never;
+    const plan = { revisions: [{ number: 1, state: 'draft', content: c, acknowledgements: [] }] } as never;
     expect(approvalBlockerItems(plan).map((b) => b.code)).toContain('feed_inactive_panel');
   });
 
