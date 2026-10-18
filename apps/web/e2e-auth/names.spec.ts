@@ -53,7 +53,8 @@ test('a viewer gets no New room card', async ({ browser }) => {
     },
   });
   expect(await setup.json()).toMatchObject({ rejected: null });
-  await admin.goto('/');
+  // A room needs a site: Home offers New room once one site is in scope.
+  await admin.goto('/?scope=site:s-names');
   await expect(admin.getByRole('button', { name: /^New room in Names site/ })).toBeVisible();
 
   const viewerCtx = await browser.newContext();
@@ -61,7 +62,8 @@ test('a viewer gets no New room card', async ({ browser }) => {
   await viewer.goto('/');
   await viewer.getByRole('link', { name: 'Continue with company account' }).click();
   await expect(viewer.getByText('You can view this workspace. Ask an admin for edit access.')).toBeVisible();
-  await expect(viewer.getByRole('region', { name: /Names site/ })).toBeVisible();
+  await viewer.goto('/?scope=site:s-names');
+  await expect(viewer.getByRole('region', { name: 'Rooms in Names site' })).toBeVisible();
   await expect(viewer.getByRole('button', { name: /^New room in/ })).toHaveCount(0);
   await viewerCtx.close();
   await adminCtx.close();

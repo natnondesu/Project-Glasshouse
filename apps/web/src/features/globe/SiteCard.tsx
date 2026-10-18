@@ -2,12 +2,11 @@ import { formatWatts, latestApproved } from '@glasshouse/domain';
 import { lazy, Suspense } from 'react';
 import { Link } from 'react-router';
 import { useT } from '../../i18n';
-import { IconArrowRight, IconCheck, IconChevronLeft, IconChevronRight, IconMapPin, IconPlus, IconSheet } from '../../ui/icons';
+import { IconArrowRight, IconCheck, IconChevronLeft, IconChevronRight, IconClose, IconMapPin, IconPlus, IconSheet } from '../../ui/icons';
 import { usePeople } from '../../people/peopleStore';
 import { personLabel } from '../../ui/person';
 import { pad2 } from '../../ui/StatusStamp';
-import { holdsTotal } from '../home/RoomCard';
-import type { RoomSummary } from '../home/rooms';
+import { holdsTotal, type RoomSummary } from '../home/rooms';
 import { SceneBoundary } from '../home/SceneBoundary';
 import { formatLatLon } from './format';
 import type { SiteSummary } from './sites';
@@ -24,6 +23,8 @@ interface SiteCardProps {
   onLocate: () => void;
   onPlace: () => void;
   onNewRoom: () => void;
+  /** Closes the card: the scope steps back up to the site's province (or country). */
+  onClose: () => void;
 }
 
 function RoomHolds({ room }: { room: RoomSummary }) {
@@ -55,10 +56,10 @@ function RoomHolds({ room }: { room: RoomSummary }) {
 }
 
 /**
- * The selected site: what it holds, each room with its revision and what holds its approval (links to Review), the
+ * The selected site, floating over the map's top right: what it holds, each room with its revision and what holds its approval (links to Review), the
  * chosen room live in 3D, and the way into it. Rooms change by a click or prev/next, never on a timer.
  */
-export function SiteCard({ summary, roomId, lastRoomId, onRoom, canEdit, onLocate, onPlace, onNewRoom }: SiteCardProps) {
+export function SiteCard({ summary, roomId, lastRoomId, onRoom, canEdit, onLocate, onPlace, onNewRoom, onClose }: SiteCardProps) {
   const m = useT();
   const { site, project, rooms } = summary;
   const index = Math.max(0, rooms.findIndex((r) => r.room.id === roomId));
@@ -77,9 +78,14 @@ export function SiteCard({ summary, roomId, lastRoomId, onRoom, canEdit, onLocat
   };
 
   return (
-    <div className="site-card">
+    <section className="site-card globe-sitecard" aria-labelledby="home-site-name">
+      <button type="button" className="icon-btn site-card__close" aria-label={m.home.closeCard(site.name)} onClick={onClose}>
+        <IconClose />
+      </button>
       <header className="site-card__head">
-        <h1 id="home-site-name" tabIndex={-1}>{site.name}</h1>
+        <h2 id="home-site-name" tabIndex={-1}>
+          {site.name}
+        </h2>
         <p className="site-card__project">{project.name}</p>
         <p className="site-card__where">
           <IconMapPin />
@@ -203,6 +209,6 @@ export function SiteCard({ summary, roomId, lastRoomId, onRoom, canEdit, onLocat
           ) : null}
         </div>
       )}
-    </div>
+    </section>
   );
 }

@@ -13,7 +13,13 @@ export interface MapSite {
 
 export type Marker =
   | { kind: 'site'; key: string; site: MapSite; x: number; y: number }
-  | { kind: 'cluster'; key: string; sites: MapSite[]; x: number; y: number; place: string | null };
+  | { kind: 'cluster'; key: string; sites: MapSite[]; x: number; y: number; place: string | null; region: ClusterRegion | null };
+
+/** The province (closer in) or country its sites share: picking the count scopes Home to that place. */
+export interface ClusterRegion {
+  level: 'country' | 'province';
+  code: string;
+}
 
 export interface Places {
   /** ISO code of the site's country, if it falls in one. */
@@ -21,6 +27,8 @@ export interface Places {
   countryName: (code: string) => string;
   /** Name of the site's province, if the map has provinces there. */
   province: (siteId: string) => string | null;
+  /** ISO 3166-2 code of the site's province, if the map has provinces there. */
+  provinceCode?: (siteId: string) => string | null;
 }
 
 /** Pins closer than this merge into a count. */
@@ -61,7 +69,9 @@ export function markersFrom(groups: string[][], sites: MapSite[], level: Level, 
     const memberIds = members.map((m) => m.site.id);
     const country = shared(memberIds.map(places.country));
     const province = level === 'world' ? null : shared(memberIds.map(places.province));
-    return [{ kind: 'cluster', key: memberIds.join('+'), sites: members.map((m) => m.site), x, y, place: province ?? (country ? places.countryName(country) : null) }];
+    const provinceCode = level === 'world' || !places.provinceCode ? null : shared(memberIds.map(places.provinceCode));
+    const region: ClusterRegion | null = provinceCode ? { level: 'province', code: provinceCode } : country ? { level: 'country', code: country } : null;
+    return [{ kind: 'cluster', key: memberIds.join('+'), sites: members.map((m) => m.site), x, y, place: province ?? (country ? places.countryName(country) : null), region }];
   });
 }
 

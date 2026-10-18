@@ -23,8 +23,9 @@ async function addSite(page: Page, project: string, site: string): Promise<void>
 test('the globe flies from the world to a site, and its card opens the room', async ({ page }) => {
   await page.goto('/');
   await expect(mapOf(page)).toBeVisible();
-  // Opens framed on Thailand, where the sample sites are.
-  await expect(crumbs(page).getByRole('button', { name: 'Thailand' })).toHaveAttribute('aria-current', 'location');
+  // Opens framed on Thailand, where the sample sites are, counting everything.
+  await expect(crumbs(page).getByRole('button', { name: 'Thailand' })).toBeVisible();
+  await expect(crumbs(page).getByRole('button', { name: 'World' })).toHaveAttribute('aria-current', 'location');
   await crumbs(page).getByRole('button', { name: 'World' }).click();
   await pointAtMap(page);
   await page.getByRole('button', { name: 'Thailand — 3 sites. Show them' }).click();
@@ -32,7 +33,7 @@ test('the globe flies from the world to a site, and its card opens the room', as
 
   await page.getByRole('button', { name: 'Bangkok — 3 sites. Show them' }).click();
   await page.getByRole('button', { name: /^Riverside Campus, / }).click();
-  await expect(page.getByRole('heading', { level: 1, name: 'Riverside Campus' })).toBeVisible();
+  await expect(page.locator('#home-site-name')).toHaveText('Riverside Campus');
   await expect(crumbs(page).getByRole('button', { name: 'Riverside Campus' })).toHaveAttribute('aria-current', 'location');
   await expect(crumbs(page).getByRole('button', { name: 'Bangkok' })).toBeVisible();
   const rooms = page.getByRole('list', { name: 'Rooms in Riverside Campus' });
@@ -65,6 +66,8 @@ test('a site is placed by pasting a Google Maps link', async ({ page }) => {
   await page.goto('/');
   await addSite(page, 'Acme', 'Warehouse 2');
   await page.getByRole('link', { name: 'Glasshouse' }).first().click();
+  const toggle = page.getByRole('button', { name: /^Not placed yet/ });
+  await toggle.click();
   const waiting = page.getByRole('region', { name: /Not placed yet/ });
   await expect(waiting.getByRole('button', { name: /Warehouse 2/ }).first()).toBeVisible();
 
@@ -74,7 +77,7 @@ test('a site is placed by pasting a Google Maps link', async ({ page }) => {
   await expect(dialog.getByRole('status')).toContainText('13.72790° N, 100.74790° E');
   await dialog.getByRole('button', { name: 'Save location' }).click();
   await expect(dialog).toBeHidden();
-  await expect(waiting).toBeHidden();
+  await expect(toggle).toBeHidden();
   // Lat Krabang is in Bangkok, so the count over Bangkok takes it in.
   await expect(page.getByRole('button', { name: 'Bangkok — 4 sites. Show them' })).toBeVisible();
 });
@@ -83,6 +86,7 @@ test('a site is placed by clicking the map', async ({ page }) => {
   await page.goto('/');
   await addSite(page, 'Acme', 'Depot 9');
   await page.getByRole('link', { name: 'Glasshouse' }).first().click();
+  await page.getByRole('button', { name: /^Not placed yet/ }).click();
   await page.getByRole('button', { name: 'Place Depot 9 on the map' }).click();
   const banner = page.getByRole('region', { name: 'Place Depot 9 on the map' });
   await expect(banner).toContainText('Zoom in to the province first');
@@ -96,13 +100,14 @@ test('a site is placed by clicking the map', async ({ page }) => {
   await expect(banner).toContainText('Click again to move the pin');
   const province = await crumbs(page).locator('[aria-current="location"]').textContent();
   expect(province).toBeTruthy();
-  await page.mouse.click(box.x + box.width * 0.5, box.y + box.height * 0.4);
+  // The flight centred the view on the first click: dropping the pin there keeps it in the province the crumb names.
+  await page.mouse.click(box.x + box.width * 0.5, box.y + box.height * 0.5);
   await expect(banner.locator('.globe-place__coords')).toContainText('° N');
   await banner.getByRole('button', { name: 'Save location' }).click();
   await expect(banner).toBeHidden();
-  await expect(page.getByRole('heading', { level: 1, name: 'Depot 9' })).toBeVisible();
+  await expect(page.locator('#home-site-name')).toHaveText('Depot 9');
   await expect(page.getByRole('button', { name: /^Depot 9, Acme/ })).toHaveAttribute('aria-pressed', 'true');
-  await expect(page.getByRole('region', { name: /Not placed yet/ })).toBeHidden();
+  await expect(page.getByRole('button', { name: /^Not placed yet/ })).toBeHidden();
   // The pin landed in the province the map was showing, inside Thailand.
   await expect(crumbs(page).getByRole('button', { name: province! })).toBeVisible();
   const coords = (await page.locator('.site-card__where .mono').textContent()) ?? '';

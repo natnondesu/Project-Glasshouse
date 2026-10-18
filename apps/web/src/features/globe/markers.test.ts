@@ -31,6 +31,16 @@ describe('computeMarkers', () => {
     const [n] = computeMarkers([site('a', 10, 0), site('d', 10.5, 0)], 'province', project, place);
     expect(n).toMatchObject({ kind: 'cluster', place: null });
   });
+
+  it('says which region a count stands for, so picking it can scope to that place', () => {
+    const [world] = computeMarkers([site('a', 10, 0), site('b', 10.5, 0)], 'world', project, place);
+    expect(world).toMatchObject({ kind: 'cluster', region: { level: 'country', code: 'TH' } });
+    const bangkok = { ...place, province: () => 'Bangkok', provinceCode: () => 'TH-10' };
+    const [m] = computeMarkers([site('a', 10, 0), site('b', 10.5, 0)], 'province', project, bangkok);
+    expect(m).toMatchObject({ region: { level: 'province', code: 'TH-10' } });
+    const [n] = computeMarkers([site('a', 10, 0), site('d', 10.5, 0)], 'province', project, place);
+    expect(n).toMatchObject({ region: null });
+  });
 });
 
 describe('grouping kept per zoom step', () => {

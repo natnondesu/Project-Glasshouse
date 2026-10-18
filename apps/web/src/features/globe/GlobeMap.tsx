@@ -1,11 +1,14 @@
 import type { GeoPoint } from '@glasshouse/domain';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useLangStore, useT } from '../../i18n';
-import { IconMinus, IconPause, IconPlay, IconPlus } from '../../ui/icons';
+import { IconMinus, IconPause, IconPlay, IconPlus, IconSearch } from '../../ui/icons';
 import { usePrefersReducedMotion } from '../../ui/usePrefersReducedMotion';
 import { boxOfPoints, fitBox, LEVEL_PPD, levelOf, MAX_PPD, worldCamera, type Camera, type GeoBox, type Size } from './camera';
+import type { FrameTarget } from '../home/homeView';
+import { scopeParam, WORLD, type Scope, type SitePlaces } from '../home/scope';
 import { drawMap, readPalette, type MapPalette, type Rect } from './drawMap';
 import { loadGeo, regionAt, regionName, type GeoData, type Region } from './geoData';
+import { markerBox } from './labels';
 import { MapCrumbs, type Crumb } from './MapCrumbs';
 import { MapMarkers } from './MapMarkers';
 import { markerGroups, markersFrom, splitsAt, type Marker, type MapSite, type Places } from './markers';
@@ -17,8 +20,16 @@ import { useMapInput } from './useMapInput';
 
 export interface GlobeMapProps {
   sites: MapSite[];
-  selectedId: string | null;
-  onSelect: (siteId: string) => void;
+  /** What Home counts: the selected site (pin ringed and pulsing), a region or a count's sites, or everything. */
+  scope: Scope;
+  /** A count, a crumb or a pin was picked. */
+  onScope: (scope: Scope) => void;
+  /** Sites a search keeps; the other pins fade and counts recount. Null when nobody is searching. */
+  matches: ReadonlySet<string> | null;
+  /** A flight asked from outside the map; each new `seq` flies once. */
+  frame: { seq: number; target: FrameTarget } | null;
+  /** Each placed site's country and province, once the outlines are in. */
+  onPlaces?: (places: SitePlaces) => void;
   placing: { id: string; name: string; location: GeoPoint | null } | null;
   /** Saves the pin; answers an error to show, or null when it went through. */
   onPlace: (location: GeoPoint) => string | null;
@@ -40,6 +51,16 @@ const MAX_FRAME_SPAN = 40;
 const MIN_FRAME_SPAN = 8;
 
 const spanOf = ([[w, s], [e, n]]: GeoBox): number => Math.max(n - s, e >= w ? e - w : e + 360 - w);
+
+/** Half the site card and its gap: a picked site sits in the middle of the map the card leaves free. */
+const CARD_SHIFT_PX = 212;
+const CARD_MIN_MAP_PX = 760;
+
+/** The camera on a site at `ppd`, nudged so the floating card doesn't cover it (on maps wide enough for both). */
+function siteCamera(at: GeoPoint, ppd: number, size: Size): Camera {
+  const shift = size.width >= CARD_MIN_MAP_PX ? CARD_SHIFT_PX : 0;
+  return { lon: at.lon + shift / (ppd * Math.max(0.05, Math.cos((at.lat * Math.PI) / 180))), lat: at.lat, ppd };
+}
 
 function useSize(ref: React.RefObject<HTMLElement | null>): Size | null {
   const [size, setSize] = useState<Size | null>(null);
@@ -74,11 +95,12 @@ function useDevicePixelRatio(): number {
   return dpr;
 }
 
-/** The map's own controls, in its coordinates: names drawn on the map stay clear of them. */
+/** The map's own controls and what floats over it (the site card), in its coordinates: names drawn on the map stay clear of them. */
 function overlayBoxes(root: HTMLElement | null): Rect[] {
   if (!root) return [];
   const base = root.getBoundingClientRect();
-  return [...root.querySelectorAll<HTMLElement>('.globe-crumbs, .globe-zoom, .globe-spin, .globe-map__foot, .globe-place, .globe-map__empty')].map((el) => {
+  const frame = root.closest('.globe-hero__paper') ?? root;
+  return [...frame.querySelectorAll<HTMLElement>('.globe-crumbs, .globe-zoom, .globe-spin, .globe-map__foot, .globe-place, .globe-map__empty, .globe-matches, .globe-sitecard, .globe-notplaced')].map((el) => {
     const r = el.getBoundingClientRect();
     return { x: r.left - base.left - 6, y: r.top - base.top - 6, w: r.width + 12, h: r.height + 12 };
   });
@@ -119,7 +141,7 @@ export default function GlobeMap(props: GlobeMapProps) {
   return <Globe {...props} geo={geo} />;
 }
 
-function Globe({ sites, selectedId, onSelect, placing, onPlace, onCancelPlace, onPasteInstead, onReady, hasSamples, geo }: GlobeMapProps & { geo: GeoData }) {
+function Globe({ sites, scope, onScope, matches, frame, onPlaces, placing, onPlace, onCancelPlace, onPasteInstead, onReady, hasSamples, geo }: GlobeMapProps & { geo: GeoData }) {
   const m = useT();
   const lang = useLangStore((s) => s.lang);
   const reduced = usePrefersReducedMotion();
@@ -135,13 +157,42 @@ function Globe({ sites, selectedId, onSelect, placing, onPlace, onCancelPlace, o
   const [paused, setPaused] = useState(false);
   const [focusWithin, setFocusWithin] = useState(false);
   const dpr = useDevicePixelRatio();
+  const selectedId = scope.kind === 'site' ? scope.id : null;
 
   useEffect(() => onReady?.(), [onReady]);
 
   const places = useMemo(() => new Map(sites.map((s) => [s.id, { country: regionAt(geo.countries, s.location.lon, s.location.lat), province: regionAt(geo.provinces, s.location.lon, s.location.lat) }])), [sites, geo]);
+  // Home counts a country's or a province's sites from these.
+  useEffect(() => onPlaces?.(places), [places, onPlaces]);
 
+  const regionBy = useCallback((level: 'country' | 'province', code: string | null | undefined): Region | null => (code ? ((level === 'country' ? geo.countries : geo.provinces).find((r) => r.code === code) ?? null) : null), [geo]);
+
+  /** How to frame a scope: a site up close, a region whole, a count's sites together; null for the world. */
+  const frameOf = useCallback(
+    (target: Scope | FrameTarget, sz: Size): Camera | null => {
+      if (target.kind === 'site') {
+        const site = sites.find((s) => s.id === target.id);
+        return site ? siteCamera(site.location, SITE_PPD, sz) : null;
+      }
+      if (target.kind === 'region') {
+        const region = regionBy(target.level, target.code);
+        return region ? fitBox(region.box, sz, { padding: FRAME_PAD_PX, maxPpd: target.level === 'country' ? LEVEL_PPD.province : SITE_PPD }) : null;
+      }
+      if (target.kind === 'sites' || target.kind === 'points') {
+        const members = sites.filter((s) => target.ids.includes(s.id));
+        return members.length > 0 ? fitBox(boxOfPoints(members.map((s) => s.location)), sz, { padding: 96, maxPpd: SITE_PPD }) : null;
+      }
+      return null;
+    },
+    [sites, regionBy],
+  );
+
+  // A scope read from the address opens framed on it; otherwise the view frames the country (or countries) of the sites.
+  const openingScope = useRef(scope).current;
   const initial = useCallback(
     (sz: Size): Camera => {
+      const framed = frameOf(openingScope, sz);
+      if (framed) return framed;
       if (sites.length === 0) return worldCamera(sz);
       const own = boxOfPoints(sites.map((s) => s.location));
       const countryBoxes = [...places.values()].flatMap((p) => (p.country && spanOf(p.country.box) <= MAX_FRAME_SPAN ? [p.country.box] : []));
@@ -154,7 +205,7 @@ function Globe({ sites, selectedId, onSelect, placing, onPlace, onCancelPlace, o
       }
       return fitBox(box, sz, { padding: FRAME_PAD_PX, maxPpd: LEVEL_PPD.province });
     },
-    [sites, places],
+    [sites, places, frameOf, openingScope],
   );
 
   // The world view turns slowly until someone drags or zooms it, points at it, places a site, or scrolls it away.
@@ -174,6 +225,7 @@ function Globe({ sites, selectedId, onSelect, placing, onPlace, onCancelPlace, o
         const region = places.get(id)?.province;
         return region ? regionName(region, lang) : null;
       },
+      provinceCode: (id) => places.get(id)?.province?.code ?? null,
     }),
     [places, geo, lang],
   );
@@ -195,8 +247,17 @@ function Globe({ sites, selectedId, onSelect, placing, onPlace, onCancelPlace, o
 
   const selected = sites.find((s) => s.id === selectedId) ?? null;
   const selectedPlaces = selected ? places.get(selected.id) : undefined;
+  // The scope is hatched on the map: the selected site's country (its province closer in), or the region picked.
+  const highlight = useMemo(() => {
+    if (scope.kind === 'site') return { country: selectedPlaces?.country ?? null, province: selectedPlaces?.province ?? null };
+    if (scope.kind !== 'region') return { country: null, province: null };
+    const province = scope.level === 'province' ? regionBy('province', scope.code) : null;
+    const country = scope.level === 'country' ? regionBy('country', scope.code) : regionBy('country', province?.code?.slice(0, 2));
+    return { country, province };
+  }, [scope, selectedPlaces, regionBy]);
+  const scopeKey = scopeParam(scope);
 
-  // Paint only when something changed: the camera, the size, the selection or the language.
+  // Paint only when something changed: the camera, the size, the scope (and its card) or the language.
   const palette = useRef<MapPalette | null>(null);
   useLayoutEffect(() => {
     const el = canvas.current;
@@ -210,9 +271,9 @@ function Globe({ sites, selectedId, onSelect, placing, onPlace, onCancelPlace, o
     const ctx = el.getContext('2d');
     if (!ctx) return;
     palette.current ??= readPalette(root.current ?? el);
-    const avoid: Rect[] = [...markers.map((mk) => ({ x: mk.x - 24, y: mk.y - 24, w: 48 + 180, h: 48 })), ...overlayBoxes(root.current)];
-    drawMap({ ctx, size, dpr, camera, geo, palette: palette.current, highlight: { country: selectedPlaces?.country ?? null, province: selectedPlaces?.province ?? null }, lang, avoid });
-  }, [camera, size, geo, selectedPlaces, lang, markers, dpr, placing, paused]);
+    const avoid: Rect[] = [...markers.map((mk) => markerBox(mk, size.width)), ...overlayBoxes(root.current)];
+    drawMap({ ctx, size, dpr, camera, geo, palette: palette.current, highlight, lang, avoid });
+  }, [camera, size, geo, highlight, lang, markers, dpr, placing, paused, scopeKey, matches]);
 
   // A site picked elsewhere, or given a new location (the dialog, Place mode), comes into view if it isn't.
   const selectedKey = selected ? `${selected.id}@${selected.location.lat},${selected.location.lon}` : selectedId;
@@ -222,9 +283,20 @@ function Globe({ sites, selectedId, onSelect, placing, onPlace, onCancelPlace, o
     lastSelected.current = selectedKey;
     if (!selected || !projection || !camera || !size) return;
     const at = screenOf(projection, camera, selected.location.lon, selected.location.lat);
-    const visible = at && at[0] > 0 && at[1] > 0 && at[0] < size.width && at[1] < size.height;
-    if (!visible) flyTo({ lon: selected.location.lon, lat: selected.location.lat, ppd: Math.max(camera.ppd, LEVEL_PPD.country * 2) });
+    const onScreen = at && at[0] > 0 && at[1] > 0 && at[0] < size.width && at[1] < size.height;
+    if (!onScreen) flyTo(siteCamera(selected.location, Math.max(camera.ppd, LEVEL_PPD.country * 2), size));
   }, [selectedKey, selected, projection, camera, size, flyTo]);
+
+  // A flight asked from outside (Enter on a site match): after the one above, so it wins when both fire.
+  const lastFrame = useRef(frame?.seq ?? 0);
+  useEffect(() => {
+    if (!frame || frame.seq === lastFrame.current || !camera || !size) return;
+    lastFrame.current = frame.seq;
+    const target = frameOf(frame.target, size);
+    const site = frame.target.kind === 'site' ? sites.find((s) => s.id === (frame.target as { id: string }).id) : undefined;
+    if (site) flyTo(siteCamera(site.location, Math.max(camera.ppd, SITE_PPD), size));
+    else if (target) flyTo(target);
+  }, [frame, camera, size, frameOf, flyTo, sites]);
 
   // Entering "Place" mode: a site being moved is shown where it is now; otherwise the view stays where the user is.
   const placingId = placing?.id ?? null;
@@ -284,10 +356,14 @@ function Globe({ sites, selectedId, onSelect, placing, onPlace, onCancelPlace, o
 
   const goSite = (site: MapSite): void => {
     setChooser(null);
-    onSelect(site.id);
-    flyTo({ lon: site.location.lon, lat: site.location.lat, ppd: Math.max(camera.ppd, SITE_PPD) });
+    onScope({ kind: 'site', id: site.id });
+    flyTo(siteCamera(site.location, Math.max(camera.ppd, SITE_PPD), size));
   };
   const goCluster = (marker: Extract<Marker, { kind: 'cluster' }>): void => {
+    // A count stands for its province or country when it holds all of that place's sites; else just for its own sites.
+    const region = marker.region;
+    const whole = region ? sites.filter((s) => places.get(s.id)?.[region.level]?.code === region.code).length === marker.sites.length : false;
+    onScope(region && whole ? { kind: 'region', ...region } : { kind: 'sites', ids: marker.sites.map((s) => s.id) });
     const box = boxOfPoints(marker.sites.map((s) => s.location));
     const country = lv === 'world' ? places.get(marker.sites[0]!.id)?.country : null;
     if (country && spanOf(country.box) <= MAX_FRAME_SPAN) {
@@ -304,38 +380,56 @@ function Globe({ sites, selectedId, onSelect, placing, onPlace, onCancelPlace, o
     }
     flyTo(target);
   };
-  const fit = (region: Region): void => flyTo(fitBox(region.box, size, { padding: FRAME_PAD_PX }));
+  const fit = (region: Region, level: 'country' | 'province'): void => {
+    if (region.code) onScope({ kind: 'region', level, code: region.code });
+    flyTo(fitBox(region.box, size, { padding: FRAME_PAD_PX }));
+  };
 
-  // The breadcrumb follows the selected site while it is on screen, else the middle of the view.
-  const selectedAt = selected && projection ? screenOf(projection, camera, selected.location.lon, selected.location.lat) : null;
-  const selectedOnScreen = selectedAt !== null && selectedAt[0] >= 0 && selectedAt[1] >= 0 && selectedAt[0] <= size.width && selectedAt[1] <= size.height;
-  const focus = selectedOnScreen && selected ? selected.location : { lon: camera.lon, lat: camera.lat };
-  const country = selectedOnScreen ? (selectedPlaces?.country ?? null) : regionAt(geo.countries, focus.lon, focus.lat);
-  const province = selectedOnScreen ? (selectedPlaces?.province ?? null) : lv === 'world' || lv === 'country' ? null : regionAt(geo.provinces, focus.lon, focus.lat);
+  // The breadcrumb runs to the scope (a site, a province or a country); with no place picked it follows the view.
+  const focus = { lon: camera.lon, lat: camera.lat };
+  const provinceInView = lv === 'province' || lv === 'site' ? regionAt(geo.provinces, focus.lon, focus.lat) : null;
+  let country: Region | null;
+  let province: Region | null;
+  let siteCrumb: MapSite | null = null;
+  if (scope.kind === 'site' && selected) {
+    country = selectedPlaces?.country ?? null;
+    province = selectedPlaces?.province ?? null;
+    siteCrumb = selected;
+  } else if (scope.kind === 'region') {
+    country = highlight.country;
+    province = scope.level === 'province' ? highlight.province : provinceInView && country?.code && provinceInView.code?.startsWith(`${country.code}-`) ? provinceInView : null;
+  } else {
+    country = lv === 'world' ? null : regionAt(geo.countries, focus.lon, focus.lat);
+    province = provinceInView;
+  }
   const crumbs: Crumb[] = [
     {
       key: 'world',
       label: m.globe.world,
       go: () => {
         setUserMoved(false);
+        onScope(WORLD);
         flyTo(worldCamera(size, { lat: Math.max(-30, Math.min(30, focus.lat)), lon: focus.lon }));
       },
     },
   ];
-  if (country && (lv !== 'world' || selectedOnScreen)) crumbs.push({ key: 'country', label: regionName(country, lang), go: () => fit(country) });
-  if (province && (lv === 'province' || lv === 'site' || selectedOnScreen)) crumbs.push({ key: 'province', label: regionName(province, lang), go: () => fit(province) });
-  if (selected && selectedOnScreen) crumbs.push({ key: 'site', label: selected.name, go: () => goSite(selected) });
+  if (country) crumbs.push({ key: 'country', label: regionName(country, lang), go: () => fit(country, 'country') });
+  if (province) crumbs.push({ key: 'province', label: regionName(province, lang), go: () => fit(province, 'province') });
+  if (siteCrumb) crumbs.push({ key: 'site', label: siteCrumb.name, go: () => goSite(siteCrumb) });
   const order: Crumb['key'][] = ['world', 'country', 'province', 'site'];
   const reach = order.indexOf(lv);
-  const current = [...crumbs].reverse().find((c) => order.indexOf(c.key) <= reach)?.key ?? 'world';
+  const byView = [...crumbs].reverse().find((c) => order.indexOf(c.key) <= reach)?.key ?? 'world';
+  const scoped: Crumb['key'] | null = scope.kind === 'world' ? 'world' : scope.kind === 'region' ? scope.level : siteCrumb ? 'site' : null;
+  const current = scoped && crumbs.some((c) => c.key === scoped) ? scoped : byView;
 
   const scale = lv === 'world' ? null : scaleBar(camera.ppd);
   const pinAt = pin && projection ? screenOf(projection, camera, pin.lon, pin.lat) : null;
+  const placedMatches = matches ? sites.filter((s) => matches.has(s.id)) : [];
 
   return (
     <div
       ref={root}
-      className={`globe-map${placing ? ' is-placing' : ''}${flying ? ' is-flying' : ''}`}
+      className={`globe-map${placing ? ' is-placing' : ''}${flying ? ' is-flying' : ''}${matches ? ' is-searching' : ''}`}
       onPointerEnter={() => setHover(true)}
       onPointerLeave={() => setHover(false)}
       onFocus={() => setFocusWithin(true)}
@@ -358,7 +452,7 @@ function Globe({ sites, selectedId, onSelect, placing, onPlace, onCancelPlace, o
         <canvas ref={canvas} className="globe-map__canvas" aria-hidden="true" />
         {placing && closeEnough ? <span className="globe-map__crosshair" aria-hidden="true" /> : null}
       </div>
-      <MapMarkers markers={markers} selectedId={selectedId} width={size.width} onSite={goSite} onCluster={goCluster} />
+      <MapMarkers markers={markers} selectedId={selectedId} width={size.width} matches={matches} pulse={!reduced} onSite={goSite} onCluster={goCluster} />
       {pinAt ? <span className="globe-pin" style={{ transform: `translate(${pinAt[0]}px, ${pinAt[1]}px)` }} aria-hidden="true" /> : null}
       {chooser ? (
         <div className="globe-chooser popover-surface" role="group" aria-label={m.globe.pickSite} style={{ transform: `translate(${Math.min(chooser.x, size.width - 220)}px, ${chooser.y + 24}px)` }}>
@@ -371,6 +465,19 @@ function Globe({ sites, selectedId, onSelect, placing, onPlace, onCancelPlace, o
         </div>
       ) : null}
       <MapCrumbs crumbs={crumbs} current={current} />
+      {placedMatches.length > 0 && !placing ? (
+        <button
+          type="button"
+          className="globe-matches popover-surface"
+          onClick={() => {
+            const target = frameOf({ kind: 'points', ids: placedMatches.map((s) => s.id) }, size);
+            if (target) flyTo(target);
+          }}
+        >
+          <IconSearch />
+          {m.home.showMatches(placedMatches.length)}
+        </button>
+      ) : null}
       {lv === 'world' && !reduced ? (
         <button
           type="button"

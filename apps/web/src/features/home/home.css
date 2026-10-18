@@ -265,28 +265,94 @@
   gap: 12px;
 }
 
-.home-rooms__head {
+.home-rooms__bar {
   display: flex;
   flex-wrap: wrap;
-  align-items: baseline;
-  gap: 4px 12px;
+  align-items: center;
+  gap: 8px 14px;
   padding-inline: 4px;
+}
+
+.home-rooms__head {
   font-size: var(--text-xl);
   font-weight: 700;
   letter-spacing: -0.01em;
+  scroll-margin-top: 12px;
 }
 
-.home-rooms__project {
-  font-size: var(--text-md);
-  font-weight: 400;
-  letter-spacing: 0;
+.home-rooms__head:focus-visible {
+  outline: 2px solid var(--acc);
+  outline-offset: 4px;
+  border-radius: 4px;
+}
+
+/* Clears the scope: a text action beside the heading, so it reads as part of it. */
+.home-rooms__all {
+  height: 28px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 7px;
+  background: none;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--acc);
+  text-decoration: underline;
+  text-decoration-color: var(--acc-border);
+  text-underline-offset: 3px;
+}
+
+.home-rooms__all:hover {
+  background: var(--acc-tint);
+  text-decoration-color: currentColor;
+}
+
+.home-rooms__chips {
+  margin-left: auto;
+}
+
+.home-rooms__chips button {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  white-space: nowrap;
+}
+
+.home-rooms__n {
+  min-width: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: rgb(14 24 36 / 0.07);
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  font-variant-numeric: tabular-nums;
+  line-height: 16px;
+  text-align: center;
   color: var(--ink-2);
+}
+
+.home-rooms__chips button[aria-pressed='true'] .home-rooms__n {
+  background: var(--acc-soft);
+  color: var(--acc-deep);
 }
 
 .home-rooms__grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 290px), 1fr));
   gap: 14px;
+}
+
+.home-rooms__empty {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 26px 24px;
+  border: 1.5px dashed var(--line-strong);
+  border-radius: 16px;
+  background: rgb(247 249 251 / 0.3);
+  font-size: var(--text-md);
+  color: var(--ink-2);
 }
 
 .home-card {
@@ -410,6 +476,15 @@
 .home-card:has(.home-card__link:focus-visible) .home-card__go {
   color: var(--acc);
   transform: translateX(3px);
+}
+
+.home-card__where {
+  margin-top: -4px;
+  overflow: hidden;
+  font-size: var(--text-sm);
+  color: var(--ink-2);
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 .home-card__facts {

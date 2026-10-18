@@ -35,9 +35,3 @@ export function siteSummaries(workspace: Workspace): SiteSummary[] {
 
 export const placed = (sites: SiteSummary[]): (SiteSummary & { location: GeoPoint })[] => sites.filter((s): s is SiteSummary & { location: GeoPoint } => s.location !== null);
 export const notPlaced = (sites: SiteSummary[]): SiteSummary[] => sites.filter((s) => s.location === null);
-
-/** Home opens on the site of the room last opened; else the first site with rooms; else the first site. */
-export function initialSiteId(sites: SiteSummary[], lastRoomId: string | null): string | null {
-  const last = sites.find((s) => s.rooms.some((r) => r.room.id === lastRoomId));
-  return (last ?? sites.find((s) => s.rooms.length > 0) ?? sites[0])?.site.id ?? null;
-}

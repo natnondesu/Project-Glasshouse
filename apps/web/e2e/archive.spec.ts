@@ -93,12 +93,17 @@ test('archive a site: its rooms go, and a room inside it points to the site to r
 test('the header and home count only what is in use', async ({ page }) => {
   await seed(page, 'c');
   await page.goto('/');
-  const before = await page.locator('.title-block__cells').first().innerText();
+  // On Home the workspace bar carries the counts (the title block holds the search there).
+  const counts = page.locator('.workspace-bar__title p');
+  const before = await counts.innerText();
   const found = /(\d+) rooms?/.exec(before);
   expect(found, `no room count in "${before}"`).not.toBeNull();
   const rooms = Number(found![1]);
   await treeOf(page).getByRole('button', { name: 'Archive Edge c' }).click();
   await page.getByRole('alertdialog').getByRole('button', { name: 'Archive' }).click();
+  await expect(counts).toContainText(`${rooms - 1} ${rooms - 1 === 1 ? 'room' : 'rooms'}`);
+  await page.goto('/catalog');
   await expect(page.locator('.title-block__cells').first()).toContainText(`${rooms - 1} ${rooms - 1 === 1 ? 'room' : 'rooms'}`);
+  await page.goto('/');
   await expect(page.getByRole('main').getByRole('link', { name: 'Edge c', exact: true })).toHaveCount(0);
 });
