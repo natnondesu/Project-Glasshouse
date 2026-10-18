@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { blockingIssues, checkPlan } from './checks';
 import { applyPlanCommand, type PlanCommand } from './commands/plan';
 import { createWorkspace, emptyContent } from './factories';
+import { canonicalJson } from './canonical';
 import { contentFingerprint } from './fingerprint';
 import type { PanelConfig, PlanContent, Rack, RoomObject, Template } from './model/types';
 import { createObject } from './objects';
@@ -237,15 +238,49 @@ describe('workspace files', () => {
     expect(p).toEqual({ phase: 'three', ways: [{ ratingA: 16, label: 'x' }] });
   });
 
-  it('rejects a file with an invalid layout or main rating', () => {
-    const bad: RoomObject = { ...mcb(), panel: { phase: 'three', ways: [], layout: 'grid' } } as unknown as RoomObject;
+  const oneWay = [{ ratingA: 16, label: '' }];
+  it.each([
+    ['an unknown layout', { phase: 'three', ways: oneWay, layout: 'grid' }],
+    ['an unknown numbering', { phase: 'three', ways: oneWay, numbering: 'spiral' }],
+    ['a zero main rating', { phase: 'three', ways: oneWay, mainRatingA: 0 }],
+    ['a negative main rating', { phase: 'three', ways: oneWay, mainRatingA: -5 }],
+    ['a main rating above 630 A', { phase: 'three', ways: oneWay, mainRatingA: 631 }],
+    ['no ways at all', { phase: 'three', ways: [] }],
+  ])('rejects a file with %s', (_name, panel) => {
+    const bad = { ...mcb(), panel } as unknown as RoomObject;
     const ws = workspaceWith({ ...emptyContent(), objects: [bad] });
     expect(parseWorkspace(JSON.parse(JSON.stringify(ws))).ok).toBe(false);
+  });
+
+  it('accepts a main rating of exactly 630 A', () => {
+    const edge = { ...mcb(), panel: { phase: 'three', ways: oneWay, mainRatingA: 630 } } as unknown as RoomObject;
+    expect(parseWorkspace(JSON.parse(JSON.stringify(workspaceWith({ ...emptyContent(), objects: [edge] })))).ok).toBe(true);
   });
 
   it('changes the approval fingerprint when a panel is marked not in use', () => {
     const c = run(emptyContent(), { type: 'object/add', object: mcb() });
     const off = run(c, { type: 'panel/configure', id: 'mcb', patch: { inUse: false } });
     expect(contentFingerprint(off)).not.toBe(contentFingerprint(c));
+  });
+});
+
+describe('approval fingerprint of a plan saved before the new panel fields', () => {
+  // A panel exactly as `main` stores it. Its canonical JSON and hash were computed on `main` and must never move,
+  // or every approved revision with an MCB panel would stop matching its approved hash.
+  const oldPanel = { id: 'mcb', type: 'mcb', name: 'MCB-01', x: 0, y: 1, w: 0.6, d: 0.2, angle: 0, height: null, notes: '', panel: { phase: 'three', ways: [{ ratingA: 16, label: 'CRAC' }, { ratingA: 32, label: '' }, { ratingA: 16, label: '' }] } } as unknown as RoomObject;
+  const oldPlan = (): PlanContent => ({ ...emptyContent('fa'), objects: [oldPanel] });
+  const OLD_FINGERPRINT = '3fa791cd465f9816dbcf90d113cfb4581d8a54ce9f788c794a92d2e5a31be2dc';
+  const NEW_KEYS = ['inUse', 'layout', 'numbering', 'mainRatingA'];
+
+  it('stays byte-for-byte what main produced', () => {
+    expect(contentFingerprint(oldPlan())).toBe(OLD_FINGERPRINT);
+  });
+
+  it('adds none of the new keys when only the way count changes', () => {
+    const changed = run(oldPlan(), { type: 'panel/configure', id: 'mcb', patch: { wayCount: 5 } });
+    const json = canonicalJson(changed);
+    for (const key of NEW_KEYS) expect(json).not.toContain(`"${key}"`);
+    const back = run(changed, { type: 'panel/configure', id: 'mcb', patch: { wayCount: 3 } });
+    expect(canonicalJson(back)).toBe(canonicalJson(oldPlan()));
   });
 });
