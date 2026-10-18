@@ -315,3 +315,29 @@ export const IconSortArrow = (p: IconProps) => (
     <path d="M6 2.5V9.5M3 6.5L6 9.5L9 6.5" />
   </svg>
 );
+export const IconChevronDown = (p: IconProps) => (
+  <svg {...frame(12)} strokeLinecap="round" strokeLinejoin="round" {...p}>
+    <path d="M3 4.75L6 7.75L9 4.75" />
+  </svg>
+);
+/** The project tree: a project with its sites and rooms hanging off it. */
+export const IconProjectTree = (p: IconProps) => (
+  <svg {...frame(16)} strokeLinecap="round" strokeLinejoin="round" {...p}>
+    <rect x="2" y="2" width="5" height="3.5" rx="0.8" />
+    <rect x="8.5" y="6.25" width="5.5" height="3.5" rx="0.8" />
+    <rect x="8.5" y="11" width="5.5" height="3.5" rx="0.8" />
+    <path d="M4.5 5.5V12.75H8.5M4.5 8H8.5" />
+  </svg>
+);
+/** Keeping a floating panel docked beside the work. */
+export const IconPin = (p: IconProps) => (
+  <svg {...frame(14)} strokeLinecap="round" strokeLinejoin="round" {...p}>
+    <path d="M5 1.75H9M5.75 1.75V5.5L3.75 7.75V8.75H10.25V7.75L8.25 5.5V1.75M7 8.75V12.5" />
+  </svg>
+);
+/** Stored on the shared server. */
+export const IconCloud = (p: IconProps) => (
+  <svg {...frame(14)} strokeLinecap="round" strokeLinejoin="round" {...p}>
+    <path d="M4.25 11.25H10.5a2.5 2.5 0 0 0 .3-4.98A3.5 3.5 0 0 0 4 6.6a2.35 2.35 0 0 0 .25 4.65Z" />
+  </svg>
+);

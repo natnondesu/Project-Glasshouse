@@ -40,6 +40,7 @@ it('keeps the open room visible even inside a collapsed site', async () => {
   const { unmount } = open();
   await user.click(tree().getByRole('button', { name: 'Collapse Site A' }));
   unmount();
+  localStorage.setItem('glasshouse:tree-pinned', 'true');
   open('/rooms/r/plan');
   expect(tree().getByRole('link', { name: /MDF-1/ })).toBeInTheDocument();
 });

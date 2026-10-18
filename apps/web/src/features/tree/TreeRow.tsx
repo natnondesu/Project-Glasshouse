@@ -10,6 +10,8 @@ interface TreeRowProps {
   kind: Kind;
   label: string;
   to?: string;
+  /** The row's link was followed (the drawer closes on it). */
+  onOpen?: () => void;
   active?: boolean;
   badge?: ReactNode;
   editing: boolean;
@@ -73,7 +75,7 @@ export function TreeRow(props: TreeRowProps) {
           </button>
         ) : null}
         {to ? (
-          <Link to={to} className={`tree-row__label${active ? ' is-active' : ''}`} aria-current={active ? 'page' : undefined}>
+          <Link to={to} className={`tree-row__label${active ? ' is-active' : ''}`} aria-current={active ? 'page' : undefined} onClick={props.onOpen}>
             <span className="tree-row__name">{label}</span>
             {badge}
           </Link>

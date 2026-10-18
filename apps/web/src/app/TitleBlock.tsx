@@ -8,8 +8,11 @@ import { useT } from '../i18n';
 import { useRoomLocation, useViewedRevisionNumber } from '../store/hooks';
 import { useWorkspaceStore, type SaveState } from '../store/workspaceStore';
 import { downloadJson, slugify } from '../ui/files';
-import { IconCatalog, IconDownload } from '../ui/icons';
+import { IconCatalog, IconCheck, IconCloud, IconDownload } from '../ui/icons';
 import { pad2, StatusStamp } from '../ui/StatusStamp';
+import { ProjectsButton } from '../features/roomnav/ProjectsButton';
+import { RoomCrumbs } from '../features/roomnav/RoomCrumbs';
+import type { TreeDrawer } from '../features/roomnav/useTreeDrawer';
 
 function Cell({ label, children, mono = false }: { label: string; children: ReactNode; mono?: boolean }) {
   return (
@@ -22,15 +25,32 @@ function Cell({ label, children, mono = false }: { label: string; children: Reac
 
 const time = (d: Date): string => d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
-function SaveStatus({ save }: { save: SaveState }) {
+/** On room screens the status is short so the breadcrumb keeps the names; the full sentence stays in the hint and for screen readers. */
+function Compact({ full, short, icon }: { full: string; short: string; icon?: ReactNode }) {
+  return (
+    <span className="save-status save-status--compact" data-hint={full}>
+      {icon}
+      <span aria-hidden="true">{short}</span>
+      <span className="visually-hidden">{full}</span>
+    </span>
+  );
+}
+
+function SaveStatus({ save, compact }: { save: SaveState; compact: boolean }) {
   const m = useT();
   switch (save.kind) {
-    case 'idle':
-      return <span className="save-status">{SERVER_MODE ? m.shell.serverIdle : m.shell.saveIdle}</span>;
+    case 'idle': {
+      const full = SERVER_MODE ? m.shell.serverIdle : m.shell.saveIdle;
+      if (!compact) return <span className="save-status">{full}</span>;
+      return <Compact full={full} short={SERVER_MODE ? m.shell.serverIdleShort : m.shell.saveIdleShort} icon={SERVER_MODE ? <IconCloud aria-hidden="true" /> : undefined} />;
+    }
     case 'saving':
       return <span className="save-status">{m.shell.saving}</span>;
-    case 'saved':
-      return <span className="save-status">{SERVER_MODE ? m.shell.savedServer(time(save.at)) : m.shell.saved(time(save.at))}</span>;
+    case 'saved': {
+      const full = SERVER_MODE ? m.shell.savedServer(time(save.at)) : m.shell.saved(time(save.at));
+      if (!compact) return <span className="save-status">{full}</span>;
+      return <Compact full={full} short={m.shell.savedShort(time(save.at))} icon={<IconCheck aria-hidden="true" className="save-status__ok" />} />;
+    }
     case 'failed':
       return (
         <span className="save-status save-status--failed" role="alert">
@@ -40,7 +60,8 @@ function SaveStatus({ save }: { save: SaveState }) {
   }
 }
 
-export function TitleBlock({ roomId }: { roomId: string | null }) {
+/** `drawer` is the project drawer on a room screen while the tree isn't pinned; null elsewhere. */
+export function TitleBlock({ roomId, drawer = null }: { roomId: string | null; drawer?: TreeDrawer | null }) {
   const location = useRoomLocation(roomId);
   const save = useWorkspaceStore((s) => s.save);
   const viewedNumber = useViewedRevisionNumber();
@@ -66,29 +87,29 @@ export function TitleBlock({ roomId }: { roomId: string | null }) {
       <Link to="/" className="title-block__mark">
         <img src="/brand/glasshouse-lockup-horizontal-color.svg" width="148" height="40" alt="Glasshouse" />
       </Link>
-      {location ? null : (
+      {location ? (
+        <div className="title-block__where">
+          {drawer ? <ProjectsButton drawer={drawer} /> : null}
+          <RoomCrumbs location={location} isSample={location.project.isSample === true} />
+          <p className="title-block__revision">
+            <span className="mono">
+              <span className="visually-hidden">{m.roomNav.revision} </span>
+              {revision ? `R${pad2(revision.number)}` : '—'}
+            </span>
+            {revision ? <StatusStamp state={revision.state} /> : null}
+          </p>
+        </div>
+      ) : (
+        // Outside a room there is no breadcrumb: the title block shows the workspace instead.
         <dl className="title-block__cells">
           <Cell label={m.shell.workspace}>{m.shell.workspaceSummary(counts.projects, counts.rooms)}</Cell>
         </dl>
       )}
-      {/* Outside a room the cells would all be blank: Home shows the workspace instead. */}
-      <dl className="title-block__cells" hidden={!location}>
-        <Cell label={m.shell.project}>
-          {location?.project.name ?? '—'}
-          {location?.project.isSample ? <span className="stamp">{m.common.sample}</span> : null}
-        </Cell>
-        <Cell label={m.shell.site}>{location?.site.name ?? '—'}</Cell>
-        <Cell label={m.shell.room}>{location?.room.name ?? '—'}</Cell>
-        <Cell label={m.shell.rev} mono>
-          {revision ? pad2(revision.number) : '—'}
-        </Cell>
-        <Cell label={m.shell.status}>{revision ? <StatusStamp state={revision.state} /> : '—'}</Cell>
-      </dl>
       <div className="title-block__actions">
         {location ? (
-          <button type="button" className="btn btn--sm" onClick={exportProject}>
+          <button type="button" className="btn btn--sm" onClick={exportProject} aria-label={m.shell.exportProject} title={m.shell.exportProject}>
             <IconDownload />
-            {m.shell.exportProject}
+            <span className="title-block__export-label">{m.shell.exportProject}</span>
           </button>
         ) : null}
         {exportError ? (
@@ -96,7 +117,7 @@ export function TitleBlock({ roomId }: { roomId: string | null }) {
             {exportError}
           </span>
         ) : null}
-        <SaveStatus save={save} />
+        <SaveStatus save={save} compact={location !== null} />
         <LanguageSwitch />
         {/* The workspace's own tools sit at the far right; user settings join them here later. */}
         <span className="title-block__tools">

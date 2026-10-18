@@ -1,8 +1,9 @@
+import { openRoom } from './nav';
 import { expect, test, type Locator, type Page } from '@playwright/test';
 
 async function openManager(page: Page, panel: string, room: RegExp): Promise<Locator> {
   await page.goto('/');
-  await page.getByRole('complementary', { name: 'Projects' }).getByRole('link', { name: room }).click();
+  await openRoom(page, room);
   await expect(page.getByTestId('zoom-value')).not.toHaveText('100 px/m');
   await page.getByRole('button', { name: new RegExp(`^${panel}, MCB panel`) }).focus();
   await page.getByRole('button', { name: 'Manage ways' }).click();
@@ -36,7 +37,7 @@ test('a two-column panel puts way 2 at the top right, and Down left, then right 
 
 async function startDraft(page: Page): Promise<void> {
   await page.goto('/');
-  await page.getByRole('complementary', { name: 'Projects' }).getByRole('link', { name: /Server room A/ }).click();
+  await openRoom(page, /Server room A/);
   await page.getByRole('link', { name: /^Review/ }).click();
   await page.getByRole('button', { name: 'Start new draft' }).click();
   await page.getByRole('link', { name: 'Plan' }).click();

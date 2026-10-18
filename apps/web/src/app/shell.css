@@ -7,6 +7,7 @@
 }
 
 .shell__body {
+  position: relative;
   flex: 1;
   min-height: 0;
   display: flex;
@@ -25,7 +26,8 @@
   position: relative;
   z-index: 20;
   display: flex;
-  flex-wrap: wrap;
+  /* One line at every laptop width: names truncate (full name in their hint) instead of wrapping the bar. */
+  flex-wrap: nowrap;
   align-items: center;
   gap: 8px 18px;
   padding: 8px 12px 8px 18px;
@@ -93,6 +95,7 @@
 }
 
 .title-block__actions {
+  flex: none;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -112,7 +115,8 @@
 
 /* Narrow screens: the icon alone (its name in the tooltip), so the title block keeps to one line. */
 @media (max-width: 1359px) {
-  .title-block__catalog-label {
+  .title-block__catalog-label,
+  .title-block__export-label {
     display: none;
   }
 }
@@ -125,6 +129,17 @@
 .save-status {
   font-size: var(--text-xs);
   color: var(--ink-2);
+}
+
+.save-status--compact {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+}
+
+.save-status__ok {
+  color: var(--ok);
 }
 
 .save-status--failed {

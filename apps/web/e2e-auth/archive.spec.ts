@@ -1,5 +1,6 @@
 import { expect, test, type Browser } from '@playwright/test';
 import { signIn } from './helpers';
+import { showProjects } from '../e2e/nav';
 
 const LONG_WAIT_MS = 30_000;
 
@@ -70,6 +71,7 @@ test('archiving waits for the person editing the room, and says who', async ({ b
   await ada.goto('/rooms/ar-claim/plan');
   await expect(ada.getByRole('region', { name: /Eddie Editor is editing this room/ })).toBeVisible({ timeout: LONG_WAIT_MS });
 
+  await showProjects(ada);
   await projects(ada).getByRole('button', { name: 'Archive Room claim' }).click();
   await ada.getByRole('alertdialog').getByRole('button', { name: 'Archive' }).click();
   await expect(projects(ada).getByRole('alert')).toHaveText("Eddie Editor is editing Room claim. Try again when they're done.");

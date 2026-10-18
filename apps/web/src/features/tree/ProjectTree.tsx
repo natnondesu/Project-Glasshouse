@@ -1,11 +1,11 @@
 import { archiveScope, archiveState, currentRevision, newId, parseProjectFile, type ArchiveKind, type ProjectFile, type WorkspaceCommand, missingSamples } from '@glasshouse/domain';
-import { useMemo, useRef, useState, type ReactNode } from 'react';
+import { useMemo, useRef, useState, type ReactNode, type Ref } from 'react';
 import { useNavigate } from 'react-router';
 import { useWorkspaceStore } from '../../store/workspaceStore';
 import { confirmAction } from '../../ui/confirm/confirmStore';
 import { readJsonFile } from '../../ui/files';
 import { usePersistentState } from '../../ui/usePersistentState';
-import { IconChevronLeft, IconPlus, IconUpload } from '../../ui/icons';
+import { IconChevronLeft, IconPin, IconPlus, IconUpload } from '../../ui/icons';
 import { ImportDialog } from '../handoff/ImportDialog';
 import { pad2 } from '../../ui/StatusStamp';
 import { useCan } from '../../auth/useCan';
@@ -16,7 +16,22 @@ import { BackupPanel } from './BackupPanel';
 import { TreeRow } from './TreeRow';
 import './tree.css';
 
-export function ProjectTree({ activeRoomId, onCollapse }: { activeRoomId: string | null; onCollapse?: () => void }) {
+interface ProjectTreeProps {
+  activeRoomId: string | null;
+  /** Home's collapse-to-rail. */
+  onCollapse?: () => void;
+  /** Inside a room the tree is a drawer floating over the drawing, or docked once pinned. */
+  variant?: 'docked' | 'drawer';
+  pin?: { pinned: boolean; onToggle: () => void };
+  onRoomPicked?: () => void;
+  onRoomAdded?: (roomId: string) => void;
+  onRenameDone?: (id: string) => void;
+  panelRef?: Ref<HTMLElement>;
+}
+
+export const PROJECT_DRAWER_ID = 'project-drawer';
+
+export function ProjectTree({ activeRoomId, onCollapse, variant = 'docked', pin, onRoomPicked, onRoomAdded, onRenameDone, panelRef }: ProjectTreeProps) {
   const projects = useWorkspaceStore((s) => s.workspace.projects);
   const workspace = useWorkspaceStore((s) => s.workspace);
   // Derived once per workspace change: a selector returning a new array each time would re-render forever.
@@ -69,7 +84,10 @@ export function ProjectTree({ activeRoomId, onCollapse }: { activeRoomId: string
   const editing = (id: string) => ({
     editing: editingId === id,
     onStartEdit: () => setEditingId(id),
-    onStopEdit: () => setEditingId(null),
+    onStopEdit: () => {
+      setEditingId(null);
+      onRenameDone?.(id);
+    },
   });
 
   const loadSample = (): void => {
@@ -123,7 +141,7 @@ export function ProjectTree({ activeRoomId, onCollapse }: { activeRoomId: string
   };
 
   return (
-    <aside className="tree glass" aria-label={m.tree.title}>
+    <aside ref={panelRef} id={variant === 'drawer' ? PROJECT_DRAWER_ID : undefined} className={`tree glass${variant === 'drawer' ? ' tree--drawer' : ''}`} aria-label={m.tree.title}>
       <div className="tree__head">
         <h2>{m.tree.title}</h2>
         <span className="tree__head-actions">
@@ -136,6 +154,18 @@ export function ProjectTree({ activeRoomId, onCollapse }: { activeRoomId: string
                 <IconPlus />
               </button>
             </>
+          ) : null}
+          {pin ? (
+            <button
+              type="button"
+              className={`icon-btn tree__pin${pin.pinned ? ' is-pinned' : ''}`}
+              aria-label={m.roomNav.pin}
+              aria-pressed={pin.pinned}
+              data-hint={m.roomNav.pinHint(pin.pinned)}
+              onClick={pin.onToggle}
+            >
+              <IconPin />
+            </button>
           ) : null}
           {onCollapse ? (
             <button type="button" className="icon-btn" aria-label={m.tree.hide} aria-expanded title={m.tree.hide} onClick={onCollapse}>
@@ -210,6 +240,7 @@ export function ProjectTree({ activeRoomId, onCollapse }: { activeRoomId: string
                       const id = newId();
                       if (run({ type: 'room/create', siteId: site.id, id, floorAreaId: newId(), name: m.tree.newRoom })) {
                         setEditingId(id);
+                        onRoomAdded?.(id);
                         navigate(`/rooms/${id}/plan`);
                       }
                     } : undefined}
@@ -230,6 +261,7 @@ export function ProjectTree({ activeRoomId, onCollapse }: { activeRoomId: string
                               kind="room"
                               label={room.name}
                               to={`/rooms/${room.id}/plan`}
+                              onOpen={onRoomPicked}
                               active={room.id === activeRoomId}
                               badge={
                                 room.archivedAt !== undefined ? (

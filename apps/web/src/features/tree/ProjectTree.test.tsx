@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { createMemoryRouter, RouterProvider } from 'react-router';
 import { beforeEach, expect, it } from 'vitest';
@@ -26,8 +26,10 @@ it('creates Project → Site → Room and opens the room', async () => {
   await user.keyboard('MDF-1{Enter}');
 
   expect(router.state.location.pathname).toMatch(/^\/rooms\/.+\/plan$/);
-  expect(screen.getByRole('link', { name: /MDF-1/ })).toHaveAttribute('aria-current', 'page');
-  expect(screen.getByText('R01 DRAFT')).toBeInTheDocument();
+  // Named in the drawer that carried the rename into the room, which then steps aside for the drawing.
+  expect(screen.queryByRole('complementary', { name: 'Projects' })).toBeNull();
+  expect(within(screen.getByRole('navigation', { name: 'Breadcrumb' })).getByRole('button', { name: 'MDF-1' })).toHaveAttribute('aria-current', 'page');
+  expect(screen.getByText('DRAFT')).toBeInTheDocument();
 });
 
 it('shows rename errors inline and deletes after confirmation', async () => {

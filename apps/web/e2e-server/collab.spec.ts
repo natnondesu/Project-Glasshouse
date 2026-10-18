@@ -1,4 +1,5 @@
 import { expect, test, type APIRequestContext, type Page } from '@playwright/test';
+import { showProjects } from '../e2e/nav';
 
 async function createProject(page: Page, name: string): Promise<void> {
   await page.getByRole('button', { name: 'New project' }).click();
@@ -84,12 +85,14 @@ test('a project file exported from one place imports into the server and is stor
 
   const migratedId = await projectIdOnServer(request, 'Migrated');
   await request.post('/api/commands', { data: { clientId: 'other', commands: [{ commandId: 'del-migrated', command: { type: 'project/delete', projectId: migratedId } }] } });
+  // Still on the room's page, now a not-found page: the tree docks there, with its import.
   await expect(tree.getByText('Migrated')).toHaveCount(0);
 
   await page.getByLabel('Choose a project file').setInputFiles(saved);
   await page.getByRole('dialog').getByRole('button', { name: 'Import', exact: true }).click();
 
-  await expect(tree.getByText('Migrated')).toBeVisible();
+  // The room is back, so its page is a room again and the tree a drawer.
+  await expect((await showProjects(page)).getByText('Migrated')).toBeVisible();
   await expect.poll(async () => (await serverProjects(request)).some((p) => p.name === 'Migrated')).toBe(true);
   // The import carried the site and the room with it.
   await expect.poll(async () => (await serverRooms(request, 'Migrated')).map((r) => `${r.site}/${r.name}`)).toEqual(['Site A/MDF-1']);
