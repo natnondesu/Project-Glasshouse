@@ -1,49 +1,64 @@
-/* Who is editing this room: a slim strip between the view tabs and the drawing. */
-.claim-strip {
-  display: flex;
+/* Who is editing this room: a chip in the view-tab bar, beside Install sheet, so the drawing keeps its height. */
+.claim-chip {
+  display: inline-flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 8px 16px;
-  /* Same height with or without a button, so the drawing below doesn't jump when the holder changes. */
-  min-height: 44px;
-  padding: 6px 14px 6px 12px;
-  border: 1px solid var(--line);
-  border-left-width: 3px;
-  border-radius: var(--radius-control);
-  font-size: var(--text-sm);
-  color: var(--ink);
-}
-
-.claim-strip--other {
-  background: var(--warn-bg);
-  border-color: var(--warn-border);
-  border-left-color: var(--warn);
-}
-
-.claim-strip--mine {
-  background: var(--control-bg);
-  border-left-color: var(--acc);
-}
-
-.claim-strip__text,
-.claim-strip__hint {
-  margin: 0;
-}
-
-.claim-strip__text {
+  gap: 8px;
+  margin-right: 10px;
   min-width: 0;
 }
 
-.claim-strip__hint {
-  font-size: var(--text-xs);
-  color: var(--ink-2);
+/* The button never shrinks; the holder's name gives way (the full sentence is in the tooltip). */
+.claim-chip .btn {
+  flex: none;
 }
 
-@media (max-width: 640px) {
-  .claim-strip {
-    flex-wrap: wrap;
-    align-items: flex-start;
-  }
+.claim-chip__state {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 4px 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* Someone else holds the room: the attention colours of the frozen chip, because your edits won't land. */
+.claim-chip__state--other {
+  border-color: var(--warn-border);
+  background: var(--warn-bg);
+  color: var(--warn);
+}
+
+/* You hold it: quiet, it only confirms what you already know. */
+.claim-chip__state--mine {
+  background: var(--control-bg);
+  color: var(--ink);
+}
+
+.claim-chip__dot {
+  width: 7px;
+  height: 7px;
+  flex: none;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.claim-chip__state--mine .claim-chip__dot {
+  background: var(--acc);
+}
+
+.claim-chip__when {
+  font-weight: 400;
+  opacity: 0.85;
+}
+
+/* Long names give way before the button does. */
+.claim-chip__state > span:not(.claim-chip__dot):not(.visually-hidden) {
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* The lost-claim dialog reuses .dialog; this only narrows it. */
@@ -59,4 +74,15 @@
 
 .claim-lost .dialog__actions {
   justify-content: flex-end;
+}
+
+/* Narrower screens: the tab bar keeps the tabs, the holder's name and the button; the time stays in the chip's tooltip. */
+@media (max-width: 1279px) {
+  .claim-chip__when {
+    display: none;
+  }
+
+  .claim-chip__state > span:not(.claim-chip__dot):not(.visually-hidden) {
+    max-width: 16ch;
+  }
 }

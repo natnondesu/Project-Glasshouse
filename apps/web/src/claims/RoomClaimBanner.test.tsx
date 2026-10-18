@@ -34,7 +34,8 @@ it("shows who is editing and when they last edited, and holds the editor back un
   ui();
   expect(screen.getByRole('region', { name: 'Ada is editing this room.' })).toHaveTextContent('Last edit 3 minutes ago.');
   expect(screen.queryByRole('button', { name: 'Take over' })).toBeNull();
-  expect(screen.getByText('You can take over after 15 minutes without edits.')).toBeInTheDocument();
+  // Said to screen readers and in the chip's tooltip; the chip itself stays short.
+  expect(screen.getByRole('region', { name: 'Ada is editing this room.' })).toHaveTextContent('You can take over after 15 minutes without edits.');
 });
 
 it('offers Take over to an editor once the holder has been idle for 15 minutes', () => {

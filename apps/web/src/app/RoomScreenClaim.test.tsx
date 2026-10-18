@@ -23,7 +23,9 @@ const open = (view: string) => render(<RouterProvider router={createMemoryRouter
 it('shows who is editing and makes the draft read-only for everyone else', () => {
   useClaimsStore.getState().setClaims([{ roomId: 'r', userId: 'u-ada', name: 'Ada', since: 't', lastEditAt: new Date().toISOString() }]);
   open('plan');
-  expect(screen.getByRole('region', { name: 'Ada is editing this room.' })).toBeInTheDocument();
+  const chip = screen.getByRole('region', { name: 'Ada is editing this room.' });
+  // A chip in the view-tab bar, not a strip of its own above the drawing.
+  expect(screen.getByRole('navigation', { name: 'Room views' })).toContainElement(chip);
   expect(screen.getByLabelText('Width')).toBeDisabled();
 });
 

@@ -17,7 +17,6 @@ import { ViewTabs } from './ViewTabs';
 import { useWorkspaceStore } from '../store/workspaceStore';
 import { useAuthStore } from '../auth/authStore';
 import { releaseRoom } from '../claims/claimApi';
-import { RoomClaimBanner } from '../claims/RoomClaimBanner';
 import { useClaimHeldByOther, useClaimsStore } from '../claims/claimsStore';
 import { messagesFor, useLangStore, useT } from '../i18n';
 import { getActiveSync } from '../sync/serverMode';
@@ -77,8 +76,7 @@ export function RoomScreen() {
   return (
     <div className="room-screen">
       <h1 className="visually-hidden">{m.views.pageTitle(realLocation.room.name, TAB_LABEL[view] ? m.views[TAB_LABEL[view]!] : view)}</h1>
-      <ViewTabs roomId={roomId} frozen={!past && frozen && view !== 'review' ? revision : null} />
-      {!frozen ? <RoomClaimBanner roomId={roomId} /> : null}
+      <ViewTabs roomId={roomId} frozen={!past && frozen && view !== 'review' ? revision : null} claim={!frozen} />
       {past ? <RevisionBanner roomId={roomId} view={view} viewed={revision} current={currentRevision(realLocation.room.plan)} /> : null}
       <ErrorBoundary key={view} label={m.views.drawing[view] ?? m.views.drawing.other!}>
         {body}
