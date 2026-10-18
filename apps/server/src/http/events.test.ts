@@ -244,3 +244,17 @@ it('gives each server process its own generation', async () => {
   expect(first.generation).toMatch(/^[0-9a-f-]{36}$/);
   expect(second.generation).not.toBe(first.generation);
 });
+
+it('says who made a room change, when someone signed in made it', async () => {
+  const ada = { id: 'u-ada', name: 'Ada', role: 'admin' as const, verified: true };
+  const service = await WorkspaceService.open(new MemoryCommandStore());
+  await service.submit({ clientId: 'a', commandId: '1', command: { type: 'project/create', id: 'p', name: 'P' } }, ada);
+  await service.submit({ clientId: 'a', commandId: '2', command: { type: 'site/create', projectId: 'p', id: 's', name: 'S' } }, ada);
+  await service.submit({ clientId: 'a', commandId: '3', command: { type: 'room/create', siteId: 's', id: 'r', floorAreaId: 'f', name: 'MDF' } }, ada);
+  await service.submit({ clientId: 'a', commandId: '4', command: { type: 'room/rename', roomId: 'r', name: 'MDF-1' } }, actor);
+  const base = await start(service);
+  const text = await readEvents(`${base}/api/events?after=0`, (t) => t.includes('id: 4'));
+  const frames = [...text.matchAll(/event: command\ndata: (.*)\n/g)].map((m) => JSON.parse(m[1]!) as { seq: number; edit?: { roomId: string; name: string; at: string } });
+  expect(frames.map((f) => [f.seq, f.edit?.name ?? null])).toEqual([[1, null], [2, null], [3, 'Ada'], [4, null]]);
+  expect(frames[2]!.edit).toMatchObject({ roomId: 'r', userId: 'u-ada', at: expect.stringMatching(/^\d{4}-/) });
+});

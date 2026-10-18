@@ -1,5 +1,6 @@
 import type { Workspace, WorkspaceCommand } from '@glasshouse/domain';
 import type { Role } from '../identity/types';
+import type { RoomEdit } from '../roomEdits';
 
 /** Who sent a command: the signed-in user, or the unverified dev stand-in (GLASSHOUSE_AUTH=dev-insecure). */
 export interface Actor {
@@ -17,6 +18,8 @@ export interface LoggedCommand {
   commandId: string;
   actor: Actor;
   command: WorkspaceCommand;
+  /** When the server took it (ISO). Absent on entries built by hand in tests. */
+  receivedAt?: string;
 }
 
 /** One approval, written with its command and never changed: the room may later be deleted, the record stays. */
@@ -44,6 +47,8 @@ export interface CommandStore {
   /** Writes the command and, for an approval, its record — both or neither. */
   append(entry: LoggedCommand, approval?: ApprovalRecord | null): Promise<void>;
   listApprovals(): Promise<ApprovalRecord[]>;
+  /** The latest edit of each room by a signed-in person, read from the whole log (snapshots don't keep who did what). */
+  lastRoomEdits(): Promise<RoomEdit[]>;
   saveSnapshot(seq: number, workspace: Workspace): Promise<void>;
   /** Throws when the database is unreachable. */
   ping(): Promise<void>;

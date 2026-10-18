@@ -1,6 +1,7 @@
 import type { WorkspaceCommand } from '@glasshouse/domain';
 import { AuthError } from '../auth/authApi';
 import type { Claim } from '../claims/claimsStore';
+import type { RoomEdit } from './roomEdits';
 import { messagesFor, useLangStore } from '../i18n';
 import { NetworkError, type BatchOutcome, type EventHandlers, type Transport } from './syncClient';
 import type { ServerEvent } from './syncEngine';
@@ -39,7 +40,7 @@ export function httpTransport(base = ''): Transport {
       const auth = await authFailure(res);
       if (auth) throw auth;
       if (!res.ok) throw new NetworkError(`The Glasshouse server answered ${res.status}`);
-      return (await res.json()) as { seq: number; workspace: unknown; claims?: Claim[]; generation?: string };
+      return (await res.json()) as { seq: number; workspace: unknown; claims?: Claim[]; edits?: RoomEdit[]; generation?: string };
     },
     async postCommands(clientId: string, commands: { commandId: string; command: WorkspaceCommand }[]): Promise<BatchOutcome> {
       let res: Response;

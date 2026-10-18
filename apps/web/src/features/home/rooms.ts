@@ -15,6 +15,8 @@ export interface RoomSummary {
   holds: { blocks: number; needsAck: number };
 }
 
+export const holdsTotal = (s: RoomSummary): number => s.holds.blocks + s.holds.needsAck;
+
 function summarise(project: Project, site: Site, room: Room): RoomSummary {
   const revision = currentRevision(room.plan);
   const racks = racksOf(revision.content);

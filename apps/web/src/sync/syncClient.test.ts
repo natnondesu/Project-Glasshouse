@@ -351,5 +351,22 @@ describe('SyncClient', () => {
       expect(cb.onClaims).toHaveBeenLastCalledWith([claim]);
       expect(cb.onClaims).toHaveBeenCalledTimes(2);
     });
+
+    it('passes who edited a room from command events and from a resync snapshot', async () => {
+      const server = fakeServer();
+      const cb = { ...callbacks(), onEdit: vi.fn(), onEdits: vi.fn() };
+      const client = new SyncClient(server.transport, { seq: 0, workspace: createWorkspace() }, cb, { clientId: 'me' });
+      client.start();
+      const handlers = (server.transport.openEvents as ReturnType<typeof vi.fn>).mock.calls[0]![1] as EventHandlers;
+      const edit = { roomId: 'r', userId: 'u-ada', name: 'Ada', at: '2026-10-18T08:00:00.000Z' };
+      handlers.onCommand({ seq: 1, clientId: 'other', commandId: 'x', command: create('p'), edit });
+      expect(cb.onEdit).toHaveBeenCalledWith(edit);
+      handlers.onCommand({ seq: 2, clientId: 'other', commandId: 'y', command: create('q') });
+      expect(cb.onEdit).toHaveBeenCalledTimes(1);
+      (server.transport.fetchWorkspace as ReturnType<typeof vi.fn>).mockResolvedValueOnce({ seq: 2, workspace: client.workspace, edits: [edit] });
+      handlers.onResync();
+      await vi.advanceTimersByTimeAsync(5_000);
+      expect(cb.onEdits).toHaveBeenLastCalledWith([edit]);
+    });
   });
 });

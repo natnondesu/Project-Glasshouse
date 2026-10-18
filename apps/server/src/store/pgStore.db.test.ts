@@ -1,6 +1,7 @@
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testcontainers/postgresql';
 import pg from 'pg';
 import { afterAll, beforeAll, expect, it } from 'vitest';
+import { roomEditOf } from '../roomEdits';
 import { WorkspaceService } from '../workspaceService';
 import { InstanceLockError, PgCommandStore, STATEMENT_TIMEOUT_MS, poolConfig } from './pgStore';
 
@@ -41,6 +42,34 @@ it('refuses a repeated seq and a repeated client command id', async () => {
   await store.append({ ...base, seq: 1000, commandId: 'x' });
   await expect(store.append({ ...base, seq: 1000, commandId: 'y' })).rejects.toThrow();
   await expect(store.append({ ...base, seq: 1001, commandId: 'x' })).rejects.toThrow();
+  await store.close();
+});
+
+// Seqs 500–502: clear of the ranges the other tests read back (1–3 before this test, 2000 and up after it).
+it('keeps when each command arrived and who edited each room last, leaving the dev stand-in out', async () => {
+  const store = await PgCommandStore.connect(container.getConnectionUri());
+  const ada = { id: 'u-ada', name: 'Ada', role: 'viewer' as const, verified: true };
+  await store.append({ seq: 500, clientId: 'e', commandId: '1', actor: ada, command: { type: 'room/create', siteId: 's', id: 'r-edit', floorAreaId: 'f', name: 'MDF' }, receivedAt: '2026-10-18T01:00:00.000Z' });
+  await store.append({ seq: 501, clientId: 'e', commandId: '2', actor, command: { type: 'room/rename', roomId: 'r-edit', name: 'MDF-1' }, receivedAt: '2026-10-18T02:00:00.000Z' });
+  await store.append({ seq: 502, clientId: 'e', commandId: '3', actor: ada, command: { type: 'room/rename', roomId: 'r-other', name: 'IDF' }, receivedAt: '2026-10-18T03:00:00.000Z' });
+  expect((await store.findCommand('e', '2'))?.receivedAt).toBe('2026-10-18T02:00:00.000Z');
+  const edits = (await store.lastRoomEdits()).filter((e) => e.roomId.startsWith('r-'));
+  expect(edits).toEqual([
+    { roomId: 'r-other', userId: 'u-ada', name: 'Ada', at: '2026-10-18T03:00:00.000Z' },
+    { roomId: 'r-edit', userId: 'u-ada', name: 'Ada', at: '2026-10-18T01:00:00.000Z' },
+  ]);
+  // Read back for the event stream's catch-up or a recovery, the dev stand-in's entry still names nobody.
+  const caughtUp = await store.commandsAfter(499, 3);
+  expect(caughtUp.map(roomEditOf).map((e) => e?.name ?? null)).toEqual(['Ada', null, 'Ada']);
+  // Kept in a small table on append, so a start reads one row per room instead of the whole log.
+  const table = await new pg.Client({ connectionString: container.getConnectionUri() });
+  await table.connect();
+  const rows = (await table.query<{ room_id: string; actor_name: string }>("select room_id, actor_name from room_edits where room_id like 'r-%' order by room_id")).rows;
+  await table.end();
+  expect(rows).toEqual([
+    { room_id: 'r-edit', actor_name: 'Ada' },
+    { room_id: 'r-other', actor_name: 'Ada' },
+  ]);
   await store.close();
 });
 

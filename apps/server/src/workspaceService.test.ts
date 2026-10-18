@@ -696,3 +696,43 @@ describe('archiving', () => {
     expect(roomOf(svc)).toMatchObject({ archivedBy: 'Few', archivedAt: 'x' });
   });
 });
+
+describe('who edited each room last', () => {
+  const ada = { id: 'u-ada', name: 'Ada', role: 'admin' as const, verified: true };
+  const setup: WorkspaceCommand[] = [
+    { type: 'project/create', id: 'p', name: 'P' },
+    { type: 'site/create', projectId: 'p', id: 's', name: 'S' },
+    { type: 'room/create', siteId: 's', id: 'r1', floorAreaId: 'f1', name: 'MDF' },
+    { type: 'room/create', siteId: 's', id: 'r2', floorAreaId: 'f2', name: 'IDF' },
+  ];
+  const clock = () => {
+    let minute = 0;
+    return () => new Date(Date.UTC(2026, 9, 18, 0, minute++)).toISOString();
+  };
+
+  it('keeps the signed-in person and the time of each room’s latest change, across a restart', async () => {
+    const store = new MemoryCommandStore();
+    const svc = await WorkspaceService.open(store, { now: clock() });
+    for (const [i, command] of setup.entries()) await svc.submit({ clientId: 'a', commandId: String(i), command }, ada);
+    await svc.submit({ clientId: 'a', commandId: 'rename', command: { type: 'room/rename', roomId: 'r1', name: 'MDF-1' } }, ploy);
+    const seen: LoggedCommand[] = [];
+    svc.subscribe((e) => seen.push(e));
+    await svc.submit({ clientId: 'a', commandId: 'rename2', command: { type: 'room/rename', roomId: 'r2', name: 'IDF-1' } }, ada);
+    expect(seen[0]?.receivedAt).toBeDefined();
+    const expected = [
+      { roomId: 'r2', userId: 'u-ada', name: 'Ada', at: seen[0]!.receivedAt },
+      // The dev stand-in's rename names nobody: r1 keeps Ada's create.
+      { roomId: 'r1', userId: 'u-ada', name: 'Ada', at: expect.any(String) },
+    ];
+    expect(svc.roomEdits()).toEqual(expected);
+    const restarted = await WorkspaceService.open(store);
+    expect(restarted.roomEdits()).toEqual(svc.roomEdits());
+  });
+
+  it('forgets rooms that are gone', async () => {
+    const svc = await WorkspaceService.open(new MemoryCommandStore());
+    for (const [i, command] of setup.entries()) await svc.submit({ clientId: 'a', commandId: String(i), command }, ada);
+    await svc.submit({ clientId: 'a', commandId: 'del', command: { type: 'room/delete', roomId: 'r2' } }, ada);
+    expect(svc.roomEdits().map((e) => e.roomId)).toEqual(['r1']);
+  });
+});

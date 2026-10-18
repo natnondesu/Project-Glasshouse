@@ -1,6 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import type { ClaimRegistry } from '../claims';
 import type { Authenticate } from './devAuth';
+import { roomEditOf } from '../roomEdits';
 import type { LoggedCommand } from '../store/commandStore';
 import type { WorkspaceService } from '../workspaceService';
 
@@ -8,8 +9,9 @@ export const MAX_CATCH_UP = 1000;
 /** A real event (not a comment) so the browser's EventSource hands it to the page, which uses it to spot a dead connection. */
 export const HEARTBEAT_MS = 15_000;
 
+// `edit` names who changed a room (signed-in people only), so Home's "edited by" stays current without a reload.
 const frame = (e: LoggedCommand): string =>
-  `id: ${e.seq}\nevent: command\ndata: ${JSON.stringify({ seq: e.seq, clientId: e.clientId, commandId: e.commandId, command: e.command })}\n\n`;
+  `id: ${e.seq}\nevent: command\ndata: ${JSON.stringify({ seq: e.seq, clientId: e.clientId, commandId: e.commandId, command: e.command, edit: roomEditOf(e) ?? undefined })}\n\n`;
 
 export function registerEvents(app: FastifyInstance, service: WorkspaceService, authenticate: Authenticate, { heartbeatMs = HEARTBEAT_MS, claims }: { heartbeatMs?: number; claims?: ClaimRegistry } = {}): void {
   app.get('/api/events', async (request, reply) => {

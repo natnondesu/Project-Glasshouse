@@ -1,6 +1,6 @@
 import { apply, createWorkspace, withSample, type Workspace, type WorkspaceCommand } from '@glasshouse/domain';
 import { describe, expect, it } from 'vitest';
-import { initialSiteId, notPlaced, placed, siteSummaries } from './sites';
+import { notPlaced, placed, siteSummaries } from './sites';
 
 const AT = '2026-10-18T00:00:00.000Z';
 const run = (ws: Workspace, ...cmds: WorkspaceCommand[]): Workspace =>
@@ -60,32 +60,5 @@ describe('placed and not placed', () => {
     expect(placed(all).map((s) => s.site.name).sort()).toEqual(['Bangna campus', 'Riverside Annex', 'Riverside Campus']);
     expect(notPlaced(all).map((s) => s.site.name)).toEqual(['Warehouse 2']);
     expect(placed(all).length + notPlaced(all).length).toBe(all.length);
-  });
-});
-
-describe('initialSiteId', () => {
-  it('opens on the site of the last room opened', () => {
-    const all = siteSummaries(sample());
-    const mdf = all.flatMap((s) => s.rooms).find((r) => r.room.name === 'MDF-1')!;
-    const comms = all.flatMap((s) => s.rooms).find((r) => r.room.name === 'Comms Room')!;
-    expect(initialSiteId(all, mdf.room.id)).toBe(mdf.site.id);
-    expect(initialSiteId(all, comms.room.id)).toBe(comms.site.id);
-  });
-
-  it('never opens on an archived room, even when it was the last one opened', () => {
-    const ws = sample();
-    const mdf = siteSummaries(ws).flatMap((s) => s.rooms).find((r) => r.room.name === 'MDF-1')!;
-    const archived = run(ws, { type: 'site/archive', siteId: mdf.site.id, by: '', at: AT });
-    const all = siteSummaries(archived);
-    expect(initialSiteId(all, mdf.room.id)).not.toBe(mdf.site.id);
-    expect(all.some((s) => s.site.id === initialSiteId(all, mdf.room.id))).toBe(true);
-  });
-
-  it('falls back to the first site with rooms, then the first site, then none', () => {
-    const all = siteSummaries(sample());
-    expect(initialSiteId(all, 'gone')).toBe(all[0]!.site.id);
-    const empty = siteSummaries(run(createWorkspace(), { type: 'project/create', id: 'p', name: 'P' }, { type: 'site/create', projectId: 'p', id: 's', name: 'Lot' }));
-    expect(initialSiteId(empty, null)).toBe('s');
-    expect(initialSiteId([], null)).toBeNull();
   });
 });

@@ -4,7 +4,7 @@ import { useT } from '../../i18n';
 import { IconArrowRight, IconBlock, IconCheck } from '../../ui/icons';
 import { pad2 } from '../../ui/StatusStamp';
 import { writePreference } from '../../ui/usePersistentState';
-import type { RoomSummary } from './rooms';
+import { holdsTotal, type RoomSummary } from './rooms';
 import { RoomThumbnail } from './RoomThumbnail';
 
 function RoomFacts({ summary }: { summary: RoomSummary }) {
@@ -15,8 +15,6 @@ function RoomFacts({ summary }: { summary: RoomSummary }) {
   else parts.push(`${content.survey.width.toFixed(2)} × ${content.survey.length.toFixed(2)} m`);
   return <p className="mono home-card__facts">{parts.join(' · ')}</p>;
 }
-
-export const holdsTotal = (s: RoomSummary): number => s.holds.blocks + s.holds.needsAck;
 
 /**
  * Approved: ready. Otherwise what still holds approval, each count a way straight to it: checks open
@@ -79,6 +77,9 @@ export function RoomCard({ summary, lastOpened = false }: { summary: RoomSummary
           {lastOpened ? <span className="home-card__last">{m.home.lastOpened}</span> : null}
           <IconArrowRight className="home-card__go" />
         </div>
+        <p className="home-card__where" title={`${summary.site.name} · ${summary.project.name}`}>
+          {summary.site.name} · {summary.project.name}
+        </p>
         <RoomFacts summary={summary} />
         <RoomStatus summary={summary} />
       </div>

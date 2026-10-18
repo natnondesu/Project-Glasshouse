@@ -19,6 +19,7 @@ test('a site placed in one tab shows on the other tab’s globe, and the server 
     const two = await (await browser.newContext()).newPage();
     await one.goto('/');
     await two.goto('/');
+    await two.getByRole('button', { name: /^Not placed yet/ }).click();
     await expect(two.getByRole('region', { name: /Not placed yet/ }).getByRole('button', { name: new RegExp(site) }).first()).toBeVisible();
     // The map's outlines load from the server itself, under its content security policy.
     await expect(two.getByRole('application', { name: /^Map\./ })).toBeVisible();
@@ -29,7 +30,7 @@ test('a site placed in one tab shows on the other tab’s globe, and the server 
     await dialog.getByRole('button', { name: 'Save location' }).click();
 
     // The tab that saved it picks the site and brings it into view (Sydney, far from the opening frame).
-    await expect(one.getByRole('heading', { level: 1, name: site })).toBeVisible();
+    await expect(one.locator('#home-site-name')).toHaveText(site);
     await expect(one.getByRole('button', { name: new RegExp(`^${site}, `) })).toHaveAttribute('aria-pressed', 'true');
     // The other tab sees it leave its list (other specs share this server, so only this site's entry is checked).
     await expect(two.getByRole('region', { name: /Not placed yet/ }).getByRole('button', { name: new RegExp(site) })).toHaveCount(0);

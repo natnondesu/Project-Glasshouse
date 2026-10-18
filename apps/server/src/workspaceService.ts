@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { apply, approvedRevisionChanges, createWorkspace, currentRevision, draftEditRoom, err, findRoom, newlyApprovedRevisions, parseWorkspace, roomsArchivedBy, withSample, type DomainError, type Workspace, type WorkspaceCommand } from '@glasshouse/domain';
 import type { ClaimRegistry } from './claims';
+import { RoomEdits, type RoomEdit } from './roomEdits';
 import { atLeast } from './identity/types';
 import { ROLE_LABEL, requiredRole, stampCommand } from './permissions';
 import type { Actor, ApprovalRecord, CommandStore, LoggedCommand } from './store/commandStore';
@@ -93,6 +94,7 @@ export class WorkspaceService {
     private readonly onError: (message: string, error: unknown) => void,
     private readonly now: () => string,
     private readonly claims: ClaimRegistry | null,
+    private readonly edits: RoomEdits,
   ) {}
 
   static async open(store: CommandStore, options: OpenOptions = {}): Promise<WorkspaceService> {
@@ -117,11 +119,17 @@ export class WorkspaceService {
     ({ seq, workspace } = await replayAfter(store, { seq, workspace }));
     // Always snapshot after boot: keeps the replay tail short and pins a seeded sample's IDs.
     await store.saveSnapshot(seq, workspace);
-    return new WorkspaceService(store, { seq, workspace }, options.snapshotEvery ?? SNAPSHOT_EVERY, onError, now, options.claims ?? null);
+    const edits = new RoomEdits(await store.lastRoomEdits());
+    return new WorkspaceService(store, { seq, workspace }, options.snapshotEvery ?? SNAPSHOT_EVERY, onError, now, options.claims ?? null, edits);
   }
 
   get state(): { seq: number; workspace: Workspace } {
     return this.current;
+  }
+
+  /** Who changed each room last (signed-in people only), newest first: Home's "edited by Ploy 2 h ago". */
+  roomEdits(): RoomEdit[] {
+    return this.edits.list((roomId) => findRoom(this.current.workspace, roomId) !== null);
   }
 
   get claimRegistry(): ClaimRegistry | null {
@@ -243,7 +251,7 @@ export class WorkspaceService {
       this.onError(`Approval at seq ${this.current.seq + 1} has no approved revision with a fingerprint and time`, toApply);
       return { kind: 'rejected', error: err('invalid_value', "The approval couldn't be recorded, so it wasn't saved. Try again; if it keeps failing, tell an admin.", [approval.roomId]).error };
     }
-    const entry: LoggedCommand = { seq: this.current.seq + 1, clientId, commandId, actor, command: toApply };
+    const entry: LoggedCommand = { seq: this.current.seq + 1, clientId, commandId, actor, command: toApply, receivedAt: this.now() };
     try {
       await this.store.append(entry, approval.record);
     } catch (e) {
@@ -254,6 +262,7 @@ export class WorkspaceService {
     }
     const before = this.current.workspace;
     this.current = { seq: entry.seq, workspace: result.value };
+    this.edits.record(entry);
     if (claimRoom) {
       const step = command.type === 'review' ? command.command.type : null;
       if (step === 'review/submit' || step === 'review/discard-draft') this.claims!.release(claimRoom, actor.id, { admin: false });
@@ -294,6 +303,7 @@ export class WorkspaceService {
     // State advances before each announcement, so a failed trailing read leaves nothing announced twice.
     this.current = await replayAfter(this.store, this.current, (entry, state) => {
       this.current = state;
+      this.edits.record(entry);
       this.notify(entry);
     });
     this.recovering = false;

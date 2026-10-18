@@ -2,7 +2,8 @@ import { currentRevision, exportProjectFile, liveCounts } from '@glasshouse/doma
 import { useState, type ReactNode } from 'react';
 import { UserMenu } from '../auth/UserMenu';
 import { SERVER_MODE } from '../sync/serverMode';
-import { NavLink, Link } from 'react-router';
+import { NavLink, Link, useMatch } from 'react-router';
+import { HomeSearch } from '../features/home/SearchField';
 import { LanguageSwitch } from '../i18n/LanguageSwitch';
 import { useT } from '../i18n';
 import { useRoomLocation, useViewedRevisionNumber } from '../store/hooks';
@@ -73,6 +74,9 @@ export function TitleBlock({ roomId, drawer = null, treeNav = null }: { roomId: 
   const [exportError, setExportError] = useState<string | null>(null);
   const m = useT();
   const templateCount = useWorkspaceStore((st) => st.workspace.catalog.length);
+  const onHome = useMatch({ path: '/', end: true }) !== null;
+  // Nothing to search on an empty Home: the title block keeps the counts there instead.
+  const searchable = workspace.projects.some((p) => p.archivedAt === undefined && p.sites.some((st) => st.archivedAt === undefined));
   const exportProject = (): void => {
     if (!location) return;
     const file = exportProjectFile(workspace, location.project.id, new Date().toISOString());
@@ -100,6 +104,9 @@ export function TitleBlock({ roomId, drawer = null, treeNav = null }: { roomId: 
             {revision ? <StatusStamp state={revision.state} /> : null}
           </p>
         </div>
+      ) : onHome && searchable ? (
+        // Home's own search; the workspace bar under it carries the counts.
+        <HomeSearch />
       ) : (
         // Outside a room there is no breadcrumb: the title block shows the workspace instead.
         <dl className="title-block__cells">

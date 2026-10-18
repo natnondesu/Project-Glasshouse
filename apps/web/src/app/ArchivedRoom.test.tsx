@@ -1,5 +1,5 @@
 import { createWorkspace, currentRevision, liveCounts, withSample, type Rack } from '@glasshouse/domain';
-import { act, render, screen, within } from '@testing-library/react';
+import { act, cleanup, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { createMemoryRouter, RouterProvider } from 'react-router';
 import { afterEach, beforeEach, expect, it } from 'vitest';
@@ -204,7 +204,7 @@ it('counts only what is in use in the header and on the home page', () => {
   send({ type: 'room/archive', roomId: draft, by: 'Few', at: AT });
   open('/');
   expect(liveCounts(useWorkspaceStore.getState().workspace)).toEqual({ projects: before.projects, rooms: before.rooms - 1 });
-  expect(screen.getByText(en.shell.workspaceSummary(before.projects, before.rooms - 1))).toBeInTheDocument();
+  expect(screen.getByText(en.home.workspaceCounts(before.projects, 3, before.rooms - 1), { exact: false })).toBeInTheDocument();
   expect(screen.queryByRole('link', { name: 'MDF-1' })).toBeNull();
 });
 
@@ -212,6 +212,9 @@ it('keeps an archived room off the home cards, and asks for a project when all a
   for (const p of useWorkspaceStore.getState().workspace.projects) send({ type: 'project/archive', projectId: p.id, by: '', at: AT });
   open('/');
   expect(screen.getByRole('heading', { level: 1, name: 'Start with a project' })).toBeInTheDocument();
+  cleanup();
+  // Home's title block holds its search; elsewhere it shows the workspace's counts.
+  open('/catalog');
   expect(screen.getByText('0 projects · 0 rooms', { exact: false })).toBeInTheDocument();
 });
 

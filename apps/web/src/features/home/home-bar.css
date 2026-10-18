@@ -1,0 +1,386 @@
+/* Home round 2: the title block's search, the workspace bar with its pick-up strip, and the scope's numbers. */
+
+/* ---- Search (title block, Home only) ---- */
+.home-find {
+  flex: 0 1 380px;
+  min-width: 200px;
+  height: 36px;
+  margin-right: auto;
+  padding-right: 6px;
+}
+
+.home-find__icon {
+  flex: none;
+  color: var(--ink-3);
+}
+
+.home-find input::-webkit-search-cancel-button {
+  appearance: none;
+}
+
+.home-find__key {
+  flex: none;
+  padding: 0 6px;
+  border: 1px solid var(--line-strong);
+  border-radius: 4px;
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  line-height: 18px;
+  color: var(--ink-2);
+}
+
+.home-find:focus-within .home-find__key {
+  visibility: hidden;
+}
+
+.home-find__clear {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: var(--ink-2);
+}
+
+.home-find__clear:hover {
+  background: rgb(14 24 36 / 0.07);
+  color: var(--ink);
+}
+
+/* ---- Workspace bar ---- */
+.workspace-bar {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  flex-shrink: 0;
+  min-width: 0;
+  padding: 10px 10px 10px 22px;
+}
+
+.workspace-bar__title {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.workspace-bar__title h1 {
+  font-size: 24px;
+  line-height: 1.1;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+}
+
+.workspace-bar__title p {
+  font-size: var(--text-sm);
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+
+/* The way back into the work: one row, the room's plan in miniature, and Continue. */
+.pickup {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+  padding: 7px 7px 7px 8px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--control-bg);
+}
+
+.pickup__plan {
+  flex: none;
+  display: grid;
+  border: 1px solid var(--d-rule);
+  border-radius: 7px;
+  background: var(--paper);
+}
+
+.mini-plan__floor {
+  fill: var(--paper);
+  stroke: var(--d-ink);
+  stroke-width: 1.4;
+}
+
+.mini-plan__void {
+  fill: var(--ground);
+  stroke: var(--d-ink);
+  stroke-width: 1;
+}
+
+.mini-plan__solid {
+  fill: var(--d-ink-2);
+}
+
+.mini-plan__rack {
+  fill: var(--d-ink);
+}
+
+.mini-plan__rack.is-blocked {
+  fill: var(--block-fill);
+}
+
+.pickup__text {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+/* The strip's own label, read as the start of a sentence: normal case and weight, never an eyebrow. */
+.pickup__label {
+  font-size: var(--text-sm);
+  font-weight: 400;
+  color: var(--ink-2);
+}
+
+.pickup__room {
+  overflow: hidden;
+  font-size: var(--text-md);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.pickup__name {
+  font-weight: 700;
+}
+
+.pickup__meta {
+  color: var(--ink-2);
+}
+
+.pickup__holds {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--text-sm);
+  font-weight: 650;
+  color: var(--warn);
+  white-space: nowrap;
+}
+
+.pickup__holds svg {
+  width: 15px;
+  height: 15px;
+}
+
+.pickup__holds--block {
+  color: var(--block);
+}
+
+.pickup__go.btn {
+  flex: none;
+  gap: 8px;
+  min-height: 38px;
+  padding-inline: 16px;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+/* ---- The scope's numbers ---- */
+.numbers {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.numbers__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 14px;
+  padding-inline: 4px;
+}
+
+.numbers__head h2 {
+  font-size: var(--text-xl);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.numbers__count,
+.numbers__query {
+  font-weight: 500;
+  color: var(--ink-2);
+}
+
+.numbers__note {
+  font-size: var(--text-sm);
+  color: var(--ink-2);
+}
+
+/* One ruled strip, like a drawing's title block: cells divided by rules, figures in the mono face. */
+.numbers__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  margin: 0;
+  overflow: hidden;
+}
+
+.numbers__cell {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  padding: 14px 20px 16px;
+  box-shadow: -1px 0 0 var(--line);
+}
+
+.numbers__cell dt {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--ink-2);
+}
+
+.numbers__cell dd {
+  margin: 0;
+}
+
+.numbers__figure {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 32px;
+  line-height: 1.1;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+}
+
+.numbers__figure svg {
+  width: 20px;
+  height: 20px;
+  align-self: center;
+}
+
+.numbers__unit {
+  font-size: var(--text-lg);
+  font-weight: 650;
+  letter-spacing: 0;
+}
+
+.numbers__figure--ok {
+  color: var(--ok);
+}
+
+.numbers__figure-wrap {
+  display: flex;
+}
+
+/* What holds approval is a way to it: the blocking colour with its icon, never colour alone. */
+.numbers__hold {
+  padding: 0 6px 0 4px;
+  margin-left: -4px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  font-family: inherit;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background var(--duration-fast) ease-out;
+}
+
+.numbers__hold--block {
+  color: var(--block);
+}
+
+.numbers__hold--ack {
+  color: var(--warn);
+}
+
+.numbers__hold:hover {
+  background: rgb(14 24 36 / 0.05);
+}
+
+.numbers__hold:hover .numbers__unit {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.numbers__hold:focus-visible {
+  outline: 2px solid var(--acc);
+  outline-offset: 2px;
+}
+
+.numbers__detail {
+  font-size: var(--text-sm);
+  color: var(--ink-2);
+}
+
+.numbers__detail--stack {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.numbers__ok {
+  font-weight: 600;
+  color: var(--ok);
+}
+
+.numbers__bar {
+  position: relative;
+  display: block;
+  height: 6px;
+  margin-top: 2px;
+  overflow: hidden;
+  border-radius: 3px;
+  background: rgb(14 24 36 / 0.09);
+}
+
+.numbers__bar > span {
+  position: absolute;
+  inset: 0;
+  background: var(--acc);
+  transform-origin: left center;
+}
+
+.numbers__bar.is-over > span {
+  background: var(--block-fill);
+}
+
+.numbers__over {
+  font-weight: 650;
+  color: var(--block);
+}
+
+.numbers__unknown {
+  color: var(--warn);
+}
+
+.numbers__pending {
+  padding: 18px 22px;
+  border: 1.5px dashed var(--line-strong);
+  border-radius: 16px;
+  font-size: var(--text-sm);
+  color: var(--ink-2);
+}
+
+/* 1280-wide laptops: the bar's text gives way before the button does. */
+@media (max-width: 1360px) {
+  .workspace-bar {
+    gap: 14px;
+    padding-left: 18px;
+  }
+
+  .workspace-bar__title h1 {
+    font-size: 22px;
+  }
+
+  .numbers__cell {
+    padding: 12px 16px 14px;
+  }
+
+  .numbers__figure {
+    font-size: 28px;
+  }
+}

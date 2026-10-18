@@ -1,13 +1,12 @@
 import { formatWatts, latestApproved } from '@glasshouse/domain';
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router';
 import { useT } from '../../i18n';
-import { IconArrowRight, IconCheck, IconChevronLeft, IconChevronRight, IconMapPin, IconPlus, IconSheet } from '../../ui/icons';
+import { IconArrowRight, IconCheck, IconChevronLeft, IconChevronRight, IconClose, IconMapPin, IconPlus, IconSheet } from '../../ui/icons';
 import { usePeople } from '../../people/peopleStore';
 import { personLabel } from '../../ui/person';
 import { pad2 } from '../../ui/StatusStamp';
-import { holdsTotal } from '../home/RoomCard';
-import type { RoomSummary } from '../home/rooms';
+import { holdsTotal, type RoomSummary } from '../home/rooms';
 import { SceneBoundary } from '../home/SceneBoundary';
 import { formatLatLon } from './format';
 import type { SiteSummary } from './sites';
@@ -24,6 +23,28 @@ interface SiteCardProps {
   onLocate: () => void;
   onPlace: () => void;
   onNewRoom: () => void;
+  /** Closes the card: the scope steps back up to the site's province (or country). */
+  onClose: () => void;
+  /** The height the card may take on the map; unknown (no layout) means the 3D shows at its usual size. */
+  fitHeight?: number;
+}
+
+/** The card's own parts besides the 3D and the room rows: head, facts, actions, gaps and padding. */
+const CARD_CHROME_PX = 262;
+const ROOM_ROW_PX = 46;
+/** Rows the card keeps in view before the 3D gets any room. */
+const ROWS_KEPT = 3;
+const SCENE_MAX_PX = 180;
+/** Below this the 3D folds into a strip with a toggle: a sliver of a room helps nobody. */
+const SCENE_MIN_PX = 110;
+/** The folded 3D, opened again: the card scrolls to show it. */
+const SCENE_OPENED_PX = 160;
+
+/** How tall the 3D may be so the facts and the first rows stay in view; null when it should fold. */
+export function sceneHeight(fitHeight: number | undefined, rooms: number): number | null {
+  if (fitHeight === undefined) return SCENE_MAX_PX;
+  const room = fitHeight - CARD_CHROME_PX - Math.min(rooms, ROWS_KEPT) * ROOM_ROW_PX;
+  return room < SCENE_MIN_PX ? null : Math.min(SCENE_MAX_PX, room);
 }
 
 function RoomHolds({ room }: { room: RoomSummary }) {
@@ -55,10 +76,10 @@ function RoomHolds({ room }: { room: RoomSummary }) {
 }
 
 /**
- * The selected site: what it holds, each room with its revision and what holds its approval (links to Review), the
+ * The selected site, floating over the map's top right: what it holds, each room with its revision and what holds its approval (links to Review), the
  * chosen room live in 3D, and the way into it. Rooms change by a click or prev/next, never on a timer.
  */
-export function SiteCard({ summary, roomId, lastRoomId, onRoom, canEdit, onLocate, onPlace, onNewRoom }: SiteCardProps) {
+export function SiteCard({ summary, roomId, lastRoomId, onRoom, canEdit, onLocate, onPlace, onNewRoom, onClose, fitHeight }: SiteCardProps) {
   const m = useT();
   const { site, project, rooms } = summary;
   const index = Math.max(0, rooms.findIndex((r) => r.room.id === roomId));
@@ -71,15 +92,53 @@ export function SiteCard({ summary, roomId, lastRoomId, onRoom, canEdit, onLocat
   const person = revision ? (revision.state === 'approved' ? revision.approvedBy : revision.designedBy) : null;
   const by = person ? personLabel(m, person, people) : undefined;
   const when = revision ? (revision.state === 'approved' ? revision.approvedAt : revision.submittedAt)?.slice(0, 10) : undefined;
+  const fitted = sceneHeight(fitHeight, rooms.length);
+  const [opened, setOpened] = useState(false);
+  const folded = fitted === null && !opened;
+  const scene = fitted ?? SCENE_OPENED_PX;
+  // A fade at the foot while there is more to scroll to.
+  const card = useRef<HTMLElement>(null);
+  const [more, setMore] = useState(false);
+  const measure = useCallback(() => {
+    const el = card.current;
+    if (el) setMore(el.scrollTop + el.clientHeight < el.scrollHeight - 2);
+  }, []);
+  useEffect(() => {
+    measure();
+    const el = card.current;
+    if (!el || typeof ResizeObserver === 'undefined') return;
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [measure, folded, roomId, fitHeight]);
+  const stepper =
+    rooms.length > 1 ? (
+      <div className="site-card__stepper">
+        <button type="button" className="icon-btn" aria-label={m.globe.prevRoom} onClick={() => step(-1)}>
+          <IconChevronLeft />
+        </button>
+        <span className="mono" aria-live="polite">
+          {m.globe.roomCount(index + 1, rooms.length)}
+        </span>
+        <button type="button" className="icon-btn" aria-label={m.globe.nextRoom} onClick={() => step(1)}>
+          <IconChevronRight />
+        </button>
+      </div>
+    ) : null;
   const step = (by: number): void => {
     const next = rooms[(index + by + rooms.length) % rooms.length];
     if (next) onRoom(next.room.id);
   };
 
   return (
-    <div className="site-card">
+    <section ref={card} className={`site-card globe-sitecard${more ? ' has-more' : ''}`} aria-labelledby="home-site-name" onScroll={measure}>
+      <button type="button" className="icon-btn site-card__close" aria-label={m.home.closeCard(site.name)} onClick={onClose}>
+        <IconClose />
+      </button>
       <header className="site-card__head">
-        <h1 id="home-site-name" tabIndex={-1}>{site.name}</h1>
+        <h2 id="home-site-name" tabIndex={-1}>
+          {site.name}
+        </h2>
         <p className="site-card__project">{project.name}</p>
         <p className="site-card__where">
           <IconMapPin />
@@ -121,32 +180,33 @@ export function SiteCard({ summary, roomId, lastRoomId, onRoom, canEdit, onLocat
       ) : null}
       {room ? (
         <>
-          <div className="site-card__paper">
-            <SceneBoundary key={room.room.id} message={m.home.scene3dFailed} reload={m.home.reload}>
-              <Suspense fallback={<p className="home-hero__fallback">{m.home.loading3d}</p>}>
-                <HeroScene location={{ project, site, room: room.room }} caption={room.room.name} />
-              </Suspense>
-            </SceneBoundary>
-            {revision ? (
-              <p className={`home-hero__stamp home-hero__stamp--${revision.state} site-card__stamp`}>
-                <span className="mono">{m.revision.stamp[revision.state]}</span>
-                <span className="mono">{[`R${pad2(revision.number)}`, when, by].filter(Boolean).join(' · ')}</span>
-              </p>
-            ) : null}
-            {rooms.length > 1 ? (
-              <div className="site-card__stepper">
-                <button type="button" className="icon-btn" aria-label={m.globe.prevRoom} onClick={() => step(-1)}>
-                  <IconChevronLeft />
-                </button>
-                <span className="mono" aria-live="polite">
-                  {m.globe.roomCount(index + 1, rooms.length)}
-                </span>
-                <button type="button" className="icon-btn" aria-label={m.globe.nextRoom} onClick={() => step(1)}>
-                  <IconChevronRight />
-                </button>
-              </div>
-            ) : null}
-          </div>
+          {fitted === null ? (
+            // Short map: the 3D folds into a strip, so the facts and the first rooms stay in view; the rows pick the room.
+            <div className="site-card__strip">
+              <span className="site-card__strip-name">
+                <span className="mono">3D</span> {room.room.name}
+              </span>
+              <button type="button" className="btn btn--sm site-card__fold" aria-expanded={!folded} aria-controls="site-card-scene" onClick={() => setOpened(!opened)}>
+                {folded ? m.globe.show3d : m.globe.hide3d}
+              </button>
+            </div>
+          ) : null}
+          {folded ? null : (
+            <div className="site-card__paper" id="site-card-scene" style={{ height: `${scene}px` }}>
+              <SceneBoundary key={room.room.id} message={m.home.scene3dFailed} reload={m.home.reload}>
+                <Suspense fallback={<p className="home-hero__fallback">{m.home.loading3d}</p>}>
+                  <HeroScene location={{ project, site, room: room.room }} caption={room.room.name} />
+                </Suspense>
+              </SceneBoundary>
+              {revision ? (
+                <p className={`home-hero__stamp home-hero__stamp--${revision.state} site-card__stamp`}>
+                  <span className="mono">{m.revision.stamp[revision.state]}</span>
+                  <span className="mono">{[`R${pad2(revision.number)}`, when, by].filter(Boolean).join(' · ')}</span>
+                </p>
+              ) : null}
+              {stepper}
+            </div>
+          )}
           <ul className="site-card__rooms" aria-label={m.globe.roomsOf(site.name)}>
             {rooms.map((r) => {
               const isOn = r.room.id === room.room.id;
@@ -203,6 +263,6 @@ export function SiteCard({ summary, roomId, lastRoomId, onRoom, canEdit, onLocat
           ) : null}
         </div>
       )}
-    </div>
+    </section>
   );
 }

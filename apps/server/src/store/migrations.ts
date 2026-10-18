@@ -88,6 +88,24 @@ export const MIGRATIONS: { name: string; sql: string }[] = [
       create index removed_signins_subject on removed_signins (subject_hash);
       create index removed_signins_email on removed_signins (email_hash);`,
   },
+  {
+    // Home's "edited by": the latest change to each room by a signed-in person, kept beside the log on append so a
+    // start reads one row per room. Backfilled from the log; the dev stand-in (ids starting "dev:") is never named.
+    name: '006_room_edits',
+    sql: `
+      create table room_edits (
+        room_id text primary key,
+        actor_id text not null,
+        actor_name text not null,
+        edited_at timestamptz not null,
+        seq bigint not null
+      );
+      insert into room_edits (room_id, actor_id, actor_name, edited_at, seq)
+        select distinct on (room_id) room_id, actor_id, actor_name, received_at, seq from (
+          select coalesce(command->>'roomId', case when command->>'type' = 'room/create' then command->>'id' end) as room_id, actor_id, actor_name, received_at, seq
+          from commands where actor_id not like 'dev:%'
+        ) edits where room_id is not null order by room_id, seq desc;`,
+  },
 ];
 
 const LOCK_KEY = 727274;

@@ -47,16 +47,29 @@ afterEach(async () => {
   await act(() => useLangStore.getState().setLang('en'));
 });
 
-const open = () => render(<RouterProvider router={createMemoryRouter(routes, { initialEntries: ['/'] })} />);
+const open = (path = '/') => {
+  const router = createMemoryRouter(routes, { initialEntries: [path] });
+  return { ...render(<RouterProvider router={router} />), router };
+};
+const siteId = (name: string): string => useWorkspaceStore.getState().workspace.projects.flatMap((p) => p.sites).find((s) => s.name === name)!.id;
+/** The floating site card's heading (the numbers' heading names the site too). */
+const card = (name: string): HTMLElement => {
+  const heading = document.getElementById('home-site-name');
+  expect(heading).toHaveTextContent(name);
+  return heading!;
+};
+const showNotPlaced = async (user: ReturnType<typeof userEvent.setup>) => user.click(screen.getByRole('button', { name: /^Not placed yet/ }));
 const map = () => screen.findByRole('application', { name: /^Map\./ });
 const crumbs = () => screen.getByRole('navigation', { name: 'Map level' });
 const silenceBoundary = () => vi.spyOn(console, 'error').mockImplementation(() => {});
 
 describe('Home’s globe hero', () => {
-  it('shows the site card at once and says the map is on its way', async () => {
+  it('shows the workspace, a picked site’s card and its rooms at once, and says the map is on its way', async () => {
     load(sample());
-    open();
-    expect(screen.getByRole('heading', { level: 1, name: 'Bangna campus' })).toBeInTheDocument();
+    open(`/?scope=site:${siteId('Bangna campus')}`);
+    expect(screen.getByRole('heading', { level: 1, name: 'Workspace' })).toBeInTheDocument();
+    expect(card('Bangna campus')).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'Rooms in Bangna campus' })).toBeInTheDocument();
     expect(screen.getByText('Loading the map…')).toBeInTheDocument();
     await map();
     expect(screen.queryByText('Loading the map…')).toBeNull();
@@ -66,11 +79,21 @@ describe('Home’s globe hero', () => {
     silenceBoundary();
     geo.fail = true;
     load(sample());
-    open();
+    open(`/?scope=site:${siteId('Bangna campus')}`);
     expect(await screen.findByText('Map unavailable')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Reload page' })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { level: 1, name: 'Bangna campus' })).toBeInTheDocument();
-    expect(screen.getByRole('region', { name: /Bangna campus/ })).toBeInTheDocument();
+    expect(card('Bangna campus')).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'Rooms in Bangna campus' })).toBeInTheDocument();
+  });
+
+  it('opens a region scope out to everything when the map can’t say which sites it holds', async () => {
+    silenceBoundary();
+    geo.fail = true;
+    load(sample());
+    const { router } = open('/?scope=country:TH');
+    expect(await screen.findByText('Map unavailable')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 2, name: /^Everywhere/ })).toBeInTheDocument();
+    await waitFor(() => expect(router.state.location.search).toBe(''));
   });
 
   it('offers the Location dialog when Place on the map was chosen but the map can’t load', async () => {
@@ -84,19 +107,29 @@ describe('Home’s globe hero', () => {
     expect(await screen.findByRole('dialog', { name: 'Where is Warehouse 2?' })).toBeInTheDocument();
   });
 
-  it('opens framed on the country of the sites with the last room’s site selected and its room in the card', async () => {
+  it('opens framed on the country of the sites, counting everything until a place is picked', async () => {
+    load(sample());
+    open();
+    await map();
+    expect(within(crumbs()).getByRole('button', { name: 'World' })).toHaveAttribute('aria-current', 'location');
+    expect(within(crumbs()).getByRole('button', { name: 'Thailand' })).toBeInTheDocument();
+    // All three sample sites sit in Bangkok: one count marker, named for the province.
+    expect(screen.getByRole('button', { name: 'Bangkok — 3 sites. Show them' })).toBeInTheDocument();
+    expect(screen.getByText(/Map data: Natural Earth · sample sites at illustrative spots/)).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 2, name: 'Everywhere · 3 sites' })).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'All rooms' })).toBeInTheDocument();
+    // No site picked: no card on the map.
+    expect(screen.queryByRole('button', { name: /^Close / })).toBeNull();
+  });
+
+  it('picks the last room in a site’s card when that site is picked', async () => {
     const ws = sample();
     load(ws);
     const comms = ws.projects[1]!.sites[1]!.rooms[0]!;
     localStorage.setItem('glasshouse:last-room', comms.id);
-    open();
-    await map();
-    expect(screen.getByRole('heading', { level: 1, name: 'Riverside Annex' })).toBeInTheDocument();
+    open(`/?scope=site:${siteId('Riverside Annex')}`);
+    expect(card('Riverside Annex')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Show Comms Room in 3D' })).toHaveAttribute('aria-pressed', 'true');
-    expect(within(crumbs()).getByRole('button', { name: 'Thailand' })).toHaveAttribute('aria-current', 'location');
-    // All three sample sites sit in Bangkok: one count marker, named for the province.
-    expect(screen.getByRole('button', { name: 'Bangkok — 3 sites. Show them' })).toBeInTheDocument();
-    expect(screen.getByText(/Outlines: Natural Earth · sample sites at illustrative spots/)).toBeInTheDocument();
   });
 
   it('flies in from the keyboard: the count splits into sites, a site is picked, the breadcrumb follows', async () => {
@@ -107,10 +140,14 @@ describe('Home’s globe hero', () => {
     screen.getByRole('button', { name: 'Bangkok — 3 sites. Show them' }).focus();
     await user.keyboard('{Enter}');
     const campus = await screen.findByRole('button', { name: /^Riverside Campus, Sample · Riverside Campus, 4 rooms$/ });
-    expect(screen.getByRole('button', { name: /^Bangna campus,/ })).toHaveAttribute('aria-pressed', 'true');
+    // The count held all of Bangkok's sites: the numbers and rooms follow it there.
+    expect(screen.getByRole('heading', { level: 2, name: 'Bangkok · 3 sites' })).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'Rooms in Bangkok' })).toBeInTheDocument();
+    expect(within(crumbs()).getByRole('button', { name: 'Bangkok' })).toHaveAttribute('aria-current', 'location');
     campus.focus();
     await user.keyboard('{Enter}');
-    expect(screen.getByRole('heading', { level: 1, name: 'Riverside Campus' })).toBeInTheDocument();
+    expect(card('Riverside Campus')).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'Numbers for Riverside Campus' })).toBeInTheDocument();
     expect(campus).toHaveAttribute('aria-pressed', 'true');
     const trail = within(crumbs()).getAllByRole('button').map((b) => b.textContent);
     expect(trail).toEqual(['World', 'Thailand', 'Bangkok', 'Riverside Campus']);
@@ -120,12 +157,44 @@ describe('Home’s globe hero', () => {
     await user.keyboard('{Enter}');
     expect(await screen.findByRole('button', { name: 'Thailand — 3 sites. Show them' })).toBeInTheDocument();
     expect(within(crumbs()).getByRole('button', { name: 'World' })).toHaveAttribute('aria-current', 'location');
+    expect(screen.getByRole('heading', { level: 2, name: 'Everywhere · 3 sites' })).toBeInTheDocument();
+  });
+
+  it('scopes the numbers and the rooms to a country from its count, and Show all clears it', async () => {
+    const user = userEvent.setup();
+    load(sample());
+    const { router } = open();
+    await map();
+    await user.click(within(crumbs()).getByRole('button', { name: 'World' }));
+    await user.click(await screen.findByRole('button', { name: 'Thailand — 3 sites. Show them' }));
+    expect(screen.getByRole('heading', { level: 2, name: 'Thailand · 3 sites' })).toBeInTheDocument();
+    const rooms = screen.getByRole('region', { name: 'Rooms in Thailand' });
+    expect(within(rooms).getAllByRole('article')).toHaveLength(7);
+    await waitFor(() => expect(router.state.location.search).toBe('?scope=country%3ATH'));
+    await user.click(within(rooms).getByRole('button', { name: 'Show all' }));
+    expect(screen.getByRole('region', { name: 'All rooms' })).toBeInTheDocument();
+    await waitFor(() => expect(router.state.location.search).toBe(''));
+  });
+
+  it('floats a picked site’s card over the map, and closing it steps up to the site’s province', async () => {
+    const user = userEvent.setup();
+    load(sample());
+    open(`/?scope=site:${siteId('Bangna campus')}`);
+    await map();
+    const rooms = screen.getByRole('region', { name: 'Rooms in Bangna campus' });
+    expect(within(rooms).getAllByRole('article')).toHaveLength(2);
+    // One site in scope: rooms can be added to it.
+    expect(within(rooms).getByRole('button', { name: /^New room in Bangna campus/ })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Close Bangna campus' }));
+    expect(document.getElementById('home-site-name')).toBeNull();
+    expect(screen.getByRole('region', { name: 'Rooms in Bangkok' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^New room in/ })).toBeNull();
   });
 
   it('switches the room in the card by its row or by next, never by itself', async () => {
     const user = userEvent.setup();
     load(sample());
-    open();
+    open(`/?scope=site:${siteId('Bangna campus')}`);
     expect(screen.getByRole('button', { name: 'Show Server room A in 3D' })).toHaveAttribute('aria-pressed', 'true');
     await user.click(screen.getByRole('button', { name: 'Next room' }));
     expect(screen.getByRole('button', { name: 'Show MDF-1 in 3D' })).toHaveAttribute('aria-pressed', 'true');
@@ -138,14 +207,17 @@ describe('Home’s globe hero', () => {
     load(createWorkspace());
     send({ type: 'project/create', id: 'p', name: 'Acme' });
     send({ type: 'site/create', projectId: 'p', id: 's', name: 'Warehouse 2' });
+    const user = userEvent.setup();
     const { unmount } = open();
     await map();
     expect(screen.getByText('No site is on the map yet.')).toBeInTheDocument();
+    await showNotPlaced(user);
     const list = screen.getByRole('region', { name: /Not placed yet/ });
     expect(within(list).getByRole('button', { name: 'Place Warehouse 2 on the map' })).toBeInTheDocument();
     unmount();
     useAuthStore.setState({ status: 'signed-in', user: { id: 'u', name: 'Vee', email: 'v@x', role: 'viewer', mustChangePassword: false } });
     open();
+    await showNotPlaced(user);
     const viewerList = screen.getByRole('region', { name: /Not placed yet/ });
     expect(within(viewerList).queryByRole('button', { name: /^Place/ })).toBeNull();
     expect(viewerList).toHaveTextContent('An editor can place them.');
@@ -158,8 +230,8 @@ describe('Home’s globe hero', () => {
     send({ type: 'site/create', projectId: 'p', id: 's', name: 'Warehouse 2' });
     open();
     await map();
-    const placeButton = screen.getByRole('button', { name: 'Place Warehouse 2 on the map' });
-    await user.click(placeButton);
+    await showNotPlaced(user);
+    await user.click(screen.getByRole('button', { name: 'Place Warehouse 2 on the map' }));
     const banner = screen.getByRole('region', { name: 'Place Warehouse 2 on the map' });
     expect(banner).toHaveTextContent('Zoom in to the province first');
     // Place mode takes focus to the map, so the keys work at once.
@@ -178,21 +250,22 @@ describe('Home’s globe hero', () => {
     const site = useWorkspaceStore.getState().workspace.projects.find((p) => p.id === 'p')!.sites[0]!;
     expect(site.location!.lat).toBeCloseTo(lat, 5);
     expect(site.location!.lon).toBeCloseTo(lon, 5);
-    expect(screen.queryByRole('region', { name: /Not placed yet/ })).toBeNull();
-    expect(screen.getByRole('heading', { level: 1, name: 'Warehouse 2' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^Not placed yet/ })).toBeNull();
+    expect(card('Warehouse 2')).toBeInTheDocument();
     // The Place button left with the list: focus goes to the site's new pin.
     await waitFor(() => expect(screen.getByRole('button', { name: 'Warehouse 2, Acme, 0 rooms' })).toHaveFocus());
   });
 
-  it('leaves Place mode on Escape from anywhere and gives focus back to the Place button', async () => {
+  it('leaves Place mode on Escape from anywhere and gives focus back to the Not placed yet button', async () => {
     const user = userEvent.setup();
     load(sample());
     send({ type: 'project/create', id: 'p', name: 'Acme' });
     send({ type: 'site/create', projectId: 'p', id: 's', name: 'Warehouse 2' });
     open();
     await map();
-    const placeButton = screen.getByRole('button', { name: 'Place Warehouse 2 on the map' });
-    await user.click(placeButton);
+    await showNotPlaced(user);
+    const placeButton = screen.getByRole('button', { name: /^Not placed yet/ });
+    await user.click(screen.getByRole('button', { name: 'Place Warehouse 2 on the map' }));
     expect(screen.getByRole('region', { name: 'Place Warehouse 2 on the map' })).toBeInTheDocument();
     (document.activeElement as HTMLElement).blur();
     await user.keyboard('{Escape}');
@@ -229,7 +302,7 @@ describe('Home’s globe hero', () => {
     const chooser = screen.getByRole('group', { name: 'These sites share one spot' });
     expect(within(chooser).getByRole('button', { name: 'Hall A' })).toHaveFocus();
     await user.click(within(chooser).getByRole('button', { name: 'Hall B' }));
-    expect(screen.getByRole('heading', { level: 1, name: 'Hall B' })).toBeInTheDocument();
+    expect(card('Hall B')).toBeInTheDocument();
   });
 
   it('brings a site into view and picks it once its location is saved in the dialog', async () => {
@@ -242,7 +315,7 @@ describe('Home’s globe hero', () => {
     await user.click(screen.getByRole('button', { name: 'Location of Sydney office' }));
     await user.type(screen.getByRole('textbox', { name: 'Google Maps link or coordinates' }), '-33.8688, 151.2093');
     await user.click(screen.getByRole('button', { name: 'Save location' }));
-    expect(screen.getByRole('heading', { level: 1, name: 'Sydney office' })).toBeInTheDocument();
+    expect(card('Sydney office')).toBeInTheDocument();
     expect(await screen.findByRole('button', { name: 'Sydney office, Acme, 0 rooms' })).toHaveAttribute('aria-pressed', 'true');
   });
 
@@ -271,6 +344,126 @@ describe('Home’s globe hero', () => {
     // Firefox reports lines, not pixels: it zooms all the same.
     fireEvent.wheel(root, { deltaY: -10, deltaMode: 1, ctrlKey: true });
     expect(scale()).not.toBe(zoomed);
+  });
+
+  it('rings the selected pin without the pulse under reduced motion', async () => {
+    load(sample());
+    open(`/?scope=site:${siteId('Bangna campus')}`);
+    await map();
+    const pin = await screen.findByRole('button', { name: /^Bangna campus,/ });
+    expect(pin).toHaveAttribute('aria-pressed', 'true');
+    expect(pin.closest('li')!.querySelector('.globe-marker__pulse')).toBeNull();
+  });
+
+  it('narrows the pins, the numbers and the rooms as the search is typed, without moving the globe', async () => {
+    const user = userEvent.setup();
+    load(sample());
+    const { router } = open();
+    await map();
+    const scale = screen.queryByRole('img', { name: /^Scale bar/ })?.getAttribute('aria-label');
+    const marker = () => screen.getByRole('button', { name: /^Bangkok — / }).closest('li')!.style.transform;
+    const before = marker();
+    const trail = within(crumbs()).getAllByRole('button').map((b) => b.textContent);
+    await user.keyboard('/');
+    expect(screen.getByRole('searchbox', { name: 'Search sites and rooms' })).toHaveFocus();
+    await user.keyboard('shaft');
+    expect(screen.getByRole('button', { name: 'Bangkok — 1 of 3 sites match. Show them' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 2, name: 'Everywhere · 1 site · matching “shaft”' })).toBeInTheDocument();
+    const rooms = screen.getByRole('region', { name: 'All rooms' });
+    expect(within(rooms).getAllByRole('article').map((a) => within(a).getByRole('heading').textContent)).toEqual(['Shaft L1', 'Shaft L2', 'Shaft L3']);
+    // The globe hasn't moved: same zoom, same marker position, same crumbs.
+    expect(screen.queryByRole('img', { name: /^Scale bar/ })?.getAttribute('aria-label')).toBe(scale);
+    expect(marker()).toBe(before);
+    expect(within(crumbs()).getAllByRole('button').map((b) => b.textContent)).toEqual(trail);
+    // Assistive tech hears what is left.
+    const results = document.querySelector('.home-results')!;
+    expect(results).toHaveAttribute('role', 'status');
+    await waitFor(() => expect(results).toHaveTextContent('3 rooms in 1 site'));
+    await waitFor(() => expect(router.state.location.search).toBe('?q=shaft'));
+    // Show 1 match flies to it.
+    await user.click(screen.getByRole('button', { name: 'Show 1 match' }));
+    await waitFor(() => expect(screen.queryByRole('img', { name: /^Scale bar/ })?.getAttribute('aria-label')).not.toBe(scale));
+    // Escape clears it.
+    await user.click(screen.getByRole('searchbox', { name: 'Search sites and rooms' }));
+    await user.keyboard('{Escape}');
+    expect(screen.getByRole('heading', { level: 2, name: 'Everywhere · 3 sites' })).toBeInTheDocument();
+    await user.keyboard('mdf{Enter}');
+    expect(router.state.location.pathname).toMatch(/^\/rooms\/.+\/plan$/);
+  });
+
+  it('fades the pins a search doesn’t keep, and Enter on a site picks it', async () => {
+    const user = userEvent.setup();
+    load(sample());
+    open(`/?scope=province:TH-10`);
+    await map();
+    expect(await screen.findByRole('button', { name: /^Bangna campus,/ })).toBeInTheDocument();
+    await user.type(screen.getByRole('searchbox', { name: 'Search sites and rooms' }), 'riverside campus');
+    expect(screen.getByRole('button', { name: /^Bangna campus,/ }).closest('li')).toHaveClass('is-dim');
+    expect(document.querySelectorAll('.globe-marker:not(.is-dim)').length).toBeGreaterThan(0);
+    // A faded pin says so to assistive tech.
+    expect(screen.getByRole('button', { name: /^Bangna campus, .*, no match$/ })).toBeInTheDocument();
+    const scale = screen.getByRole('img', { name: /^Scale bar/ }).getAttribute('aria-label');
+    await user.keyboard('{Enter}');
+    expect(card('Riverside Campus')).toBeInTheDocument();
+    // Enter on a site flies to it.
+    await waitFor(() => expect(screen.getByRole('img', { name: /^Scale bar/ }).getAttribute('aria-label')).not.toBe(scale));
+  });
+
+  it('reads the search, the scope and the chip from the address, and offers Clear filters when nothing matches', async () => {
+    const user = userEvent.setup();
+    load(sample());
+    const { router } = open('/?q=shaft&rooms=approved');
+    expect(screen.getByRole('searchbox', { name: 'Search sites and rooms' })).toHaveValue('shaft');
+    const rooms = screen.getByRole('region', { name: 'All rooms' });
+    expect(within(rooms).getByRole('button', { name: /^Approved/ })).toHaveAttribute('aria-pressed', 'true');
+    expect(within(rooms).getByRole('button', { name: /^All/ })).toHaveTextContent('3');
+    expect(within(rooms).getAllByRole('article')).toHaveLength(1);
+    await user.click(within(rooms).getByRole('button', { name: /^Needs attention/ }));
+    expect(within(rooms).getByText('No rooms match “shaft” here.')).toBeInTheDocument();
+    await user.click(within(rooms).getByRole('button', { name: 'Clear filters' }));
+    expect(within(rooms).getAllByRole('article')).toHaveLength(7);
+    await waitFor(() => expect(router.state.location.search).toBe(''));
+  });
+
+  it('follows the address when it changes from outside: the logo resets Home, back and forward restore the view', async () => {
+    const user = userEvent.setup();
+    load(sample());
+    const { router } = open('/?q=shaft');
+    expect(screen.getByRole('searchbox', { name: 'Search sites and rooms' })).toHaveValue('shaft');
+    await user.click(screen.getAllByRole('link', { name: 'Glasshouse' })[0]!);
+    expect(screen.getByRole('searchbox', { name: 'Search sites and rooms' })).toHaveValue('');
+    const rooms = () => screen.getByRole('region', { name: 'All rooms' });
+    expect(within(rooms()).getAllByRole('article')).toHaveLength(7);
+    await user.click(within(rooms()).getByRole('button', { name: /^Draft/ }));
+    await waitFor(() => expect(router.state.location.search).toBe('?rooms=draft'));
+    await user.click(within(rooms()).getByRole('button', { name: /^Approved/ }));
+    await waitFor(() => expect(router.state.location.search).toBe('?rooms=approved'));
+    await act(() => router.navigate(-1));
+    expect(within(rooms()).getByRole('button', { name: /^Draft/ })).toHaveAttribute('aria-pressed', 'true');
+    expect(within(rooms()).getAllByRole('article')).toHaveLength(5);
+    await act(() => router.navigate(1));
+    expect(within(rooms()).getByRole('button', { name: /^Approved/ })).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  it('closes the card with Escape and gives focus to the site’s pin', async () => {
+    const user = userEvent.setup();
+    load(sample());
+    open(`/?scope=site:${siteId('Bangna campus')}`);
+    await map();
+    screen.getByRole('button', { name: 'Close Bangna campus' }).focus();
+    await user.keyboard('{Escape}');
+    expect(document.getElementById('home-site-name')).toBeNull();
+    await waitFor(() => expect(screen.getByRole('button', { name: /^Bangna campus,/ })).toHaveFocus());
+  });
+
+  it('leads the Before approval count to the rooms that need attention', async () => {
+    const user = userEvent.setup();
+    load(sample());
+    open();
+    await user.click(screen.getByRole('button', { name: /^3 blocking/ }));
+    const rooms = screen.getByRole('region', { name: 'All rooms' });
+    expect(within(rooms).getByRole('button', { name: /^Needs attention/ })).toHaveAttribute('aria-pressed', 'true');
+    expect(within(rooms).getAllByRole('article')).toHaveLength(2);
   });
 
   it('speaks Thai on the map: province and country names from the data and the browser', async () => {
@@ -311,6 +504,14 @@ describe('Home’s globe hero', () => {
       await wait(500);
       return marker().style.transform === start;
     };
+
+    it('pulses the selected pin while its site is picked', async () => {
+      load(sample());
+      open(`/?scope=site:${siteId('Bangna campus')}`);
+      const pin = await screen.findByRole('button', { name: /^Bangna campus,/ });
+      expect(pin.closest('li')!.querySelector('.globe-marker__pulse')).not.toBeNull();
+      expect(screen.getByRole('button', { name: /^Riverside Campus,/ }).closest('li')!.querySelector('.globe-marker__pulse')).toBeNull();
+    });
 
     it('turns the world view slowly, and stops for a pointer, focus or the pause button', async () => {
       const user = userEvent.setup();
