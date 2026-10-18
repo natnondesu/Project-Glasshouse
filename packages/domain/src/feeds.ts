@@ -2,7 +2,7 @@ import { footprintOf } from './footprint';
 import { centerOf, localToWorld, type Point, type Ring } from './geometry/polygon';
 import type { Id, PlanContent, PowerFeed, RoomObject } from './model/types';
 import { err, ok, type Result } from './result';
-import { isPowerSource, panelOf, rackCurrentA, WALL_MOUNTED_SOURCES } from './sources';
+import { isInUse, isPowerSource, panelOf, rackCurrentA, WALL_MOUNTED_SOURCES } from './sources';
 import { closestOnRing, insetVertex, inward, type OnRing } from './walls';
 
 export const MAX_FEEDS_PER_RACK = 8;
@@ -103,7 +103,11 @@ export function loadA(content: PlanContent, sourceId: Id): number {
   return content.objects.filter((o) => racks.has(o.id)).reduce((sum, r) => sum + rackCurrentA(r), 0);
 }
 
-function validate(content: PlanContent, feed: PowerFeed): Result<PowerFeed> {
+const notInUse = (source: RoomObject, feed: PowerFeed): Result<PowerFeed> =>
+  err('invalid_value', `${source.name} is marked not in use. Pick a panel in use, or mark it in use first.`, [feed.id, source.id]);
+
+/** `wiring` is true when the command puts the feed onto a source (new feed, another source, a way); a feed already there can still be tidied up. */
+function validate(content: PlanContent, feed: PowerFeed, wiring: boolean): Result<PowerFeed> {
   const target = content.objects.find((o) => o.id === feed.targetId);
   const source = content.objects.find((o) => o.id === feed.sourceId);
   if (!target || !source) return err('not_found', 'That object no longer exists.', [feed.targetId, feed.sourceId]);
@@ -111,6 +115,7 @@ function validate(content: PlanContent, feed: PowerFeed): Result<PowerFeed> {
     return err('invalid_value', 'Power feeds run from a power source to a rack or another power source.', [feed.targetId, feed.sourceId]);
   }
   if (target.id === source.id) return err('invalid_value', "A power source can't feed itself.", [feed.id]);
+  if (wiring && !isInUse(source)) return notInUse(source, feed);
   if (target.type !== 'rack') {
     // Sources form a tree: one input each, and never a loop.
     const input = content.feeds.find((f) => f.id !== feed.id && f.targetId === target.id);
@@ -141,7 +146,7 @@ export function applyFeedCommand(content: PlanContent, cmd: FeedCommand): Result
       if (content.feeds.filter((f) => f.targetId === cmd.feed.targetId).length >= MAX_FEEDS_PER_RACK) {
         return err('invalid_value', `A rack can have up to ${MAX_FEEDS_PER_RACK} power feeds.`, [cmd.feed.targetId]);
       }
-      const valid = validate(content, cmd.feed);
+      const valid = validate(content, cmd.feed, true);
       return valid.ok ? ok({ ...content, feeds: [...content.feeds, valid.value] }) : valid;
     }
     case 'feed/update': {
@@ -152,7 +157,8 @@ export function applyFeedCommand(content: PlanContent, cmd: FeedCommand): Result
       // Moving to another source drops the way; `way: null` clears it explicitly.
       const nextWay = way === null || (rest.sourceId !== undefined && rest.sourceId !== current.sourceId && way === undefined) ? undefined : (way ?? current.way);
       const { way: _old, ...withoutWay } = merged;
-      const valid = validate(content, nextWay === undefined ? withoutWay : { ...withoutWay, way: nextWay });
+      const wiring = (rest.sourceId !== undefined && rest.sourceId !== current.sourceId) || (nextWay !== undefined && nextWay !== current.way);
+      const valid = validate(content, nextWay === undefined ? withoutWay : { ...withoutWay, way: nextWay }, wiring);
       return valid.ok ? ok({ ...content, feeds: content.feeds.map((f) => (f.id === cmd.id ? valid.value : f)) }) : valid;
     }
     case 'feed/remove':

@@ -21,6 +21,8 @@ export type IssueCode =
   | 'over_design_limit'
   | 'feed_no_way'
   | 'feed_overload'
+  | 'feed_inactive_panel'
+  | 'panel_main_overload'
   | 'link_media_mismatch'
   | 'vlan_access_mismatch'
   | 'vlan_native_mismatch'

@@ -97,7 +97,16 @@ const rack = z.object({
 const simpleObject = z.object({ ...objectBase, type: z.enum(['existing_rack', 'door', 'mcb', 'furniture', 'wall_plug', 'industrial_socket', 'floor_box', 'ups', 'pdu', 'partition', 'wall_split_ac', 'precision_ac', 'display_wall']),
   hinge: z.enum(['left', 'right']).optional(),
   opening: z.enum(['swing', 'slide']).optional(),
-  panel: z.object({ phase: z.enum(['single', 'three']), ways: z.array(z.object({ ratingA: num, label: text })) }).optional(),
+  panel: z
+    .object({
+      phase: z.enum(['single', 'three']),
+      ways: z.array(z.object({ ratingA: num, label: text })),
+      inUse: z.boolean().optional(),
+      layout: z.enum(['row', 'column', 'two_column']).optional(),
+      numbering: z.enum(['odd_even', 'sequential']).optional(),
+      mainRatingA: num.optional(),
+    })
+    .optional(),
   wallBottomM: num.optional(),
   keepClearM: num.optional(),
 });
