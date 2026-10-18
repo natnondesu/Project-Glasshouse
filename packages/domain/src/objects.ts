@@ -1,6 +1,6 @@
 import { newId } from './ids';
-import { DEFAULT_CLEARANCE, DEFAULT_HEIGHTS_M, DEFAULT_RACK, DEFAULT_SIZES, NAME_PREFIX } from './model/defaults';
-import type { Metres, RoomObject, RoomObjectType } from './model/types';
+import { DEFAULT_CLEARANCE, DEFAULT_HEIGHTS_M, DEFAULT_RACK, DEFAULT_SIZES, DEFAULT_WALL_BOTTOM_M, NAME_PREFIX } from './model/defaults';
+import type { Metres, RoomObject, RoomObjectType, SimpleObject } from './model/types';
 import { rackAutoHeightM } from './units';
 
 export function nextName(objects: Pick<RoomObject, 'name'>[], type: RoomObjectType): string {
@@ -30,17 +30,21 @@ export function createObject(type: RoomObjectType, at: { x: Metres; y: Metres },
     };
   }
   const size = DEFAULT_SIZES[type];
-  return { ...base, type, w: size.w, d: size.d };
+  const wallBottomM = DEFAULT_WALL_BOTTOM_M[type];
+  return { ...base, type, w: size.w, d: size.d, ...(wallBottomM === undefined ? {} : { wallBottomM }) };
 }
+
+/** A split AC or display wall: hung on a wall with its bottom at `wallBottomM`, like a wall rack. */
+export const isWallHung = (o: RoomObject): o is SimpleObject => o.type !== 'rack' && DEFAULT_WALL_BOTTOM_M[o.type] !== undefined;
 
 export function effectiveHeight(o: RoomObject): Metres {
   if (o.height !== null) return o.height;
   return o.type === 'rack' ? rackAutoHeightM(o.capacityU) : DEFAULT_HEIGHTS_M[o.type];
 }
 
-/** The heights an object fills: a wall rack from its bottom up, everything else from the floor. */
+/** The heights an object fills: a wall rack, split AC or display wall from its bottom up, everything else from the floor. */
 export function verticalSpan(o: RoomObject): [Metres, Metres] {
-  const bottom = o.type === 'rack' ? (o.wallBottomM ?? 0) : 0;
+  const bottom = o.wallBottomM ?? 0;
   return [bottom, bottom + effectiveHeight(o)];
 }
 

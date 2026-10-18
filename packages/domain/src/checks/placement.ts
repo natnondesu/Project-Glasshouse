@@ -4,7 +4,8 @@ import { area, containedIn, EPS_AREA, overlaps, placementPolygon, type Poly } fr
 import type { PlanContent, RoomObject } from '../model/types';
 import type { Issue } from './types';
 import { isFlush } from '../sources';
-import { heightsOverlap } from '../objects';
+import { heightsOverlap, verticalSpan } from '../objects';
+import { isDoorInPartition } from '../partitions';
 
 interface Shape {
   object: RoomObject;
@@ -59,6 +60,7 @@ export function placementIssues(content: PlanContent): Issue[] {
     if (isFlush(a.object)) return;
     for (const b of shapes.slice(i + 1)) {
       if (isFlush(b.object) || !overlaps(a.poly, b.poly) || !heightsOverlap(a.object, b.object)) continue;
+      if (isDoorInPartition(a.object, b.object) || isDoorInPartition(b.object, a.object)) continue;
       issues.push({
         key: `object_overlap:${a.object.id}:${b.object.id}`,
         code: 'object_overlap',
@@ -74,6 +76,7 @@ export function placementIssues(content: PlanContent): Issue[] {
   for (const { object: rack } of shapes) {
     if (rack.type !== 'rack') continue;
     const zones = clearanceZones(rack);
+    const rackTop = verticalSpan(rack)[1];
     for (const side of ['front', 'rear'] as const) {
       const zone = zones[side];
       if (!zone) continue;
@@ -89,7 +92,8 @@ export function placementIssues(content: PlanContent): Issue[] {
         });
       }
       for (const other of shapes) {
-        if (other.object.id === rack.id || isFlush(other.object) || !overlaps(zone, other.poly)) continue;
+        // Hung above the rack (a split AC on the wall over an aisle) is not in the way.
+        if (other.object.id === rack.id || isFlush(other.object) || verticalSpan(other.object)[0] >= rackTop || !overlaps(zone, other.poly)) continue;
         const isDoor = other.object.type === 'door';
         const isSliding = isDoor && other.object.type !== 'rack' && other.object.opening === 'slide';
         issues.push({

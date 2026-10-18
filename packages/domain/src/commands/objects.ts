@@ -5,6 +5,7 @@ import { LIMITS } from '../model/defaults';
 import type { Id, Metres, Millimetres, PlanContent, Rack, RackOwner, RoomObject, Survey, Units, DoorHinge, DoorOpening } from '../model/types';
 import { err, ok, withTarget, type Failure, type Result } from '../result';
 import { formatMetres, normalizeAngle, rackAutoHeightM, snapTyped } from '../units';
+import { isWallHung } from '../objects';
 import { rackSpans, topU } from '../occupancy';
 import { definedOnly, inRange, isWholeInRange, validateName } from '../validation';
 
@@ -21,7 +22,7 @@ export interface ObjectPatch {
   usableDepthMm?: Millimetres;
   owner?: RackOwner;
   clearance?: Partial<Rack['clearance']>;
-  /** Racks only: a height hangs the rack on the wall; null stands it on the floor. */
+  /** Racks: a height hangs the rack on the wall; null stands it on the floor. Split ACs and display walls: always on a wall, so a number only. */
   wallBottomM?: Metres | null;
   hinge?: DoorHinge;
   opening?: DoorOpening;
@@ -33,7 +34,7 @@ export type ObjectCommand =
   | { type: 'object/rotate'; id: Id; by: 45 | -45 }
   | { type: 'object/remove'; id: Id };
 
-const RACK_ONLY: (keyof ObjectPatch)[] = ['capacityU', 'usableDepthMm', 'owner', 'clearance', 'wallBottomM'];
+const RACK_ONLY: (keyof ObjectPatch)[] = ['capacityU', 'usableDepthMm', 'owner', 'clearance'];
 /** Rounding to 0.01 m after a rotation can push a flush object a hair past the wall; absorb that. */
 const OVERFLOW_TOLERANCE_M = 0.01;
 
@@ -102,6 +103,8 @@ function validateObject(o: RoomObject, survey: Survey): Result<RoomObject> {
   if (n.type === 'rack') {
     const rackError = validateRackFields(n, name.value);
     if (rackError) return rackError;
+  } else if (n.wallBottomM !== undefined && !inRange(n.wallBottomM, 0, LIMITS.wallBottomMaxM)) {
+    return err('invalid_value', `The bottom of ${name.value} is at most ${formatMetres(LIMITS.wallBottomMaxM)} m off the floor.`, [o.id]);
   }
   if (!placementWithin(n, survey.width, survey.length)) {
     return err('out_of_bounds', `${name.value} would extend outside the room bounds.`, [o.id]);
@@ -135,9 +138,10 @@ export function addObject(content: PlanContent, object: RoomObject): Result<Plan
 export function updateObject(content: PlanContent, id: Id, patch: ObjectPatch): Result<PlanContent> {
   const current = content.objects.find((o) => o.id === id);
   if (!current) return err('not_found', 'That object no longer exists.', [id]);
-  if (current.type !== 'rack' && RACK_ONLY.some((key) => patch[key] !== undefined)) {
+  if (current.type !== 'rack' && (RACK_ONLY.some((key) => patch[key] !== undefined) || (patch.wallBottomM !== undefined && !isWallHung(current)))) {
     return err('invalid_value', `${current.name} is not a rack.`, [id]);
   }
+  if (patch.wallBottomM === null && isWallHung(current)) return err('invalid_value', `${current.name} always hangs on a wall; give its height instead.`, [id]);
   if ((patch.hinge !== undefined || patch.opening !== undefined) && current.type !== 'door') return err('invalid_value', `${current.name} is not a door.`, [id]);
   const { clearance, capacityU, usableDepthMm, owner, wallBottomM, ...common } = patch;
   let merged: RoomObject =
@@ -151,7 +155,7 @@ export function updateObject(content: PlanContent, id: Id, patch: ObjectPatch): 
           },
           wallBottomM,
         )
-      : { ...current, ...definedOnly(common) };
+      : { ...current, ...definedOnly(common), ...(typeof wallBottomM === 'number' ? { wallBottomM } : {}) };
 
   if (patch.angle !== undefined && patch.x === undefined && patch.y === undefined) {
     const [x, y] = topLeftForCenter(centerOf(current), merged.w, merged.d, normalizeAngle(merged.angle));

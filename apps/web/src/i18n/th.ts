@@ -205,6 +205,10 @@ export const th: Messages = {
       floor_box: 'เต้ารับพื้น',
       ups: 'UPS',
       pdu: 'PDU ของบุคคลที่สาม',
+      partition: 'ผนังกั้นห้อง',
+      wall_split_ac: 'แอร์ติดผนัง',
+      precision_ac: 'แอร์ Precision (ตั้งพื้น)',
+      display_wall: 'จอแสดงผลขนาดใหญ่ (Video wall)',
     },
     rackContents: (devices, reserved) =>
       [devices ? `อุปกรณ์ ${devices} ชิ้น` : '', reserved ? `ช่วงที่จองไว้ ${reserved} ช่วง` : ''].filter(Boolean).join(' และ '),
@@ -234,6 +238,10 @@ export const th: Messages = {
       floor_box: { label: 'วางเต้ารับพื้น', name: 'เต้ารับพื้น', hint: 'เต้ารับในพื้น สายจ่ายไฟเดินตรงไปที่แร็ค' },
       ups: { label: 'วาง UPS', name: 'UPS', hint: 'UPS แบบตั้งพื้นที่แร็คดึงไฟได้' },
       pdu: { label: 'วาง PDU ของบุคคลที่สาม', name: 'PDU ของบุคคลที่สาม', hint: 'PDU ตั้งพื้นของไซต์หรือบุคคลที่สาม' },
+      partition: { label: 'วางผนังกั้นห้อง', name: 'ผนังกั้นห้อง', hint: 'ผนังที่แบ่งห้อง วางประตูในผนังนี้ได้' },
+      wall_split_ac: { label: 'วางแอร์ติดผนัง', name: 'แอร์ติดผนัง', hint: 'แอร์แบบสปลิทติดผนัง ขอบล่างสูง 2.20 ม.' },
+      precision_ac: { label: 'วางแอร์ Precision', name: 'แอร์ Precision (ตั้งพื้น)', hint: 'แอร์ Precision แบบตั้งพื้น เว้นที่ด้านหน้า 1.00 ม. สำหรับงานบริการ' },
+      display_wall: { label: 'วางจอแสดงผลขนาดใหญ่', name: 'จอแสดงผลขนาดใหญ่ (Video wall)', hint: 'จอแสดงผลหรือ LED Video wall ติดผนัง วาดอย่างเดียว ไม่คิดไฟ' },
     },
   },
   viewMenu: {

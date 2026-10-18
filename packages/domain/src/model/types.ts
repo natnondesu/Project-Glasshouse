@@ -189,7 +189,20 @@ export interface Rack extends ObjectBase {
   wallBottomM?: Metres;
 }
 
-export type SimpleObjectType = 'existing_rack' | 'door' | 'mcb' | 'furniture' | 'wall_plug' | 'industrial_socket' | 'floor_box' | 'ups' | 'pdu';
+export type SimpleObjectType =
+  | 'existing_rack'
+  | 'door'
+  | 'mcb'
+  | 'furniture'
+  | 'wall_plug'
+  | 'industrial_socket'
+  | 'floor_box'
+  | 'ups'
+  | 'pdu'
+  | 'partition'
+  | 'wall_split_ac'
+  | 'precision_ac'
+  | 'display_wall';
 
 export type PanelPhase = 'single' | 'three';
 
@@ -219,6 +232,8 @@ export interface SimpleObject extends ObjectBase {
   opening?: DoorOpening;
   /** MCB panels only. */
   panel?: PanelConfig;
+  /** Wall split ACs and display walls only: the height of the object's bottom above the floor. */
+  wallBottomM?: Metres;
 }
 
 export type RoomObject = Rack | SimpleObject;

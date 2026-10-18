@@ -58,6 +58,11 @@ export const TOOL_SPECS: Record<Tool, ToolSpec> = {
   floor_box: { id: 'floor_box', shortcut: null, Icon: IconFloorBox },
   ups: { id: 'ups', shortcut: null, Icon: IconUps },
   pdu: { id: 'pdu', shortcut: null, Icon: IconPdu },
+  // Task 2 replaces the stand-in icons and adds these tools to the toolbar groups.
+  partition: { id: 'partition', shortcut: null, Icon: IconFurniture },
+  wall_split_ac: { id: 'wall_split_ac', shortcut: null, Icon: IconFurniture },
+  precision_ac: { id: 'precision_ac', shortcut: null, Icon: IconFurniture },
+  display_wall: { id: 'display_wall', shortcut: null, Icon: IconFurniture },
 };
 
 export const SOLO_TOOLS: Tool[] = ['select', 'pan'];

@@ -205,6 +205,10 @@ export const en = {
       floor_box: 'Floor box',
       ups: 'UPS',
       pdu: '3rd-party PDU',
+      partition: 'Partition',
+      wall_split_ac: 'Wall split AC',
+      precision_ac: 'Precision AC',
+      display_wall: 'Display wall',
     },
     /** "1 Device and 2 Reserved ranges"; empty string for an empty rack. */
     rackContents: (devices: number, reserved: number) =>
@@ -238,6 +242,10 @@ export const en = {
       floor_box: { label: 'Place floor box', name: 'Floor box', hint: 'An outlet in the floor; feeds run straight across to the rack.' },
       ups: { label: 'Place UPS', name: 'UPS', hint: 'A standing UPS that racks can draw from.' },
       pdu: { label: 'Place 3rd-party PDU', name: '3rd-party PDU', hint: 'A floor-standing PDU owned by the site or a third party.' },
+      partition: { label: 'Place partition', name: 'Partition', hint: 'A wall that splits the room. Doors can be placed in it.' },
+      wall_split_ac: { label: 'Place wall split AC', name: 'Wall split AC', hint: 'A split air conditioner hung on a wall, bottom at 2.20 m.' },
+      precision_ac: { label: 'Place precision AC', name: 'Precision AC', hint: 'A floor-standing precision air conditioner; keep 1.00 m clear in front for service.' },
+      display_wall: { label: 'Place display wall', name: 'Display wall', hint: 'A display or LED video wall on a wall. Drawn only: it takes no power.' },
     },
   },
   viewMenu: {

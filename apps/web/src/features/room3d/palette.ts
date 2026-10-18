@@ -27,7 +27,7 @@ const FALLBACK: Palette3D = {
   wallFill: '#dfe5ea',
   sky: '#e9eef2',
   category: { server: '#7fa2e8', network: '#b79af0', power: '#e2b46a', chassis: '#9aa6b2', misc: '#a89f90' },
-  object: { existing_rack: '#9aa6b2', door: '#b4a794', mcb: '#e2b46a', furniture: '#e2d8ca', wall_plug: '#f4f1ea', industrial_socket: '#2f6fd1', floor_box: '#8b96a1', ups: '#2b333c', pdu: '#3a4554' },
+  object: { existing_rack: '#9aa6b2', door: '#b4a794', mcb: '#e2b46a', furniture: '#e2d8ca', wall_plug: '#f4f1ea', industrial_socket: '#2f6fd1', floor_box: '#8b96a1', ups: '#2b333c', pdu: '#3a4554', partition: '#cfd6dc', wall_split_ac: '#f1f3f5', precision_ac: '#c8ced4', display_wall: '#1b2026' },
 };
 
 /** Reads the design tokens so 3D colours stay in step with the 2D views. */
@@ -62,6 +62,10 @@ export function readPalette(el: Element = document.documentElement): Palette3D {
       floor_box: FALLBACK.object.floor_box,
       ups: FALLBACK.object.ups,
       pdu: FALLBACK.object.pdu,
+      partition: FALLBACK.object.partition,
+      wall_split_ac: FALLBACK.object.wall_split_ac,
+      precision_ac: FALLBACK.object.precision_ac,
+      display_wall: FALLBACK.object.display_wall,
     },
   };
 }
