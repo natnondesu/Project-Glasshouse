@@ -100,6 +100,9 @@ export function createShowcaseProject(at: string): Result<Project> {
   run({ type: 'project/create', id: projectId, name: SHOWCASE_PROJECT_NAME });
   run({ type: 'site/create', projectId, id: campus, name: 'Riverside Campus' });
   run({ type: 'site/create', projectId, id: annex, name: 'Riverside Annex' });
+  // Illustrative coordinates on the Chao Phraya in Bangkok, about 2 km apart so the map can tell them apart up close.
+  run({ type: 'site/locate', siteId: campus, location: { lat: 13.7208, lon: 100.5135 } });
+  run({ type: 'site/locate', siteId: annex, location: { lat: 13.739, lon: 100.51 } });
 
   // ---- Server room: two network racks and five server racks facing each other across a cold aisle.
   const srv = room(campus, 'Server Room', 8, 6.5, { powerBudget: 60000, designLimitPct: 80, networkHandoff: 'Carrier fibre arrives on the north wall; patched to NET-01.' });

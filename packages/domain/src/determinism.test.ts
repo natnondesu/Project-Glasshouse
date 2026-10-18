@@ -67,6 +67,10 @@ beforeAll(() => {
     'project/delete': [{ type: 'project/delete', projectId: 'p' }],
     'site/create': [{ type: 'site/create', projectId: 'p', id: 's9', name: 'Site B' }],
     'site/rename': [{ type: 'site/rename', siteId: 's', name: 'Site Z' }],
+    'site/locate': [
+      { type: 'site/locate', siteId: 's', location: { lat: 13.668, lon: 100.605 } },
+      { type: 'site/locate', siteId: 's', location: null },
+    ],
     'site/delete': [{ type: 'site/delete', siteId: 's' }],
     'room/create': [{ type: 'room/create', siteId: 's', id: 'r9', floorAreaId: 'fa-r9', name: 'New room' }],
     'room/rename': [{ type: 'room/rename', roomId: 'r', name: 'MDF-X' }],

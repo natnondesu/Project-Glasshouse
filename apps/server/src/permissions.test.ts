@@ -7,6 +7,7 @@ const review = (command: object) => ({ type: 'review', roomId: 'r', command }) a
 describe('requiredRole', () => {
   it('follows the role matrix', () => {
     expect(requiredRole({ type: 'room/rename', roomId: 'r', name: 'X' })).toBe('editor');
+    expect(requiredRole({ type: 'site/locate', siteId: 's', location: { lat: 1, lon: 2 } })).toBe('editor');
     expect(requiredRole({ type: 'project/import', file: {} as never, resolution: {} as never })).toBe('editor');
     expect(requiredRole(review({ type: 'review/submit', designedBy: '', at: 't' }))).toBe('editor');
     expect(requiredRole(review({ type: 'note/add', id: 'n', text: 'x', at: 't' }))).toBe('editor');
