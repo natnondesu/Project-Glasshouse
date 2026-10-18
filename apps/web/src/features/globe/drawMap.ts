@@ -1,4 +1,4 @@
-import { geoGraticule, geoPath, type GeoProjection } from 'd3-geo';
+import { geoDistance, geoGraticule, geoPath, type GeoProjection } from 'd3-geo';
 import { LEVEL_PPD, type Camera, type Size } from './camera';
 import { regionName, type GeoData, type Region } from './geoData';
 import { boxTouches, projectionFor, visibleBox } from './projection';
@@ -58,6 +58,7 @@ export interface Rect {
 }
 
 /** One graticule step so lines sit at least ~50 px apart: 15° on the world view down to a hundredth of a degree. */
+const DEG = 180 / Math.PI;
 const STEPS = [30, 15, 10, 5, 2, 1, 0.5, 0.2, 0.1, 0.05, 0.02, 0.01, 0.005, 0.002, 0.001];
 const gridStep = (ppd: number): number => [...STEPS].reverse().find((s) => s * ppd >= 50) ?? STEPS[0]!;
 
@@ -125,7 +126,9 @@ export function drawMap(input: DrawInput): void {
   const projection = projectionFor(camera, size);
   const path = geoPath(projection, ctx);
   const view = visibleBox(camera, size);
-  const countries = geo.countries.filter((r) => boxTouches(r.box, view));
+  // On the world view nothing is cut by the frame, so leave out what is round the back of the globe instead.
+  const front = (r: Region): boolean => view !== null || geoDistance([camera.lon, camera.lat], r.centroid) * DEG - r.radius < 92;
+  const countries = geo.countries.filter((r) => boxTouches(r.box, view) && front(r));
   const showProvinces = camera.ppd >= 18;
   const provinces = showProvinces ? geo.provinces.filter((r) => boxTouches(r.box, view)) : [];
   const closeIn = camera.ppd >= LEVEL_PPD.province * 0.6;
@@ -139,10 +142,12 @@ export function drawMap(input: DrawInput): void {
   ctx.fillStyle = palette.sea;
   ctx.fill();
 
-  ctx.beginPath();
-  for (const r of countries) path(r.feature);
+  // Each outline set is projected once into a Path2D, then filled and stroked from it.
+  const land = new Path2D();
+  const landPath = geoPath(projection, land as unknown as CanvasRenderingContext2D);
+  for (const r of countries) landPath(r.feature);
   ctx.fillStyle = palette.land;
-  ctx.fill();
+  ctx.fill(land);
 
   // The graticule runs over land and sea alike, like the plan's construction grid; it is the scale's backdrop.
   const step = gridStep(camera.ppd);
@@ -166,20 +171,19 @@ export function drawMap(input: DrawInput): void {
   }
 
   if (provinces.length > 0) {
-    ctx.beginPath();
-    for (const r of provinces) path(r.feature);
+    const lines = new Path2D();
+    const linePath = geoPath(projection, lines as unknown as CanvasRenderingContext2D);
+    for (const r of provinces) linePath(r.feature);
     ctx.setLineDash([4, 3]);
     ctx.strokeStyle = palette.province;
     ctx.lineWidth = 1;
-    ctx.stroke();
+    ctx.stroke(lines);
     ctx.setLineDash([]);
   }
 
-  ctx.beginPath();
-  for (const r of countries) path(r.feature);
   ctx.strokeStyle = palette.border;
   ctx.lineWidth = camera.ppd < LEVEL_PPD.country ? 0.7 : 1.1;
-  ctx.stroke();
+  ctx.stroke(land);
 
   if (outlined) {
     ctx.beginPath();

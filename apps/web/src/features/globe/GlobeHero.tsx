@@ -27,6 +27,7 @@ export function GlobeHero({ sites, lastRoomId }: { sites: SiteSummary[]; lastRoo
   const [siteId, setSiteId] = useState(() => initialSiteId(sites, lastRoomId));
   const [roomBySite, setRoomBySite] = useState<Record<string, string>>({});
   const [mapReady, setMapReady] = useState(false);
+  const [mapFailed, setMapFailed] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const placingId = useLocationStore((s) => s.placing);
   const editLocation = useLocationStore((s) => s.edit);
@@ -42,11 +43,15 @@ export function GlobeHero({ sites, lastRoomId }: { sites: SiteSummary[]; lastRoo
   const waiting = notPlaced(sites);
   const placing = sites.find((s) => s.site.id === placingId) ?? null;
   const onReady = useCallback(() => setMapReady(true), []);
+  // "Place on the map" chosen elsewhere, but the map can't load here: the Location dialog is the other way in.
+  useEffect(() => {
+    if (mapFailed && placingId) editLocation(placingId);
+  }, [mapFailed, placingId, editLocation]);
 
   // Without the map (still loading, or failed) "Place" opens the Location dialog instead.
   const place = (id: string): void => {
     setSiteId(id);
-    if (mapReady) startPlacing(id);
+    if (mapReady && !mapFailed) startPlacing(id);
     else editLocation(id);
   };
   const savePlace = (location: GeoPoint): string | null => {
@@ -78,7 +83,7 @@ export function GlobeHero({ sites, lastRoomId }: { sites: SiteSummary[]; lastRoo
       />
       <div className="globe-hero__map">
         <div className="globe-hero__paper">
-          <SceneBoundary title={m.globe.unavailable} message={m.globe.failed} reload={m.home.reload} what="the site map">
+          <SceneBoundary title={m.globe.unavailable} message={m.globe.failed} reload={m.home.reload} what="the site map" onError={() => setMapFailed(true)}>
             <Suspense fallback={<p className="home-hero__fallback">{m.globe.loading}</p>}>
               <GlobeMap
                 sites={mapSites}

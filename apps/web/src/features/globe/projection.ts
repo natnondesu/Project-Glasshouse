@@ -14,7 +14,8 @@ export function projectionFor(camera: Camera, size: Size): GeoProjection {
       [-2, -2],
       [size.width + 2, size.height + 2],
     ])
-    .precision(0.4);
+    // Adaptive resampling: coarser on the world view, where a pixel is many kilometres.
+    .precision(camera.ppd < 12 ? 0.9 : 0.4);
 }
 
 /** Where a point lands on screen, or null on the far side of the globe. */

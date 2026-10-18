@@ -1,4 +1,4 @@
-import { geoBounds, geoCentroid, geoContains } from 'd3-geo';
+import { geoBounds, geoCentroid, geoContains, geoDistance } from 'd3-geo';
 import type { Feature, FeatureCollection, Geometry } from 'geojson';
 import { feature } from 'topojson-client';
 import countriesUrl from './data/countries-50m.topo.json?url';
@@ -15,6 +15,8 @@ export interface Region {
   feature: Feature<Geometry>;
   box: GeoBox;
   centroid: [number, number];
+  /** Degrees from the centroid to the far corner of the box: enough to tell when a region is round the back. */
+  radius: number;
 }
 
 export interface GeoData {
@@ -30,7 +32,15 @@ function regions<P extends Record<string, string>>(topology: Topology, object: s
   const layer = topology.objects[object];
   if (!layer) throw new Error(`The map data has no "${object}" layer.`);
   const collection = feature(topology, layer) as unknown as FeatureCollection<Geometry, P>;
-  return collection.features.map((f) => ({ ...read(f.properties), feature: f as Feature<Geometry>, box: geoBounds(f as Feature<Geometry>) as GeoBox, centroid: geoCentroid(f as Feature<Geometry>) }));
+  return collection.features.map((f) => {
+    const shape = f as Feature<Geometry>;
+    const box = geoBounds(shape) as GeoBox;
+    const centroid = geoCentroid(shape);
+    const [[w, s], [e, n]] = box;
+    const corners: [number, number][] = [[w, s], [w, n], [e, s], [e, n]];
+    const radius = Math.max(...corners.map((c) => geoDistance(centroid, c))) * (180 / Math.PI);
+    return { ...read(f.properties), feature: shape, box, centroid, radius };
+  });
 }
 
 async function fetchTopology(url: string): Promise<Topology> {

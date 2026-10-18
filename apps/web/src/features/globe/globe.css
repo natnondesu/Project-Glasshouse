@@ -952,3 +952,27 @@
     height: 420px;
   }
 }
+
+/* Short laptop screens (1280×720): tighter rhythm so two room rows fit beside the 3D. */
+@media (max-height: 780px) {
+  .site-card {
+    gap: 10px;
+    padding: 18px 22px 16px;
+  }
+
+  .site-card__head {
+    gap: 3px;
+  }
+
+  .site-card__head h1 {
+    font-size: 28px;
+  }
+
+  .site-card__facts dd {
+    font-size: var(--text-md);
+  }
+
+  .site-card__paper {
+    height: 118px;
+  }
+}
