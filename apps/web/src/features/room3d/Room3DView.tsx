@@ -182,7 +182,7 @@ export default function Room3DView({ location, readOnly = false }: { location: R
             {pathToggle(selected.id, selected.name)}
           </section>
         ) : selectedObject ? (
-          <ObjectCard object={selectedObject} onManageWays={() => setManagedId(selectedObject.id)}>
+          <ObjectCard object={selectedObject} readOnly={readOnly} onManageWays={() => setManagedId(selectedObject.id)}>
             {pathToggle(selectedObject.id, selectedObject.name)}
           </ObjectCard>
         ) : (

@@ -74,11 +74,21 @@ export function fitLabel(text: string, availablePx: number, charPx = CHAR_PX_12)
   return n < MIN_CHARS ? null : `${text.slice(0, n)}…`;
 }
 
-/** Name tag above an object, revealed on hover or keyboard focus by CSS. */
-export function HoverTag({ name, x, y }: { name: string; x: number; y: number }) {
+/** The room the screen leaves a name tag: it never goes under the edge, a floating tool, or the inspector. */
+export interface TagBounds {
+  minX: number;
+  maxX: number;
+  minY: number;
+}
+
+/** Name tag above an object, kept inside `bounds`. Drawn in the overlay above every object, so nothing paints over it. */
+export function HoverTag({ name, x, y, bounds }: { name: string; x: number; y: number; bounds: TagBounds }) {
   const w = name.length * CHAR_PX_12 + 14;
+  // A canvas narrower than the tag keeps its left end readable rather than centring it off both sides.
+  const left = Math.max(bounds.minX, Math.min(x - w / 2, bounds.maxX - w));
+  const top = Math.max(bounds.minY, y - 26);
   return (
-    <g className="obj__hover-tag" aria-hidden="true" transform={`translate(${x - w / 2} ${y - 26})`}>
+    <g className="obj__hover-tag" aria-hidden="true" transform={`translate(${left} ${top})`}>
       <rect width={w} height={20} rx={3} />
       <text className="obj__hover" x={w / 2} y={14} textAnchor="middle">
         {name}

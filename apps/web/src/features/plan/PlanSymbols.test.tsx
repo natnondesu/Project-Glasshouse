@@ -1,9 +1,10 @@
 import { createObject, emptyContent, type Issue, type PlanContent, type Rack, type RoomObject } from '@glasshouse/domain';
 import { render } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { useViewport } from '../../viewport/useViewport';
 import { PlanCanvas } from './PlanCanvas';
-import type { Preview } from './layers';
+import { ObjectsLayer, type Preview } from './layers';
 import { ALL_LAYERS, type PlanLayers } from './ViewMenu';
 
 function Harness({ objects }: { objects: RoomObject[] }) {
@@ -14,19 +15,21 @@ function Harness({ objects }: { objects: RoomObject[] }) {
 
 const at = (o: RoomObject, id: string, extra: Partial<RoomObject> = {}): RoomObject => ({ ...o, id, ...extra }) as RoomObject;
 
-it('shows a rack name whole, under the rack when it cannot fit inside, and on hover', () => {
+it('shows a rack name whole, under the rack when it cannot fit inside, and on hover', async () => {
   const rack = at(createObject('rack', { x: 4, y: 2 }, []), 'rk', { name: 'Deepvision Rack 01', w: 3, d: 2 } as Partial<Rack>);
   const { container } = render(<Harness objects={[rack]} />);
   const label = container.querySelector('[data-object-id="rk"] .obj__label')!;
   expect(label).toHaveClass('obj__label--outside');
   expect(label.textContent).toBe('Deepvision Rack 01');
-  expect(container.querySelector('[data-object-id="rk"] .obj__hover')!.textContent).toBe('Deepvision Rack 01');
+  await userEvent.hover(container.querySelector('[data-object-id="rk"]')!);
+  expect(container.querySelector('.obj__hover')!.textContent).toBe('Deepvision Rack 01');
 });
 
-it('gives every object a hover name tag, even ones too small for a label', () => {
+it('gives every object a hover name tag, even ones too small for a label', async () => {
   const mcb = at(createObject('mcb', { x: 0, y: 4 }, []), 'm', { name: 'MCB-01' });
   const { container } = render(<Harness objects={[mcb]} />);
-  expect(container.querySelector('[data-object-id="m"] .obj__hover')!.textContent).toBe('MCB-01');
+  await userEvent.hover(container.querySelector('[data-object-id="m"]')!);
+  expect(container.querySelector('.obj__hover')!.textContent).toBe('MCB-01');
 });
 
 it('draws an MCB panel symbol and a real door with leaf and swing that follows the hinge', () => {
@@ -234,7 +237,7 @@ describe('drawing a partition', () => {
   });
 });
 
-it('draws an MCB panel that is not in use greyed and dashed, still named on hover and to screen readers', () => {
+it('draws an MCB panel that is not in use greyed and dashed, still named on hover and to screen readers', async () => {
   const on = at(createObject('mcb', { x: 0, y: 4 }, []), 'on', { name: 'MCB-01' });
   const off = at(createObject('mcb', { x: 0, y: 6 }, []), 'off', { name: 'MCB-02', panel: { phase: 'three', ways: [], inUse: false } } as Partial<RoomObject>);
   const { container } = render(<Harness objects={[on, off]} />);
@@ -242,16 +245,81 @@ it('draws an MCB panel that is not in use greyed and dashed, still named on hove
   const greyed = container.querySelector('[data-object-id="off"]')!;
   expect(greyed).toHaveClass('obj--off');
   expect(greyed).toHaveAccessibleName('MCB-02, MCB panel, not in use');
-  expect(greyed.querySelector('.obj__hover')!.textContent).toBe('MCB-02 · Not in use');
+  await userEvent.hover(greyed);
+  expect(container.querySelector('.obj__hover')!.textContent).toBe('MCB-02 · Not in use');
   expect(greyed.querySelector('.mcb__bolt')).not.toBeNull();
 });
 
-it('tags a panel not in use with its name and "Not in use" on the drawing, and leaves one in use unlabelled', () => {
+it('draws no always-visible tag for a panel not in use: only the greyed style, and the name on hover', async () => {
+  const user = userEvent.setup();
   const on = at(createObject('mcb', { x: 0, y: 4 }, []), 'on', { name: 'MCB-01' });
   const off = at(createObject('mcb', { x: 0, y: 6 }, []), 'off', { name: 'MCB-02', panel: { phase: 'three', ways: [], inUse: false } } as Partial<RoomObject>);
-  const off2 = at(createObject('mcb', { x: 0, y: 8 }, []), 'off2', { name: 'MCB-03', panel: { phase: 'three', ways: [], inUse: false } } as Partial<RoomObject>);
-  const { container } = render(<Harness objects={[on, off, off2]} />);
-  expect(container.querySelector('[data-object-id="on"] .obj__label--off')).toBeNull();
-  expect(container.querySelector('[data-object-id="off"] .obj__label--off')!.textContent).toBe('MCB-02 · Not in use');
-  expect(container.querySelector('[data-object-id="off2"] .obj__label--off')!.textContent).toBe('MCB-03 · Not in use');
+  const { container } = render(<Harness objects={[on, off]} />);
+  expect(container.querySelector('.obj__label--off')).toBeNull();
+  expect(container.querySelectorAll('.obj text')).toHaveLength(0);
+  await user.hover(container.querySelector('[data-object-id="off"]')!);
+  expect(container.querySelector('.obj__hover')!.textContent).toBe('MCB-02 · Not in use');
+});
+
+describe('the hover name label', () => {
+  it('shows only for the hovered object, and goes when the pointer leaves', async () => {
+    const user = userEvent.setup();
+    const a = at(createObject('mcb', { x: 0, y: 2 }, []), 'a', { name: 'MCB-01' });
+    const b = at(createObject('mcb', { x: 0, y: 5 }, []), 'b', { name: 'MCB-02' });
+    const { container } = render(<Harness objects={[a, b]} />);
+    expect(container.querySelector('.obj__hover')).toBeNull();
+    await user.hover(container.querySelector('[data-object-id="a"]')!);
+    expect([...container.querySelectorAll('.obj__hover')].map((t) => t.textContent)).toEqual(['MCB-01']);
+    await user.unhover(container.querySelector('[data-object-id="a"]')!);
+    expect(container.querySelector('.obj__hover')).toBeNull();
+  });
+
+  it('shows for the object the keyboard has reached', async () => {
+    const user = userEvent.setup();
+    const a = at(createObject('mcb', { x: 0, y: 2 }, []), 'a', { name: 'MCB-01' });
+    const b = at(createObject('mcb', { x: 0, y: 5 }, []), 'b', { name: 'MCB-02' });
+    const { container } = render(<Harness objects={[a, b]} />);
+    await user.tab();
+    await user.tab();
+    expect(container.querySelector('[data-object-id="a"]')).toHaveFocus();
+    expect([...container.querySelectorAll('.obj__hover')].map((t) => t.textContent)).toEqual(['MCB-01']);
+  });
+
+  it('is drawn after every object, outside them, so nothing paints over it', async () => {
+    const user = userEvent.setup();
+    const a = at(createObject('mcb', { x: 0, y: 2 }, []), 'a', { name: 'MCB-01' });
+    const b = at(createObject('mcb', { x: 0, y: 2.4 }, []), 'b', { name: 'MCB-02' });
+    const rack = at(createObject('rack', { x: 3, y: 2 }, []), 'rk', { name: 'RK-01' });
+    const { container } = render(<Harness objects={[a, b, rack]} />);
+    await user.hover(container.querySelector('[data-object-id="a"]')!);
+    const tag = container.querySelector('.obj__hover-tag')!;
+    expect(tag.closest('.obj')).toBeNull();
+    for (const object of container.querySelectorAll('.obj')) {
+      expect(object.compareDocumentPosition(tag) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    }
+    // Nothing is drawn after it but other overlays that carry no objects.
+    expect(tag.closest('svg')!.lastElementChild!.contains(tag)).toBe(true);
+  });
+
+  it('keeps inside the canvas, however close to an edge the object is', async () => {
+    const user = userEvent.setup();
+    const edge = at(createObject('mcb', { x: 0, y: 0 }, []), 'edge', { name: 'MCB-Emer-01' });
+    const { container } = render(<Harness objects={[edge]} />);
+    await user.hover(container.querySelector('[data-object-id="edge"]')!);
+    const [x, y] = container.querySelector('.obj__hover-tag')!.getAttribute('transform')!.match(/-?[\d.]+/g)!.map(Number);
+    expect(x).toBeGreaterThanOrEqual(0);
+    expect(y).toBeGreaterThanOrEqual(0);
+  });
+
+  it('is not drawn at all on a static drawing, a not-in-use panel included', () => {
+    const off = at(createObject('mcb', { x: 0, y: 2 }, []), 'a', { name: 'MCB-01', panel: { phase: 'three', ways: [], inUse: false } } as Partial<RoomObject>);
+    const { container } = render(
+      <svg>
+        <ObjectsLayer objects={[off]} view={{ scale: 50, tx: 0, ty: 0 }} flagged={new Set()} selectedId={null} onFocusObject={() => {}} isStatic />
+      </svg>,
+    );
+    expect(container.querySelector('.obj--off')).not.toBeNull();
+    expect(container.querySelector('.obj__hover-tag')).toBeNull();
+    expect(container.querySelector('.obj text')).toBeNull();
+  });
 });

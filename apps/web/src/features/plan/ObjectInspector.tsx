@@ -1,5 +1,5 @@
 import { DEFAULT_KEEP_CLEAR_M, formatMetres, hasKeepClear, isPowerSource, isWallHung, rackAutoHeightM, wallBottomOf, type ObjectPatch, type PlanContent, type RoomObject, DEFAULT_WALL_RACK } from '@glasshouse/domain';
-import { PanelFeeds, RackFeeds } from './feeds';
+import { PanelOutputs, RackFeeds, SourceInput } from './feeds';
 import { useState } from 'react';
 import { IconRotateCcw, IconRotateCw } from '../../ui/icons';
 import { NumberField } from '../../ui/NumberField';
@@ -14,10 +14,11 @@ interface ObjectInspectorProps {
   content: PlanContent;
   commit: CommitFn;
   onManagePanel?: (id: string) => void;
+  readOnly?: boolean;
   onDeleted: () => void;
 }
 
-export function ObjectInspector({ object, content, commit, onDeleted, onManagePanel }: ObjectInspectorProps) {
+export function ObjectInspector({ object, content, commit, onDeleted, onManagePanel, readOnly = false }: ObjectInspectorProps) {
   const m = useT();
   const [actionError, setActionError] = useState<string | null>(null);
   const update = (patch: ObjectPatch, key?: string): string | null =>
@@ -42,184 +43,190 @@ export function ObjectInspector({ object, content, commit, onDeleted, onManagePa
         </span>
       </header>
 
-      <fieldset className="inspector__group">
-        <legend className="visually-hidden">{m.inspector.identity}</legend>
-        <TextField id={`${object.id}-name`} label={m.inspector.name} value={object.name} onCommit={(v) => update({ name: v }, 'name')} />
-        {rack ? (
-          <div className="field">
-            <span className="field__label">{m.inspector.mounting}</span>
-            <div className="seg" role="group" aria-label={m.inspector.rackMounting}>
-              <button type="button" aria-pressed={rack.wallBottomM === undefined} onClick={() => act(() => update({ wallBottomM: null }))}>
-                {m.inspector.mount.floor}
-              </button>
-              {/* Hung on a wall there is nothing behind it to reach: the rear clearance goes to 0. */}
-              <button type="button" aria-pressed={rack.wallBottomM !== undefined} onClick={() => act(() => (rack.wallBottomM === undefined ? update({ wallBottomM: DEFAULT_WALL_RACK.bottomM, clearance: { rear: 0 } }) : null))}>
-                {m.inspector.mount.wall}
-              </button>
-            </div>
-            {rack.wallBottomM !== undefined ? (
-              <NumberField id={`${object.id}-wall-bottom`} label={m.inspector.wallBottom} unit="m" value={rack.wallBottomM} onCommit={(v) => (v === null ? null : update({ wallBottomM: v }, 'wallBottom'))} />
-            ) : null}
-          </div>
-        ) : null}
-        {rack ? (
-          <div className="field">
-            <span className="field__label">{m.inspector.owner}</span>
-            <div className="seg" role="group" aria-label={m.inspector.rackOwner}>
-              {(['oxygenai', 'customer'] as const).map((owner) => (
-                <button key={owner} type="button" aria-pressed={rack.owner === owner} onClick={() => act(() => update({ owner }))}>
-                  {m.inspector.ownerName[owner]}
+      {/* Frozen: every edit control locks, but the ways of a panel can still be opened, so that button sits between two locks. */}
+      <fieldset className="inspector__lock inspector__lock--flow" disabled={readOnly}>
+        <fieldset className="inspector__group">
+          <legend className="visually-hidden">{m.inspector.identity}</legend>
+          <TextField id={`${object.id}-name`} label={m.inspector.name} value={object.name} onCommit={(v) => update({ name: v }, 'name')} />
+          {rack ? (
+            <div className="field">
+              <span className="field__label">{m.inspector.mounting}</span>
+              <div className="seg" role="group" aria-label={m.inspector.rackMounting}>
+                <button type="button" aria-pressed={rack.wallBottomM === undefined} onClick={() => act(() => update({ wallBottomM: null }))}>
+                  {m.inspector.mount.floor}
                 </button>
-              ))}
+                {/* Hung on a wall there is nothing behind it to reach: the rear clearance goes to 0. */}
+                <button type="button" aria-pressed={rack.wallBottomM !== undefined} onClick={() => act(() => (rack.wallBottomM === undefined ? update({ wallBottomM: DEFAULT_WALL_RACK.bottomM, clearance: { rear: 0 } }) : null))}>
+                  {m.inspector.mount.wall}
+                </button>
+              </div>
+              {rack.wallBottomM !== undefined ? (
+                <NumberField id={`${object.id}-wall-bottom`} label={m.inspector.wallBottom} unit="m" value={rack.wallBottomM} onCommit={(v) => (v === null ? null : update({ wallBottomM: v }, 'wallBottom'))} />
+              ) : null}
             </div>
+          ) : null}
+          {rack ? (
+            <div className="field">
+              <span className="field__label">{m.inspector.owner}</span>
+              <div className="seg" role="group" aria-label={m.inspector.rackOwner}>
+                {(['oxygenai', 'customer'] as const).map((owner) => (
+                  <button key={owner} type="button" aria-pressed={rack.owner === owner} onClick={() => act(() => update({ owner }))}>
+                    {m.inspector.ownerName[owner]}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : null}
+          {object.type === 'door' ? (
+            <>
+              <div className="field">
+                <span className="field__label">{m.inspector.doorType}</span>
+                <div className="seg" role="group" aria-label={m.inspector.doorType}>
+                  {(['swing', 'slide'] as const).map((opening) => (
+                    <button key={opening} type="button" aria-pressed={(object.opening ?? 'swing') === opening} onClick={() => act(() => update({ opening }))}>
+                      {m.inspector.opening[opening]}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="field">
+                <span className="field__label">{object.opening === 'slide' ? m.inspector.slidesTo : m.inspector.hinge}</span>
+                <div className="seg" role="group" aria-label={object.opening === 'slide' ? m.inspector.doorSlide : m.inspector.doorHinge}>
+                  {(['left', 'right'] as const).map((hinge) => (
+                    <button key={hinge} type="button" aria-pressed={(object.hinge ?? 'left') === hinge} onClick={() => act(() => update({ hinge }))}>
+                      {m.inspector.side[hinge]}
+                    </button>
+                  ))}
+                </div>
+                <span className="inspector__note">{object.opening === 'slide' ? m.inspector.slideNote : m.inspector.hingeNote}</span>
+              </div>
+            </>
+          ) : null}
+        </fieldset>
+
+        <fieldset className="inspector__group">
+          <legend className="lbl">{m.inspector.placement}</legend>
+          <div className="field-pair">
+            <NumberField id={`${object.id}-x`} label="X" unit="m" value={object.x} onCommit={num('x')} />
+            <NumberField id={`${object.id}-y`} label="Y" unit="m" value={object.y} onCommit={num('y')} />
           </div>
-        ) : null}
-        {object.type === 'door' ? (
+          <div className="angle-row">
+            <button type="button" className="icon-btn" aria-label={m.inspector.rotateCcw} onClick={() => act(() => commit({ type: 'object/rotate', id: object.id, by: -45 }))}>
+              <IconRotateCcw />
+            </button>
+            <button type="button" className="icon-btn" aria-label={m.inspector.rotateCw} onClick={() => act(() => commit({ type: 'object/rotate', id: object.id, by: 45 }))}>
+              <IconRotateCw />
+            </button>
+            <NumberField id={`${object.id}-angle`} label={m.inspector.angle} unit="°" value={object.angle} onCommit={num('angle')} />
+          </div>
+          {isWallHung(object) ? (
+            <NumberField id={`${object.id}-wall-bottom`} label={m.inspector.heightAboveFloor} unit="m" value={wallBottomOf(object)} onCommit={(v) => (v === null ? null : update({ wallBottomM: v }, 'wallBottom'))} />
+          ) : null}
+          {actionError ? (
+            <p role="alert" className="field__error">
+              {actionError}
+            </p>
+          ) : null}
+        </fieldset>
+
+        <fieldset className="inspector__group">
+          <legend className="lbl">{m.inspector.size}</legend>
+          <div className="field-pair">
+            <NumberField id={`${object.id}-w`} label={isWall ? m.inspector.length : m.inspector.width} unit="m" value={object.w} onCommit={num('w')} />
+            <NumberField id={`${object.id}-d`} label={isWall ? m.inspector.thickness : m.inspector.depth} unit="m" value={object.d} onCommit={num('d')} />
+          </div>
+          <NumberField
+            id={`${object.id}-height`}
+            label={m.inspector.height}
+            unit="m"
+            allowEmpty
+            value={object.height}
+            placeholder={autoHeight === null ? m.inspector.heightDefault : m.inspector.heightFromCapacity(formatMetres(autoHeight))}
+            onCommit={(v) => update({ height: v }, 'height')}
+          />
+          {keepClearType && object.type !== 'rack' ? (
+            <>
+              <NumberField
+                id={`${object.id}-keep-clear`}
+                label={m.inspector.keepClear}
+                unit="m"
+                allowEmpty
+                value={object.keepClearM ?? null}
+                placeholder={formatMetres(DEFAULT_KEEP_CLEAR_M[keepClearType] ?? 0)}
+                onCommit={(v) => update({ keepClearM: v }, 'keepClear')}
+              />
+              <p className="inspector__note">{object.keepClearM === 0 ? m.inspector.keepClearNone : m.inspector.keepClearHint[keepClearType]}</p>
+            </>
+          ) : null}
+          {zoneNote ? <p className="inspector__note">{zoneNote}</p> : null}
+        </fieldset>
+
+        {rack ? (
           <>
-            <div className="field">
-              <span className="field__label">{m.inspector.doorType}</span>
-              <div className="seg" role="group" aria-label={m.inspector.doorType}>
-                {(['swing', 'slide'] as const).map((opening) => (
-                  <button key={opening} type="button" aria-pressed={(object.opening ?? 'swing') === opening} onClick={() => act(() => update({ opening }))}>
-                    {m.inspector.opening[opening]}
-                  </button>
-                ))}
+            <fieldset className="inspector__group">
+              <legend className="lbl">{m.inspector.capacity}</legend>
+              <div className="field-pair">
+                <NumberField id={`${object.id}-u`} label={m.inspector.capacity} unit="U" decimals={0} value={rack.capacityU} onCommit={(v) => (v === null ? null : update({ capacityU: v }, 'u'))} />
+                <NumberField
+                  id={`${object.id}-depth`}
+                  label={m.inspector.usableDepth}
+                  unit="mm"
+                  decimals={0}
+                  value={rack.usableDepthMm}
+                  onCommit={(v) => (v === null ? null : update({ usableDepthMm: v }, 'usable'))}
+                />
               </div>
-            </div>
-            <div className="field">
-              <span className="field__label">{object.opening === 'slide' ? m.inspector.slidesTo : m.inspector.hinge}</span>
-              <div className="seg" role="group" aria-label={object.opening === 'slide' ? m.inspector.doorSlide : m.inspector.doorHinge}>
-                {(['left', 'right'] as const).map((hinge) => (
-                  <button key={hinge} type="button" aria-pressed={(object.hinge ?? 'left') === hinge} onClick={() => act(() => update({ hinge }))}>
-                    {m.inspector.side[hinge]}
-                  </button>
-                ))}
+            </fieldset>
+            <fieldset className="inspector__group inspector__group--clearance">
+              <legend className="lbl">{m.inspector.clearance}</legend>
+              <div className="field-pair">
+                <NumberField
+                  id={`${object.id}-front`}
+                  label={m.inspector.front}
+                  unit="m"
+                  value={rack.clearance.front}
+                  onCommit={(v) => (v === null ? null : update({ clearance: { front: v } }, 'front'))}
+                />
+                <NumberField
+                  id={`${object.id}-rear`}
+                  label={m.inspector.rear}
+                  unit="m"
+                  value={rack.clearance.rear}
+                  onCommit={(v) => (v === null ? null : update({ clearance: { rear: v } }, 'rear'))}
+                />
               </div>
-              <span className="inspector__note">{object.opening === 'slide' ? m.inspector.slideNote : m.inspector.hingeNote}</span>
-            </div>
+            </fieldset>
           </>
         ) : null}
-      </fieldset>
 
-      <fieldset className="inspector__group">
-        <legend className="lbl">{m.inspector.placement}</legend>
-        <div className="field-pair">
-          <NumberField id={`${object.id}-x`} label="X" unit="m" value={object.x} onCommit={num('x')} />
-          <NumberField id={`${object.id}-y`} label="Y" unit="m" value={object.y} onCommit={num('y')} />
-        </div>
-        <div className="angle-row">
-          <button type="button" className="icon-btn" aria-label={m.inspector.rotateCcw} onClick={() => act(() => commit({ type: 'object/rotate', id: object.id, by: -45 }))}>
-            <IconRotateCcw />
+        {rack ? <RackFeeds rack={rack} content={content} commit={commit} /> : null}
+        {isPowerSource(object) ? <SourceInput panel={object} content={content} commit={commit} /> : null}
+      </fieldset>
+      {isPowerSource(object) ? <PanelOutputs panel={object} content={content} onManage={onManagePanel} readOnly={readOnly} /> : null}
+
+      <fieldset className="inspector__lock inspector__lock--flow" disabled={readOnly}>
+        <fieldset className="inspector__group">
+          <legend className="visually-hidden">{m.inspector.notes}</legend>
+          <TextField id={`${object.id}-notes`} label={m.inspector.notes} multiline value={object.notes} onCommit={(v) => update({ notes: v }, 'notes')} />
+        </fieldset>
+
+        <div className="inspector__danger">
+          <button
+            type="button"
+            className="btn btn--sm btn--danger"
+            onClick={() =>
+              void confirmAction({ title: m.inspector.removeQuestion(object.name, rackContents), body: m.confirmRemove.undo, confirmLabel: m.confirmRemove.action }).then((ok) => {
+                if (!ok) return;
+                const problem = commit({ type: 'object/remove', id: object.id });
+                setActionError(problem);
+                if (problem === null) onDeleted();
+              })
+            }
+          >
+            {m.inspector.removeObject(object.name)}
           </button>
-          <button type="button" className="icon-btn" aria-label={m.inspector.rotateCw} onClick={() => act(() => commit({ type: 'object/rotate', id: object.id, by: 45 }))}>
-            <IconRotateCw />
-          </button>
-          <NumberField id={`${object.id}-angle`} label={m.inspector.angle} unit="°" value={object.angle} onCommit={num('angle')} />
         </div>
-        {isWallHung(object) ? (
-          <NumberField id={`${object.id}-wall-bottom`} label={m.inspector.heightAboveFloor} unit="m" value={wallBottomOf(object)} onCommit={(v) => (v === null ? null : update({ wallBottomM: v }, 'wallBottom'))} />
-        ) : null}
-        {actionError ? (
-          <p role="alert" className="field__error">
-            {actionError}
-          </p>
-        ) : null}
       </fieldset>
-
-      <fieldset className="inspector__group">
-        <legend className="lbl">{m.inspector.size}</legend>
-        <div className="field-pair">
-          <NumberField id={`${object.id}-w`} label={isWall ? m.inspector.length : m.inspector.width} unit="m" value={object.w} onCommit={num('w')} />
-          <NumberField id={`${object.id}-d`} label={isWall ? m.inspector.thickness : m.inspector.depth} unit="m" value={object.d} onCommit={num('d')} />
-        </div>
-        <NumberField
-          id={`${object.id}-height`}
-          label={m.inspector.height}
-          unit="m"
-          allowEmpty
-          value={object.height}
-          placeholder={autoHeight === null ? m.inspector.heightDefault : m.inspector.heightFromCapacity(formatMetres(autoHeight))}
-          onCommit={(v) => update({ height: v }, 'height')}
-        />
-        {keepClearType && object.type !== 'rack' ? (
-          <>
-            <NumberField
-              id={`${object.id}-keep-clear`}
-              label={m.inspector.keepClear}
-              unit="m"
-              allowEmpty
-              value={object.keepClearM ?? null}
-              placeholder={formatMetres(DEFAULT_KEEP_CLEAR_M[keepClearType] ?? 0)}
-              onCommit={(v) => update({ keepClearM: v }, 'keepClear')}
-            />
-            <p className="inspector__note">{object.keepClearM === 0 ? m.inspector.keepClearNone : m.inspector.keepClearHint[keepClearType]}</p>
-          </>
-        ) : null}
-        {zoneNote ? <p className="inspector__note">{zoneNote}</p> : null}
-      </fieldset>
-
-      {rack ? (
-        <>
-          <fieldset className="inspector__group">
-            <legend className="lbl">{m.inspector.capacity}</legend>
-            <div className="field-pair">
-              <NumberField id={`${object.id}-u`} label={m.inspector.capacity} unit="U" decimals={0} value={rack.capacityU} onCommit={(v) => (v === null ? null : update({ capacityU: v }, 'u'))} />
-              <NumberField
-                id={`${object.id}-depth`}
-                label={m.inspector.usableDepth}
-                unit="mm"
-                decimals={0}
-                value={rack.usableDepthMm}
-                onCommit={(v) => (v === null ? null : update({ usableDepthMm: v }, 'usable'))}
-              />
-            </div>
-          </fieldset>
-          <fieldset className="inspector__group inspector__group--clearance">
-            <legend className="lbl">{m.inspector.clearance}</legend>
-            <div className="field-pair">
-              <NumberField
-                id={`${object.id}-front`}
-                label={m.inspector.front}
-                unit="m"
-                value={rack.clearance.front}
-                onCommit={(v) => (v === null ? null : update({ clearance: { front: v } }, 'front'))}
-              />
-              <NumberField
-                id={`${object.id}-rear`}
-                label={m.inspector.rear}
-                unit="m"
-                value={rack.clearance.rear}
-                onCommit={(v) => (v === null ? null : update({ clearance: { rear: v } }, 'rear'))}
-              />
-            </div>
-          </fieldset>
-        </>
-      ) : null}
-
-      {rack ? <RackFeeds rack={rack} content={content} commit={commit} /> : null}
-      {isPowerSource(object) ? <PanelFeeds panel={object} content={content} commit={commit} onManage={onManagePanel} /> : null}
-
-      <fieldset className="inspector__group">
-        <legend className="visually-hidden">{m.inspector.notes}</legend>
-        <TextField id={`${object.id}-notes`} label={m.inspector.notes} multiline value={object.notes} onCommit={(v) => update({ notes: v }, 'notes')} />
-      </fieldset>
-
-      <div className="inspector__danger">
-        <button
-          type="button"
-          className="btn btn--sm btn--danger"
-          onClick={() =>
-            void confirmAction({ title: m.inspector.removeQuestion(object.name, rackContents), body: m.confirmRemove.undo, confirmLabel: m.confirmRemove.action }).then((ok) => {
-              if (!ok) return;
-              const problem = commit({ type: 'object/remove', id: object.id });
-              setActionError(problem);
-              if (problem === null) onDeleted();
-            })
-          }
-        >
-          {m.inspector.removeObject(object.name)}
-        </button>
-      </div>
     </div>
   );
 }

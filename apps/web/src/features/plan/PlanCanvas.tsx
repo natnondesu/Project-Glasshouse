@@ -1,5 +1,5 @@
 import { centerOf, placementPolygon, type Dimension, type Issue, type PlanContent, type RoomObject } from '@glasshouse/domain';
-import { useMemo, type DOMAttributes } from 'react';
+import { useMemo, useState, type DOMAttributes } from 'react';
 import type { ViewportApi } from '../../viewport/useViewport';
 import { toScreen } from '../../viewport/math';
 import { flaggedObjectIds, warnedObjectIds, zoneWarnedObjectIds } from './flagged';
@@ -20,6 +20,7 @@ import {
   FootprintLayer,
   GridLayer,
   HatchDefs,
+  HoverLabelLayer,
   ObjectsLayer,
   SelectionLayer,
   ZoneLabelLayer,
@@ -36,6 +37,10 @@ export type SvgHandlers = Pick<
 const INSPECTOR_CLEARANCE_PX = 380;
 const RAIL_CLEARANCE_PX = 70;
 const PULSE_PAD_PX = 12;
+/** What floats over the canvas that a name label must stay clear of: the tool column on the left, the search and zoom row on top. */
+const LABEL_LEFT_CLEARANCE_PX = 72;
+const LABEL_TOP_CLEARANCE_PX = 64;
+const LABEL_EDGE_PX = 8;
 
 interface PlanCanvasProps {
   content: PlanContent;
@@ -66,6 +71,8 @@ const withPreview = (objects: RoomObject[], preview: Preview | null): RoomObject
   preview?.kind === 'object' ? objects.map((o) => (o.id === preview.id ? { ...o, ...preview.patch } : o)) : objects;
 
 export function PlanCanvas({ content, issues, selectedId, viewport, preview, measure, cursor, svgHandlers, onFocusObject, inspectorOpen = true, ghost = null, showGaps = true, draftDimension = null, layers = ALL_LAYERS, pulse = null }: PlanCanvasProps) {
+  const [pointerId, setPointerId] = useState<string | null>(null);
+  const [keyFocusId, setKeyFocusId] = useState<string | null>(null);
   const pulsed = pulse ? content.objects.find((o) => o.id === pulse.id) : undefined;
   const m = useT();
   const calloutClearance = inspectorOpen ? INSPECTOR_CLEARANCE_PX : RAIL_CLEARANCE_PX;
@@ -99,7 +106,7 @@ export function PlanCanvas({ content, issues, selectedId, viewport, preview, mea
       {layers.clearance ? <ClearanceLayer objects={objects} view={view} /> : null}
       {layers.clearance ? <EnvironmentLayer objects={objects} view={view} selectedId={selectedId} warned={zoneWarned} /> : null}
       {layers.feeds ? <FeedLayer content={liveContent} view={view} /> : null}
-      <ObjectsLayer objects={objects} view={view} flagged={flagged} warned={warned} selectedId={selectedId} onFocusObject={onFocusObject} />
+      <ObjectsLayer objects={objects} view={view} flagged={flagged} warned={warned} selectedId={selectedId} onFocusObject={onFocusObject} onPointerObject={setPointerId} onKeyFocusObject={setKeyFocusId} />
       {selected ? <SelectionLayer object={selected} view={view} /> : null}
       {layers.dimensions ? <DimensionsLayer survey={content.survey} view={view} /> : null}
       {preview?.kind === 'rect' ? <FloorPreview preview={preview} view={view} /> : null}
@@ -126,6 +133,13 @@ export function PlanCanvas({ content, issues, selectedId, viewport, preview, mea
       ) : null}
       <CalloutLayer issues={issues} objects={objects} view={view} maxX={viewport.size.width - calloutClearance} />
       {measure ? <MeasureLayer measure={measure} content={content} view={view} /> : null}
+      {/* Last: above every object, and above anything else drawn on the plan. */}
+      <HoverLabelLayer
+        objects={objects}
+        view={view}
+        id={pointerId ?? keyFocusId}
+        bounds={{ minX: LABEL_LEFT_CLEARANCE_PX, maxX: viewport.size.width - Math.max(calloutClearance, LABEL_EDGE_PX), minY: LABEL_TOP_CLEARANCE_PX }}
+      />
     </svg>
   );
 }
