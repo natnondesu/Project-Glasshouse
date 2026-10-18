@@ -23,9 +23,10 @@ const LABEL_HALO = 3.5;
 /** How important a place must be to show (Natural Earth scalerank, lower is bigger): capitals and big cities first. */
 export function placeRankLimit(ppd: number): number {
   if (ppd < LEVEL_PPD.country) return -1;
-  if (ppd < 20) return 2;
-  if (ppd < 50) return 4;
-  if (ppd < 120) return 6;
+  // The opening frame of a country: capitals and the biggest cities only, so the sites' counts stay the subject.
+  if (ppd < 40) return 2;
+  if (ppd < 80) return 4;
+  if (ppd < 150) return 6;
   if (ppd < LEVEL_PPD.province) return 7;
   return 10;
 }
