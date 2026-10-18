@@ -17,11 +17,11 @@ import {
   type Survey,
   usedU,
 } from '@glasshouse/domain';
-import { useMemo, type ReactElement } from 'react';
+import { useMemo, type FocusEvent, type ReactElement } from 'react';
 import { toScreen, type View } from '../../viewport/math';
 import { useT } from '../../i18n';
 import { polygonPath, multiPolygonPath } from './svgPath';
-import { AlongLabel, DisplayWallSymbol, DoorSymbol, fitLabel, HoverTag, McbSymbol, pacNameDropPx, PrecisionAcSymbol, SlidingDoorSymbol, SourceSymbol, WallSplitAcSymbol } from './symbols';
+import { AlongLabel, DisplayWallSymbol, DoorSymbol, fitLabel, HoverTag, McbSymbol, pacNameDropPx, PrecisionAcSymbol, SlidingDoorSymbol, SourceSymbol, WallSplitAcSymbol, type TagBounds } from './symbols';
 import { inDrawOrder } from './hitTest';
 
 /** Too thin or too small for a name: these rely on their symbol and the hover tag. */
@@ -175,6 +175,10 @@ interface ObjectsLayerProps {
   warned?: Set<string>;
   selectedId: string | null;
   onFocusObject: (id: string) => void;
+  /** The pointer is over an object (or left it): the name label is drawn by HoverLabelLayer, above every object. */
+  onPointerObject?: (id: string | null) => void;
+  /** The keyboard moved focus onto an object (or off it). */
+  onKeyFocusObject?: (id: string | null) => void;
   /** Print: a drawing, not a set of controls. */
   isStatic?: boolean;
 }
@@ -210,7 +214,7 @@ function alongLabel(o: RoomObject, view: View): { side: 'up' | 'front'; gapPx: n
   return thick >= INSIDE_NAME_PX ? { side: 'front', gapPx: -0.04 * view.scale, className: '' } : null;
 }
 
-export function ObjectsLayer({ objects, view, flagged, warned, selectedId, onFocusObject, isStatic = false }: ObjectsLayerProps) {
+export function ObjectsLayer({ objects, view, flagged, warned, selectedId, onFocusObject, onPointerObject, onKeyFocusObject, isStatic = false }: ObjectsLayerProps) {
   const m = useT();
   const outsideRows = outsideLabelRows(objects, view);
   return (
@@ -228,8 +232,7 @@ export function ObjectsLayer({ objects, view, flagged, warned, selectedId, onFoc
         const subText = o.type === 'rack' && tall >= MIN_LABEL_PX * 1.4 ? `${o.owner === 'customer' ? m.plan.customerShort : `${usedU(o)}/${o.capacityU}U`}${o.wallBottomM !== undefined ? ` ${m.plan.wallShort}` : ''}` : null;
         // Figures are never cut ("7/4…" reads as a different number): shown whole or not at all.
         const sub = subText && fitLabel(subText, bounds.w * view.scale, 6.7) === subText ? subText : null;
-        const topY = toScreen(view, [0, o.y])[1];
-        // A rack too small at this zoom still shows its name, just under it, so racks are never anonymous.
+                // A rack too small at this zoom still shows its name, just under it, so racks are never anonymous.
         const outside = !label && isRackLike;
         const bottomY = cy + tall / 2;
         // The PAC's fan sits in the middle of the cabinet: its name goes under it.
@@ -246,7 +249,19 @@ export function ObjectsLayer({ objects, view, flagged, warned, selectedId, onFoc
             data-object-id={o.id}
             {...(isStatic
               ? {}
-              : { role: 'button', tabIndex: 0, 'aria-label': off ? m.panelMgr.notInUseName(o.name, m.objects.type[o.type]) : `${o.name}, ${m.objects.type[o.type]}`, 'aria-pressed': o.id === selectedId, onFocus: () => onFocusObject(o.id) })}
+              : {
+                  role: 'button',
+                  tabIndex: 0,
+                  'aria-label': off ? m.panelMgr.notInUseName(o.name, m.objects.type[o.type]) : `${o.name}, ${m.objects.type[o.type]}`,
+                  'aria-pressed': o.id === selectedId,
+                  onFocus: (e: FocusEvent<SVGGElement>) => {
+                    onFocusObject(o.id);
+                    if (e.currentTarget.matches(':focus-visible')) onKeyFocusObject?.(o.id);
+                  },
+                  onBlur: () => onKeyFocusObject?.(null),
+                  onPointerEnter: () => onPointerObject?.(o.id),
+                  onPointerLeave: () => onPointerObject?.(null),
+                })}
           >
             <path className="obj__body" d={polygonPath(placementPolygon(o), view)} />
             {o.type === 'existing_rack' ? <path className="obj__cross" d={crossPath(o, view)} /> : null}
@@ -258,7 +273,6 @@ export function ObjectsLayer({ objects, view, flagged, warned, selectedId, onFoc
             <SourceSymbol o={o} view={view} />
             {o.type === 'rack' ? <RackFront rack={o} view={view} /> : null}
             {alongName ? <AlongLabel o={o} view={view} text={o.name} side={alongName.side} gapPx={alongName.gapPx} className={alongName.className} /> : null}
-            {off ? <AlongLabel o={o} view={view} text={`${o.name} · ${m.panelMgr.notInUse}`} side="front" gapPx={(o.d * view.scale) / 2 + BESIDE_GAP_PX} className="obj__label--beside obj__label--off" /> : null}
             {label ? (
               <text className="obj__label" x={cx} y={(sub && label ? cy - 7 : cy) + labelDy} textAnchor="middle" dominantBaseline="middle">
                 {label}
@@ -274,10 +288,26 @@ export function ObjectsLayer({ objects, view, flagged, warned, selectedId, onFoc
                 {sub}
               </text>
             ) : null}
-            {isStatic ? null : <HoverTag name={off ? `${o.name} · ${m.panelMgr.notInUse}` : o.name} x={cx} y={topY} />}
           </g>
         );
       })}
+    </g>
+  );
+}
+
+/**
+ * The name of the hovered or keyboard-focused object. SVG has no z-index, so a tag drawn inside its object
+ * would sit under every object drawn after it: it is drawn here instead, after all of them.
+ */
+export function HoverLabelLayer({ objects, view, id, bounds }: { objects: RoomObject[]; view: View; id: string | null; bounds: TagBounds }) {
+  const m = useT();
+  const o = id === null ? undefined : objects.find((x) => x.id === id);
+  if (!o) return null;
+  const [cx] = toScreen(view, centerOf(o));
+  const topY = toScreen(view, [0, o.y])[1];
+  return (
+    <g className="hover-label-layer">
+      <HoverTag name={isInUse(o) ? o.name : `${o.name} · ${m.panelMgr.notInUse}`} x={cx} y={topY} bounds={bounds} />
     </g>
   );
 }
