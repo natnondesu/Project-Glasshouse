@@ -216,7 +216,9 @@ export const en = {
     toolbar: 'Plan tools',
     more: (group: string) => `More ${group} tools`,
     groupTools: (group: string) => `${group} tools`,
-    group: { floor: 'Floor', objects: 'Objects', measure: 'Measure', power: 'Power source' },
+    /** A group button whose variant is the active tool: "Wall rack — Racks tools". */
+    activeVariant: (tool: string, group: string) => `${tool} — ${group} tools`,
+    group: { floor: 'Floor', racks: 'Racks', doors: 'Doors', furniture: 'Furniture', measure: 'Measure', power: 'Power source' },
     spec: {
       select: { label: 'Select', name: 'Select', hint: 'Select, move and resize objects. Click empty floor to clear.' },
       pan: { label: 'Pan', name: 'Pan', hint: 'Drag to move the view. Space+drag or two-finger scroll also pan.' },
@@ -993,7 +995,7 @@ export const en = {
     unsentBefore: (reason: string) => `Some changes from before you signed in aren’t sent yet: ${reason}`,
     skippedBefore: (n: number) => `${n} change${n === 1 ? '' : 's'} from before you signed in weren’t applied. They will be retried the next time Glasshouse opens.`,
     changeTitle: 'Choose your own password',
-    changeNote: 'You signed in with a temporary password. Choose a new one of at least 12 characters.',
+    changeNote: 'You signed in with a temporary password. Choose a new one of at least 8 characters.',
     temporary: 'Temporary password',
     newPassword: 'New password',
     newAgain: 'New password again',

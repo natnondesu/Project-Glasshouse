@@ -49,8 +49,6 @@
   padding: 6px;
   list-style: none;
   border-radius: 12px;
-  background: rgb(247 249 251 / 0.98);
-  box-shadow: var(--shadow-float);
 }
 
 .search__empty {

@@ -71,7 +71,7 @@ export function UserMenu() {
         <span className="user-menu__name">{user.name}</span>
       </button>
       {open ? (
-        <span className="user-menu__panel glass" role="menu">
+        <span className="user-menu__panel popover-surface" role="menu">
           <span className="user-menu__who">{user.email}</span>
           <span className="user-menu__role">{m.auth.role[user.role]}</span>
           {user.role === 'admin' ? <Link role="menuitem" to="/admin/users" className="btn btn--sm btn--quiet" onClick={() => setOpen(false)}>{m.auth.users}</Link> : null}

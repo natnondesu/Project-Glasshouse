@@ -24,7 +24,7 @@ import {
 /** What a placement tool drops: an object type, or a door that slides instead of swinging. */
 export type PlacementTool = RoomObjectType | 'sliding_door' | 'wall_rack';
 export type Tool = 'select' | 'pan' | 'measure' | 'dimension' | 'area' | 'cut' | PlacementTool;
-export type ToolGroupId = 'floor' | 'objects' | 'measure' | 'power';
+export type ToolGroupId = 'floor' | 'racks' | 'doors' | 'furniture' | 'measure' | 'power';
 
 /** Wording (label, flyout name, hint) lives in the message catalogues under `tools.spec`. */
 interface ToolSpec {
@@ -35,6 +35,7 @@ interface ToolSpec {
 
 interface ToolGroup {
   id: ToolGroupId;
+  /** The first tool is the group's default: its icon is the group's face and clicking the face picks it. */
   tools: Tool[];
 }
 
@@ -63,7 +64,9 @@ export const SOLO_TOOLS: Tool[] = ['select', 'pan'];
 
 export const TOOL_GROUPS: ToolGroup[] = [
   { id: 'floor', tools: ['area', 'cut'] },
-  { id: 'objects', tools: ['rack', 'wall_rack', 'door', 'sliding_door', 'existing_rack', 'furniture'] },
+  { id: 'racks', tools: ['rack', 'wall_rack', 'existing_rack'] },
+  { id: 'doors', tools: ['door', 'sliding_door'] },
+  { id: 'furniture', tools: ['furniture'] },
   { id: 'measure', tools: ['measure', 'dimension'] },
   { id: 'power', tools: ['mcb', 'wall_plug', 'industrial_socket', 'floor_box', 'ups', 'pdu'] },
 ];

@@ -32,7 +32,7 @@ export function ViewMenu({ layers, onChange }: { layers: PlanLayers; onChange: (
         {hidden > 0 ? <span className="view-menu__count">{m.viewMenu.hidden(hidden)}</span> : null}
       </button>
       {open ? (
-        <div className="view-menu__pop glass" role="menu" aria-label={m.viewMenu.showOnPlan}>
+        <div className="view-menu__pop popover-surface" role="menu" aria-label={m.viewMenu.showOnPlan}>
           {ITEMS.map((key) => (
             <button
               key={key}

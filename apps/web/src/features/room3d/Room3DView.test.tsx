@@ -67,6 +67,8 @@ it('chooses which kinds are always labelled, and remembers it', async () => {
   // Only racks are labelled until the viewer chooses more.
   await user.click(screen.getByRole('button', { name: 'Labels (1)' }));
   const menu = screen.getByRole('group', { name: 'Always label' });
+  expect(menu).toHaveClass('popover-surface');
+  expect(menu).not.toHaveClass('glass');
   expect(screen.getByRole('checkbox', { name: 'Racks' })).toBeChecked();
   for (const kind of ['Existing racks', 'Power sources', 'Doors', 'Furniture']) expect(screen.getByRole('checkbox', { name: kind })).not.toBeChecked();
   await user.click(screen.getByRole('checkbox', { name: 'Doors' }));

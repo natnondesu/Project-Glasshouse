@@ -17,7 +17,7 @@ async function createRoom(page: Page): Promise<void> {
 }
 
 async function placeRack(page: Page, fx: number, fy: number, name: string): Promise<void> {
-  await pickTool(page, 'Place rack', 'Rack');
+  await pickTool(page, 'Racks', 'Rack');
   const box = await page.getByTestId('footprint').boundingBox();
   if (!box) throw new Error('Footprint not rendered');
   await page.mouse.click(box.x + box.width * fx, box.y + box.height * fy);

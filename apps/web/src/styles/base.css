@@ -84,6 +84,12 @@ a {
   box-shadow: var(--glass-shadow);
 }
 
+.popover-surface {
+  background: var(--popover-bg);
+  border: 1px solid var(--popover-border);
+  box-shadow: var(--popover-shadow);
+}
+
 .mono {
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;

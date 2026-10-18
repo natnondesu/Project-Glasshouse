@@ -122,7 +122,7 @@ export function registerAuthRoutes(app: FastifyInstance, deps: AuthRouteDeps): v
       return refuse(reply, 400, 'invalid_value', 'Your current password is not right.');
     }
     throttle.clear(key);
-    const problem = passwordProblem(body.data.next);
+    const problem = passwordProblem(body.data.next, { email: user.email, name: user.displayName });
     if (problem) return refuse(reply, 400, 'invalid_value', problem);
     if (body.data.next === body.data.current) return refuse(reply, 400, 'invalid_value', 'Choose a password different from the current one.');
     await store.updateUser(user.id, { passwordHash: await hashPassword(body.data.next), mustChangePassword: false });

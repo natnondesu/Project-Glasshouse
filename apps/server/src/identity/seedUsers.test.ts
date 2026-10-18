@@ -12,5 +12,5 @@ it('parses and creates local users with hashed passwords', async () => {
   expect(ann).toMatchObject({ source: 'local', role: 'admin', displayName: 'Ann', mustChangePassword: false });
   expect(await verifyPassword('password-111111', ann!.passwordHash!)).toBe(true);
   expect(() => parseSeedUsers('bad-entry')).toThrow(/email:password:role:Name/);
-  expect(() => parseSeedUsers('a@x.test:short:admin:Ann')).toThrow(/12/);
+  expect(() => parseSeedUsers('a@x.test:short:admin:Ann')).toThrow(/at least 8/);
 });

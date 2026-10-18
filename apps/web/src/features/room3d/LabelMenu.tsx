@@ -29,7 +29,7 @@ export function LabelMenu({ shown, onChange }: { shown: LabelKind[]; onChange: (
         {m.room3d.labelsMenu(shown.length)}
       </button>
       {open ? (
-        <fieldset id="label-menu-list" className="label-menu__list glass">
+        <fieldset id="label-menu-list" className="label-menu__list popover-surface">
           <legend className="lbl">{m.room3d.labelsAlwaysFor}</legend>
           {LABEL_KINDS.map((kind) => (
             <label key={kind} className="label-menu__item">

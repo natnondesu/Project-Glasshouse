@@ -36,6 +36,14 @@
   background: rgb(255 255 255 / 0.7);
 }
 
+/* Eight tools no longer fit above the Checks strip on a 13-inch laptop at 40px each. */
+@media (max-height: 760px) {
+  .toolbar .tool {
+    width: 34px;
+    height: 34px;
+  }
+}
+
 .tool[aria-pressed='true'] {
   background: var(--ink);
   color: #fff;
@@ -108,6 +116,23 @@
   cursor: pointer;
 }
 
+/* The arrow is the only way to the variants, so its pointer target is 24 x 24 px around the 12 px drawing:
+   6 px into the toolbar's right padding, flush with the group's bottom edge (never into the next group). */
+.tool-group__more::after {
+  content: '';
+  position: absolute;
+  right: -6px;
+  bottom: -2px;
+  width: 24px;
+  height: 24px;
+}
+
+.tool-group__more:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+  background: rgb(14 24 36 / 0.08);
+}
+
 .tool-group__more:hover,
 .tool-group__more[aria-expanded='true'] {
   color: var(--ink);
@@ -170,7 +195,6 @@
   flex-direction: column;
   padding: 6px;
   border-radius: 12px;
-  background: rgb(247 249 251 / 0.97);
 }
 
 .tool-flyout__title {
@@ -246,7 +270,6 @@
   flex-direction: column;
   padding: 6px;
   border-radius: 12px;
-  background: rgb(247 249 251 / 0.97);
 }
 
 .view-menu__item {
