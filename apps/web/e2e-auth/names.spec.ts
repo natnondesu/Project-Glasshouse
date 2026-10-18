@@ -83,9 +83,9 @@ test('an editor whose role was lowered finds out on their next refused edit, wit
     // Each step of the chain is awaited on its own, so a failure names the step that never happened.
     const refused = editor.waitForResponse((r) => r.request().method() === 'POST' && new URL(r.url()).pathname === '/api/commands', { timeout: RESPONSE_WAIT_MS });
     const recheck = editor.waitForResponse((r) => new URL(r.url()).pathname === '/auth/me', { timeout: RESPONSE_WAIT_MS });
+    // The click alone is the refused edit: it sends project/create at once. Don't type into the name box afterwards, the
+    // refusal rolls the new project back and the box with it, so on a busy machine the box is already gone and a fill waits forever.
     await editor.getByRole('button', { name: 'New project' }).click();
-    await editor.getByRole('textbox', { name: 'Project name' }).fill('Too late');
-    await editor.keyboard.press('Enter');
     const outcome = (await (await refused).json()) as { rejected?: { error: { code: string } } };
     expect(outcome.rejected?.error.code).toBe('forbidden');
     expect((await recheck).status()).toBe(200);

@@ -49,7 +49,8 @@ test('a company sign-in creates a viewer, who can look but not change', async ({
 });
 
 test('a reviewer who submitted can’t approve; another reviewer can, and names are verified', async ({ browser }) => {
-  const rae = await (await browser.newContext()).newPage();
+  const raeCtx = await browser.newContext();
+  const rae = await raeCtx.newPage();
   await signIn(rae, 'rev@company.test', 'review-password-1');
   await expect(rae.getByText('Connected to the Glasshouse server')).toBeVisible();
   // An approvable room (the domain review test's ready() state), built through the API as Rae.
@@ -70,7 +71,8 @@ test('a reviewer who submitted can’t approve; another reviewer can, and names 
   await expect(rae.getByText('You submitted this revision. Another reviewer has to approve it.')).toBeVisible();
   await expect(rae.getByRole('button', { name: 'Approve revision' })).toBeDisabled();
 
-  const ada = await (await browser.newContext()).newPage();
+  const adaCtx = await browser.newContext();
+  const ada = await adaCtx.newPage();
   await signIn(ada, 'admin@company.test', 'admin-password-1');
   await expect(ada.getByRole('button', { name: 'Account menu for Ada Admin' })).toBeVisible();
   await ada.goto('/rooms/r-e2e/review');
@@ -79,4 +81,7 @@ test('a reviewer who submitted can’t approve; another reviewer can, and names 
   await expect(ada.getByText('by Ada Admin (admin@company.test)', { exact: true })).toBeVisible();
   await expect(ada.getByText('Rae Reviewer (rev@company.test)', { exact: true })).toBeVisible();
   await expect(ada.getByText(/\(unverified\)/)).toHaveCount(0);
+  // An open context keeps its 3D room page rendering for every later test in the run.
+  await adaCtx.close();
+  await raeCtx.close();
 });
