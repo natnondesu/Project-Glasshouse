@@ -1,4 +1,4 @@
-import { findRoom } from '@glasshouse/domain';
+import { archiveState, findRoom } from '@glasshouse/domain';
 import type { FastifyInstance, FastifyReply } from 'fastify';
 import { z } from 'zod';
 import { CLAIM_IDLE_MS, type ClaimRegistry } from '../claims';
@@ -16,6 +16,7 @@ export function registerClaims(api: FastifyInstance, { service, claims }: { serv
     if (!p.success) return refuse(reply, 400, 'invalid_value', 'Say which room.');
     if (!atLeast(actor.role, 'editor')) return refuse(reply, 403, 'forbidden', "Viewers can't edit rooms. Ask an admin for Editor access.");
     if (!findRoom(service.state.workspace, p.data.roomId)) return refuse(reply, 404, 'not_found', 'That room no longer exists.', [p.data.roomId]);
+    if (archiveState(service.state.workspace, 'room', p.data.roomId).archived) return refuse(reply, 409, 'archived', 'That room is archived. An admin can restore it.', [p.data.roomId]);
     const outcome = claims.claim(p.data.roomId, actor, { admin: actor.role === 'admin' });
     if (!outcome.ok) {
       return refuse(reply, 409, 'claimed', `${outcome.claim.name} is editing this room. You can take over after ${IDLE_MINUTES} minutes without edits, or ask an admin.`, [p.data.roomId]);

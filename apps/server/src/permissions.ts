@@ -3,7 +3,20 @@ import type { Role } from './identity/types';
 
 export const ROLE_LABEL: Record<Role, string> = { viewer: 'Viewer', editor: 'Editor', reviewer: 'Reviewer', admin: 'Admin' };
 
-const ADMIN_ONLY = new Set<string>(['template/create', 'template/update', 'template/delete', 'catalog/seed', 'catalog/import', 'project/delete']);
+const ADMIN_ONLY = new Set<string>([
+  'template/create',
+  'template/update',
+  'template/delete',
+  'catalog/seed',
+  'catalog/import',
+  'project/delete',
+  'project/archive',
+  'project/restore',
+  'site/archive',
+  'site/restore',
+  'room/archive',
+  'room/restore',
+]);
 const REVIEWER_ONLY = new Set<ReviewCommand['type']>(['review/approve', 'review/acknowledge', 'review/unacknowledge']);
 
 /** The role matrix (P1 design): everything else is an editor's job. */
@@ -15,6 +28,7 @@ export function requiredRole(command: WorkspaceCommand): Role {
 
 /** The signed-in person and the server's clock go on review records, whatever the browser sent. */
 export function stampCommand(command: WorkspaceCommand, actor: { id: string; name: string }, at: string): WorkspaceCommand {
+  if (command.type === 'project/archive' || command.type === 'site/archive' || command.type === 'room/archive') return { ...command, by: actor.name, at };
   if (command.type !== 'review') return command;
   const c = command.command;
   switch (c.type) {
