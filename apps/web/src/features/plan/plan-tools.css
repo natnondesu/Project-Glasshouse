@@ -42,6 +42,11 @@
     width: 34px;
     height: 34px;
   }
+
+  /* The rail is as tall as the plan here, so an expanded strip starts to its right (rail edge 58px + 14px gap). */
+  .plan-view > .checks {
+    left: 72px;
+  }
 }
 
 .tool[aria-pressed='true'] {
