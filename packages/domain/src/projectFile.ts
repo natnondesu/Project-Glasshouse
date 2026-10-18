@@ -1,4 +1,5 @@
 import { castDraft, produce } from 'immer';
+import { withoutArchive } from './archive';
 import { newId } from './ids';
 import { contentFingerprint } from './fingerprint';
 import { currentRevision, findProject, findRoom, findSite } from './lookup';
@@ -245,7 +246,8 @@ function duplicateId(p: Project): { id: Id; name: string } | null {
 }
 
 export function applyImport(ws: Workspace, incoming: ProjectFile, resolution: ImportResolution): Result<Workspace> {
-  const file: ProjectFile = { ...incoming, project: stripIdentity(incoming.project) };
+  // A file's archive stamps are its own: importing never archives or restores anything here, and a copy starts active.
+  const file: ProjectFile = { ...incoming, project: withoutArchive(stripIdentity(incoming.project)) };
   const additions = latestTemplates(file.templates).filter((t) => !ws.catalog.some((c) => c.id === t.id));
   if (resolution.mode === 'copy') {
     const copy = copyProject(ws, file.project, resolution.ids);

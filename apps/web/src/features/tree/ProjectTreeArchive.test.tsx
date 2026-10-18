@@ -2,7 +2,7 @@ import { findRoom } from '@glasshouse/domain';
 import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { createMemoryRouter, RouterProvider } from 'react-router';
-import { afterEach, beforeEach, expect, it } from 'vitest';
+import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { routes } from '../../app/routes';
 import type { Role } from '../../auth/authApi';
 import { resetAuthStore, useAuthStore } from '../../auth/authStore';
@@ -102,7 +102,7 @@ it('offers "Restore Site A first" for a room whose site is archived', async () =
   expect(inTree().getByRole('link', { name: /MDF-1/ })).toBeInTheDocument();
 });
 
-it('remembers Show archived in this browser, and works when storage is blocked', async () => {
+it('remembers Show archived in this browser', async () => {
   const user = userEvent.setup();
   send({ type: 'room/archive', roomId: 'r1', by: '', at: AT });
   const view = open();
@@ -112,6 +112,37 @@ it('remembers Show archived in this browser, and works when storage is blocked',
   open();
   expect(inTree().getByRole('checkbox', { name: /Show archived/ })).toBeChecked();
   expect(inTree().getByRole('link', { name: /MDF-1/ })).toBeInTheDocument();
+});
+
+it('works when storage is blocked: the choice just lasts for this visit', async () => {
+  const user = userEvent.setup();
+  send({ type: 'room/archive', roomId: 'r1', by: '', at: AT });
+  const getItem = vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
+    throw new Error('blocked');
+  });
+  const setItem = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+    throw new Error('blocked');
+  });
+  try {
+    open();
+    expect(inTree().queryByRole('link', { name: /MDF-1/ })).toBeNull();
+    await user.click(inTree().getByRole('checkbox', { name: /Show archived/ }));
+    expect(inTree().getByRole('link', { name: /MDF-1/ })).toBeInTheDocument();
+  } finally {
+    getItem.mockRestore();
+    setItem.mockRestore();
+  }
+});
+
+it('keeps the toggle on screen while it is checked, even with nothing archived', async () => {
+  const user = userEvent.setup();
+  send({ type: 'room/archive', roomId: 'r1', by: '', at: AT });
+  open();
+  await user.click(inTree().getByRole('checkbox', { name: /Show archived/ }));
+  await user.click(inTree().getByRole('button', { name: 'Restore MDF-1' }));
+  expect(inTree().getByRole('checkbox', { name: /Show archived/ })).toBeChecked();
+  await user.click(inTree().getByRole('checkbox', { name: /Show archived/ }));
+  expect(inTree().queryByRole('checkbox', { name: /Show archived/ })).toBeNull();
 });
 
 it('shows the toggle, with how many are archived, only once something is', async () => {
@@ -155,13 +186,30 @@ it('shows everyone the archived items when asked, with no actions for a viewer',
   expect(inTree().queryByRole('button', { name: /Restore MDF-1/ })).toBeNull();
 });
 
-it('leaves delete where it was: an archived room can still be deleted by those who could before', async () => {
+it('keeps an archived item from being deleted until it is restored, and says so', async () => {
   const user = userEvent.setup();
   signInAs('editor');
   send({ type: 'room/archive', roomId: 'r1', by: '', at: AT });
   open('/rooms/r1/plan');
-  expect(inTree().getByRole('button', { name: 'Delete MDF-1' })).toBeInTheDocument();
   expect(inTree().queryByRole('button', { name: 'Rename MDF-1' })).toBeNull();
+  const blocked = inTree().getByRole('button', { name: /^Delete MDF-1/ });
+  expect(blocked).toHaveAttribute('aria-disabled', 'true');
+  expect(blocked).toHaveAccessibleName('Delete MDF-1. Restore Room MDF-1 before deleting it.');
+  await user.click(blocked);
+  expect(inTree().getByRole('alert')).toHaveTextContent('Restore Room MDF-1 before deleting it.');
+  expect(screen.queryByRole('button', { name: 'Delete' })).toBeNull();
+  expect(findRoom(useWorkspaceStore.getState().workspace, 'r1')).toBeTruthy();
+  // Live neighbours still delete.
+  expect(inTree().getByRole('button', { name: 'Delete Edge' })).not.toHaveAttribute('aria-disabled');
+});
+
+it('names the archived parent when a room is only archived through it, and lets an admin delete after restoring', async () => {
+  const user = userEvent.setup();
+  send({ type: 'site/archive', siteId: 's', by: '', at: AT });
+  open('/rooms/r1/plan');
+  expect(inTree().getByRole('button', { name: /^Delete MDF-1/ })).toHaveAccessibleName('Delete MDF-1. Restore Site Site A before deleting room MDF-1.');
+  expect(inTree().getByRole('button', { name: /^Delete Site A/ })).toHaveAccessibleName('Delete Site A. Restore Site Site A before deleting it.');
+  await user.click(inTree().getByRole('button', { name: 'Restore Site A' }));
   await user.click(inTree().getByRole('button', { name: 'Delete MDF-1' }));
   await user.click(inTree().getByRole('button', { name: 'Delete' }));
   expect(findRoom(useWorkspaceStore.getState().workspace, 'r1')).toBeNull();
@@ -175,5 +223,14 @@ it('speaks Thai: the badge, the toggle and the confirmation', async () => {
   await user.click(inTree().getByRole('checkbox', { name: /แสดงที่เก็บถาวร/ }));
   expect(inTree().getByRole('link', { name: /MDF-1/ })).toHaveTextContent('เก็บถาวร');
   await user.click(inTree().getByRole('button', { name: 'เก็บ Site A ถาวร' }));
-  expect(screen.getByRole('alertdialog', { name: 'เก็บ Site A พร้อม2 ห้องถาวรหรือไม่?' })).toHaveAccessibleDescription('ทั้งหมดจะอ่านได้อย่างเดียวและถูกซ่อน กู้คืนได้ทุกเมื่อ');
+  expect(screen.getByRole('alertdialog', { name: 'เก็บ Site A พร้อม 2 ห้อง ถาวรหรือไม่?' })).toHaveAccessibleDescription('ทั้งหมดจะอ่านได้อย่างเดียวและถูกซ่อน กู้คืนได้ทุกเมื่อ');
+});
+
+it('says in Thai why archived work cannot be deleted', async () => {
+  const user = userEvent.setup();
+  send({ type: 'room/archive', roomId: 'r1', by: '', at: AT });
+  open('/rooms/r1/plan');
+  await act(() => useLangStore.getState().setLang('th'));
+  await user.click(inTree().getByRole('button', { name: /^ลบ MDF-1/ }));
+  expect(inTree().getByRole('alert')).toHaveTextContent('กู้คืนห้อง MDF-1 ก่อนจึงจะลบได้');
 });

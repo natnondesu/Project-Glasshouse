@@ -660,6 +660,23 @@ describe('archiving', () => {
     expect(await go(svc, ploy as never, 'e2', { type: 'plan', roomId: 'r', command: { type: 'vlan/add', vlan: { vid: 11, name: 'V11' } } })).toMatchObject({ kind: 'accepted' });
   });
 
+  it('drops a claim that someone took while the archive was being stored', async () => {
+    const claims = new ClaimRegistry(() => new Date(NOW));
+    class ClaimsDuringAppend extends MemoryCommandStore {
+      armed = false;
+      override async append(entry: LoggedCommand, approval: ApprovalRecord | null): Promise<void> {
+        if (this.armed) claims.claim('r', { id: 'u-p', name: 'Ploy' }, { admin: false });
+        return super.append(entry, approval);
+      }
+    }
+    const store = new ClaimsDuringAppend();
+    const svc = await WorkspaceService.open(store, { now: () => NOW, claims });
+    for (const [i, c] of readyRoomCommands().slice(0, 3).entries()) await go(svc, ada, `s${i}`, c);
+    store.armed = true;
+    expect(await go(svc, ada, 'a1', archiveRoom)).toMatchObject({ kind: 'accepted' });
+    expect(claims.holder('r')).toBeNull();
+  });
+
   it('does not ask the dev stand-in about claims, and trusts the name it sends', async () => {
     const { svc } = await open();
     const dev = { id: 'dev:Dev', name: 'Dev', role: 'admin' as const, verified: false };

@@ -1203,11 +1203,18 @@ export const th: Messages = {
     restoreFirst: (kind, name) => `กู้คืน${kind} ${name} ก่อน`,
     confirmTitle: (name, sites, rooms) => {
       const parts = [sites > 0 ? `${sites} ไซต์` : '', rooms > 0 ? `${rooms} ห้อง` : ''].filter(Boolean);
-      return parts.length === 0 ? `เก็บ ${name} ถาวรหรือไม่?` : `เก็บ ${name} พร้อม${parts.join('และ')}ถาวรหรือไม่?`;
+      return parts.length === 0 ? `เก็บ ${name} ถาวรหรือไม่?` : `เก็บ ${name} พร้อม ${parts.join(' และ ')} ถาวรหรือไม่?`;
     },
     confirmBody: (several) => (several ? 'ทั้งหมดจะอ่านได้อย่างเดียวและถูกซ่อน กู้คืนได้ทุกเมื่อ' : 'จะอ่านได้อย่างเดียวและถูกซ่อน กู้คืนได้ทุกเมื่อ'),
     banner: (by, date, via) => `เก็บถาวร${via ? `พร้อม${via.kind} ${via.name}` : ''}${by ? ` โดย ${by}` : ''} เมื่อ ${date} อ่านได้อย่างเดียว`,
     busy: (holder, room) => `${holder} กำลังแก้ไข ${room} ลองใหม่เมื่อเขาแก้เสร็จแล้ว`,
+    refused: (purpose, kind, name, own, sourceKind, sourceName) => {
+      if (purpose === 'delete') return own ? `กู้คืน${kind} ${name} ก่อนจึงจะลบได้` : `กู้คืน${sourceKind} ${sourceName} ก่อนจึงจะลบ${kind} ${name} ได้`;
+      const what = purpose === 'import' ? 'นำเข้า' : 'แก้ไข';
+      return own ? `${kind} ${name} เก็บถาวรอยู่ กู้คืนก่อนจึงจะ${what}ได้` : `${kind} ${name} เก็บถาวรพร้อม${sourceKind} ${sourceName} กู้คืน${sourceKind} ${sourceName} ก่อนจึงจะ${what}ได้`;
+    },
+    reviewNote: 'เก็บถาวรอยู่ กู้คืนห้องก่อนจึงจะแก้ไขได้',
+    importArchived: (name) => `${name} เก็บถาวรอยู่ที่นี่ กู้คืนก่อนจึงจะรวมเข้าไปได้ หรือนำเข้าไฟล์เป็นสำเนา`,
   },
   claims: {
     heldBy: (name) => `${name} กำลังแก้ไขห้องนี้`,

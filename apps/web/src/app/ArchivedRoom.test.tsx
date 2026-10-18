@@ -71,8 +71,12 @@ it('does not offer Start new draft on an archived approved room, and still opens
 it('opens the install sheet of an archived room', () => {
   send({ type: 'room/archive', roomId: approved, by: 'Few', at: AT });
   open(`/rooms/${approved}/install-sheet`);
-  expect(screen.getByRole('heading', { level: 1 })).toBeInTheDocument();
-  expect(screen.queryByText(/not found|no longer exists/i)).toBeNull();
+  expect(screen.getByRole('heading', { level: 1, name: 'Install sheet: Server room A, R01' })).toBeInTheDocument();
+  const pages = document.querySelectorAll('.sheet-page');
+  expect(pages.length).toBeGreaterThanOrEqual(4);
+  for (const page of pages) expect(page).toHaveTextContent('R01 APPROVED');
+  expect(screen.getByRole('img', { name: 'Server room A plan' })).toBeInTheDocument();
+  expect(screen.getByRole('table', { name: 'Bill of materials' })).toBeInTheDocument();
 });
 
 it('lets an admin restore from the banner, and the plan is editable again', async () => {
@@ -138,14 +142,61 @@ it('locks the on-site state of equipment in an archived room', () => {
   expect(screen.getByText(en.equipment.archivedNote)).toBeInTheDocument();
 });
 
-it('refuses a keyboard undo in an archived room with the archive message instead of changing it', async () => {
+const widthOf = (roomId: string): number => useWorkspaceStore.getState().workspace.projects[0]!.sites[0]!.rooms.find((r) => r.id === roomId)!.plan.revisions[0]!.content.survey.width;
+
+it('undoes a change in a room that is not archived (the control for the next test)', async () => {
+  const user = userEvent.setup();
+  const before = widthOf(draft);
+  send({ type: 'plan', roomId: draft, command: { type: 'survey/update', patch: { width: 9 } } });
+  open(`/rooms/${draft}/plan`);
+  await user.keyboard('{Control>}z{/Control}');
+  expect(widthOf(draft)).toBe(before);
+  expect(screen.queryByText(/didn't go through/)).toBeNull();
+});
+
+it('refuses a keyboard undo in an archived room, says why, and leaves the room alone', async () => {
   const user = userEvent.setup();
   send({ type: 'plan', roomId: draft, command: { type: 'survey/update', patch: { width: 9 } } });
   send({ type: 'room/archive', roomId: draft, by: 'Few', at: AT });
   open(`/rooms/${draft}/plan`);
   await user.keyboard('{Control>}z{/Control}');
-  const width = useWorkspaceStore.getState().workspace.projects[0]!.sites[0]!.rooms.find((r) => r.id === draft)!.plan.revisions[0]!.content.survey.width;
-  expect(width).toBe(9);
+  expect(widthOf(draft)).toBe(9);
+  expect(await screen.findByText(/Room MDF-1 is archived\. Restore it to make changes\./)).toBeInTheDocument();
+});
+
+it('says that in Thai too', async () => {
+  const user = userEvent.setup();
+  send({ type: 'plan', roomId: draft, command: { type: 'survey/update', patch: { width: 9 } } });
+  send({ type: 'room/archive', roomId: draft, by: 'Few', at: AT });
+  open(`/rooms/${draft}/plan`);
+  await act(() => useLangStore.getState().setLang('th'));
+  await user.keyboard('{Control>}z{/Control}');
+  expect(await screen.findByText(/ห้อง MDF-1 เก็บถาวรอยู่ กู้คืนก่อนจึงจะแก้ไขได้/)).toBeInTheDocument();
+  expect(screen.queryByText(/is archived/)).toBeNull();
+});
+
+it('words a refused edit to archived work in the viewer’s language', async () => {
+  send({ type: 'site/archive', siteId: site, by: 'Few', at: AT });
+  const edit = { type: 'plan', roomId: draft, command: { type: 'survey/update', patch: { width: 6 } } } as const;
+  expect(useWorkspaceStore.getState().dispatch(edit)?.message).toBe('Room MDF-1 is archived with site Bangna campus. Restore Site Bangna campus to make changes.');
+  await act(() => useLangStore.getState().setLang('th'));
+  expect(useWorkspaceStore.getState().dispatch(edit)?.message).toBe('ห้อง MDF-1 เก็บถาวรพร้อมไซต์ Bangna campus กู้คืนไซต์ Bangna campus ก่อนจึงจะแก้ไขได้');
+  expect(useWorkspaceStore.getState().dispatch({ type: 'room/delete', roomId: draft })?.message).toBe('กู้คืนไซต์ Bangna campus ก่อนจึงจะลบห้อง MDF-1 ได้');
+});
+
+it('says on the Review screen of an archived approved room that it is archived, not that a new draft will do', () => {
+  send({ type: 'room/archive', roomId: approved, by: 'Few', at: AT });
+  open(`/rooms/${approved}/review`);
+  expect(screen.getByText(en.archive.reviewNote)).toBeInTheDocument();
+  expect(screen.queryByText(/start a new Draft/)).toBeNull();
+});
+
+it('drops the Review tab’s blocker count in an archived room, where nothing can be fixed', () => {
+  open(`/rooms/${draft}/plan`);
+  const tab = screen.getByRole('link', { name: /^Review/ });
+  expect(tab.querySelector('.view-tab__badge')).not.toBeNull();
+  act(() => send({ type: 'room/archive', roomId: draft, by: 'Few', at: AT }));
+  expect(screen.getByRole('link', { name: /^Review/ }).querySelector('.view-tab__badge')).toBeNull();
 });
 
 it('counts only what is in use in the header and on the home page', () => {

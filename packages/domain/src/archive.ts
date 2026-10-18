@@ -121,17 +121,31 @@ function nameOf(ws: Workspace, kind: ArchiveKind, id: Id): string {
   return chainOf(ws, kind, id).at(-1)?.[1].name ?? '';
 }
 
+type Purpose = 'edit' | 'import' | 'delete';
+
 /** A change to something archived, refused with the way out. */
-function readOnly(ws: Workspace, kind: ArchiveKind, id: Id): Failure | null {
+function readOnly(ws: Workspace, kind: ArchiveKind, id: Id, purpose: Purpose = 'edit'): Failure | null {
   const state = archiveState(ws, kind, id);
   const source = state.source;
   if (!source) return null;
   const name = nameOf(ws, kind, id);
-  if (state.by === 'self') return err('archived', `${LABEL[kind]} ${name} is archived. Restore it to make changes.`, [id]);
-  return err('archived', `${LABEL[kind]} ${name} is archived with ${lower(source.kind)} ${source.name}. Restore ${LABEL[source.kind]} ${source.name} to make changes.`, [id]);
+  const own = state.by === 'self';
+  const via = `${LABEL[kind]} ${name} is archived with ${lower(source.kind)} ${source.name}.`;
+  const restore = `Restore ${LABEL[source.kind]} ${source.name}`;
+  if (purpose === 'delete') {
+    const message = own ? `Restore ${LABEL[kind]} ${name} before deleting it.` : `${restore} before deleting ${lower(kind)} ${name}.`;
+    return err('archived', message, [id], { purpose, kind, name, sourceKind: source.kind, sourceName: source.name, own: own ? '1' : '0' });
+  }
+  const what = purpose === 'import' ? 'import into it' : 'make changes';
+  const params = { purpose, kind, name, sourceKind: source.kind, sourceName: source.name, own: own ? '1' : '0' };
+  if (own) return err('archived', `${LABEL[kind]} ${name} is archived. Restore it to ${what}.`, [id], params);
+  return err('archived', `${via} ${restore} to ${what}.`, [id], params);
 }
 
-/** Refuses an edit that targets an archived project, site or room, or anything inside one. Archive, restore and delete are not edits. */
+/**
+ * Refuses a change to an archived project, site or room, or anything inside one. Every command type is listed, so a new
+ * one can't compile until someone decides whether it is an edit. Archive and restore have their own rules.
+ */
 export function archiveGuard(ws: Workspace, cmd: WorkspaceCommand): Failure | null {
   switch (cmd.type) {
     case 'project/rename':
@@ -147,33 +161,64 @@ export function archiveGuard(ws: Workspace, cmd: WorkspaceCommand): Failure | nu
     case 'equipment/state':
     case 'rack/order':
       return readOnly(ws, 'room', cmd.roomId);
+    case 'project/delete':
+      return readOnly(ws, 'project', cmd.projectId, 'delete');
+    case 'site/delete':
+      return readOnly(ws, 'site', cmd.siteId, 'delete');
+    case 'room/delete':
+      return readOnly(ws, 'room', cmd.roomId, 'delete');
     case 'project/import':
       return importGuard(ws, cmd);
-    default:
+    // Not changes to anything that can be archived: a new project, the catalog, the backup stamp, the samples, and archiving itself.
+    case 'project/create':
+    case 'project/archive':
+    case 'project/restore':
+    case 'site/archive':
+    case 'site/restore':
+    case 'room/archive':
+    case 'room/restore':
+    case 'template/create':
+    case 'template/update':
+    case 'template/delete':
+    case 'catalog/seed':
+    case 'catalog/import':
+    case 'backup/mark':
+    case 'sample/load':
       return null;
+    default: {
+      // Compile-time only: an unlisted command type is a type error here. At run time apply() answers an unknown type itself.
+      const _unlisted: never = cmd;
+      return null;
+    }
   }
 }
 
-/** A merge changes the local project; only a copy is always safe. */
+/** A merge changes the local project, so it can't reach into archived parts; a copy is a new project and always can. */
 function importGuard(ws: Workspace, cmd: Extract<WorkspaceCommand, { type: 'project/import' }>): Failure | null {
   if (cmd.resolution.mode !== 'merge') return null;
   const local = findProject(ws, cmd.file.project.id);
   if (!local) return null;
-  const projectRefusal = readOnly(ws, 'project', local.id);
+  const projectRefusal = readOnly(ws, 'project', local.id, 'import');
   if (projectRefusal) return projectRefusal;
   const taken = new Set(cmd.resolution.takeIncoming);
   for (const site of cmd.file.project.sites) {
     const here = local.sites.find((s) => s.id === site.id);
     if (!here) continue;
     const changes = site.rooms.some((r) => taken.has(r.id) || !here.rooms.some((x) => x.id === r.id));
-    const refusal = changes ? readOnly(ws, 'site', here.id) : null;
+    const refusal = changes ? readOnly(ws, 'site', here.id, 'import') : null;
     if (refusal) return refusal;
   }
   for (const id of taken) {
-    const refusal = findRoom(ws, id) ? readOnly(ws, 'room', id) : null;
+    const refusal = findRoom(ws, id) ? readOnly(ws, 'room', id, 'import') : null;
     if (refusal) return refusal;
   }
   return null;
+}
+
+/** The project with every archive stamp removed: a file can't archive or restore anything here, and a copy starts active. */
+export function withoutArchive(project: Project): Project {
+  const bare = <T extends { archivedAt?: string; archivedBy?: string }>({ archivedAt: _at, archivedBy: _by, ...rest }: T) => rest;
+  return { ...bare(project), sites: project.sites.map((site) => ({ ...bare(site), rooms: site.rooms.map((room) => bare(room)) })) };
 }
 
 /** Why an item can't be archived, or null when it can. */

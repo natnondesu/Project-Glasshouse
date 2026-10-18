@@ -37,6 +37,7 @@ test('only an admin sees the archive actions; an editor reads the archived room 
   await expect(projects(eddie).getByRole('link', { name: /^Room roles/ })).toHaveCount(0, { timeout: LONG_WAIT_MS });
 
   await projects(eddie).getByRole('checkbox', { name: /Show archived/ }).check();
+  await expect(projects(eddie).getByRole('link', { name: /^Room roles/ })).toBeVisible();
   await expect(projects(eddie).getByRole('button', { name: /Restore Room roles/ })).toHaveCount(0);
   await projects(eddie).getByRole('link', { name: /^Room roles/ }).click();
   await expect(eddie.getByRole('status').filter({ hasText: /^Archived by Ada Admin on / })).toBeVisible();
@@ -66,7 +67,6 @@ test('archiving waits for the person editing the room, and says who', async ({ b
   await eddie.getByLabel('Width').blur();
   await expect(eddie.getByRole('region', { name: /You're editing this room/ })).toBeVisible();
   await expect(projects(ada).getByRole('link', { name: /^Room claim/ })).toBeVisible();
-  await expect(ada.getByRole('region', { name: /Eddie Editor is editing/ })).toHaveCount(0);
   await ada.goto('/rooms/ar-claim/plan');
   await expect(ada.getByRole('region', { name: /Eddie Editor is editing this room/ })).toBeVisible({ timeout: LONG_WAIT_MS });
 

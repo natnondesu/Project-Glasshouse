@@ -24,6 +24,8 @@ interface TreeRowProps {
   canDelete?: boolean;
   onDelete: () => void;
   deleteWarning: string;
+  /** Archived work can't be deleted until it is restored: the reason, shown on the button and when it is pressed. */
+  deleteBlocked?: { reason: string; onExplain: () => void };
   /** Archived (itself or through a parent): greyed, and nothing here can be renamed or added to. */
   archived?: boolean;
   /** An admin's Archive or Restore; omitted for everyone else. `restoreFirst` is why Restore can't work yet. */
@@ -109,7 +111,19 @@ export function TreeRow(props: TreeRowProps) {
               <IconPencil />
             </button>
           ) : null}
-          {canEdit && canDelete ? (
+          {canEdit && canDelete && props.deleteBlocked ? (
+            <button
+              type="button"
+              className="icon-btn icon-btn--sm"
+              aria-label={`${m.tree.deleteOf(label)}. ${props.deleteBlocked.reason}`}
+              aria-disabled="true"
+              title={props.deleteBlocked.reason}
+              onClick={props.deleteBlocked.onExplain}
+            >
+              <IconTrash />
+            </button>
+          ) : null}
+          {canEdit && canDelete && !props.deleteBlocked ? (
             <button type="button" className="icon-btn icon-btn--sm" aria-label={m.tree.deleteOf(label)} title={m.tree.delete} onClick={() => setConfirming(true)}>
               <IconTrash />
             </button>

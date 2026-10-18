@@ -75,7 +75,7 @@ export function ApprovalPanel({ roomId, plan }: { roomId: string; plan: Plan }) 
           <dt>{m.review.submitted}</dt>
           <dd>{formatTime(revision.submittedAt)}</dd>
         </dl>
-        <p className="review-note">{m.review.approvedNote}</p>
+        <p className="review-note">{archived ? m.archive.reviewNote : m.review.approvedNote}</p>
         <div className="review-form__actions">
           <Link to={`/rooms/${roomId}/install-sheet`} className="btn btn--ink">
             {m.review.openSheet}

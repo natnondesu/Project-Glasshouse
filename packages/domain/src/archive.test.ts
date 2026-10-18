@@ -1,5 +1,6 @@
 import { produce } from 'immer';
 import { describe, expect, it } from 'vitest';
+import { approvedRevisionChanges } from './approvals';
 import { archiveScope, archiveState, liveCounts } from './archive';
 import { exportBackup, parseBackup } from './backup';
 import { canonicalJson } from './canonical';
@@ -227,10 +228,70 @@ describe('an archived item is read-only', () => {
     expect(apply(back, { type: 'plan', roomId: 'r1', command: { type: 'survey/update', patch: { width: 6 } } }).ok).toBe(true);
   });
 
-  it('leaves delete as it is today', () => {
-    expect(apply(roomWs, { type: 'room/delete', roomId: 'r1' }).ok).toBe(true);
-    expect(apply(siteWs, { type: 'site/delete', siteId: 's' }).ok).toBe(true);
-    expect(apply(projectWs, { type: 'project/delete', projectId: 'p' }).ok).toBe(true);
+  it('refuses to delete anything archived, or inside something archived, until it is restored', () => {
+    expect(apply(roomWs, { type: 'room/delete', roomId: 'r1' })).toMatchObject({ ok: false, error: { code: 'archived', message: 'Restore Room MDF-1 before deleting it.', targets: ['r1'] } });
+    expect(refused(siteWs, { type: 'site/delete', siteId: 's' })).toBe('Restore Site Site A before deleting it.');
+    expect(refused(siteWs, { type: 'room/delete', roomId: 'r2' })).toBe('Restore Site Site A before deleting room Server room B.');
+    expect(refused(projectWs, { type: 'project/delete', projectId: 'p' })).toBe('Restore Project Northgate before deleting it.');
+    expect(refused(projectWs, { type: 'site/delete', siteId: 's2' })).toBe('Restore Project Northgate before deleting site Site B.');
+    // What is live still deletes, and restoring first makes it deletable.
+    expect(apply(roomWs, { type: 'room/delete', roomId: 'r2' }).ok).toBe(true);
+    expect(apply(run(roomWs, { type: 'room/restore', roomId: 'r1' }), { type: 'room/delete', roomId: 'r1' }).ok).toBe(true);
+  });
+
+  describe('every command type is either refused on archived work or listed as exempt', () => {
+    const live = seeded();
+    const file = (() => {
+      const exported = exportProjectFile(live, 'p', AT);
+      if (!exported.ok) throw new Error(exported.error.message);
+      return exported.value;
+    })();
+    const content = currentRevision(findRoom(live, 'r1')!.room.plan).content;
+    // A Record over every command type: adding one fails to compile here until it is placed.
+    const aimedAtArchived: Record<WorkspaceCommand['type'], WorkspaceCommand | 'exempt'> = {
+      'project/create': 'exempt',
+      'project/rename': { type: 'project/rename', projectId: 'p', name: 'X' },
+      'project/delete': { type: 'project/delete', projectId: 'p' },
+      'site/create': { type: 'site/create', projectId: 'p', id: 's9', name: 'X' },
+      'site/rename': { type: 'site/rename', siteId: 's', name: 'X' },
+      'site/delete': { type: 'site/delete', siteId: 's' },
+      'room/create': { type: 'room/create', siteId: 's', id: 'r9', floorAreaId: 'fa-9', name: 'X' },
+      'room/rename': { type: 'room/rename', roomId: 'r1', name: 'X' },
+      'room/delete': { type: 'room/delete', roomId: 'r1' },
+      plan: { type: 'plan', roomId: 'r1', command: { type: 'survey/update', patch: { width: 6 } } },
+      'draft/replace': { type: 'draft/replace', roomId: 'r1', content, expected: content },
+      review: { type: 'review', roomId: 'r1', command: { type: 'note/add', id: 'n', text: 'hi', at: AT } },
+      'equipment/state': { type: 'equipment/state', roomId: 'r1', ids: ['d'], state: 'deployed' },
+      'rack/order': { type: 'rack/order', roomId: 'r1', ids: null },
+      'project/import': { type: 'project/import', file, resolution: { mode: 'merge', takeIncoming: ['r1'] } },
+      'project/archive': 'exempt',
+      'project/restore': 'exempt',
+      'site/archive': 'exempt',
+      'site/restore': 'exempt',
+      'room/archive': 'exempt',
+      'room/restore': 'exempt',
+      'backup/mark': 'exempt',
+      'sample/load': 'exempt',
+      'template/create': 'exempt',
+      'template/update': 'exempt',
+      'template/delete': 'exempt',
+      'catalog/seed': 'exempt',
+      'catalog/import': 'exempt',
+    };
+    // Everything archived at once: project p (so sites s, s2 and rooms r1..r3 are inside it).
+    const archivedAll = run(seeded(), archiveProject('p'));
+
+    for (const [type, command] of Object.entries(aimedAtArchived)) {
+      if (command === 'exempt') continue;
+      it(`${type} is refused`, () => {
+        expect(apply(archivedAll, command)).toMatchObject({ ok: false, error: { code: 'archived' } });
+      });
+    }
+
+    it('keeps the exempt list to what is not an edit of anything archived', () => {
+      const exempt = Object.entries(aimedAtArchived).filter(([, v]) => v === 'exempt').map(([k]) => k);
+      expect(exempt.sort()).toEqual(['backup/mark', 'catalog/import', 'catalog/seed', 'project/archive', 'project/create', 'project/restore', 'room/archive', 'room/restore', 'sample/load', 'site/archive', 'site/restore', 'template/create', 'template/delete', 'template/update']);
+    });
   });
 
   describe('importing a project file over archived work', () => {
@@ -245,15 +306,42 @@ describe('an archived item is read-only', () => {
     const withNewRoom = run(live, { type: 'room/create', siteId: 's', id: 'r9', floorAreaId: 'fa-9', name: 'Added later' });
 
     it('refuses a merge into an archived project, or one that adds to an archived site or replaces an archived room', () => {
-      expect(refused(projectWs, { type: 'project/import', file: fileOf(live), resolution: { mode: 'merge', takeIncoming: [] } })).toBe('Project Northgate is archived. Restore it to make changes.');
-      expect(refused(siteWs, { type: 'project/import', file: fileOf(withNewRoom), resolution: { mode: 'merge', takeIncoming: [] } })).toBe('Site Site A is archived. Restore it to make changes.');
-      expect(refused(roomWs, { type: 'project/import', file: fileOf(live), resolution: { mode: 'merge', takeIncoming: ['r1'] } })).toBe('Room MDF-1 is archived. Restore it to make changes.');
+      expect(refused(projectWs, { type: 'project/import', file: fileOf(live), resolution: { mode: 'merge', takeIncoming: [] } })).toBe('Project Northgate is archived. Restore it to import into it.');
+      expect(refused(siteWs, { type: 'project/import', file: fileOf(withNewRoom), resolution: { mode: 'merge', takeIncoming: [] } })).toBe('Site Site A is archived. Restore it to import into it.');
+      expect(refused(roomWs, { type: 'project/import', file: fileOf(live), resolution: { mode: 'merge', takeIncoming: ['r1'] } })).toBe('Room MDF-1 is archived. Restore it to import into it.');
     });
 
     it('lets a merge through that leaves the archived parts alone, and a copy always', () => {
       expect(apply(siteWs, { type: 'project/import', file: fileOf(live), resolution: { mode: 'merge', takeIncoming: ['r3'] } }).ok).toBe(true);
       const file = fileOf(live);
       expect(apply(projectWs, { type: 'project/import', file, resolution: { mode: 'copy', ids: createCopyIds(file) } }).ok).toBe(true);
+    });
+
+    const stamped = (ws: Workspace) => fileOf(run(ws, archiveRoom('r2'), archiveSite('s2'), archiveProject('p')));
+    const noneArchived = (ws: Workspace) => ws.projects.every((p) => p.archivedAt === undefined && p.sites.every((s) => s.archivedAt === undefined && s.rooms.every((r) => r.archivedAt === undefined)));
+
+    it('never archives anything by merge: a file’s stamps are dropped, for existing and for new projects', () => {
+      const file = stamped(live);
+      expect(file.project.archivedAt).toBe(AT);
+      const merged = run(live, { type: 'project/import', file, resolution: { mode: 'merge', takeIncoming: ['r1', 'r2', 'r3'] } });
+      expect(noneArchived(merged)).toBe(true);
+      const fresh = run(createWorkspace(), { type: 'project/import', file, resolution: { mode: 'merge', takeIncoming: [] } });
+      expect(fresh.projects).toHaveLength(1);
+      expect(noneArchived(fresh)).toBe(true);
+    });
+
+    it('keeps local stamps when a merge touches other parts', () => {
+      const local = run(live, archiveSite('s2'));
+      const merged = run(local, { type: 'project/import', file: fileOf(withNewRoom), resolution: { mode: 'merge', takeIncoming: [] } });
+      expect(archiveState(merged, 'site', 's2')).toMatchObject({ archived: true, by: 'self' });
+      expect(findRoom(merged, 'r9')).toBeTruthy();
+    });
+
+    it('starts a copy active, whatever the file carries', () => {
+      const file = stamped(live);
+      const copy = run(live, { type: 'project/import', file, resolution: { mode: 'copy', ids: createCopyIds(file) } });
+      expect(noneArchived(copy)).toBe(true);
+      expect(copy.projects).toHaveLength(2);
     });
   });
 });
@@ -292,20 +380,33 @@ describe('saving and loading', () => {
 });
 
 describe('approval fingerprints', () => {
-  // The fingerprint of a room's content, taken before archiving existed. Archive stamps live on the project, site and room,
-  // never in revision content, so every approval made earlier must keep matching its approved hash.
-  const OLD_FINGERPRINT = '1d7915b1997ee527bd4900217ef202ab5e22712912c16694afd79cffb7144cbc';
+  // A workspace exactly as it was saved before archiving existed: an approved revision with its stored hash, and no archive fields.
+  // The hash is what contentFingerprint produced on the code before archiving, so it must never move.
+  const STORED_HASH = '1d7915b1997ee527bd4900217ef202ab5e22712912c16694afd79cffb7144cbc';
+  const oldWorkspace = (): unknown => {
+    const raw = JSON.parse(JSON.stringify(seeded())) as Workspace;
+    const rev = raw.projects[0]!.sites[0]!.rooms[0]!.plan.revisions[0]!;
+    rev.state = 'approved';
+    rev.approvedHash = STORED_HASH;
+    rev.approvedAt = '2026-10-01T00:00:00.000Z';
+    rev.approvedBy = { name: 'Nok', at: '2026-10-01T00:00:00.000Z' };
+    rev.submittedAt = '2026-10-01T00:00:00.000Z';
+    return raw;
+  };
 
-  it('stays what it was before archiving existed', () => {
-    const content = currentRevision(findRoom(seeded(), 'r1')!.room.plan).content;
-    expect(contentFingerprint(content)).toBe(OLD_FINGERPRINT);
-  });
-
-  it('does not move when the room, its site or its project is archived or restored', () => {
-    const before = currentRevision(findRoom(seeded(), 'r1')!.room.plan).content;
-    const archived = run(seeded(), archiveRoom('r1'), archiveSite('s2'), archiveProject('p'));
-    expect(contentFingerprint(currentRevision(findRoom(archived, 'r1')!.room.plan).content)).toBe(contentFingerprint(before));
-    const restored = run(archived, { type: 'project/restore', projectId: 'p' }, { type: 'room/restore', roomId: 'r1' });
-    expect(contentFingerprint(currentRevision(findRoom(restored, 'r1')!.room.plan).content)).toBe(OLD_FINGERPRINT);
+  it('keeps an old approved revision byte-identical, and matching its stored hash, through load, archive and restore', () => {
+    const loaded = parseWorkspace(oldWorkspace());
+    if (!loaded.ok) throw new Error(loaded.error.message);
+    const before = currentRevision(findRoom(loaded.value, 'r1')!.room.plan);
+    expect(contentFingerprint(before.content)).toBe(STORED_HASH);
+    const archived = run(loaded.value, archiveRoom('r1'), archiveSite('s'), archiveProject('p'));
+    const during = currentRevision(findRoom(archived, 'r1')!.room.plan);
+    expect(canonicalJson(during)).toBe(canonicalJson(before));
+    expect(approvedRevisionChanges(loaded.value, archived)).toEqual([]);
+    const restored = run(archived, { type: 'project/restore', projectId: 'p' }, { type: 'site/restore', siteId: 's' }, { type: 'room/restore', roomId: 'r1' });
+    const after = currentRevision(findRoom(restored, 'r1')!.room.plan);
+    expect(contentFingerprint(after.content)).toBe(STORED_HASH);
+    expect(after.approvedHash).toBe(STORED_HASH);
+    expect(canonicalJson(restored)).toBe(canonicalJson(loaded.value));
   });
 });

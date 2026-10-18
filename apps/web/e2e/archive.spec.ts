@@ -34,7 +34,11 @@ test('archive a room: hidden, then shown greyed, read-only when opened, and rest
   await tree.getByRole('checkbox', { name: /Show archived/ }).check();
   const row = tree.getByRole('link', { name: /^Core a/ });
   await expect(row).toContainText('Archived');
-  await expect(row).toHaveCSS('color', 'rgb(91, 102, 114)');
+  // Greyed: the archived row's ink differs from a live row's.
+  const inkOf = (locator: typeof row) => locator.evaluate((el) => getComputedStyle(el).color);
+  expect(await inkOf(row)).not.toBe(await inkOf(tree.getByRole('link', { name: /^Edge a/ })));
+  // Archived work can't be deleted until it is restored.
+  await expect(tree.getByRole('button', { name: /^Delete Core a/ })).toHaveAttribute('aria-disabled', 'true');
 
   await row.click();
   await expect(page.getByRole('status').filter({ hasText: /^Archived .*Read-only\./ })).toBeVisible();
@@ -86,7 +90,9 @@ test('the header and home count only what is in use', async ({ page }) => {
   await seed(page, 'c');
   await page.goto('/');
   const before = await page.locator('.title-block__cells').first().innerText();
-  const rooms = Number(/(\d+) rooms?/.exec(before)?.[1]);
+  const found = /(\d+) rooms?/.exec(before);
+  expect(found, `no room count in "${before}"`).not.toBeNull();
+  const rooms = Number(found![1]);
   await treeOf(page).getByRole('button', { name: 'Archive Edge c' }).click();
   await page.getByRole('alertdialog').getByRole('button', { name: 'Archive' }).click();
   await expect(page.locator('.title-block__cells').first()).toContainText(`${rooms - 1} ${rooms - 1 === 1 ? 'room' : 'rooms'}`);

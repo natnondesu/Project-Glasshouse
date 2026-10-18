@@ -1,4 +1,4 @@
-import { createCopyIds, previewImport, type ProjectFile } from '@glasshouse/domain';
+import { archiveState, createCopyIds, previewImport, type ProjectFile } from '@glasshouse/domain';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useWorkspaceStore } from '../../store/workspaceStore';
 import { pad2 } from '../../ui/StatusStamp';
@@ -10,7 +10,9 @@ export function ImportDialog({ file, onClose }: { file: ProjectFile; onClose: ()
   const workspace = useWorkspaceStore((s) => s.workspace);
   const dispatch = useWorkspaceStore((s) => s.dispatch);
   const preview = useMemo(() => previewImport(workspace, file), [workspace, file]);
-  const [mode, setMode] = useState<'merge' | 'copy'>(preview.idClash ? 'copy' : 'merge');
+  // Merging into archived work is refused, so a file for an archived project starts as a copy.
+  const archivedHere = useMemo(() => archiveState(workspace, 'project', file.project.id).archived, [workspace, file.project.id]);
+  const [mode, setMode] = useState<'merge' | 'copy'>(preview.idClash || archivedHere ? 'copy' : 'merge');
   const [take, setTake] = useState<ReadonlySet<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
   const ref = useRef<HTMLDialogElement>(null);
@@ -58,7 +60,7 @@ export function ImportDialog({ file, onClose }: { file: ProjectFile; onClose: ()
           {file.exportedAt ? m.importFile.exported(formatTime(file.exportedAt)) : ''}
         </p>
         <div className="seg" role="group" aria-label={m.importFile.how}>
-          <button type="button" aria-pressed={mode === 'merge'} disabled={preview.idClash} onClick={() => setMode('merge')}>
+          <button type="button" aria-pressed={mode === 'merge'} disabled={preview.idClash || archivedHere} onClick={() => setMode('merge')}>
             {m.importFile.merge}
           </button>
           <button type="button" aria-pressed={mode === 'copy'} onClick={() => setMode('copy')}>
@@ -69,6 +71,7 @@ export function ImportDialog({ file, onClose }: { file: ProjectFile; onClose: ()
           <p className="dialog__note">{m.importFile.differing(preview.differingTemplates.join(', '))}</p>
         ) : null}
         {preview.idClash ? <p className="dialog__note">{m.importFile.idClash}</p> : null}
+        {archivedHere ? <p className="dialog__note">{m.archive.importArchived(preview.projectName)}</p> : null}
         {mode === 'copy' ? <p className="dialog__note">{m.importFile.copyNote}</p> : null}
         {mode === 'merge' && preview.conflicts.length > 0 ? (
           <table className="conflicts">

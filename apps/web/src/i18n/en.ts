@@ -1097,6 +1097,15 @@ export const en = {
     confirmBody: (several: boolean) => (several ? 'They become read-only and hidden. You can restore them any time.' : 'It becomes read-only and hidden. You can restore it any time.'),
     banner: (by: string | null, date: string, via: { kind: string; name: string } | null) => `Archived${via ? ` with ${via.kind} ${via.name}` : ''}${by ? ` by ${by}` : ''} on ${date}. Read-only.`,
     busy: (holder: string, room: string) => `${holder} is editing ${room}. Try again when they're done.`,
+    /** Why a change to archived work was refused. `kind` and `sourceKind` are the capitalised words (Room, Site, Project). */
+    refused: (purpose: 'edit' | 'import' | 'delete', kind: string, name: string, own: boolean, sourceKind: string, sourceName: string) => {
+      const lower = (word: string): string => word.toLowerCase();
+      if (purpose === 'delete') return own ? `Restore ${kind} ${name} before deleting it.` : `Restore ${sourceKind} ${sourceName} before deleting ${lower(kind)} ${name}.`;
+      const what = purpose === 'import' ? 'import into it' : 'make changes';
+      return own ? `${kind} ${name} is archived. Restore it to ${what}.` : `${kind} ${name} is archived with ${lower(sourceKind)} ${sourceName}. Restore ${sourceKind} ${sourceName} to ${what}.`;
+    },
+    reviewNote: 'Archived. Restore the room to make changes.',
+    importArchived: (name: string) => `${name} is archived here. Restore it to merge into it, or import the file as a copy.`,
   },
   claims: {
     heldBy: (name: string) => `${name} is editing this room.`,

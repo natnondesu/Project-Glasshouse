@@ -17,6 +17,8 @@ export interface DomainError {
   code: DomainErrorCode;
   message: string;
   targets: Id[];
+  /** The facts behind the message, for interfaces that word it in another language (archive and busy-room errors). */
+  params?: Record<string, string>;
 }
 
 export interface Failure {
@@ -28,9 +30,9 @@ export type Result<T> = { ok: true; value: T } | Failure;
 
 export const ok = <T>(value: T): Result<T> => ({ ok: true, value });
 
-export const err = (code: DomainErrorCode, message: string, targets: Id[] = []): Failure => ({
+export const err = (code: DomainErrorCode, message: string, targets: Id[] = [], params?: Record<string, string>): Failure => ({
   ok: false,
-  error: { code, message, targets },
+  error: { code, message, targets, ...(params ? { params } : {}) },
 });
 
 export const withTarget = (failure: Failure, id: Id): Failure => ({

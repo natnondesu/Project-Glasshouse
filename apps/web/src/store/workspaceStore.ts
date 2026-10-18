@@ -16,6 +16,7 @@ import { create } from 'zustand';
 import { claimHeldByOther, type Claim } from '../claims/claimsStore';
 import { messagesFor, useLangStore } from '../i18n';
 import type { ConnectionStatus } from '../sync/syncClient';
+import { localizeError } from './errorText';
 import { readOnlyMessage } from './readOnlyMessage';
 
 export type SaveState = { kind: 'idle' } | { kind: 'saving' } | { kind: 'saved'; at: Date } | { kind: 'failed'; reason: string };
@@ -127,7 +128,7 @@ export const useWorkspaceStore = create<WorkspaceState>()((set, get) => ({
     const busy = archiveBusy(state.workspace, command);
     if (busy) return busy;
     const result = commit(state.workspace, command);
-    if (!result.ok) return result.error;
+    if (!result.ok) return localizeError(result.error);
     if (command.type !== 'plan') {
       set({ workspace: result.value, history: historyAfter(state.history, command), lastEdit: null });
       return null;
@@ -157,8 +158,8 @@ export const useWorkspaceStore = create<WorkspaceState>()((set, get) => ({
     if (held) return claimedError(held);
     const result = commit(state.workspace, { type: 'draft/replace', roomId, content: previous, expected: h.head ?? current });
     if (!result.ok) {
-      set({ notice: result.error.message });
-      return result.error;
+      set({ notice: localizeError(result.error).message });
+      return localizeError(result.error);
     }
     set({
       workspace: result.value,
@@ -177,8 +178,8 @@ export const useWorkspaceStore = create<WorkspaceState>()((set, get) => ({
     if (held) return claimedError(held);
     const result = commit(state.workspace, { type: 'draft/replace', roomId, content: next, expected: h.head ?? current });
     if (!result.ok) {
-      set({ notice: result.error.message });
-      return result.error;
+      set({ notice: localizeError(result.error).message });
+      return localizeError(result.error);
     }
     set({
       workspace: result.value,

@@ -4,7 +4,7 @@ import { RoomClaimBanner } from '../claims/RoomClaimBanner';
 import { Link, NavLink } from 'react-router';
 import { pad2 } from '../ui/StatusStamp';
 import { useT } from '../i18n';
-import { useRoomLocation, useViewedRevisionNumber } from '../store/hooks';
+import { useRoomArchived, useRoomLocation, useViewedRevisionNumber } from '../store/hooks';
 
 const VIEWS = [
   { id: 'plan', key: 'plan' },
@@ -23,9 +23,11 @@ export function ViewTabs({ roomId, frozen = null, claim = false }: { roomId: str
   const location = useRoomLocation(roomId);
   const m = useT();
   const rev = useViewedRevisionNumber();
+  const archived = useRoomArchived(roomId);
   const plan = location?.room.plan;
   const approved = plan ? latestApproved(plan) : null;
-  const blockers = plan && currentRevision(plan).state !== 'approved' ? approvalBlockers(plan).length : 0;
+  // Nothing can be fixed in an archived room, so the count would only nag.
+  const blockers = plan && !archived && currentRevision(plan).state !== 'approved' ? approvalBlockers(plan).length : 0;
   return (
     <nav className="view-tabs glass" aria-label={m.views.nav}>
       <span className="view-tabs__seg">

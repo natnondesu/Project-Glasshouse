@@ -317,3 +317,9 @@
   font-size: var(--text-2xs);
   line-height: 18px;
 }
+
+/* Unavailable for now (restore the parent first, or restore before deleting): dimmed, but still pressable to explain why. */
+.tree-row__actions .icon-btn[aria-disabled='true'] {
+  opacity: 0.4;
+  cursor: not-allowed;
+}

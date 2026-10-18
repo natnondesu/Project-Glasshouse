@@ -109,6 +109,14 @@ export function ProjectTree({ activeRoomId, onCollapse }: { activeRoomId: string
     };
   };
 
+  /** Why this archived item can't be deleted yet (null while it is live). */
+  const deleteBlocked = (kind: ArchiveKind, id: string, name: string) => {
+    const state = archiveState(workspace, kind, id);
+    if (!state.source) return undefined;
+    const reason = m.archive.refused('delete', m.tree.kind[kind], name, state.by === 'self', m.tree.kind[state.source.kind], state.source.name);
+    return { reason, onExplain: () => setError(reason) };
+  };
+
   const addProject = (): void => {
     const id = newId();
     if (run({ type: 'project/create', id, name: m.tree.untitledProject })) setEditingId(id);
@@ -169,6 +177,7 @@ export function ProjectTree({ activeRoomId, onCollapse }: { activeRoomId: string
             canDelete={can.admin}
             archived={project.archivedAt !== undefined}
             archiveActions={archiveActions('project', project.id, project.name)}
+            deleteBlocked={deleteBlocked('project', project.id, project.name)}
             onRename={(name) => rename({ type: 'project/rename', projectId: project.id, name })}
             onAdd={can.edit && project.archivedAt === undefined ? () => {
               const id = newId();
@@ -195,6 +204,7 @@ export function ProjectTree({ activeRoomId, onCollapse }: { activeRoomId: string
                     canEdit={can.edit}
                     archived={project.archivedAt !== undefined || site.archivedAt !== undefined}
                     archiveActions={archiveActions('site', site.id, site.name)}
+                    deleteBlocked={deleteBlocked('site', site.id, site.name)}
                     onRename={(name) => rename({ type: 'site/rename', siteId: site.id, name })}
                     onAdd={can.edit && project.archivedAt === undefined && site.archivedAt === undefined ? () => {
                       const id = newId();
@@ -232,6 +242,7 @@ export function ProjectTree({ activeRoomId, onCollapse }: { activeRoomId: string
                               canEdit={can.edit}
                               archived={project.archivedAt !== undefined || site.archivedAt !== undefined || room.archivedAt !== undefined}
                               archiveActions={archiveActions('room', room.id, room.name)}
+                              deleteBlocked={deleteBlocked('room', room.id, room.name)}
                               onRename={(name) => rename({ type: 'room/rename', roomId: room.id, name })}
                               onDelete={() => {
                                 if (run({ type: 'room/delete', roomId: room.id }) && room.id === activeRoomId) navigate('/');

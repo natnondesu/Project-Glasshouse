@@ -259,9 +259,12 @@ export class WorkspaceService {
       if (step === 'review/submit' || step === 'review/discard-draft') this.claims!.release(claimRoom, actor.id, { admin: false });
       else this.claims!.touch(claimRoom, actor);
     }
-    // An archived room can't be edited, so the admin's own claim on it would only block others after a restore.
-    if (this.claims && actor.verified) {
-      for (const room of roomsArchivedBy(before, toApply)) this.claims.release(room.id, actor.id, { admin: false });
+    // An archived room can't be edited, so no claim on it means anything: not the admin's own, and not one taken while this archive was being stored.
+    if (this.claims) {
+      for (const room of roomsArchivedBy(before, toApply)) {
+        const held = this.claims.holder(room.id);
+        if (held) this.claims.release(room.id, held.userId, { admin: false });
+      }
     }
     this.claims?.prune((roomId) => findRoom(this.current.workspace, roomId) !== null);
     this.notify(entry);
@@ -281,7 +284,7 @@ export class WorkspaceService {
   private archiveBlockedByClaim(command: WorkspaceCommand, actorId: string): DomainError | null {
     for (const room of roomsArchivedBy(this.current.workspace, command)) {
       const held = this.claims!.holder(room.id);
-      if (held && held.userId !== actorId) return err('room_busy', `${held.name} is editing ${room.name}. Try again when they're done.`, [room.id]).error;
+      if (held && held.userId !== actorId) return err('room_busy', `${held.name} is editing ${room.name}. Try again when they're done.`, [room.id], { holder: held.name, room: room.name }).error;
     }
     return null;
   }
