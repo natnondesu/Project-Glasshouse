@@ -64,8 +64,19 @@ describe('domain wording', () => {
     expect(historyText(th, legacy)).toBe('Approved by Nok (unverified)');
   });
 
+  it('words the air conditioning and display wall advice in Thai with the names in it', () => {
+    const base = { key: 'k', severity: 'warn' as const, message: 'm', hint: 'h', targets: [] as string[] };
+    expect(issueText(th, { ...base, code: 'wall_ac_drip', params: { rack: 'RK-01', ac: 'AC-01' } })).toEqual({
+      message: 'RK-01 อยู่ใต้แอร์ติดผนัง น้ำจากแอร์อาจหยดใส่แร็ค',
+      hint: 'ย้าย RK-01 ออกจากใต้ AC-01 หรือย้ายแอร์ ยังอนุมัติได้',
+    });
+    expect(issueText(th, { ...base, code: 'wall_ac_airflow', params: { rack: 'RK-01', ac: 'AC-01' } }).message).toBe('RK-01 ขวางทางลมด้านหน้าแอร์ติดผนัง');
+    expect(issueText(th, { ...base, code: 'precision_ac_service', params: { other: 'F-01', ac: 'PAC-01' } }).message).toBe('เว้นพื้นที่ด้านหน้าแอร์ Precision 1.00 ม. สำหรับงานบริการ แต่ F-01 ขวางอยู่');
+    expect(issueText(th, { ...base, code: 'display_wall_view', params: { rack: 'RK-01', screen: 'DW-01' } }).message).toBe('RK-01 อยู่หน้าจอแสดงผลขนาดใหญ่');
+  });
+
   it('has Thai wording for every check code the domain can raise', () => {
-    const codes = ['footprint_empty', 'footprint_disconnected', 'object_outside_footprint', 'object_overlap', 'clearance_outside_footprint', 'clearance_obstructed', 'clearance_door', 'device_too_deep', 'demand_unknown', 'reserved_demand_unknown', 'over_design_limit', 'feed_no_way', 'feed_overload', 'link_media_mismatch'];
+    const codes = ['footprint_empty', 'footprint_disconnected', 'object_outside_footprint', 'object_overlap', 'clearance_outside_footprint', 'clearance_obstructed', 'clearance_door', 'device_too_deep', 'demand_unknown', 'reserved_demand_unknown', 'over_design_limit', 'feed_no_way', 'feed_overload', 'link_media_mismatch', 'wall_ac_drip', 'wall_ac_airflow', 'precision_ac_service', 'display_wall_view'];
     expect(codes.filter((c) => !th.issues[c])).toEqual([]);
   });
 });

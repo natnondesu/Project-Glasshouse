@@ -1,10 +1,11 @@
 import type { CommitFn } from '../../store/hooks';
-import { anchorAt, dimensionPoints, newId, offsetFromPoint, type Dimension, snapDrag, snapFloor, type Id, type PlanCommand, type PlanContent, type Point, type RoomObject, roomExtensionFor, formatMetres } from '@glasshouse/domain';
+import { anchorAt, centerOf, createObject, dimensionPoints, newId, offsetFromPoint, type Dimension, snapDrag, snapFloor, type Id, type PlanCommand, type PlanContent, type Point, type RoomObject, roomExtensionFor, formatMetres } from '@glasshouse/domain';
 import { useEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react';
 import type { ViewportApi } from '../../viewport/useViewport';
 import { clampIntoRoom } from './clamp';
 import { hitTest } from './hitTest';
-import { placementAt as placeObject } from './placement';
+import { placementAt as placeObject, snapMoved } from './placement';
+import { drawnPartition } from './partitionDraw';
 import { describeRackContents } from './labels';
 import { useT } from '../../i18n';
 import { snapMeasurePoint, type SnapTarget } from './measure';
@@ -21,6 +22,8 @@ type Gesture =
   | { kind: 'move'; id: Id; origin: Point; start: { x: number; y: number }; startClient: Point; dragging: boolean }
   | { kind: 'resize'; id: Id; handle: Handle }
   | { kind: 'rect'; mode: 'area' | 'cut'; origin: Point }
+  /** The Partition tool: a press and a drag from one end to the other; a press that never drags is a click for the default wall. */
+  | { kind: 'wall'; origin: Point; startClient: Point; dragging: boolean }
   | { kind: 'dimOffset'; id: Id; startClient: Point; dragging: boolean };
 
 /** The Dimension tool is three clicks: first point, second point, then where the dimension line goes. */
@@ -34,6 +37,8 @@ const MESSAGE_MS = 4000;
 const NUDGE_M = 0.1;
 const FINE_NUDGE_M = 0.01;
 const MEASURE_SNAP_PX = 10;
+/** A thin partition can be picked this many pixels either side of its line. */
+const HIT_MARGIN_PX = 5;
 
 export interface MeasureState {
   a: SnapTarget | null;
@@ -107,6 +112,14 @@ export function usePlanGestures({ content, tool, setTool, selectedId, select, vi
     setMessage(problem);
     return problem === null;
   };
+  /** The press that placed an object must not also focus whatever it landed on: focusing an object selects it. */
+  const placedOnPress = useRef(false);
+  const placeAndSelect = (object: RoomObject): boolean => {
+    if (!run({ type: 'object/add', object })) return false;
+    select(object.id);
+    setTool('select');
+    return true;
+  };
   const cancel = (): void => {
     gesture.current = null;
     setPreview(null);
@@ -153,7 +166,7 @@ export function usePlanGestures({ content, tool, setTool, selectedId, select, vi
       return;
     }
     if (readOnly) {
-      select(hitTest(content.objects, world)?.id ?? null);
+      select(hitTest(content.objects, world, HIT_MARGIN_PX / viewport.view.scale)?.id ?? null);
       return;
     }
     if (tool === 'area' || tool === 'cut') {
@@ -162,12 +175,13 @@ export function usePlanGestures({ content, tool, setTool, selectedId, select, vi
       setPreview(rectPreview(tool, origin, origin));
       return;
     }
+    if (tool === 'partition') {
+      setGhost(null);
+      gesture.current = { kind: 'wall', origin: world, startClient: [e.clientX, e.clientY], dragging: false };
+      return;
+    }
     if (isPlacementTool(tool)) {
-      const object = placementAt(tool, world);
-      if (run({ type: 'object/add', object })) {
-        select(object.id);
-        setTool('select');
-      }
+      placedOnPress.current = placeAndSelect(placementAt(tool, world));
       return;
     }
     const dimensionId = (e.target as Element).closest('[data-dimension-id]')?.getAttribute('data-dimension-id');
@@ -181,7 +195,7 @@ export function usePlanGestures({ content, tool, setTool, selectedId, select, vi
       gesture.current = { kind: 'resize', id: selectedId, handle };
       return;
     }
-    const hit = hitTest(content.objects, world);
+    const hit = hitTest(content.objects, world, HIT_MARGIN_PX / viewport.view.scale);
     if (!hit) {
       select(null);
       return;
@@ -227,6 +241,13 @@ export function usePlanGestures({ content, tool, setTool, selectedId, select, vi
       setPreview(rectPreview(g.mode, g.origin, snapPoint(world)));
       return;
     }
+    if (g.kind === 'wall') {
+      if (!g.dragging && Math.hypot(e.clientX - g.startClient[0], e.clientY - g.startClient[1]) < DRAG_THRESHOLD_PX) return;
+      gesture.current = { ...g, dragging: true };
+      const wall = drawnPartition(content, g.origin, world, { snapAngle: e.shiftKey, snapDistanceM: MEASURE_SNAP_PX / viewport.view.scale });
+      setPreview(wall ? { kind: 'wall', object: { ...createObject('partition', { x: wall.x, y: wall.y }, content.objects), ...wall } } : null);
+      return;
+    }
     if (g.kind === 'move') {
       const moved = Math.hypot(e.clientX - g.startClient[0], e.clientY - g.startClient[1]);
       if (!g.dragging && moved < DRAG_THRESHOLD_PX) return;
@@ -235,7 +256,10 @@ export function usePlanGestures({ content, tool, setTool, selectedId, select, vi
       if (!dragged) return;
       const x = snapDrag(g.start.x + world[0] - g.origin[0]);
       const y = snapDrag(g.start.y + world[1] - g.origin[1]);
-      setPreview({ kind: 'object', id: g.id, patch: clampIntoRoom(dragged, x, y, content.survey) });
+      // Doors and wall-hung items follow the walls and partitions; the pointer's offset on the object stays what it was when grabbed.
+      const centre = centerOf(dragged);
+      const snapped = snapMoved(dragged, [centre[0] + world[0] - g.origin[0], centre[1] + world[1] - g.origin[1]], content);
+      setPreview({ kind: 'object', id: g.id, patch: snapped ?? clampIntoRoom(dragged, x, y, content.survey) });
       return;
     }
     const object = content.objects.find((o) => o.id === g.id);
@@ -246,6 +270,14 @@ export function usePlanGestures({ content, tool, setTool, selectedId, select, vi
     const g = gesture.current;
     const p = previewRef.current;
     cancel();
+    if (g?.kind === 'wall' && !g.dragging) {
+      placeAndSelect(placementAt('partition', g.origin));
+      return;
+    }
+    if (g?.kind === 'wall' && p?.kind === 'wall') {
+      placeAndSelect(p.object);
+      return;
+    }
     if (!g || g.kind === 'pan' || !p) return;
     if (g.kind === 'dimOffset' && p.kind === 'dimension') {
       run({ type: 'dimension/update', id: p.id, patch: { offset: p.offset } });
@@ -345,6 +377,12 @@ export function usePlanGestures({ content, tool, setTool, selectedId, select, vi
     onPointerCancel: cancel,
     onPointerLeave,
     onContextMenu: (e) => e.preventDefault(),
+    onMouseDown: (e) => {
+      if (!placedOnPress.current) return;
+      placedOnPress.current = false;
+      e.preventDefault();
+      e.currentTarget.focus();
+    },
   };
 
   return { preview, ghost, draftDimension, cursor, message, measure, svgHandlers, onKeyDown, onKeyUp };

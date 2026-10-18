@@ -131,3 +131,110 @@ export function SourceSymbol({ o, view }: { o: RoomObject; view: View }) {
   }
   return null;
 }
+
+/** Metres of drawn airflow, and how many streams, from the front of a wall split AC. */
+const AC_FLOW_M = 0.3;
+const AC_FLOW_STREAMS = 3;
+const AC_FLOW_MIN_PX = 14;
+const ARROW_HEAD_PX = 4;
+
+/**
+ * Wall split AC: the indoor unit's vent slot along its front, and the air it blows into the room as arrows from the front face.
+ * The arrows are what the airflow zone is about; they go once there is room for them at this zoom.
+ */
+export function WallSplitAcSymbol({ o, view }: { o: RoomObject; view: View }) {
+  const vent = o.d / 2 - Math.min(0.06, o.d * 0.25);
+  const flowPx = AC_FLOW_M * view.scale;
+  return (
+    <g aria-hidden="true">
+      <path className="ac__louvre" d={path([pt(o, view, -o.w / 2 + 0.07, vent), pt(o, view, o.w / 2 - 0.07, vent)])} />
+      {flowPx >= AC_FLOW_MIN_PX
+        ? Array.from({ length: AC_FLOW_STREAMS }, (_, i) => {
+            const u = (o.w * (i - (AC_FLOW_STREAMS - 1) / 2)) / AC_FLOW_STREAMS;
+            const [tx, ty] = pt(o, view, u, o.d / 2 + 0.03);
+            const [hx, hy] = pt(o, view, u, o.d / 2 + 0.03 + AC_FLOW_M);
+            const [ux, uy] = [(hx - tx) / (Math.hypot(hx - tx, hy - ty) || 1), (hy - ty) / (Math.hypot(hx - tx, hy - ty) || 1)];
+            const [nx, ny] = [-uy, ux];
+            return (
+              <path
+                key={i}
+                className="ac__flow"
+                d={`${path([[tx, ty], [hx, hy]])} ${path([[hx - ux * ARROW_HEAD_PX + nx * ARROW_HEAD_PX * 0.6, hy - uy * ARROW_HEAD_PX + ny * ARROW_HEAD_PX * 0.6], [hx, hy], [hx - ux * ARROW_HEAD_PX - nx * ARROW_HEAD_PX * 0.6, hy - uy * ARROW_HEAD_PX - ny * ARROW_HEAD_PX * 0.6]])}`}
+              />
+            );
+          })
+        : null}
+    </g>
+  );
+}
+
+/** Radius of a precision AC's fan, as a share of its smaller side. */
+export const PAC_FAN_SHARE = 0.2;
+/** The fan sits above the middle of the cabinet and the name under it; both are measured on screen, so they stay clear when it is turned. */
+const PAC_FAN_LIFT_SHARE = 0.14;
+const PAC_NAME_DROP_SHARE = 0.16;
+const FAN_BLADES = 4;
+const BLADE_SWEEP_DEG = 38;
+
+/** Where the name of a precision AC goes, in pixels below the middle of the cabinet. */
+export const pacNameDropPx = (o: RoomObject, view: View): number => Math.min(o.w, o.d) * view.scale * PAC_NAME_DROP_SHARE;
+
+/** Precision AC: the fan seen from above and a heavy band along the front, the face people service it from. */
+export function PrecisionAcSymbol({ o, view }: { o: RoomObject; view: View }) {
+  const [mx, my] = pt(o, view, 0, 0);
+  const size = Math.min(o.w, o.d) * view.scale;
+  const [cx, cy] = [mx, my - size * PAC_FAN_LIFT_SHARE];
+  const r = size * PAC_FAN_SHARE;
+  const rim = (deg: number): [number, number] => [cx + Math.cos((deg * Math.PI) / 180) * r * 0.9, cy + Math.sin((deg * Math.PI) / 180) * r * 0.9];
+  const blades = Array.from({ length: FAN_BLADES }, (_, i) => {
+    const from = (360 / FAN_BLADES) * i - 90;
+    const [ax, ay] = rim(from);
+    const [bx, by] = rim(from + BLADE_SWEEP_DEG);
+    return `M${cx.toFixed(1)} ${cy.toFixed(1)} L${ax.toFixed(1)} ${ay.toFixed(1)} A${(r * 0.9).toFixed(1)} ${(r * 0.9).toFixed(1)} 0 0 1 ${bx.toFixed(1)} ${by.toFixed(1)} Z`;
+  });
+  return (
+    <g aria-hidden="true">
+      <circle className="pac__fan" cx={cx} cy={cy} r={r} />
+      <path className="pac__blades" d={blades.join(' ')} />
+      <path className="src__front" d={path([pt(o, view, -o.w * 0.42, o.d * 0.42), pt(o, view, o.w * 0.42, o.d * 0.42)])} />
+    </g>
+  );
+}
+
+/** One display tile is about this wide. */
+const DISPLAY_TILE_M = 1;
+
+/** Display wall: tile joints across the panel and a heavy screen face on the front, where people look from. */
+export function DisplayWallSymbol({ o, view }: { o: RoomObject; view: View }) {
+  const tiles = Math.max(2, Math.round(o.w / DISPLAY_TILE_M));
+  return (
+    <g aria-hidden="true">
+      {Array.from({ length: tiles - 1 }, (_, i) => {
+        const u = -o.w / 2 + (o.w * (i + 1)) / tiles;
+        return <path key={i} className="dw__tile" d={path([pt(o, view, u, -o.d / 2), pt(o, view, u, o.d / 2)])} />;
+      })}
+      <path className="dw__screen" d={path([pt(o, view, -o.w / 2, o.d / 2), pt(o, view, o.w / 2, o.d / 2)])} />
+    </g>
+  );
+}
+
+/** Text lying along an object's long side, upright whichever way it is turned. */
+export function AlongLabel({ o, view, text, side = 'up', gapPx, className = '' }: { o: RoomObject; view: View; text: string; side?: 'up' | 'front'; gapPx: number; className?: string }) {
+  const [cx, cy] = pt(o, view, 0, 0);
+  const [ex, ey] = pt(o, view, 1, 0);
+  let turn = (Math.atan2(ey - cy, ex - cx) * 180) / Math.PI;
+  // Upright, and vertical text reads from the bottom up, as the dimension figures do.
+  if (turn >= 90) turn -= 180;
+  if (turn < -90) turn += 180;
+  const rad = (turn * Math.PI) / 180;
+  // Perpendicular to the text: 'up' is the side the text's top faces; 'front' the side the object faces.
+  const [fx, fy] = pt(o, view, 0, 1);
+  const front: [number, number] = [fx - cx, fy - cy];
+  const up: [number, number] = [Math.sin(rad), -Math.cos(rad)];
+  const [dx, dy] = side === 'front' ? [front[0] / (Math.hypot(...front) || 1), front[1] / (Math.hypot(...front) || 1)] : up;
+  return (
+    <text className={`obj__label obj__label--along ${className}`.trim()} x={cx + dx * gapPx} y={cy + dy * gapPx} textAnchor="middle" dominantBaseline="middle" transform={`rotate(${turn.toFixed(2)} ${(cx + dx * gapPx).toFixed(1)} ${(cy + dy * gapPx).toFixed(1)})`}>
+      {text}
+    </text>
+  );
+}

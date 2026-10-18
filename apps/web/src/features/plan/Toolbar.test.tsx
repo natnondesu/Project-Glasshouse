@@ -3,7 +3,9 @@ import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
 import { beforeEach, expect, it } from 'vitest';
 import { Toolbar } from './Toolbar';
-import type { Tool } from './tools';
+import { createElement } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
+import { TOOL_SPECS, type Tool } from './tools';
 
 function Harness({ readOnly = false }: { readOnly?: boolean }) {
   const [tool, setTool] = useState<Tool>('select');
@@ -17,7 +19,7 @@ function Harness({ readOnly = false }: { readOnly?: boolean }) {
 
 beforeEach(() => localStorage.clear());
 
-it('groups tools: Select and Pan alone, then Floor, Racks, Doors, Furniture, Measure and Power, each showing its default tool', () => {
+it('groups tools: Select and Pan alone, then Floor, Racks, Walls & doors, Furniture, Cooling, Measure and Power, each showing its default tool', () => {
   render(<Harness />);
   const bar = screen.getByRole('toolbar', { name: 'Plan tools' });
   expect(within(bar).getAllByRole('button').map((b) => b.getAttribute('aria-label'))).toEqual([
@@ -25,13 +27,13 @@ it('groups tools: Select and Pan alone, then Floor, Racks, Doors, Furniture, Mea
     'Pan',
     'Floor tools',
     'Racks tools',
-    'Doors tools',
-    'Place furniture',
+    'Walls & doors tools',
+    'Furniture tools',
+    'Cooling tools',
     'Measure tools',
     'Power source tools',
   ]);
-  for (const group of ['Floor', 'Racks', 'Doors', 'Measure', 'Power source']) expect(within(bar).getByRole('button', { name: `${group} tools` })).toHaveAttribute('aria-haspopup', 'menu');
-  expect(within(bar).getByRole('button', { name: 'Place furniture' })).not.toHaveAttribute('aria-haspopup');
+  for (const group of ['Floor', 'Racks', 'Walls & doors', 'Furniture', 'Cooling', 'Measure', 'Power source']) expect(within(bar).getByRole('button', { name: `${group} tools` })).toHaveAttribute('aria-haspopup', 'menu');
   expect(within(bar).queryByRole('button', { name: /Objects/ })).toBeNull();
 });
 
@@ -46,7 +48,9 @@ it('lists each group’s tools in its flyout, default first', async () => {
   render(<Harness />);
   expect(await names('Floor')).toEqual(['Add floor area', 'Cut out']);
   expect(await names('Racks')).toEqual(['Rack', 'Wall rack', 'Existing rack']);
-  expect(await names('Doors')).toEqual(['Door', 'Sliding door']);
+  expect(await names('Walls & doors')).toEqual(['Door', 'Sliding door', 'Partition']);
+  expect(await names('Furniture')).toEqual(['Furniture', 'Display wall']);
+  expect(await names('Cooling')).toEqual(['Wall split AC', 'Precision AC']);
   expect(await names('Measure')).toEqual(['Measure', 'Dimension']);
   expect(await names('Power source')).toEqual(['MCB panel', 'Wall plug', 'Industrial socket (IEC 60309)', 'Floor box', 'UPS', '3rd-party PDU']);
 });
@@ -64,10 +68,10 @@ it('opens the list when a group button is clicked, picking nothing until a tool 
 it('hands focus back to the group button after a tool is chosen, so the plan still hears Escape', async () => {
   const user = userEvent.setup();
   render(<Harness />);
-  await user.click(screen.getByRole('button', { name: 'Doors tools' }));
+  await user.click(screen.getByRole('button', { name: 'Walls & doors tools' }));
   await user.click(screen.getByRole('menuitemradio', { name: 'Sliding door' }));
   expect(screen.queryByRole('menu')).toBeNull();
-  expect(screen.getByRole('button', { name: 'Sliding door — Doors tools' })).toHaveFocus();
+  expect(screen.getByRole('button', { name: 'Sliding door — Walls & doors tools' })).toHaveFocus();
 });
 
 it('picks a variant from the flyout; the group keeps its default icon, is pressed, and names the variant', async () => {
@@ -101,20 +105,31 @@ it('never swaps a group’s icon for the last tool used', async () => {
 it('shows the active variant’s hint on its group button', async () => {
   const user = userEvent.setup();
   render(<Harness />);
-  await user.click(screen.getByRole('button', { name: 'Doors tools' }));
+  await user.click(screen.getByRole('button', { name: 'Walls & doors tools' }));
   await user.click(screen.getByRole('menuitemradio', { name: 'Sliding door' }));
-  await user.hover(screen.getByRole('button', { name: 'Sliding door — Doors tools' }));
+  await user.hover(screen.getByRole('button', { name: 'Sliding door — Walls & doors tools' }));
   expect(screen.getByRole('tooltip')).toHaveTextContent(/sliding door.*needs no swing space/i);
 });
 
-it('makes Furniture a plain button with no flyout arrow', async () => {
+it('puts the new objects in the rail in the order the plan decided, with Cooling after Furniture', async () => {
   const user = userEvent.setup();
   render(<Harness />);
-  const furniture = screen.getByRole('button', { name: 'Place furniture' });
-  expect(furniture).not.toHaveAttribute('aria-haspopup');
-  await user.click(furniture);
-  expect(screen.getByTestId('tool')).toHaveTextContent('furniture');
-  expect(furniture).toHaveAttribute('aria-pressed', 'true');
+  await user.click(screen.getByRole('button', { name: 'Furniture tools' }));
+  await user.click(screen.getByRole('menuitemradio', { name: 'Display wall' }));
+  expect(screen.getByTestId('tool')).toHaveTextContent('display_wall');
+  expect(screen.getByRole('button', { name: 'Display wall — Furniture tools' })).toHaveAttribute('aria-pressed', 'true');
+  await user.click(screen.getByRole('button', { name: 'Cooling tools' }));
+  await user.click(screen.getByRole('menuitemradio', { name: 'Precision AC' }));
+  expect(screen.getByTestId('tool')).toHaveTextContent('precision_ac');
+  await user.click(screen.getByRole('button', { name: 'Precision AC — Cooling tools' }));
+  await user.click(screen.getByRole('menuitemradio', { name: 'Wall split AC' }));
+  expect(screen.getByTestId('tool')).toHaveTextContent('wall_split_ac');
+});
+
+it('gives each new tool its own icon, not a stand-in shared with the furniture', () => {
+  const icon = (tool: keyof typeof TOOL_SPECS) => renderToStaticMarkup(createElement(TOOL_SPECS[tool].Icon));
+  const icons = ['partition', 'wall_split_ac', 'precision_ac', 'display_wall', 'furniture'].map((t) => icon(t as keyof typeof TOOL_SPECS));
+  expect(new Set(icons).size).toBe(icons.length);
 });
 
 it('explains every tool on hover with what it does and its shortcut', async () => {

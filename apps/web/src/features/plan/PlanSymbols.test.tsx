@@ -1,8 +1,10 @@
-import { createObject, emptyContent, type PlanContent, type Rack, type RoomObject } from '@glasshouse/domain';
+import { createObject, emptyContent, type Issue, type PlanContent, type Rack, type RoomObject } from '@glasshouse/domain';
 import { render } from '@testing-library/react';
-import { expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { useViewport } from '../../viewport/useViewport';
 import { PlanCanvas } from './PlanCanvas';
+import type { Preview } from './layers';
+import { ALL_LAYERS, type PlanLayers } from './ViewMenu';
 
 function Harness({ objects }: { objects: RoomObject[] }) {
   const content: PlanContent = { ...emptyContent(), survey: { ...emptyContent().survey, width: 10, length: 10, floorAreas: [{ id: 'a', x: 0, y: 0, w: 10, d: 10 }] }, objects };
@@ -65,4 +67,123 @@ it('draws a sliding door with its track, the leaf parked on the side it slides t
   };
   expect(leafMid('sl')).toBeLessThan(mid('sl'));
   expect(leafMid('sr')).toBeGreaterThan(mid('sr'));
+});
+
+function Scene({ objects, issues = [], selectedId = null, preview = null, layers }: { objects: RoomObject[]; issues?: Issue[]; selectedId?: string | null; preview?: Preview | null; layers?: PlanLayers }) {
+  const content: PlanContent = { ...emptyContent(), survey: { ...emptyContent().survey, width: 10, length: 10, floorAreas: [{ id: 'a', x: 0, y: 0, w: 10, d: 10 }] }, objects };
+  // jsdom has no layout: fix the zoom so drawn sizes are predictable (100 px per metre).
+  const viewport = { ...useViewport({ w: 10, d: 10 }), view: { scale: 100, tx: 0, ty: 0 } };
+  return <PlanCanvas content={content} issues={issues} selectedId={selectedId} viewport={viewport} preview={preview} layers={layers} cursor="default" onFocusObject={() => {}} />;
+}
+
+const warn = (code: Issue['code'], targets: string[]): Issue => ({ key: `${code}:${targets.join(':')}`, code, severity: 'warn', message: 'm', hint: 'h', params: {}, targets });
+
+describe('partition, air conditioning and display wall on the plan', () => {
+  it('draws a partition as a solid wall under everything else, even when it was added after a door', () => {
+    const door = at(createObject('door', { x: 3.55, y: 4 }, []), 'door', { angle: 0 });
+    const wall = at(createObject('partition', { x: 3, y: 4 }, []), 'wall');
+    const { container } = render(<Scene objects={[door, wall]} />);
+    const order = [...container.querySelectorAll('[data-object-id]')].map((g) => g.getAttribute('data-object-id'));
+    expect(order.indexOf('wall')).toBeLessThan(order.indexOf('door'));
+    expect(container.querySelector('[data-object-id="wall"]')).toHaveClass('obj--partition');
+  });
+
+  it('names a partition along its line, beside it', () => {
+    const wall = at(createObject('partition', { x: 3, y: 4 }, []), 'wall', { name: 'PT-01' });
+    const { container } = render(<Scene objects={[wall]} />);
+    const label = container.querySelector('[data-object-id="wall"] .obj__label--along');
+    expect(label?.textContent).toBe('PT-01');
+  });
+
+  it('draws a wall split AC dashed like other overhead items, with its vent and the air blowing out of the front', () => {
+    const ac = at(createObject('wall_split_ac', { x: 3, y: 0 }, []), 'ac');
+    const { container } = render(<Scene objects={[ac]} />);
+    const g = container.querySelector('[data-object-id="ac"]')!;
+    expect(g).toHaveClass('obj--wall_split_ac');
+    expect(g.querySelector('.ac__louvre')).not.toBeNull();
+    expect(g.querySelectorAll('.ac__flow')).toHaveLength(3);
+  });
+
+  it('draws a precision AC with its fan and a front band, and keeps its name clear of the fan', () => {
+    const pac = at(createObject('precision_ac', { x: 3, y: 3 }, []), 'pac');
+    const { container } = render(<Scene objects={[pac]} />);
+    const g = container.querySelector('[data-object-id="pac"]')!;
+    expect(g.querySelector('.pac__fan')).not.toBeNull();
+    expect(g.querySelector('.src__front')).not.toBeNull();
+    const fan = g.querySelector('.pac__fan')!;
+    const label = g.querySelector('.obj__label')!;
+    expect(Number(label.getAttribute('y'))).toBeGreaterThan(Number(fan.getAttribute('cy')) + Number(fan.getAttribute('r')));
+    // ...and above the heavy front band.
+    const front = g.querySelector('.src__front')!.getAttribute('d')!;
+    expect(Number(label.getAttribute('y')) + 6).toBeLessThan(Number(/^M[\d.-]+ ([\d.-]+)/.exec(front)![1]));
+  });
+
+  it('draws a display wall as tiles with a heavy screen face', () => {
+    const dw = at(createObject('display_wall', { x: 3, y: 0 }, []), 'dw');
+    const { container } = render(<Scene objects={[dw]} />);
+    const g = container.querySelector('[data-object-id="dw"]')!;
+    expect(g.querySelector('.dw__screen')).not.toBeNull();
+    expect(g.querySelectorAll('.dw__tile')).toHaveLength(2);
+  });
+});
+
+describe('zones in front of air conditioning and the display wall', () => {
+  const ac = at(createObject('wall_split_ac', { x: 3, y: 0 }, []), 'ac');
+  const rack = at(createObject('rack', { x: 3, y: 0.6 }, []), 'rk');
+
+  it('shows the zone only while the unit is selected', () => {
+    expect(render(<Scene objects={[ac]} />).container.querySelector('.env-zone')).toBeNull();
+    const selected = render(<Scene objects={[ac]} selectedId="ac" />).container;
+    expect(selected.querySelector('.env-zone')).not.toBeNull();
+    expect(selected.querySelector('.env-zone--warn')).toBeNull();
+  });
+
+  it('shows the zone, marked as a warning, when a rule about it fires', () => {
+    const { container } = render(<Scene objects={[ac, rack]} issues={[warn('wall_ac_airflow', ['rk', 'ac'])]} />);
+    expect(container.querySelector('.env-zone--warn')).not.toBeNull();
+    // The rack involved is marked too, so the warning can be found on the drawing.
+    expect(container.querySelector('[data-object-id="rk"]')).toHaveClass('is-warned');
+    expect(container.querySelector('[data-object-id="ac"]')).toHaveClass('is-warned');
+  });
+
+  it('marks the objects of a condensate warning, which has no zone of its own', () => {
+    const { container } = render(<Scene objects={[ac, rack]} issues={[warn('wall_ac_drip', ['rk', 'ac'])]} />);
+    expect(container.querySelector('.env-zone')).toBeNull();
+    expect(container.querySelector('[data-object-id="rk"]')).toHaveClass('is-warned');
+  });
+
+  it('says what the zone is for and how deep, when the zone is wide enough to hold it', () => {
+    const { container } = render(<Scene objects={[ac]} selectedId="ac" />);
+    // 0.90 m across is too narrow for one line at this zoom: the name sits over the figure.
+    expect(container.querySelectorAll('.env-zone__label tspan').length).toBe(2);
+    expect(container.querySelector('.env-zone__label')?.textContent).toBe('Airflow1.00 m');
+  });
+
+  it('goes with the clearance zones layer', () => {
+    const { container } = render(<Scene objects={[ac]} selectedId="ac" layers={{ ...ALL_LAYERS, clearance: false }} />);
+    expect(container.querySelector('.env-zone')).toBeNull();
+  });
+
+  it('covers the 1.00 m in front of a precision AC and 1.50 m in front of a display wall', () => {
+    const pac = at(createObject('precision_ac', { x: 3, y: 3 }, []), 'pac');
+    const dw = at(createObject('display_wall', { x: 5, y: 0 }, []), 'dw');
+    const { container } = render(<Scene objects={[pac, dw]} selectedId="pac" />);
+    expect(container.querySelector('.env-zone')).not.toBeNull();
+    expect(render(<Scene objects={[dw]} selectedId="dw" />).container.querySelector('.env-zone__label')?.textContent).toBe('Viewing 1.50 m');
+  });
+});
+
+describe('drawing a partition', () => {
+  it('shows only the two end handles on a selected partition, which is a few pixels thick', () => {
+    const wall = at(createObject('partition', { x: 3, y: 4 }, []), 'wall');
+    const { container } = render(<Scene objects={[wall]} selectedId="wall" />);
+    expect([...container.querySelectorAll('[data-handle]')].map((h) => h.getAttribute('data-handle')).sort()).toEqual(['e', 'w']);
+  });
+
+  it('previews the wall being dragged out, with its length', () => {
+    const wall = at(createObject('partition', { x: 3, y: 4 }, []), 'draft', { w: 3.2 });
+    const { container } = render(<Scene objects={[]} preview={{ kind: 'wall', object: wall }} />);
+    expect(container.querySelector('.wall-preview')).not.toBeNull();
+    expect(container.querySelector('.wall-preview__length')?.textContent).toBe('3.20 m');
+  });
 });

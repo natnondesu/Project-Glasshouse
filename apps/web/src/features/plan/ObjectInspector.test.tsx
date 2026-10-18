@@ -65,3 +65,44 @@ it('hangs a rack on the wall with no rear clearance, sets its height, and stands
   await user.click(screen.getByRole('button', { name: 'Floor' }));
   expect(commit).toHaveBeenLastCalledWith({ type: 'object/update', id: rack.id, patch: { wallBottomM: null } }, undefined);
 });
+
+const make = (type: 'partition' | 'wall_split_ac' | 'precision_ac' | 'display_wall') => ({ ...createObject(type, { x: 1, y: 1 }, []), name: 'X-01' });
+const show = (object: ReturnType<typeof make>, commit = vi.fn<(command: unknown, coalesceKey?: string) => string | null>(() => null)) => {
+  render(<Inspector content={{ ...emptyContent(), objects: [object] }} selected={object} commit={commit} onDeleted={() => {}} />);
+  return commit;
+};
+
+it('calls a partition’s sides Length and Thickness', () => {
+  show(make('partition'));
+  expect(screen.getByLabelText('Length')).toHaveValue('2.00');
+  expect(screen.getByLabelText('Thickness')).toHaveValue('0.10');
+  expect(screen.queryByLabelText('Width')).toBeNull();
+  expect(screen.queryByLabelText('Height above floor')).toBeNull();
+  expect(screen.getByText(/Doors snap into it/)).toBeInTheDocument();
+});
+
+it('keeps Width and Depth for the cabinet and the screen', () => {
+  show(make('precision_ac'));
+  expect(screen.getByLabelText('Width')).toHaveValue('0.80');
+  expect(screen.getByLabelText('Depth')).toHaveValue('0.80');
+  expect(screen.queryByLabelText('Height above floor')).toBeNull();
+  expect(screen.getByText(/within 1\.00 m in front/)).toBeInTheDocument();
+});
+
+it('sets how high a wall split AC or a display wall hangs, from the floor to its bottom', async () => {
+  const user = userEvent.setup();
+  const commit = show(make('wall_split_ac'));
+  const height = screen.getByLabelText('Height above floor');
+  expect(height).toHaveValue('2.20');
+  await user.clear(height);
+  await user.type(height, '2.4');
+  await user.tab();
+  expect(commit).toHaveBeenLastCalledWith({ type: 'object/update', id: expect.any(String), patch: { wallBottomM: 2.4 } }, expect.stringContaining('wallBottom'));
+});
+
+it('shows a display wall’s default height when the file stored none', () => {
+  const { wallBottomM: _stored, ...bare } = make('display_wall');
+  show(bare as ReturnType<typeof make>);
+  expect(screen.getByLabelText('Height above floor')).toHaveValue('0.80');
+  expect(screen.getByText(/takes no power/)).toBeInTheDocument();
+});

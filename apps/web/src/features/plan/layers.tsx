@@ -2,6 +2,8 @@ import {
   centerOf,
   clearanceZones,
   cutOutKind,
+  ENVIRONMENT_ZONE_M,
+  environmentZone,
   footprintOf,
   formatMetres,
   frontEdge,
@@ -17,10 +19,16 @@ import { useMemo, type ReactElement } from 'react';
 import { toScreen, type View } from '../../viewport/math';
 import { useT } from '../../i18n';
 import { polygonPath, multiPolygonPath } from './svgPath';
-import { DoorSymbol, fitLabel, HoverTag, McbSymbol, SlidingDoorSymbol, SourceSymbol } from './symbols';
+import { AlongLabel, DisplayWallSymbol, DoorSymbol, fitLabel, HoverTag, McbSymbol, pacNameDropPx, PrecisionAcSymbol, SlidingDoorSymbol, SourceSymbol, WallSplitAcSymbol } from './symbols';
+import { inDrawOrder } from './hitTest';
 
 /** Too thin or too small for a name: these rely on their symbol and the hover tag. */
 const UNLABELLED = new Set<string>(['door', 'mcb', 'wall_plug', 'industrial_socket', 'floor_box']);
+/** Long and thin: the name lies along the object instead of sitting upright inside it. */
+const ALONG_NAMED = new Set<string>(['partition', 'wall_split_ac', 'display_wall']);
+/** Smallest thickness (px) a name fits inside, and the clear space between a name and the object it stands beside. */
+const INSIDE_NAME_PX = 13;
+const BESIDE_GAP_PX = 8;
 
 const GRID_STEP_M = 0.5;
 const MIN_LABEL_PX = 34;
@@ -31,7 +39,9 @@ const VOID_LABEL_MIN_PX = 28;
 const DIM_OFFSET_PX = 28;
 
 export type Preview =
-  | { kind: 'object'; id: string; patch: { x: number; y: number; w?: number; d?: number } }
+  | { kind: 'object'; id: string; patch: { x: number; y: number; w?: number; d?: number; angle?: number } }
+  /** A partition being drawn end to end. */
+  | { kind: 'wall'; object: RoomObject }
   | { kind: 'rect'; mode: 'area' | 'cut'; x: number; y: number; w: number; d: number }
   | { kind: 'dimension'; id: string; offset: number };
 
@@ -45,6 +55,10 @@ export function HatchDefs() {
       <pattern id="gh-hatch-clearance" width="7" height="7" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
         <rect width="7" height="7" className="hatch-fill" />
         <path d="M0 0V7" className="hatch-line hatch-line--clearance" />
+      </pattern>
+      <pattern id="gh-hatch-warn" width="7" height="7" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+        <rect width="7" height="7" className="hatch-fill hatch-fill--warn" />
+        <path d="M0 0V7" className="hatch-line hatch-line--warn" />
       </pattern>
       <pattern id="gh-hatch-cut" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(-45)">
         <path d="M0 0V6" className="hatch-line" />
@@ -155,6 +169,8 @@ interface ObjectsLayerProps {
   objects: RoomObject[];
   view: View;
   flagged: Set<string>;
+  /** Objects named by a warning about air conditioning or a display wall: marked on the drawing, not blocked. */
+  warned?: Set<string>;
   selectedId: string | null;
   onFocusObject: (id: string) => void;
   /** Print: a drawing, not a set of controls. */
@@ -182,17 +198,27 @@ function outsideLabelRows(objects: RoomObject[], view: View): Map<string, number
   return rows;
 }
 
-export function ObjectsLayer({ objects, view, flagged, selectedId, onFocusObject, isStatic = false }: ObjectsLayerProps) {
+/** Where the name of a long, thin object goes, or null when it would not fit whole along the object at this zoom. */
+function alongLabel(o: RoomObject, view: View): { side: 'up' | 'front'; gapPx: number; className: string } | null {
+  if (fitLabel(o.name, o.w * view.scale) !== o.name) return null;
+  const thick = o.d * view.scale;
+  if (o.type === 'partition') return { side: 'up', gapPx: thick / 2 + BESIDE_GAP_PX, className: 'obj__label--beside' };
+  if (o.type === 'display_wall') return { side: 'front', gapPx: thick / 2 + BESIDE_GAP_PX + 1, className: 'obj__label--beside' };
+  // A split AC's name goes inside its body, a touch behind the vent, when the body is deep enough to hold it.
+  return thick >= INSIDE_NAME_PX ? { side: 'front', gapPx: -0.04 * view.scale, className: '' } : null;
+}
+
+export function ObjectsLayer({ objects, view, flagged, warned, selectedId, onFocusObject, isStatic = false }: ObjectsLayerProps) {
   const m = useT();
   const outsideRows = outsideLabelRows(objects, view);
   return (
     <g>
-      {objects.map((o) => {
+      {inDrawOrder(objects).map((o) => {
         const [cx, cy] = toScreen(view, centerOf(o));
         const bounds = rotatedBoundsSize(o.w, o.d, o.angle);
         const tall = bounds.d * view.scale;
         // Labels must fit inside the object; doors and MCB panels are too thin and rely on the hover tag.
-        const labelled = !UNLABELLED.has(o.type) && tall >= MIN_LABEL_PX * (o.type === 'rack' ? 1 : 0.6);
+        const labelled = !UNLABELLED.has(o.type) && !ALONG_NAMED.has(o.type) && tall >= MIN_LABEL_PX * (o.type === 'rack' ? 1 : 0.6);
         const isRackLike = o.type === 'rack' || o.type === 'existing_rack';
         const fitted = labelled ? fitLabel(o.name, bounds.w * view.scale) : null;
         // A rack name is shown whole: inside when it fits, otherwise under the rack, never cut to "RK-…".
@@ -204,7 +230,10 @@ export function ObjectsLayer({ objects, view, flagged, selectedId, onFocusObject
         // A rack too small at this zoom still shows its name, just under it, so racks are never anonymous.
         const outside = !label && isRackLike;
         const bottomY = cy + tall / 2;
-        const classes = ['obj', `obj--${o.type}`, o.type === 'rack' && o.owner === 'customer' ? 'obj--customer' : '', o.type === 'rack' && o.wallBottomM !== undefined ? 'obj--wall' : '', flagged.has(o.id) ? 'is-flagged' : '', o.id === selectedId ? 'is-selected' : '']
+        // The PAC's fan sits in the middle of the cabinet: its name goes under it.
+        const labelDy = o.type === 'precision_ac' ? pacNameDropPx(o, view) : 0;
+        const alongName = ALONG_NAMED.has(o.type) ? alongLabel(o, view) : null;
+        const classes = ['obj', `obj--${o.type}`, o.type === 'rack' && o.owner === 'customer' ? 'obj--customer' : '', o.type === 'rack' && o.wallBottomM !== undefined ? 'obj--wall' : '', flagged.has(o.id) ? 'is-flagged' : '', warned?.has(o.id) ? 'is-warned' : '', o.id === selectedId ? 'is-selected' : '']
           .filter(Boolean)
           .join(' ');
         return (
@@ -220,10 +249,14 @@ export function ObjectsLayer({ objects, view, flagged, selectedId, onFocusObject
             {o.type === 'existing_rack' ? <path className="obj__cross" d={crossPath(o, view)} /> : null}
             {o.type === 'door' ? o.opening === 'slide' ? <SlidingDoorSymbol o={o} view={view} /> : <DoorSymbol o={o} view={view} /> : null}
             {o.type === 'mcb' ? <McbSymbol o={o} view={view} /> : null}
+            {o.type === 'wall_split_ac' ? <WallSplitAcSymbol o={o} view={view} /> : null}
+            {o.type === 'precision_ac' ? <PrecisionAcSymbol o={o} view={view} /> : null}
+            {o.type === 'display_wall' ? <DisplayWallSymbol o={o} view={view} /> : null}
             <SourceSymbol o={o} view={view} />
             {o.type === 'rack' ? <RackFront rack={o} view={view} /> : null}
+            {alongName ? <AlongLabel o={o} view={view} text={o.name} side={alongName.side} gapPx={alongName.gapPx} className={alongName.className} /> : null}
             {label ? (
-              <text className="obj__label" x={cx} y={sub && label ? cy - 7 : cy} textAnchor="middle" dominantBaseline="middle">
+              <text className="obj__label" x={cx} y={(sub && label ? cy - 7 : cy) + labelDy} textAnchor="middle" dominantBaseline="middle">
                 {label}
               </text>
             ) : null}
@@ -260,7 +293,7 @@ export function SelectionLayer({ object, view }: { object: RoomObject; view: Vie
   return (
     <g>
       <path className="selection" d={polygonPath(placementPolygon(object), view)} />
-      {HANDLE_POSITIONS.map(([handle, fx, fy]) => {
+      {HANDLE_POSITIONS.filter(([, , fy]) => object.type !== 'partition' || fy === 0).map(([handle, fx, fy]) => {
         const [sx, sy] = toScreen(view, localToWorld(object, [(fx * object.w) / 2, (fy * object.d) / 2]));
         return <circle key={handle} data-handle={handle} className={`handle handle--${handle}`} cx={sx} cy={sy} r={5} />;
       })}
@@ -301,6 +334,73 @@ export function FloorPreview({ preview, view }: { preview: Extract<Preview, { ki
       <rect className={`preview preview--${preview.mode}`} x={x} y={y} width={preview.w * view.scale} height={preview.d * view.scale} />
       <text className="dim__label" x={x + (preview.w * view.scale) / 2} y={y - 10} textAnchor="middle">
         {`${formatMetres(preview.w)} × ${formatMetres(preview.d)}`}
+      </text>
+    </g>
+  );
+}
+
+const ZONE_LABEL_CHAR_PX = 6.7;
+const ZONE_LABEL_PAD_PX = 12;
+const ZONE_LABEL_MIN_HEIGHT_PX = 16;
+const ZONE_LABEL_LINE_PX = 13;
+
+/**
+ * The area the planner keeps watch on in front of an air conditioner or a display wall, hatched like a clearance zone.
+ * Shown while the unit is selected or while a rule about it has fired (then in the warning colour).
+ */
+export function EnvironmentLayer({ objects, view, selectedId, warned }: { objects: RoomObject[]; view: View; selectedId: string | null; warned: ReadonlySet<string> }) {
+  const m = useT();
+  return (
+    <g aria-hidden="true">
+      {objects.flatMap((o) => {
+        const zone = environmentZone(o);
+        const shown = o.id === selectedId || warned.has(o.id);
+        if (!zone || !shown) return [];
+        const depth = ENVIRONMENT_ZONE_M[o.type === 'wall_split_ac' ? 'splitAcAirflow' : o.type === 'precision_ac' ? 'precisionAcService' : 'displayWallViewing'];
+        const name = m.plan.zone[o.type as keyof typeof m.plan.zone];
+        const figure = `${formatMetres(depth)} m`;
+        const ring = (zone[0] ?? []).map((p) => toScreen(view, p));
+        const xs = ring.map((p) => p[0]);
+        const ys = ring.map((p) => p[1]);
+        const widthPx = Math.max(...xs) - Math.min(...xs);
+        const heightPx = Math.max(...ys) - Math.min(...ys);
+        // One line when the zone is wide enough; otherwise the name over the figure, when it is tall enough for two.
+        // While a rule about the zone holds, racks stand in it: the amber hatch says it, and the label would only sit on top of them.
+        const lines = warned.has(o.id) ? [] : (name.length + 1 + figure.length) * ZONE_LABEL_CHAR_PX + ZONE_LABEL_PAD_PX <= widthPx && heightPx >= ZONE_LABEL_MIN_HEIGHT_PX
+          ? [`${name} ${figure}`]
+          : Math.max(name.length, figure.length) * ZONE_LABEL_CHAR_PX + ZONE_LABEL_PAD_PX <= widthPx && heightPx >= ZONE_LABEL_MIN_HEIGHT_PX * 2
+            ? [name, figure]
+            : [];
+        const [lx, ly] = toScreen(view, localToWorld(o, [0, o.d / 2 + depth / 2]));
+        return [
+          <g key={o.id} className={`env-zone${warned.has(o.id) ? ' env-zone--warn' : ''}`}>
+            <path className="env-zone__area" d={polygonPath(zone, view)} />
+            {lines.length > 0 ? (
+              <text className="env-zone__label" x={lx} y={ly - ((lines.length - 1) * ZONE_LABEL_LINE_PX) / 2} textAnchor="middle" dominantBaseline="middle">
+                {lines.map((line, i) => (
+                  <tspan key={line} x={lx} dy={i === 0 ? 0 : ZONE_LABEL_LINE_PX}>
+                    {line}
+                  </tspan>
+                ))}
+              </text>
+            ) : null}
+          </g>,
+        ];
+      })}
+    </g>
+  );
+}
+
+/** A partition while it is being dragged out: the wall itself and its length. */
+export function WallPreview({ object, view }: { object: RoomObject; view: View }) {
+  const [x, y] = toScreen(view, centerOf(object));
+  const tall = object.d * view.scale;
+  const lift = Math.abs(Math.sin((object.angle * Math.PI) / 180)) * (object.w * view.scale) / 2 + tall / 2 + 12;
+  return (
+    <g aria-hidden="true" className="wall-preview">
+      <path className="wall-preview__body" d={polygonPath(placementPolygon(object), view)} />
+      <text className="dim__label wall-preview__length" x={x} y={y - lift} textAnchor="middle">
+        {`${formatMetres(object.w)} m`}
       </text>
     </g>
   );

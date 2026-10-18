@@ -1,5 +1,31 @@
 import type { PlacementTool } from './tools';
-import { createObject, DEFAULT_WALL_RACK, snapFloor, snapToWall, snapTyped, WALL_MOUNTED_SOURCES, type PlanContent, type Point, type RoomObject, type RoomObjectType } from '@glasshouse/domain';
+import { createObject, DEFAULT_WALL_RACK, isPartition, isWallHung, snapDoor, snapFloor, snapToWall, snapTyped, WALL_MOUNTED_SOURCES, type PlanContent, type Point, type RoomObject, type RoomObjectType } from '@glasshouse/domain';
+
+/** How close the pointer must come to a wall or partition for a door to snap into it; farther away the door stands free. */
+export const DOOR_SNAP_M = 0.3;
+
+interface Snapped {
+  x: number;
+  y: number;
+  angle: number;
+}
+
+/** Doors snap into a wall or partition when the pointer is near one; a split AC and a display wall always hang on the nearest wall. */
+function wallSnapFor(o: Pick<RoomObject, 'type' | 'w' | 'd'>, cursor: Point, content: PlanContent): Snapped | null {
+  if (o.type === 'door') return snapDoor(content, cursor, o.w, o.d, DOOR_SNAP_M);
+  if (!isWallHung(o as RoomObject)) return null;
+  const snap = snapToWall(content.survey, cursor, o.w, o.d, content.objects.filter(isPartition));
+  return snap ? { x: snap.x, y: snap.y, angle: snap.angle } : null;
+}
+
+/**
+ * Where a dragged door or wall-hung item lands when its centre is at `cursor`: snapped to a wall or partition, with the angle that goes with it.
+ * Null for anything else, and for a door held away from every wall.
+ */
+export function snapMoved(o: RoomObject, cursor: Point, content: PlanContent): Snapped | null {
+  const snap = wallSnapFor(o, cursor, content);
+  return snap && { x: snapTyped(snap.x), y: snapTyped(snap.y), angle: snap.angle };
+}
 
 /**
  * Where a placement tool drops a new object for a cursor position. The ghost and the click share it.
@@ -22,6 +48,10 @@ export function placementAt(tool: PlacementTool, world: Point, content: PlanCont
   // Panels, plugs and sockets hang on walls: flat against the nearest one, facing the room.
   const wall = WALL_MOUNTED_SOURCES.has(type as never) ? snapToWall(content.survey, world, draft.w, draft.d) : null;
   if (wall) return { ...draft, x: snapTyped(wall.x), y: snapTyped(wall.y), angle: wall.angle };
+  const snapped = snapMoved(draft, world, content);
+  if (snapped) return { ...draft, ...snapped };
   const clamp = (v: number, max: number): number => Math.min(Math.max(0, v), Math.max(0, max));
-  return { ...draft, x: clamp(snapFloor(world[0]), content.survey.width - draft.w), y: clamp(snapFloor(world[1]), content.survey.length - draft.d) };
+  // A partition is placed by its middle: the click is where the wall's centre goes.
+  const [ax, ay] = type === 'partition' ? [world[0] - draft.w / 2, world[1] - draft.d / 2] : world;
+  return { ...draft, x: clamp(snapFloor(ax), content.survey.width - draft.w), y: clamp(snapFloor(ay), content.survey.length - draft.d) };
 }
