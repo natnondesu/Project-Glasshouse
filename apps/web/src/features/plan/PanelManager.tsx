@@ -9,7 +9,7 @@ import type { CommitFn } from './usePlanGestures';
 import './panel-manager.css';
 
 const RATINGS_A = [6, 10, 16, 20, 25, 32, 40, 50, 63];
-const WAY_COUNTS = [4, 6, 8, 12, 16, 18, 24, 36, 48, 60, 72];
+const WAY_COUNTS = [4, 6, 8, 10, 12, 14, 16, 18, 24, 36, 48, 60, 72];
 const LAYOUTS: PanelLayout[] = ['row', 'column', 'two_column'];
 const NUMBERINGS: WayNumbering[] = ['odd_even', 'sequential'];
 

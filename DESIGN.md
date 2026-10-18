@@ -58,6 +58,7 @@ Colour never works alone. Blocking issues use a solid circle icon, warnings a da
 - Doors: a swing door draws its leaf open at 90° and the quarter-circle swing; a sliding door draws its track, the leaf parked beside the opening and an arrow for the direction, with no swing.
 - Partitions are solid ink walls with doors cut through them; a door standing in one draws its swing or track on the side it opens to, and the wall never shows through it. The rack-front band is a thin line and the partition a solid block, so the legend keeps the two apart.
 - Air conditioning and the display wall are drawn as overhead items, dashed like a wall rack: a wall split AC has its vent and three airflow arrows, a precision AC a pinwheel fan and a heavy front band, a display wall tile joints and a heavy screen face. The space to keep in front of each (airflow 1.00 m, service 1.00 m, viewing 1.50 m) is hatched like a clearance zone while the unit is selected or while a rule about it has fired (then amber, the same colour as the warning). The zone's name and depth sit near its far edge, in a layer above the distance lines so the label's paper halo cuts a line instead of the line running through the words.
+- An MCB panel the survey drew but the room won't use is drawn grey and dashed (still named on hover, and "not in use" to screen readers); a blocking flag still turns it red.
 - The legend is on demand from the zoom bar, never left over the drawing.
 - Below 1360px the inspector starts collapsed so the drawing gets the room (Plan, Elevation and Network alike); once someone opens or closes it, that choice is remembered, and selecting something new reopens it.
 - Names and figures are never cut: a rack name too wide for the rack sits under it, and a fill count that doesn't fit is left out.
@@ -86,6 +87,7 @@ Colour never works alone. Blocking issues use a solid circle icon, warnings a da
 - Labels are sprites at a fixed screen size; the Labels menu picks which kinds are always labelled, the rest label on hover.
 - Partitions stand full height (2.40 m by default) with a doorway cut wherever a door is in them and the wall carried on above it. A wall split AC hangs on the wall as a white case with a louvre slot and a status light; a precision AC is a floor cabinet with a display, an air grille and a plinth; a display wall is a dark bezel with the screen set into it and the joints between its tiles, at its stored height. Walking passes under a unit hung above head height (a split AC) and through a partition's doorway, and is stopped by everything else.
 - Walk puts you in the room at eye height (1.6 m, a wider 65° view), first asking where to start, like Street View: a pin follows the pointer on the floor (green where you can stand, red where you can't) and a click drops you there facing into the room; a spot too close to a rack moves to the nearest free floor. Start at the door is one click; Esc or Cancel goes back. Click the floor to glide there; drag to look; W/S or ↑/↓ walk, A/D step aside, ←/→ turn, Shift hurries; two-finger scroll walks too. Walls, racks, other objects and columns stop you, sliding along them. The rack list (and search) stands you in front of a rack's Front, looking at it. Esc or Back to overview returns to the orbit view; clicking a rack still selects it.
+- MCB panels show their breakers on the front face in the panel's arrangement (levers up on ways with a feed; instanced meshes, so 72 ways stay light). A panel not in use is a neutral grey cabinet with grey breakers; its object card says "Not in use".
 - A highlighted power path glows and carries arrowheads moving from source to load (still under reduced motion); everything else on the power layer fades.
 
 ## Catalog
@@ -93,6 +95,12 @@ Colour never works alone. Blocking issues use a solid circle icon, warnings a da
 - Its own page: the template list (each with its port mix) beside a wide editor whose top is the template's front panel, drawn as placed devices will show it and redrawn as you edit.
 - Each port group sets its layout: one row, or two rows with odd numbers on top (how most switches number) or left to right. Groups draw as labelled blocks; jacks come in modules of six columns that wrap to fit.
 - Duplicate starts a variant from a template; the editor says how many placed devices use it (they keep the version they were placed from).
+
+## MCB panels
+
+- The panel manager draws the panel face as a paper-and-ink drawing of the enclosure: the main breaker on top when one is set, then a tile per way in the chosen layout (one row, one column, two columns; two columns number odd-left/even-right or down-left-then-right). A tile carries the way number, rating, phase, its feed and label; its toggle sits up when the way carries a feed and down when it is spare. `wayPosition` in the domain places every way, so the manager, the 3D face and the Install sheet agree.
+- Clicking (or arrow-keying to) a tile picks it; its rating, label and feed are edited in a strip under the face. The face scrolls inside the dialog (a one-row 48-way panel scrolls sideways), so a 72-way panel never leaves the window.
+- "In use" is a switch, on by default. Off draws the face dashed and grey and lists the feeds still wired to it; new feeds can't pick it (shown disabled with "(not in use)") and a feed still on it blocks approval.
 
 ## Port panel
 
@@ -113,6 +121,7 @@ Colour never works alone. Blocking issues use a solid circle icon, warnings a da
 
 - Cable schedule: seven columns, each end one cell (device over its rack), so 70 cables fit A4 portrait.
 - The BOM prints on A4 landscape with fixed column shares; names wrap at hyphens.
+- Panel schedules: one boxed schedule for each MCB panel in use that has feeds, drawn in its arrangement (main breaker on top when set; way, rating and phase, rack and feed per cell; spare ways dashed), ink only so black-and-white prints read the same. A one-row panel wraps after 12 breakers on paper. Panels not in use are listed as "Not in use" with no schedule.
 - The network page prints the full diagram on portrait, else on landscape; a room too big for either prints its network gear only, each switch counting the devices on it (the cable schedule lists them). Never below the 11px floor.
 
 ## Home

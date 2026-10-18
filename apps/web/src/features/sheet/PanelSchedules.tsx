@@ -69,7 +69,11 @@ function Schedule({ panel, content }: { panel: RoomObject; content: PlanContent 
           return (
             <li key={n} className={feed ? undefined : 'is-spare'} style={{ gridColumnStart: column + 1, gridRowStart: row + 1 }}>
               <strong className="mono">{n}</strong>
-              <span className="mono">{`${way.ratingA} A · ${wayPhase(config, n)}`}</span>
+              <span className="mono sheet-panel__spec">
+                <span>{`${way.ratingA} A`}</span>
+                <span className="sheet-panel__dot">{' · '}</span>
+                <span>{wayPhase(config, n)}</span>
+              </span>
               <span className="sheet-panel__feed">{feed ? `${rackName(feed.targetId)} · ${feed.label}` : m.sheet.panels.spare}</span>
               {way.label ? <span className="sheet-panel__label">{way.label}</span> : null}
             </li>

@@ -65,7 +65,10 @@ export function PanelFace({ name, config, content, feeds, inUse, selected, onSel
               <span className="way-tile__lever" aria-hidden="true" />
               <span className="way-tile__head">
                 <span className="way-tile__n mono">{n}</span>
-                <span className="way-tile__spec mono">{`${way.ratingA} A · ${phase}`}</span>
+                <span className="way-tile__spec mono">
+                  <span>{`${way.ratingA} A`}</span>
+                  <span>{phase}</span>
+                </span>
               </span>
               {feed ? (
                 <span className="way-tile__feed">
