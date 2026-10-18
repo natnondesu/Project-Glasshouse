@@ -1,6 +1,6 @@
 import type { WorkspaceCommand } from '@glasshouse/domain';
 import { describe, expect, it } from 'vitest';
-import { editedRoom, RoomEdits, roomEditOf } from './roomEdits';
+import { editedRoom, isAttributable, RoomEdits, roomEditOf } from './roomEdits';
 import type { Actor, LoggedCommand } from './store/commandStore';
 
 const ploy = { id: 'u-ploy', name: 'Ploy', role: 'editor' as const, verified: true };
@@ -50,5 +50,15 @@ describe('the latest edit per room', () => {
       { roomId: 'gone', userId: 'u1', name: 'Ada', at: 'x' },
     ]);
     expect(edits.list((id) => id !== 'gone').map((e) => e.roomId)).toEqual(['a']);
+  });
+});
+
+describe('who can be named as an editor', () => {
+  it('is a signed-in person, never the dev stand-in, even when a log read back says verified', () => {
+    expect(isAttributable(ploy)).toBe(true);
+    expect(isAttributable(dev)).toBe(false);
+    // Postgres keeps only id and name, so entries read back from it say verified: the id still tells.
+    expect(isAttributable({ ...dev, verified: true })).toBe(false);
+    expect(roomEditOf(entry(1, { type: 'room/rename', roomId: 'r', name: 'X' }, { ...dev, verified: true }))).toBeNull();
   });
 });

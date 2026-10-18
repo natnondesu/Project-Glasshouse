@@ -1,6 +1,7 @@
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testcontainers/postgresql';
 import pg from 'pg';
 import { afterAll, beforeAll, expect, it } from 'vitest';
+import { roomEditOf } from '../roomEdits';
 import { WorkspaceService } from '../workspaceService';
 import { InstanceLockError, PgCommandStore, STATEMENT_TIMEOUT_MS, poolConfig } from './pgStore';
 
@@ -56,6 +57,18 @@ it('keeps when each command arrived and who edited each room last, leaving the d
   expect(edits).toEqual([
     { roomId: 'r-other', userId: 'u-ada', name: 'Ada', at: '2026-10-18T03:00:00.000Z' },
     { roomId: 'r-edit', userId: 'u-ada', name: 'Ada', at: '2026-10-18T01:00:00.000Z' },
+  ]);
+  // Read back for the event stream's catch-up or a recovery, the dev stand-in's entry still names nobody.
+  const caughtUp = await store.commandsAfter(499, 3);
+  expect(caughtUp.map(roomEditOf).map((e) => e?.name ?? null)).toEqual(['Ada', null, 'Ada']);
+  // Kept in a small table on append, so a start reads one row per room instead of the whole log.
+  const table = await new pg.Client({ connectionString: container.getConnectionUri() });
+  await table.connect();
+  const rows = (await table.query<{ room_id: string; actor_name: string }>("select room_id, actor_name from room_edits where room_id like 'r-%' order by room_id")).rows;
+  await table.end();
+  expect(rows).toEqual([
+    { room_id: 'r-edit', actor_name: 'Ada' },
+    { room_id: 'r-other', actor_name: 'Ada' },
   ]);
   await store.close();
 });

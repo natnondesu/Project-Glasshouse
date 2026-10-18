@@ -1,3 +1,4 @@
+import { DEV_ACTOR_PREFIX } from '../roomEdits';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import type { Actor } from '../store/commandStore';
 
@@ -9,7 +10,7 @@ const NAME_MAX = 60;
 export const devAuthenticate: Authenticate = (request) => {
   const header = request.headers['x-glasshouse-dev-user'];
   const name = typeof header === 'string' && header.trim() !== '' ? header.trim().slice(0, NAME_MAX) : 'Developer';
-  return { id: `dev:${name}`, name, role: 'admin', verified: false };
+  return { id: `${DEV_ACTOR_PREFIX}${name}`, name, role: 'admin', verified: false };
 };
 
 export function registerDevAuthRoutes(app: FastifyInstance): void {

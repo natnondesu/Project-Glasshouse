@@ -1,6 +1,6 @@
 import type { Workspace, WorkspaceCommand } from '@glasshouse/domain';
 import pg from 'pg';
-import type { RoomEdit } from '../roomEdits';
+import { roomEditOf, type RoomEdit } from '../roomEdits';
 import type { ApprovalRecord, CommandStore, LoggedCommand, StoredSnapshot } from './commandStore';
 import { migrate } from './migrations';
 
@@ -101,6 +101,15 @@ export class PgCommandStore implements CommandStore {
       await client.query(`insert into commands (${COLUMNS}, received_at) values ($1, $2, $3, $4, $5, $6, coalesce($7::timestamptz, now()))`, [
         e.seq, e.clientId, e.commandId, e.actor.id, e.actor.name, JSON.stringify(e.command), e.receivedAt ?? null,
       ]);
+      const edit = roomEditOf(e);
+      if (edit) {
+        await client.query(
+          `insert into room_edits (room_id, actor_id, actor_name, edited_at, seq) values ($1, $2, $3, $4, $5)
+           on conflict (room_id) do update set actor_id = excluded.actor_id, actor_name = excluded.actor_name, edited_at = excluded.edited_at, seq = excluded.seq
+           where room_edits.seq < excluded.seq`,
+          [edit.roomId, edit.userId, edit.name, edit.at, e.seq],
+        );
+      }
       if (approval) {
         await client.query(
           'insert into approvals (seq, room_id, revision, content_hash, approver_id, approver_name, approved_at) values ($1, $2, $3, $4, $5, $6, $7)',
@@ -127,14 +136,8 @@ export class PgCommandStore implements CommandStore {
   }
 
   async lastRoomEdits(): Promise<RoomEdit[]> {
-    // The dev stand-in's id starts with "dev:" and is never verified: its edits name nobody (the log doesn't keep the flag).
-    const r = await this.pool.query<{ room_id: string; actor_id: string; actor_name: string; received_at: Date }>(
-      `select distinct on (room_id) room_id, actor_id, actor_name, received_at from (
-         select coalesce(command->>'roomId', case when command->>'type' = 'room/create' then command->>'id' end) as room_id, actor_id, actor_name, received_at, seq
-         from commands where actor_id not like 'dev:%'
-       ) edits where room_id is not null order by room_id, seq desc`,
-    );
-    return r.rows.map((x) => ({ roomId: x.room_id, userId: x.actor_id, name: x.actor_name, at: x.received_at.toISOString() })).sort((a, b) => b.at.localeCompare(a.at));
+    const r = await this.pool.query<{ room_id: string; actor_id: string; actor_name: string; edited_at: Date }>('select room_id, actor_id, actor_name, edited_at from room_edits order by edited_at desc');
+    return r.rows.map((x) => ({ roomId: x.room_id, userId: x.actor_id, name: x.actor_name, at: x.edited_at.toISOString() }));
   }
 
   async saveSnapshot(seq: number, workspace: Workspace): Promise<void> {
