@@ -10,7 +10,9 @@ test('the pick-up strip says who edited the last room and when', async ({ browse
   const eddie = await eddieCtx.newPage();
   await signIn(ada, 'admin@company.test', 'admin-password-1');
   await signIn(eddie, 'ed@company.test', 'editor-password-1');
+  // Sign-in finishes when the workspace is connected; only then may the pages move on.
   await expect(ada.getByText('Connected to the Glasshouse server')).toBeVisible();
+  await expect(eddie.getByText('Connected to the Glasshouse server')).toBeVisible();
   const commands = [
     { type: 'project/create', id: `p-${tag}`, name: `Home e2e ${tag}` },
     { type: 'site/create', projectId: `p-${tag}`, id: `s-${tag}`, name: `Site ${tag}` },
@@ -19,10 +21,11 @@ test('the pick-up strip says who edited the last room and when', async ({ browse
   const setup = await ada.request.post('/api/commands', { headers: { 'x-glasshouse': '1' }, data: { clientId: `e2e-home-${tag}`, commands } });
   expect(await setup.json()).toMatchObject({ rejected: null });
 
-  // Ada opens the room (it becomes her last one); Eddie changes it, then lets it go.
+  // Ada opens the room (it becomes her last one); then Eddie changes it.
   await ada.goto(`/rooms/r-${tag}/plan`);
   await expect(ada.getByLabel('Width')).toBeVisible();
   await eddie.goto(`/rooms/r-${tag}/plan`);
+  await expect(eddie.getByLabel('Width')).toBeEnabled();
   await eddie.getByLabel('Width').fill('7');
   await eddie.getByLabel('Width').blur();
   await expect(eddie.getByRole('region', { name: /You're editing this room/ })).toBeVisible();
