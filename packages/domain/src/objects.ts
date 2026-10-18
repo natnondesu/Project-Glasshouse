@@ -37,10 +37,15 @@ export function createObject(type: RoomObjectType, at: { x: Metres; y: Metres },
 /** A split AC or display wall: hung on a wall with its bottom at `wallBottomM`, like a wall rack. */
 export const isWallHung = (o: RoomObject): boolean => o.type !== 'rack' && DEFAULT_WALL_BOTTOM_M[o.type] !== undefined;
 
-/** Height of the object's bottom above the floor. A hung item from a file with no height keeps its default, so it still hangs. */
+/**
+ * Height of the object's bottom above the floor. Only racks and wall-hung objects have one: a stray
+ * height on anything else (from an imported file) is ignored, so it can't lift an object out of overlap checks.
+ * A hung item from a file with no height keeps its default, so it still hangs.
+ */
 export function wallBottomOf(o: RoomObject): Metres {
-  if (o.wallBottomM !== undefined) return o.wallBottomM;
-  return o.type === 'rack' ? 0 : (DEFAULT_WALL_BOTTOM_M[o.type] ?? 0);
+  if (o.type === 'rack') return o.wallBottomM ?? 0;
+  const hung = DEFAULT_WALL_BOTTOM_M[o.type];
+  return hung === undefined ? 0 : (o.wallBottomM ?? hung);
 }
 
 export function effectiveHeight(o: RoomObject): Metres {

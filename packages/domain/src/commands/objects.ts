@@ -87,6 +87,13 @@ function withWallBottom(rack: Rack, bottom: Metres | null | undefined): Rack {
   return { ...rack, wallBottomM: bottom };
 }
 
+/** A floor object from an old file may carry a height it never used; editing it drops that, rather than refusing the edit. */
+function withoutStrayHeight(o: RoomObject): RoomObject {
+  if (o.type === 'rack' || isWallHung(o) || o.wallBottomM === undefined) return o;
+  const { wallBottomM: _stray, ...floor } = o;
+  return floor;
+}
+
 function validateObject(o: RoomObject, survey: Survey): Result<RoomObject> {
   const n = normalizeObject(o);
   const name = validateName(n.name);
@@ -103,6 +110,8 @@ function validateObject(o: RoomObject, survey: Survey): Result<RoomObject> {
   if (n.type === 'rack') {
     const rackError = validateRackFields(n, name.value);
     if (rackError) return rackError;
+  } else if (n.wallBottomM !== undefined && !isWallHung(n)) {
+    return err('invalid_value', `${name.value} stands on the floor; only racks and wall-hung objects have a height off it.`, [o.id]);
   } else if (n.wallBottomM !== undefined && !inRange(n.wallBottomM, 0, LIMITS.wallBottomMaxM)) {
     return err('invalid_value', `The bottom of ${name.value} is at most ${formatMetres(LIMITS.wallBottomMaxM)} m off the floor.`, [o.id]);
   }
@@ -155,7 +164,7 @@ export function updateObject(content: PlanContent, id: Id, patch: ObjectPatch): 
           },
           wallBottomM,
         )
-      : { ...current, ...definedOnly(common), ...(typeof wallBottomM === 'number' ? { wallBottomM } : {}) };
+      : { ...withoutStrayHeight(current), ...definedOnly(common), ...(typeof wallBottomM === 'number' ? { wallBottomM } : {}) };
 
   if (patch.angle !== undefined && patch.x === undefined && patch.y === undefined) {
     const [x, y] = topLeftForCenter(centerOf(current), merged.w, merged.d, normalizeAngle(merged.angle));
