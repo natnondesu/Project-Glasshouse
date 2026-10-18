@@ -1,0 +1,132 @@
+.users-toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.users-toolbar__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 10px;
+}
+
+.users-find {
+  flex: 0 1 300px;
+  min-width: 220px;
+  height: 34px;
+  padding-right: 6px;
+}
+
+.users-find__icon {
+  flex: none;
+  color: var(--ink-3);
+}
+
+/* The browser's own clear cross is replaced by ours, drawn like every other icon. */
+.users-find input::-webkit-search-cancel-button {
+  appearance: none;
+}
+
+.users-find__key {
+  flex: none;
+  padding: 0 5px;
+  border: 1px solid var(--line-strong);
+  border-radius: 4px;
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  line-height: 16px;
+  color: var(--ink-3);
+}
+
+.users-find:focus-within .users-find__key {
+  visibility: hidden;
+}
+
+.users-find__clear {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: var(--ink-2);
+}
+
+.users-find__clear:hover {
+  background: rgb(14 24 36 / 0.07);
+  color: var(--ink);
+}
+
+.users-toolbar__seg {
+  flex: none;
+}
+
+.users-toolbar__seg button {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 10px;
+  white-space: nowrap;
+  transition:
+    background var(--duration-fast) ease-out,
+    color var(--duration-fast) ease-out;
+}
+
+/* Counts on the chips that answer access-review questions; figures in the mono face. */
+.users-toolbar__n {
+  min-width: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: rgb(14 24 36 / 0.07);
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  font-variant-numeric: tabular-nums;
+  line-height: 16px;
+  text-align: center;
+  color: var(--ink-2);
+}
+
+.users-toolbar__seg button[aria-pressed='true'] .users-toolbar__n {
+  background: var(--acc-soft);
+  color: var(--acc-deep);
+}
+
+.users-toolbar__result {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 24px;
+  margin-top: 2px;
+}
+
+.users-toolbar__count {
+  font-size: var(--text-xs);
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+
+/* A text action beside the count: it appears without moving anything else. */
+.users-toolbar__clear {
+  height: 24px;
+  padding: 0 6px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--acc);
+  text-decoration: underline;
+  text-decoration-color: transparent;
+  text-underline-offset: 3px;
+  transition: text-decoration-color var(--duration-fast) ease-out;
+}
+
+.users-toolbar__clear:hover {
+  text-decoration-color: currentcolor;
+}

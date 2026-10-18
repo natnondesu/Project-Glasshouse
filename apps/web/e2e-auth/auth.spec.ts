@@ -39,10 +39,12 @@ test('an admin adds a person, who must choose their own password', async ({ page
   await signIn(page, 'admin@company.test', 'admin-password-1');
   await expect(page.getByRole('button', { name: 'Account menu for Ada Admin' })).toBeVisible();
   await page.goto('/admin/users');
-  await page.getByLabel('Email').fill('newbie@company.test');
-  await page.getByLabel('Name', { exact: true }).fill('New Bie');
-  await page.getByLabel('Role', { exact: true }).selectOption('editor');
-  await page.getByRole('button', { name: 'Add user' }).click();
+  await page.getByRole('button', { name: 'Add local user' }).click();
+  const form = page.getByRole('form', { name: 'Add someone with a password' });
+  await form.getByLabel('Email').fill('newbie@company.test');
+  await form.getByLabel('Name', { exact: true }).fill('New Bie');
+  await form.getByLabel('Role', { exact: true }).selectOption('editor');
+  await form.getByRole('button', { name: 'Add user' }).click();
   const temp = (await page.locator('.users__secret code').textContent())!.trim();
   await signOut(page);
   await signIn(page, 'newbie@company.test', temp);

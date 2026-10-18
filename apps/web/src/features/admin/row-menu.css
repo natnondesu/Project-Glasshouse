@@ -1,0 +1,92 @@
+.row-menu__btn {
+  display: inline-grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: var(--radius-field);
+  background: transparent;
+  color: var(--ink-2);
+  transition:
+    background var(--duration-fast) ease-out,
+    border-color var(--duration-fast) ease-out;
+}
+
+tr:hover .row-menu__btn {
+  border-color: var(--line);
+  background: var(--control-bg);
+}
+
+.row-menu__btn:hover,
+.row-menu__btn[aria-expanded='true'] {
+  border-color: var(--line-strong);
+  background: #fff;
+  color: var(--ink);
+}
+
+/* A solid surface, never glass: it floats over the list and has to read at a glance. */
+.row-menu {
+  position: fixed;
+  z-index: 40;
+  min-width: 196px;
+  display: flex;
+  flex-direction: column;
+  padding: 5px;
+  border-radius: 12px;
+  animation: row-menu-in var(--duration-fast) var(--ease-out-expo);
+}
+
+@keyframes row-menu-in {
+  from {
+    opacity: 0;
+    transform: translateY(-3px);
+  }
+}
+
+.row-menu__item {
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  padding: 7px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  font-size: var(--text-sm);
+  text-align: left;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.row-menu__item:hover {
+  background: rgb(14 24 36 / 0.06);
+}
+
+.row-menu__item:focus-visible {
+  outline: none;
+  background: rgb(14 24 36 / 0.06);
+  box-shadow: var(--focus-ring-inset);
+}
+
+.row-menu__icon {
+  color: var(--ink-2);
+}
+
+.row-menu__item--danger,
+.row-menu__item--danger .row-menu__icon {
+  color: var(--block);
+}
+
+.row-menu__item--danger:hover,
+.row-menu__item--danger:focus-visible {
+  background: var(--block-bg);
+}
+
+.row-menu__sep {
+  height: 1px;
+  margin: 5px 6px;
+  background: var(--line);
+}
