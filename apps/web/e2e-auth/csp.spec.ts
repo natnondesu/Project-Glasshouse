@@ -21,12 +21,14 @@ test('the sign-in, password, Users and import screens run under the content secu
 
   // Users screen, with the rename form open.
   await page.goto('/admin/users');
+  await page.getByRole('button', { name: 'Add local user' }).click();
   await page.getByLabel('Email').fill('csp-person@company.test');
   await page.getByLabel('Name', { exact: true }).fill('Csp Person');
   await page.getByRole('button', { name: 'Add user' }).click();
   const temp = (await page.locator('.users__secret code').textContent())!.trim();
-  await page.getByRole('button', { name: 'Rename Eddie Editor' }).click();
-  await expect(page.getByRole('textbox', { name: 'New name for Eddie Editor' })).toBeVisible();
+  await page.getByRole('button', { name: 'Actions for Eddie Editor (ed@company.test)' }).click();
+  await page.getByRole('menuitem', { name: 'Rename' }).click();
+  await expect(page.getByRole('textbox', { name: 'New name for Eddie Editor (ed@company.test)' })).toBeVisible();
 
   // Import project file dialog, from a project file exported here.
   await page.goto('/');
@@ -39,7 +41,9 @@ test('the sign-in, password, Users and import screens run under the content secu
   await page.getByRole('button', { name: 'Add room to Site C' }).click();
   await page.getByRole('textbox', { name: 'Room name' }).fill('CSP-I');
   await page.keyboard.press('Enter');
-  await expect(page.getByTestId('footprint')).toBeVisible();
+  // Wait for the room itself: until it opens, Home's room cards (one per earlier spec's room) also draw footprints.
+  await expect(page.getByRole('banner').getByRole('definition').filter({ hasText: 'CSP-I' })).toBeVisible();
+  await expect(page.getByRole('main').getByTestId('footprint')).toBeVisible();
   const downloading = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Export project file' }).click();
   const saved = testInfo.outputPath('csp-import.json');
