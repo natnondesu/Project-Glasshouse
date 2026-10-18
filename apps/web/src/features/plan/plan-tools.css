@@ -36,6 +36,14 @@
   background: rgb(255 255 255 / 0.7);
 }
 
+/* Eight tools no longer fit above the Checks strip on a 13-inch laptop at 40px each. */
+@media (max-height: 760px) {
+  .toolbar .tool {
+    width: 34px;
+    height: 34px;
+  }
+}
+
 .tool[aria-pressed='true'] {
   background: var(--ink);
   color: #fff;
