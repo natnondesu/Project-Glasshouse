@@ -21,7 +21,7 @@ it('makes the plan read-only while In review, until a new draft starts', async (
   const user = userEvent.setup();
   render(<RouterProvider router={createMemoryRouter(routes, { initialEntries: ['/rooms/r/plan'] })} />);
   expect(screen.getByText(/Revision 01 is In review/)).toBeInTheDocument();
-  expect(screen.queryByRole('button', { name: 'Place rack' })).toBeNull();
+  expect(screen.queryByRole('button', { name: 'Racks tools' })).toBeNull();
   expect(screen.getByRole('button', { name: 'Measure' })).toBeInTheDocument();
   expect(screen.getByLabelText('Width')).toBeDisabled();
   expect(screen.getByText('Read-only')).toBeInTheDocument();
@@ -30,7 +30,7 @@ it('makes the plan read-only while In review, until a new draft starts', async (
   expect(screen.queryByText(/is In review/)).toBeNull();
   expect(screen.getByLabelText('Width')).toBeEnabled();
   expect(screen.getByText('Changes save as you type')).toBeInTheDocument();
-  expect(screen.getByRole('button', { name: 'Place rack' })).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Racks tools' })).toBeInTheDocument();
 });
 
 it('locks the elevation palette while frozen', () => {
