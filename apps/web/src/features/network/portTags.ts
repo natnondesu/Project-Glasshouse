@@ -36,14 +36,15 @@ export function portTags(selectedId: Id, edges: TopoEdge[], byId: Map<Id, TopoNo
       // A stack answers for its members' ports.
       const [mine, theirs] = ownerOf(l.a.deviceId) === selectedId ? [l.a, l.b] : [l.b, l.a];
       const lag = lagAt(mine);
-      // On a stack, which member the port is on: both members may name it GE1/0/3.
-      const member = memberOf(mine.deviceId);
-      const on = member === null ? '' : `S${member} `;
+      // On a stack, which member a physical port is on: both members may name it GE1/0/3. Either end can be one.
+      // A port-channel belongs to the whole stack, so a LAG name never takes a member.
+      const at = memberTag(memberOf(theirs.deviceId));
       if (!lag) {
-        pairs.push(`${on}${mine.port} ⇄ ${theirs.port}`);
+        pairs.push(`${memberTag(memberOf(mine.deviceId))}${mine.port} ⇄ ${at}${theirs.port}`);
         continue;
       }
-      const key = `${on}${lag} ⇄ ${lagAt(theirs) ?? theirs.port}`;
+      const theirLag = lagAt(theirs);
+      const key = `${lag} ⇄ ${theirLag ?? `${at}${theirs.port}`}`;
       bundles.set(key, (bundles.get(key) ?? 0) + 1);
     }
     pairs.unshift(...[...bundles].map(([k, n]) => (n > 1 ? `${k} · ${links(n)}` : k)));
@@ -53,6 +54,8 @@ export function portTags(selectedId: Id, edges: TopoEdge[], byId: Map<Id, TopoNo
   }
   return tags;
 }
+
+const memberTag = (member: number | null): string => (member === null ? '' : `S${member} `);
 
 const TAG_GAP = 8;
 

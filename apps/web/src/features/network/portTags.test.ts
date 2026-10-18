@@ -43,3 +43,29 @@ it('on a stack, starts each tag with the member the port is on, since members ca
   const [tag] = portTags('st', e, stackNodes, more, () => undefined, (n) => `${n} links`, (id) => (id === 'm2' ? 'st' : id), (id) => (id === 'm2' ? 2 : null));
   expect(tag!.lines).toEqual(['S2 GE1/0/3 ⇄ eth0']);
 });
+
+it('from a device on a stack, names the member at the far end too: which switch the cable lands on', () => {
+  const stackNodes = new Map([node('st', 300, 40), node('s1', 100, 200, true)].map((n) => [n.id, n]));
+  const e = [{ key: 'st|s1', a: 'st', b: 's1', tree: true, links: [link('m2', 'GE1/0/3', 's1', 'eth0'), link('s1', 'eth1', 'm1', 'GE1/0/3')] }] as unknown as TopoEdge[];
+  const [tag] = portTags('s1', e, stackNodes, more, () => undefined, (n) => `${n} links`, (id) => (id === 'm1' || id === 'm2' ? 'st' : id), (id) => (id === 'm2' ? 2 : id === 'm1' ? 1 : null));
+  expect(tag!.lines).toEqual(['eth0 ⇄ S2 GE1/0/3', 'eth1 ⇄ S1 GE1/0/3']);
+});
+
+it('between two stacks, both ends carry their member', () => {
+  const stacks = new Map([node('a', 100, 40), node('b', 400, 40)].map((n) => [n.id, n]));
+  const e = [{ key: 'a|b', a: 'a', b: 'b', tree: false, links: [link('a1', 'XG1', 'b2', 'XG4')] }] as unknown as TopoEdge[];
+  const owners: Record<string, string> = { a1: 'a', b2: 'b' };
+  const members: Record<string, number> = { a1: 1, b2: 2 };
+  const [tag] = portTags('a', e, stacks, more, () => undefined, (n) => `${n} links`, (id) => owners[id] ?? id, (id) => members[id] ?? null);
+  expect(tag!.lines).toEqual(['S1 XG1 ⇄ S2 XG4']);
+});
+
+it('keeps a LAG across stack members as one line: a port-channel belongs to the whole stack, not a member', () => {
+  const stackNodes = new Map([node('st', 300, 40), node('tor', 300, 200)].map((n) => [n.id, n]));
+  const e = [{ key: 'st|tor', a: 'st', b: 'tor', tree: true, links: [link('m1', 'Te1/0/1', 'tor', 'Eth1/49'), link('m2', 'Te1/0/1', 'tor', 'Eth1/50')] }] as unknown as TopoEdge[];
+  const lagAt = (r: { deviceId: string; port: string }) => (r.deviceId === 'tor' ? 'Po100' : 'Po101');
+  const owner = (id: string) => (id === 'm1' || id === 'm2' ? 'st' : id);
+  const member = (id: string) => (id === 'm1' ? 1 : id === 'm2' ? 2 : null);
+  expect(portTags('tor', e, stackNodes, more, lagAt, (n) => `${n} links`, owner, member)[0]!.lines).toEqual(['Po100 ⇄ Po101 · 2 links']);
+  expect(portTags('st', e, stackNodes, more, lagAt, (n) => `${n} links`, owner, member)[0]!.lines).toEqual(['Po101 ⇄ Po100 · 2 links']);
+});
