@@ -134,6 +134,35 @@ describe('partition, air conditioning and display wall in 3D', () => {
     expect(pt!.openings![0]!.height).toBeCloseTo(2.1, 6);
   });
 
+  describe('where doors reach past the partition or each other', () => {
+    const wall = { ...createObject('partition', { x: 3, y: 4 }, []), id: 'pt' };
+    const doorAt = (id: string, along: number, w = 0.9) => {
+      const [dx, dy] = topLeftForCenter([centerOf(wall)[0] + along, centerOf(wall)[1]], w, 0.1, 0);
+      return { ...createObject('door', { x: dx, y: dy }, []), id, w, angle: 0 };
+    };
+
+    it('stops an opening at the end of the partition, so no lintel floats past it', () => {
+      const [pt] = objectsOf(wall, doorAt('d', 0.8));
+      expect(pt!.openings).toHaveLength(1);
+      expect(pt!.openings![0]!.from).toBeCloseTo(0.35, 6);
+      expect(pt!.openings![0]!.to).toBeCloseTo(1, 6);
+    });
+
+    it('merges doors that overlap into one opening as high as the taller', () => {
+      const tall = { ...doorAt('b', 0.3), height: 2.4 };
+      const [pt] = objectsOf(wall, doorAt('a', -0.3), tall);
+      expect(pt!.openings).toHaveLength(1);
+      expect(pt!.openings![0]!.from).toBeCloseTo(-0.75, 6);
+      expect(pt!.openings![0]!.to).toBeCloseTo(0.75, 6);
+      expect(pt!.openings![0]!.height).toBeCloseTo(2.4, 6);
+    });
+
+    it('keeps separate openings for doors that do not touch', () => {
+      const [pt] = objectsOf(wall, doorAt('a', -0.6, 0.6), doorAt('b', 0.6, 0.6));
+      expect(pt!.openings).toHaveLength(2);
+    });
+  });
+
   it('gives only partitions openings', () => {
     const [ac] = objectsOf(createObject('wall_split_ac', { x: 1, y: 0 }, []));
     expect(ac!.openings).toBeUndefined();

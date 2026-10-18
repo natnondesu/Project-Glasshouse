@@ -181,15 +181,25 @@ function rackFaces(rack: Rack, stateOf: StateOf): Pick<Rack3D, 'faces' | 'slots'
 type StateOf = (id: string) => EquipmentState;
 const ALL_PLANNED: StateOf = () => 'planned';
 
-/** Where the doors that stand in a partition cut it, along its own length. */
+/**
+ * Where the doors that stand in a partition cut it, along its own length from its centre: kept inside
+ * the partition's ends, with overlapping or touching doorways joined into one (as high as the tallest).
+ */
 function openingsOf(partition: RoomObject, objects: RoomObject[]): Opening3D[] {
-  return objects
+  const half = partition.w / 2;
+  const cuts = objects
     .filter((door) => isDoorInPartition(door, partition))
     .map((door) => {
       const [along] = worldToLocal(partition, centerOf(door));
-      return { from: along - door.w / 2, to: along + door.w / 2, height: effectiveHeight(door) };
+      return { from: Math.max(-half, along - door.w / 2), to: Math.min(half, along + door.w / 2), height: effectiveHeight(door) };
     })
+    .filter((cut) => cut.to > cut.from)
     .sort((a, b) => a.from - b.from);
+  return cuts.reduce<Opening3D[]>((merged, cut) => {
+    const last = merged[merged.length - 1];
+    if (last && cut.from <= last.to) return [...merged.slice(0, -1), { from: last.from, to: Math.max(last.to, cut.to), height: Math.max(last.height, cut.height) }];
+    return [...merged, cut];
+  }, []);
 }
 
 export function buildScene(content: PlanContent, stateOf: StateOf = ALL_PLANNED): Scene3D {
