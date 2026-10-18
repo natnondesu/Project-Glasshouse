@@ -5,7 +5,7 @@ import { LIMITS } from '../model/defaults';
 import type { Id, Metres, Millimetres, PlanContent, Rack, RackOwner, RoomObject, Survey, Units, DoorHinge, DoorOpening } from '../model/types';
 import { err, ok, withTarget, type Failure, type Result } from '../result';
 import { formatMetres, normalizeAngle, rackAutoHeightM, snapTyped } from '../units';
-import { isWallHung } from '../objects';
+import { hasKeepClear, isWallHung } from '../objects';
 import { rackSpans, topU } from '../occupancy';
 import { definedOnly, inRange, isWholeInRange, validateName } from '../validation';
 
@@ -24,6 +24,8 @@ export interface ObjectPatch {
   clearance?: Partial<Rack['clearance']>;
   /** Racks: a height hangs the rack on the wall; null stands it on the floor. Split ACs and display walls: always on a wall, so a number only. */
   wallBottomM?: Metres | null;
+  /** Wall split ACs, precision ACs and display walls: the depth kept clear in front; null returns to the default, 0 means none. */
+  keepClearM?: Metres | null;
   hinge?: DoorHinge;
   opening?: DoorOpening;
 }
@@ -50,7 +52,7 @@ function normalizeObject(o: RoomObject): RoomObject {
   if (o.type === 'rack') {
     return { ...o, ...geometry, clearance: { front: snapTyped(o.clearance.front), rear: snapTyped(o.clearance.rear) } };
   }
-  return { ...o, ...geometry };
+  return { ...o, ...geometry, ...(o.keepClearM === undefined ? {} : { keepClearM: snapTyped(o.keepClearM) }) };
 }
 
 function validateRackFields(r: Rack, name: string): Failure | null {
@@ -89,9 +91,16 @@ function withWallBottom(rack: Rack, bottom: Metres | null | undefined): Rack {
 
 /** A floor object from an old file may carry a height it never used; editing it drops that, rather than refusing the edit. */
 function withoutStrayHeight(o: RoomObject): RoomObject {
-  if (o.type === 'rack' || isWallHung(o) || o.wallBottomM === undefined) return o;
-  const { wallBottomM: _stray, ...floor } = o;
-  return floor;
+  if (o.type === 'rack') return o;
+  const { wallBottomM, keepClearM, ...rest } = o;
+  return { ...rest, ...(wallBottomM !== undefined && isWallHung(o) ? { wallBottomM } : {}), ...(keepClearM !== undefined && hasKeepClear(o.type) ? { keepClearM } : {}) };
+}
+
+/** undefined leaves the depth alone; null returns to the type's default. */
+function withKeepClear(o: RoomObject, depth: Metres | null | undefined): RoomObject {
+  if (depth === undefined || o.type === 'rack') return o;
+  const { keepClearM: _old, ...rest } = o;
+  return depth === null ? rest : { ...rest, keepClearM: depth };
 }
 
 function validateObject(o: RoomObject, survey: Survey): Result<RoomObject> {
@@ -114,6 +123,12 @@ function validateObject(o: RoomObject, survey: Survey): Result<RoomObject> {
     return err('invalid_value', `${name.value} stands on the floor; only racks and wall-hung objects have a height off it.`, [o.id]);
   } else if (n.wallBottomM !== undefined && !inRange(n.wallBottomM, 0, LIMITS.wallBottomMaxM)) {
     return err('invalid_value', `The bottom of ${name.value} is at most ${formatMetres(LIMITS.wallBottomMaxM)} m off the floor.`, [o.id]);
+  }
+  if (n.type !== 'rack' && n.keepClearM !== undefined) {
+    if (!hasKeepClear(n.type)) return err('invalid_value', `${name.value} has no space to keep clear in front of it.`, [o.id]);
+    if (!inRange(n.keepClearM, 0, LIMITS.keepClearMaxM)) return err('invalid_value', `The space kept clear in front of ${name.value} is between 0 and ${formatMetres(LIMITS.keepClearMaxM)} m.`, [o.id]);
+  } else if (n.type === 'rack' && 'keepClearM' in n) {
+    return err('invalid_value', `${name.value} is a rack; racks have clearance instead.`, [o.id]);
   }
   if (!placementWithin(n, survey.width, survey.length)) {
     return err('out_of_bounds', `${name.value} would extend outside the room bounds.`, [o.id]);
@@ -152,7 +167,8 @@ export function updateObject(content: PlanContent, id: Id, patch: ObjectPatch): 
   }
   if (patch.wallBottomM === null && isWallHung(current)) return err('invalid_value', `${current.name} always hangs on a wall; give its height instead.`, [id]);
   if ((patch.hinge !== undefined || patch.opening !== undefined) && current.type !== 'door') return err('invalid_value', `${current.name} is not a door.`, [id]);
-  const { clearance, capacityU, usableDepthMm, owner, wallBottomM, ...common } = patch;
+  if (patch.keepClearM !== undefined && !hasKeepClear(current.type)) return err('invalid_value', `${current.name} has no space to keep clear in front of it.`, [id]);
+  const { clearance, capacityU, usableDepthMm, owner, wallBottomM, keepClearM, ...common } = patch;
   let merged: RoomObject =
     current.type === 'rack'
       ? withWallBottom(
@@ -164,7 +180,7 @@ export function updateObject(content: PlanContent, id: Id, patch: ObjectPatch): 
           },
           wallBottomM,
         )
-      : { ...withoutStrayHeight(current), ...definedOnly(common), ...(typeof wallBottomM === 'number' ? { wallBottomM } : {}) };
+      : withKeepClear({ ...withoutStrayHeight(current), ...definedOnly(common), ...(typeof wallBottomM === 'number' ? { wallBottomM } : {}) }, keepClearM);
 
   if (patch.angle !== undefined && patch.x === undefined && patch.y === undefined) {
     const [x, y] = topLeftForCenter(centerOf(current), merged.w, merged.d, normalizeAngle(merged.angle));

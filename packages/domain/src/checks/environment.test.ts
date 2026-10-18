@@ -47,7 +47,7 @@ describe('wall split AC', () => {
   it('warns when a rack stands in the 1.00 m of airflow in front of the AC, but not beyond it', () => {
     const inside = env(content([ac, rack('RK-01', 2.6, 1.0)]));
     expect(inside.map((i) => i.code)).toEqual(['wall_ac_airflow']);
-    expect(inside[0]).toMatchObject({ message: 'RK-01 blocks the airflow in front of the wall AC.', targets: ['rk-01', 'ac-01'] });
+    expect(inside[0]).toMatchObject({ message: 'RK-01 blocks the airflow within 1.00 m in front of the wall AC.', targets: ['rk-01', 'ac-01'] });
     expect(env(content([ac, rack('RK-01', 2.6, 1.25)]))).toEqual([]);
     expect(env(content([ac, rack('RK-01', 2.6, 1.3)]))).toEqual([]);
     expect(env(content([ac, make('furniture', 'F-01', 2.6, 1.0)]))).toEqual([]);
@@ -118,7 +118,7 @@ describe('display wall', () => {
 
   it('warns when a rack or existing rack stands in the 1.50 m viewing area, not for desks', () => {
     const issues = env(content([dw, rack('RK-01', 2.5, 1.0)]));
-    expect(issues).toEqual([expect.objectContaining({ code: 'display_wall_view', severity: 'warn', message: 'RK-01 stands in front of the display wall.', targets: ['rk-01', 'dw-01'] })]);
+    expect(issues).toEqual([expect.objectContaining({ code: 'display_wall_view', severity: 'warn', message: 'RK-01 stands within 1.50 m in front of the display wall.', targets: ['rk-01', 'dw-01'] })]);
     expect(env(content([dw, make('existing_rack', 'EX-01', 2.5, 1.2)])).map((i) => i.code)).toEqual(['display_wall_view']);
     expect(env(content([dw, make('furniture', 'F-01', 2.5, 1.0)]))).toEqual([]);
     expect(env(content([dw, rack('RK-01', 2.5, 1.65)]))).toEqual([]);

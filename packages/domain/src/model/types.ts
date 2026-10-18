@@ -234,6 +234,8 @@ export interface SimpleObject extends ObjectBase {
   panel?: PanelConfig;
   /** Wall split ACs and display walls only: the height of the object's bottom above the floor. */
   wallBottomM?: Metres;
+  /** Wall split ACs, precision ACs and display walls only: how deep the space kept clear in front is. Absent means the type's default; 0 means none. */
+  keepClearM?: Metres;
 }
 
 export type RoomObject = Rack | SimpleObject;

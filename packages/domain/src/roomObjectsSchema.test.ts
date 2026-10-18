@@ -45,6 +45,16 @@ describe('schema with the new room objects', () => {
     expect(roundTrip(sample.value).ok).toBe(true);
   });
 
+  it('keeps a keep-clear depth through a save and reload, and refuses a non-number', () => {
+    const ws = JSON.parse(JSON.stringify(withObjects(['precision_ac'])));
+    const object = ws.projects[0].sites[0].rooms[0].plan.revisions[0].content.objects[0];
+    object.keepClearM = 0.5;
+    const ok = parseWorkspace(ws);
+    expect(ok.ok && ok.value.projects[0]!.sites[0]!.rooms[0]!.plan.revisions[0]!.content.objects[0]).toMatchObject({ keepClearM: 0.5 });
+    object.keepClearM = 'wide';
+    expect(parseWorkspace(ws).ok).toBe(false);
+  });
+
   it('refuses an unknown object type as before', () => {
     const ws = JSON.parse(JSON.stringify(withObjects(['furniture'])));
     ws.projects[0].sites[0].rooms[0].plan.revisions[0].content.objects[0].type = 'hot_tub';

@@ -99,6 +99,7 @@ const simpleObject = z.object({ ...objectBase, type: z.enum(['existing_rack', 'd
   opening: z.enum(['swing', 'slide']).optional(),
   panel: z.object({ phase: z.enum(['single', 'three']), ways: z.array(z.object({ ratingA: num, label: text })) }).optional(),
   wallBottomM: num.optional(),
+  keepClearM: num.optional(),
 });
 const unverifiedName = z.object({ name: text, at: text, userId: text.optional() });
 const anchor = z.discriminatedUnion('kind', [
