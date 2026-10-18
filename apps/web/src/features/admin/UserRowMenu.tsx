@@ -133,6 +133,12 @@ export function UserRowMenu({ label, focusKey, items }: { label: string; focusKe
               aria-label={label}
               style={pos ? { top: pos.top, left: pos.left } : { top: 0, left: 0, visibility: 'hidden' }}
               onKeyDown={onMenuKey}
+              onBlur={(e) => {
+                // Focus jumped to another control (the search's /): the menu goes with it. A null target is a click
+                // on something unfocusable (Safari does not focus clicked buttons), which pointerdown already handles.
+                const next = e.relatedTarget as Node | null;
+                if (next && !menu.current?.contains(next) && !button.current?.contains(next)) close(false);
+              }}
             >
               {items.map((item, i) => (
                 <Fragment key={item.id}>

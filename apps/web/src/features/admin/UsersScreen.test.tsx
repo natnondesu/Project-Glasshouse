@@ -289,11 +289,32 @@ describe('the actions menu', () => {
     expect(within(menu).getByRole('separator')).toBeInTheDocument();
   });
 
-  it('resets a local password and shows the new one once', async () => {
-    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => (String(input).endsWith('/reset-password') && init?.method === 'POST' ? json({ temporaryPassword: 'Reset-999' }) : json(users)));
+  it('closes when focus jumps to the search with /', async () => {
+    mockServer();
+    renderScreen();
+    await userEvent.click(await screen.findByRole('button', { name: `Actions for ${label(ploy)}` }));
+    expect(screen.getByRole('menuitem', { name: 'Rename' })).toHaveFocus();
+    await userEvent.keyboard('/');
+    expect(screen.getByRole('searchbox', { name: 'Find a person' })).toHaveFocus();
+    expect(screen.queryByRole('menu')).toBeNull();
+  });
+
+  it('asks before resetting a local password, then shows the new one once', async () => {
+    const spy = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => (String(input).endsWith('/reset-password') && init?.method === 'POST' ? json({ temporaryPassword: 'Reset-999' }) : json(users)));
+    const resets = () => spy.mock.calls.filter(([u]) => String(u).endsWith('/reset-password'));
     renderScreen();
     await choose(ploy, 'Reset password');
+    const dialog = screen.getByRole('alertdialog');
+    expect(dialog).toHaveTextContent('Reset Ploy’s password (ploy@company.test)?');
+    expect(dialog).toHaveTextContent("They're signed out now and must sign in with the temporary password you'll see next.");
+    expect(within(dialog).getByRole('button', { name: 'Reset password' })).toHaveClass('btn--ink');
+    await confirmWith('Cancel');
+    expect(resets()).toHaveLength(0);
+    expect(menuButton(ploy)).toHaveFocus();
+    await choose(ploy, 'Reset password');
+    await confirmWith('Reset password');
     expect(await screen.findByText('Reset-999')).toBeInTheDocument();
+    expect(resets()).toHaveLength(1);
     expect(screen.getByText('Temporary password for ploy@company.test:')).toBeInTheDocument();
   });
 });
@@ -600,6 +621,10 @@ it('reads in Thai: status labels, chips, the menu and the confirmations', async 
     expect(within(row(eddie)).getByText('ปิดใช้งานแล้ว')).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: `การดำเนินการสำหรับ ${label(eddie)}` }));
     expect(within(screen.getByRole('menu')).getAllByRole('menuitem').map((i) => i.textContent)).toEqual(['เปลี่ยนชื่อ', 'รีเซ็ตรหัสผ่าน', 'เปิดใช้งานอีกครั้ง', 'ลบบัญชี']);
+    await userEvent.click(screen.getByRole('menuitem', { name: 'รีเซ็ตรหัสผ่าน' }));
+    expect(screen.getByRole('alertdialog')).toHaveTextContent('รีเซ็ตรหัสผ่านของ Eddie (eddie@company.test)?');
+    await confirmWith('ยกเลิก');
+    await userEvent.click(screen.getByRole('button', { name: `การดำเนินการสำหรับ ${label(eddie)}` }));
     await userEvent.click(screen.getByRole('menuitem', { name: 'ลบบัญชี' }));
     expect(screen.getByRole('alertdialog')).toHaveTextContent('ลบบัญชีของ Eddie (eddie@company.test)?');
   } finally {

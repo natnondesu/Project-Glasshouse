@@ -1280,6 +1280,8 @@ export const th: Messages = {
     active: 'ใช้งานอยู่', off: 'ปิดใช้งานแล้ว',
     mustChange: 'ต้องเปลี่ยนรหัสผ่าน',
     reset: 'รีเซ็ตรหัสผ่าน',
+    resetTitle: (name, email) => `รีเซ็ตรหัสผ่านของ ${name} (${email})?`,
+    resetBody: 'เขาจะถูกออกจากระบบทันที และต้องเข้าสู่ระบบด้วยรหัสผ่านชั่วคราวที่คุณจะเห็นถัดไป',
     switchOff: 'ปิดใช้งาน',
     switchOn: 'เปิดใช้งานอีกครั้ง',
     switchOffTitle: (name, email) => `ปิดใช้งาน ${name} (${email})?`,

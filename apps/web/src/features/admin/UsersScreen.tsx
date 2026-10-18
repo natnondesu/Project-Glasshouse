@@ -163,12 +163,15 @@ export function UsersScreen() {
       refreshPeople();
     });
   };
-  const reset = (u: AdminUser): void =>
+  const reset = async (u: AdminUser): Promise<void> => {
+    // It signs them out and replaces their password, so it asks like any other reshaping action.
+    if (!(await confirmAction({ title: m.users.resetTitle(u.displayName, u.email), body: m.users.resetBody, confirmLabel: m.users.reset, tone: 'primary' }))) return;
     void run(async () => {
       const { temporaryPassword } = await resetPassword(u.id);
       setSecret({ who: u.email, password: temporaryPassword });
       replace({ ...u, mustChangePassword: true });
     });
+  };
   const add = (input: { email: string; displayName: string; role: Role }): Promise<boolean> =>
     run(async () => {
       const r = await createUser(input);
@@ -183,7 +186,7 @@ export function UsersScreen() {
   const actionsFor = (u: AdminUser): RowMenuItem[] => {
     const isMe = u.id === can.me?.id;
     const items: RowMenuItem[] = [{ id: 'rename', label: m.users.rename, Icon: IconPencil, onSelect: () => setRenaming({ id: u.id, draft: u.displayName }) }];
-    if (u.source === 'local') items.push({ id: 'reset', label: m.users.reset, Icon: IconKey, onSelect: () => reset(u) });
+    if (u.source === 'local') items.push({ id: 'reset', label: m.users.reset, Icon: IconKey, onSelect: () => void reset(u) });
     if (!isMe && u.active) items.push({ id: 'off', label: m.users.switchOff, Icon: IconPower, onSelect: () => void switchOff(u) });
     if (!isMe && !u.active) {
       items.push({ id: 'on', label: m.users.switchOn, Icon: IconPower, onSelect: () => switchOn(u) });

@@ -1171,6 +1171,8 @@ export const en = {
     active: 'Active', off: 'Switched off',
     mustChange: 'Must change password',
     reset: 'Reset password',
+    resetTitle: (name: string, email: string) => `Reset ${name}’s password (${email})?`,
+    resetBody: "They're signed out now and must sign in with the temporary password you'll see next.",
     switchOff: 'Switch off',
     switchOn: 'Switch on',
     switchOffTitle: (name: string, email: string) => `Switch off ${name} (${email})?`,
