@@ -77,6 +77,10 @@ export class PgIdentityStore implements IdentityStore {
       throw e;
     }
   }
+  async deleteUser(id: string) {
+    // sessions.user_id is ON DELETE CASCADE, so the sign-ins go in the same statement.
+    return ((await this.pool.query('delete from users where id = $1', [id])).rowCount ?? 0) > 0;
+  }
   async countActiveAdmins() {
     const r = await this.pool.query<{ n: string }>("select count(*) as n from users where active and role = 'admin'");
     return Number(r.rows[0]?.n ?? 0);

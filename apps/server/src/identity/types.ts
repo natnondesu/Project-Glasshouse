@@ -42,6 +42,8 @@ export interface IdentityStore {
   listUsers(): Promise<User[]>;
   createUser(user: User): Promise<void>;
   updateUser(id: string, patch: UserPatch): Promise<User | null>;
+  /** Removes the row and its sessions; false when nobody had that id. The email and sign-in are free again afterwards. */
+  deleteUser(id: string): Promise<boolean>;
   countActiveAdmins(): Promise<number>;
   createSession(session: Session): Promise<void>;
   findSession(tokenHash: string): Promise<Session | null>;

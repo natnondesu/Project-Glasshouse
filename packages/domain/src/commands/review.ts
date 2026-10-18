@@ -33,7 +33,8 @@ const frozen = (rev: Revision): Failure => err('invalid_value', `Revision ${rev.
 /** On the shared server the person is a signed-in user: their id is kept and "(unverified)" goes. */
 const person = (name: string, at: string, byId?: Id): UnverifiedName => (byId ? { name, at, userId: byId } : { name, at });
 const tail = (byId?: Id): string => (byId ? '' : ' (unverified)');
-const verified = (byId?: Id): { verified?: number } => (byId ? { verified: 1 } : {});
+/** The id rides along so a view can mark the name "(removed)" if that account is deleted later; the name stays as recorded. */
+const verified = (byId?: Id): { verified?: number; byId?: string } => (byId ? { verified: 1, byId } : {});
 
 function validateText(raw: string, empty: string, label: string): Result<string> {
   const text = raw.trim();

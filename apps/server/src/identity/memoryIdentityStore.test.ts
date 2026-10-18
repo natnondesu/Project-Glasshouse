@@ -42,6 +42,20 @@ describe('MemoryIdentityStore', () => {
   });
 });
 
+describe('MemoryIdentityStore.deleteUser', () => {
+  it('removes the user and their sessions, frees the email, and reports whether anyone was there', async () => {
+    const s = new MemoryIdentityStore();
+    await s.createUser(userFixture({ oidcSubject: 'sub-1' }));
+    await s.createSession({ tokenHash: 'a', userId: 'u1', createdAt: '2026-10-18T00:00:00.000Z', lastSeenAt: '2026-10-18T00:00:00.000Z', expiresAt: '2026-10-25T00:00:00.000Z' });
+    expect(await s.deleteUser('u1')).toBe(true);
+    expect(await s.findUserById('u1')).toBeNull();
+    expect(await s.findSession('a')).toBeNull();
+    expect(await s.deleteUser('u1')).toBe(false);
+    await s.createUser(userFixture({ id: 'u2', oidcSubject: 'sub-1' }));
+    expect((await s.findUserByEmail('ploy@company.test'))?.id).toBe('u2');
+  });
+});
+
 describe('MemoryIdentityStore.updateUser with undefined patch values', () => {
   it('keeps fields whose patch value is undefined, like Postgres does', async () => {
     const s = new MemoryIdentityStore();

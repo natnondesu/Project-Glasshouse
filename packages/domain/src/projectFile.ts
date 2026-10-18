@@ -195,7 +195,7 @@ const withoutUserId = (p: UnverifiedName): UnverifiedName => ({ name: p.name, at
 
 function withoutVerified(params: HistoryEvent['params']): HistoryEvent['params'] {
   if (!params) return params;
-  return Object.fromEntries(Object.entries(params).filter(([key]) => key !== 'verified'));
+  return Object.fromEntries(Object.entries(params).filter(([key]) => key !== 'verified' && key !== 'byId'));
 }
 
 /**

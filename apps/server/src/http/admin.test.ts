@@ -1,4 +1,6 @@
 import type { FastifyInstance } from 'fastify';
+import { Writable } from 'node:stream';
+import { ClaimRegistry } from '../claims';
 import { afterEach, describe, expect, it } from 'vitest';
 import { MemoryIdentityStore } from '../identity/memoryIdentityStore';
 import type { Role, User } from '../identity/types';
@@ -27,16 +29,19 @@ class SlowCountStore extends MemoryIdentityStore {
 
 async function setup(as: User, others: User[] = [], at = NOW) {
   const store = new SlowCountStore();
+  const claims = new ClaimRegistry();
+  const logLines: string[] = [];
+  const logStream = new Writable({ write: (chunk, _enc, done) => (logLines.push(String(chunk)), done()) });
   for (const u of [as, ...others]) await store.createUser(u);
   const service = await WorkspaceService.open(new MemoryCommandStore());
   const app = await buildApp({
-    service, publicOrigin: null, authRoutes: registerDevAuthRoutes,
+    service, publicOrigin: null, logStream, authRoutes: registerDevAuthRoutes,
     authenticate: async (request) => { const u = await store.findUserById(String(request.headers['x-test-user'] ?? as.id)); return u && u.active ? { id: u.id, name: u.displayName, role: u.role, verified: true } : null; },
-    admin: (api) => registerAdmin(api, { store, service, localLogin: true, now: () => new Date(at) }),
+    admin: (api) => registerAdmin(api, { store, service, claims, localLogin: true, now: () => new Date(at) }),
   });
   apps.push(app);
-  const call = (method: 'GET' | 'POST' | 'PATCH', url: string, payload?: object, asUser?: string) => app.inject({ method, url, headers: { 'x-glasshouse': '1', ...(asUser ? { 'x-test-user': asUser } : {}) }, ...(payload ? { payload } : {}) });
-  return { app, store, call };
+  const call = (method: 'GET' | 'POST' | 'PATCH' | 'DELETE', url: string, payload?: object, asUser?: string) => app.inject({ method, url, headers: { 'x-glasshouse': '1', ...(asUser ? { 'x-test-user': asUser } : {}) }, ...(payload ? { payload } : {}) });
+  return { app, store, call, claims, logLines };
 }
 
 describe('admin users API', () => {
@@ -124,5 +129,68 @@ describe('admin users API', () => {
       if (zone === undefined) delete process.env.TZ;
       else process.env.TZ = zone;
     }
+  });
+
+  describe('deleting an account', () => {
+    const off = (id: string, over: Partial<User> = {}) => user(id, 'editor', { active: false, displayName: 'Ploy', ...over });
+
+    it('removes a switched-off user, ends their sessions and frees the email for a fresh account', async () => {
+      const { call, store } = await setup(user('ad', 'admin'), [off('ploy', { email: 'ploy@company.test' })]);
+      await store.createSession({ tokenHash: 'h', userId: 'ploy', createdAt: NOW, lastSeenAt: NOW, expiresAt: '2026-10-25T00:00:00.000Z' });
+      const res = await call('DELETE', '/api/admin/users/ploy');
+      expect(res.statusCode).toBe(204);
+      expect(await store.findUserById('ploy')).toBeNull();
+      expect(await store.findSession('h')).toBeNull();
+      expect((await call('GET', '/api/admin/users')).json().map((u: User) => u.id)).toEqual(['ad']);
+      const again = await call('POST', '/api/admin/users', { email: 'ploy@company.test', displayName: 'Ploy', role: 'editor' });
+      expect(again.statusCode).toBe(201);
+      expect(again.json().user.id).not.toBe('ploy');
+    });
+
+    it('refuses while the person is still switched on, naming them', async () => {
+      const { call, store } = await setup(user('ad', 'admin'), [off('ploy', { active: true })]);
+      const res = await call('DELETE', '/api/admin/users/ploy');
+      expect(res.statusCode).toBe(409);
+      expect(res.json()).toMatchObject({ error: { code: 'invalid_value', message: 'Switch Ploy off before deleting the account.' } });
+      expect(await store.findUserById('ploy')).not.toBeNull();
+    });
+
+    it('refuses your own account and the last admin, and says what is missing for an unknown id', async () => {
+      const { call, store } = await setup(user('ad', 'admin'), [off('gone-admin', { role: 'admin' })]);
+      expect((await call('DELETE', '/api/admin/users/ad')).statusCode).toBe(409);
+      expect(await store.findUserById('ad')).not.toBeNull();
+      expect((await call('DELETE', '/api/admin/users/nobody')).statusCode).toBe(404);
+    });
+
+    it('is for admins only', async () => {
+      const { call, store } = await setup(user('ed', 'editor'), [off('ploy')]);
+      expect((await call('DELETE', '/api/admin/users/ploy')).statusCode).toBe(403);
+      expect(await store.findUserById('ploy')).not.toBeNull();
+    });
+
+    it('releases the editing claims the person held, and leaves other claims', async () => {
+      const { call, claims } = await setup(user('ad', 'admin'), [off('ploy')]);
+      claims.touch('room-a', { id: 'ploy', name: 'Ploy' });
+      claims.touch('room-b', { id: 'ad', name: 'ad' });
+      await call('DELETE', '/api/admin/users/ploy');
+      expect(claims.list().map((c) => c.roomId)).toEqual(['room-b']);
+    });
+
+    it('writes who deleted whom, with the email and time, to the server log', async () => {
+      const { call, logLines } = await setup(user('ad', 'admin'), [off('ploy', { email: 'ploy@company.test' })]);
+      await call('DELETE', '/api/admin/users/ploy');
+      const entry = logLines.map((l) => JSON.parse(l)).find((l) => l.event === 'user_deleted');
+      expect(entry).toMatchObject({
+        event: 'user_deleted', actorId: 'ad', actorName: 'ad', userId: 'ploy', userEmail: 'ploy@company.test', userName: 'Ploy', userRole: 'editor', source: 'local', at: NOW,
+      });
+    });
+
+    it('does not touch the workspace: approvals and history keep what was recorded', async () => {
+      const { call, app } = await setup(user('ad', 'admin'), [off('ploy')]);
+      const before = (await app.inject({ method: 'GET', url: '/api/workspace', headers: { 'x-glasshouse': '1' } })).body;
+      await call('DELETE', '/api/admin/users/ploy');
+      const after = (await app.inject({ method: 'GET', url: '/api/workspace', headers: { 'x-glasshouse': '1' } })).body;
+      expect(after).toBe(before);
+    });
   });
 });

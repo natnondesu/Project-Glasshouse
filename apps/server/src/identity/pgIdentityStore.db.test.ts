@@ -31,3 +31,16 @@ it('stores users and sessions in Postgres with the same rules as memory', async 
   expect((await s.listUsers()).map((u) => u.id)).toEqual(['u1']);
   await s.close();
 });
+
+it('deletes a user, cascades their sessions and frees the email and sign-in for a fresh account', async () => {
+  const s = await PgIdentityStore.connect(container.getConnectionUri());
+  await s.createUser(user({ id: 'gone', email: 'gone@company.test', oidcSubject: 'sub-gone' }));
+  await s.createSession({ tokenHash: 'gone-h', userId: 'gone', createdAt: '2026-10-18T00:00:00.000Z', lastSeenAt: '2026-10-18T00:00:00.000Z', expiresAt: '2026-10-19T00:00:00.000Z' });
+  expect(await s.deleteUser('gone')).toBe(true);
+  expect(await s.findUserById('gone')).toBeNull();
+  expect(await s.findSession('gone-h')).toBeNull();
+  expect(await s.deleteUser('gone')).toBe(false);
+  await s.createUser(user({ id: 'back', email: 'Gone@company.test', oidcSubject: 'sub-gone' }));
+  expect((await s.findUserByEmail('gone@company.test'))?.id).toBe('back');
+  await s.close();
+});

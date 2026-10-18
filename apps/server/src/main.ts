@@ -41,7 +41,7 @@ if (config.auth.mode === 'dev-insecure') {
   void oidc?.warmUp().catch(() => undefined);
   const built = await buildApp({
     service, claims, authenticate: sessions.authenticate, recheck: sessions.check, publicOrigin: auth.publicUrl.origin, trustProxy: config.trustProxy, webDir: config.webDir, logger: true,
-    admin: (api) => registerAdmin(api, { store: idStore, service, localLogin: auth.localLogin, now: () => new Date() }),
+    admin: (api) => registerAdmin(api, { store: idStore, service, claims, localLogin: auth.localLogin, now: () => new Date() }),
     people: (api) => registerPeople(api, idStore),
     authRoutes: (a) => registerAuthRoutes(a, { store: idStore, sessions, config: auth, oidc, throttle, now: () => new Date() }),
   });

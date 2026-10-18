@@ -71,6 +71,15 @@ export class ClaimRegistry {
     return true;
   }
 
+  /** A deleted account holds nothing: frees every room they were editing. Returns how many. */
+  releaseAllFor(userId: string): number {
+    const held = [...this.claims.values()].filter((c) => c.userId === userId);
+    if (held.length === 0) return 0;
+    for (const c of held) this.claims.delete(c.roomId);
+    this.changed();
+    return held.length;
+  }
+
   prune(exists: (roomId: string) => boolean): void {
     const gone = [...this.claims.keys()].filter((roomId) => !exists(roomId));
     if (gone.length === 0) return;

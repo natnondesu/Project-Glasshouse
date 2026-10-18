@@ -161,7 +161,7 @@ describe('template versions on import', () => {
       expect(room.plan.notes[0]).not.toHaveProperty('byId');
       expect(room.plan.notes[0]!.by).toBe('Dana');
       expect(room.plan.history.length).toBeGreaterThan(0);
-      for (const e of room.plan.history) expect(e.params ?? {}).not.toHaveProperty('verified');
+      for (const e of room.plan.history) { expect(e.params ?? {}).not.toHaveProperty('verified'); expect(e.params ?? {}).not.toHaveProperty('byId'); }
       expect(JSON.stringify(ws)).not.toMatch(/u-dana|u-ada/);
     });
 

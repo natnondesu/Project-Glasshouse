@@ -35,6 +35,12 @@ export class MemoryIdentityStore implements IdentityStore {
     this.users = this.users.map((u) => (u.id === id ? next : u));
     return structuredClone(next);
   }
+  async deleteUser(id: string) {
+    if (!this.users.some((u) => u.id === id)) return false;
+    this.users = this.users.filter((u) => u.id !== id);
+    await this.deleteUserSessions(id);
+    return true;
+  }
   async countActiveAdmins() {
     return this.users.filter((u) => u.active && u.role === 'admin').length;
   }
