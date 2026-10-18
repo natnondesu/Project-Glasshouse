@@ -52,3 +52,13 @@ Visual check: Playwright screenshots at 1440 px (EN/TH) of the rail, a room with
 ### Task 3: 3D view, Install sheet, search, docs
 Files: `apps/web/src/features/room3d/RoomModels.tsx` + `labels.ts` (partition as a full-height thin wall; split AC as a box high on the wall; precision AC floor cabinet; display wall as a dark screen panel at its height — simple, consistent with the existing low-poly look), the Install sheet's object schedule/legend (follow how furniture/doors appear), room search, `DESIGN.md` (one paragraph on the new symbols and zones) and the product spec's object list.
 Tests: unit tests where the codebase tests 3D/sheet mapping; e2e: the 3D view renders with a partition and an AC without errors (canvas visible, no console errors), the Install sheet lists them.
+
+---
+
+## Follow-ups
+
+Found by the whole-feature review and deliberately left for later:
+
+- Doors move with their partition (today a door in a partition stays put when the partition is moved or resized).
+- The fittings table: where it sits on the Install sheet.
+- The "cold" search synonym for air conditioning.

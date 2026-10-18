@@ -141,6 +141,26 @@ describe('WorkspaceService', () => {
     expect(again.state.workspace).toEqual(svc.state.workspace);
   });
 
+  it('keeps a partition and a wall-hung AC, with their heights, through a batch and a reload', async () => {
+    const store = new MemoryCommandStore();
+    const svc = await WorkspaceService.open(store, { snapshotEvery: 3 });
+    const partition = { ...createObject('partition', { x: 2, y: 2 }, []), id: 'pt', name: 'PT-01' };
+    const ac = { ...createObject('wall_split_ac', { x: 1, y: 0 }, []), id: 'ac', name: 'AC-01', wallBottomM: 2.4 };
+    const out = await svc.submitBatch('a', [
+      ...readyRoomCommands().slice(0, 3),
+      { type: 'plan', roomId: 'r', command: { type: 'object/add', object: partition } },
+      { type: 'plan', roomId: 'r', command: { type: 'object/add', object: ac } },
+    ].map((command, i) => ({ commandId: `b${i}`, command: command as WorkspaceCommand })), ploy);
+    expect(out.rejected).toBeNull();
+    expect(out.accepted).toHaveLength(5);
+    const objectsOf = (s: WorkspaceService) => currentRevision(findRoom(s.state.workspace, 'r')!.room.plan).content.objects;
+    expect(objectsOf(svc).map((o) => [o.type, o.wallBottomM])).toEqual([['partition', undefined], ['wall_split_ac', 2.4]]);
+    expect((await store.latestSnapshot())?.seq).toBe(3);
+    const reloaded = await WorkspaceService.open(store);
+    expect(objectsOf(reloaded)).toEqual(objectsOf(svc));
+    expect(reloaded.state.workspace).toEqual(svc.state.workspace);
+  });
+
   it('keeps the seeded sample IDs stable across restarts', async () => {
     const store = new MemoryCommandStore();
     const first = await WorkspaceService.open(store, { seedSample: true });
