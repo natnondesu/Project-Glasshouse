@@ -90,46 +90,12 @@
   text-decoration-color: currentColor;
 }
 
-.site-card__facts {
-  display: grid;
-  grid-template-columns: minmax(0, 0.55fr) minmax(0, 0.55fr) minmax(0, 1.6fr);
-  margin: 0;
-  border-block: 1px solid var(--line);
-}
 
-.site-card__facts > div {
-  min-width: 0;
-  padding: 6px 0 6px 14px;
-}
 
-.site-card__facts > div:first-child {
-  padding-left: 0;
-}
 
-.site-card__facts > div + div {
-  border-left: 1px solid var(--line);
-}
 
-.site-card__facts dt {
-  font-size: var(--text-xs);
-  color: var(--ink-2);
-}
 
-.site-card__facts dd {
-  margin: 2px 0 0;
-  font-size: var(--text-lg);
-  font-weight: 700;
-  white-space: nowrap;
-}
 
-.site-card__facts small {
-  display: block;
-  margin-top: 1px;
-  white-space: normal;
-  font-size: var(--text-2xs);
-  font-weight: 600;
-  color: var(--ink-2);
-}
 
 .site-card__paper {
   position: relative;
@@ -319,11 +285,25 @@
   text-decoration-color: currentColor;
 }
 
+/* The way into the room stays in reach: pinned to the card's foot while the room list scrolls under it. */
 .site-card__actions {
+  position: sticky;
+  bottom: -16px;
+  z-index: 1;
   display: flex;
   flex-wrap: nowrap;
   gap: 8px;
   min-width: 0;
+  margin: 0 -18px -16px;
+  padding: 12px 18px 16px;
+  border-top: 1px solid transparent;
+  border-radius: 0 0 14px 14px;
+  background: rgb(247 249 251 / 0.97);
+}
+
+.site-card.has-more .site-card__actions {
+  border-top-color: var(--line);
+  box-shadow: 0 -10px 14px -10px rgb(14 24 36 / 0.16);
 }
 
 .site-card__actions .btn {
@@ -434,6 +414,11 @@
   flex-direction: column;
   align-items: flex-end;
   gap: 8px;
+}
+
+/* With a site card open the list steps left of it, never over the card's rooms and actions. */
+.globe-hero__paper.has-card .globe-notplaced {
+  right: calc(64px + min(360px, 100% - 140px) + 12px);
 }
 
 .globe-notplaced__toggle {
@@ -567,20 +552,9 @@
     font-size: 22px;
   }
 
-  .site-card__facts dd {
-    font-size: var(--text-md);
-  }
 
   /* The power figure's detail on one line, cut with an ellipsis (its full text stays in the room rows and the numbers). */
-  .site-card__facts > div {
-    padding-block: 6px;
-  }
 
-  .site-card__facts small {
-    overflow: hidden;
-    white-space: nowrap;
-    text-overflow: ellipsis;
-  }
 
   .site-room {
     padding: 4px 8px;
@@ -601,16 +575,6 @@
 }
 
 /* More to scroll to: the card's foot fades into its own glass instead of being cut. */
-.site-card.has-more::after {
-  content: '';
-  position: sticky;
-  bottom: -16px;
-  flex: none;
-  height: 36px;
-  margin: -36px -18px -16px;
-  background: linear-gradient(to bottom, rgb(247 249 251 / 0), rgb(247 249 251 / 0.96) 80%);
-  pointer-events: none;
-}
 
 /* The 3D folded on a short map: the room's name and the toggle in one line. */
 .site-card__strip {

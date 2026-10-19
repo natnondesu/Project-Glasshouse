@@ -209,10 +209,6 @@ export const en = {
     cancel: 'Cancel',
     scale: (label: string) => `Scale bar: ${label}`,
     // The site card
-    roomsLabel: 'Rooms',
-    racksLabel: 'Racks',
-    powerLabel: 'Power planned',
-    unknownDemand: (n: number) => `${n} unknown`,
     roomsOf: (site: string) => `Rooms in ${site}`,
     noRooms: 'No rooms in this site yet.',
     ready: 'Install sheet ready',

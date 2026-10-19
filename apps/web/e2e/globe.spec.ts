@@ -133,3 +133,25 @@ test.describe('with reduced motion', () => {
     await expect(crumbs(page).getByRole('button', { name: 'Thailand' })).toHaveAttribute('aria-current', 'location');
   });
 });
+
+for (const [w, h] of [[1280, 720], [1440, 900]] as const) {
+  test(`at ${w}×${h} a site card shows its room in 3D, keeps its actions in reach and stays clear of "Not placed yet"`, async ({ page }) => {
+    await page.setViewportSize({ width: w, height: h });
+    await page.goto('/');
+    await addSite(page, 'Acme', 'Unplaced depot');
+    await page.getByRole('link', { name: 'Glasshouse' }).first().click();
+    const search = page.getByRole('searchbox', { name: /Search sites and rooms/ });
+    await search.fill('Riverside Campus');
+    await search.press('Enter');
+    const card = page.locator('.globe-sitecard');
+    await expect(card).toBeVisible();
+    await expect(page.locator('.globe-map')).not.toHaveClass(/is-flying/);
+    await expect(card.locator('#site-card-scene')).toBeVisible();
+    const toggle = page.getByRole('button', { name: /^Not placed yet/ });
+    await expect(toggle).toBeVisible();
+    const [c, t, a] = await Promise.all([card.boundingBox(), toggle.boundingBox(), card.locator('.site-card__actions').boundingBox()]);
+    const overlaps = t!.x < c!.x + c!.width && t!.x + t!.width > c!.x && t!.y < c!.y + c!.height && t!.y + t!.height > c!.y;
+    expect(overlaps).toBe(false);
+    expect(a!.y + a!.height).toBeLessThanOrEqual(c!.y + c!.height + 1);
+  });
+}

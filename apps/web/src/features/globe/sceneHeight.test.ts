@@ -7,16 +7,14 @@ describe('how tall the card’s 3D may be', () => {
     expect(sceneHeight(900, 4)).toBe(180);
   });
 
-  it('gives way to the facts and the first three rooms on a short map', () => {
-    const two = sceneHeight(470, 2)!;
-    const four = sceneHeight(510, 4);
-    expect(two).toBeGreaterThanOrEqual(110);
-    expect(two).toBeLessThan(180);
-    expect(four).toBeGreaterThanOrEqual(110);
+  it('shows by default on a laptop map, ahead of the room list, which scrolls', () => {
+    // A 1280×720 screen gives the card about 370 px: the 3D still shows, with one room row in view.
+    expect(sceneHeight(370, 4)).toBeGreaterThanOrEqual(110);
+    expect(sceneHeight(370, 1)).toBeGreaterThanOrEqual(110);
+    expect(sceneHeight(470, 2)).toBe(180);
   });
 
-  it('folds away when only a sliver would be left', () => {
-    expect(sceneHeight(380, 4)).toBeNull();
-    expect(sceneHeight(494, 4)).toBeNull();
+  it('folds away only when not even a room row would fit beside a useful 3D', () => {
+    expect(sceneHeight(300, 4)).toBeNull();
   });
 });
