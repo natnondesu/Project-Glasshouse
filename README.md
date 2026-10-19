@@ -21,9 +21,9 @@ Power, clearance and every device are checked before anyone lifts a rack.
 
 <br>
 
-<img src="docs/readme/hero.gif" alt="Dragging a rack on the plan: its clearance zone follows and the checks re-run" width="900">
+<img src="docs/readme/home.webp" alt="Home: the globe flies from the world to Bangna campus, whose card shows its rooms in live 3D and what still holds approval" width="900">
 
-<sub>Move a rack and its clearance zone moves with it. The checks re-run on every change.</sub>
+<sub>Every site on one globe. Fly in to a site and its rooms are there in live 3D, with what still holds their approval.</sub>
 
 </div>
 
@@ -49,9 +49,9 @@ flowchart LR
 <td width="50%" valign="top">
 
 **Plan the room**<br>
-<sub>Draw the survey to scale: walls, doors, partitions, MCB panels, ACs and display walls. Place racks, and the front and rear clearance zones and power feeds draw themselves.</sub>
+<sub>Draw the survey to scale: walls, doors, partitions, MCB panels, ACs and display walls. Place racks, and the front and rear clearance zones and power feeds draw themselves; move one and the checks re-run.</sub>
 
-<img src="docs/readme/plan.png" alt="Plan view with a selected rack, inspector and checks">
+<img src="docs/readme/plan-drag.gif" alt="Dragging a rack on the plan: its clearance zone follows and the checks re-run">
 
 </td>
 <td width="50%" valign="top">
