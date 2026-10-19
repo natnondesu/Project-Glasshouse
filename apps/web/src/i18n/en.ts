@@ -140,7 +140,7 @@ export const en = {
     justNow: 'just now',
     continue: 'Continue',
     continueTo: (room: string) => `Continue to ${room}`,
-    searchLabel: 'Search sites and rooms',
+    searchLabel: 'Search sites, rooms and projects',
     clearSearch: 'Clear the search',
     showMatches: (n: number) => `Show ${n} ${n === 1 ? 'match' : 'matches'}`,
     matching: (q: string) => `matching “${q}”`,

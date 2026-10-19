@@ -1,7 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 
 const crumbs = (page: Page) => page.getByRole('navigation', { name: 'Map level' });
-const search = (page: Page) => page.getByRole('combobox', { name: 'Search sites and rooms' });
+const search = (page: Page) => page.getByRole('combobox', { name: 'Search sites, rooms and projects' });
 const results = (page: Page) => page.getByRole('listbox', { name: 'Search results' });
 const card = (page: Page) => page.locator('.globe-sitecard');
 

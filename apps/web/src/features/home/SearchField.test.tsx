@@ -51,7 +51,7 @@ const open = (path = '/') => {
   render(<RouterProvider router={router} />);
   return router;
 };
-const box = () => screen.getByRole('combobox', { name: 'Search sites and rooms' });
+const box = () => screen.getByRole('combobox', { name: 'Search sites, rooms and projects' });
 const list = () => screen.getByRole('listbox', { name: 'Search results' });
 const activeOption = (): HTMLElement | null => {
   const id = box().getAttribute('aria-activedescendant');
@@ -211,7 +211,7 @@ describe('Home’s search dropdown', () => {
     useWorkspaceStore.getState().replace(withThai());
     await act(() => useLangStore.getState().setLang('th'));
     open();
-    const thai = screen.getByRole('combobox', { name: 'ค้นหาไซต์และห้อง' });
+    const thai = screen.getByRole('combobox', { name: 'ค้นหาไซต์ ห้อง และโปรเจกต์' });
     await user.type(thai, 'หองเซิรฟเวอร');
     const listbox = await screen.findByRole('listbox', { name: 'ผลการค้นหา' });
     const option = within(within(listbox).getByRole('group', { name: /^ห้อง/ })).getByRole('option');

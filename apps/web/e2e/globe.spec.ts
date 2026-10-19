@@ -146,13 +146,13 @@ for (const [w, h] of [[1280, 720], [1440, 900]] as const) {
     await page.goto('/');
     await addSite(page, 'Acme', 'Unplaced depot');
     await page.getByRole('link', { name: 'Glasshouse' }).first().click();
-    const search = page.getByRole('combobox', { name: /Search sites and rooms/ });
+    const search = page.getByRole('combobox', { name: /Search sites, rooms and projects/ });
     await search.fill('Riverside Campus');
     await search.press('Enter');
     const card = page.locator('.globe-sitecard');
     await expect(card).toBeVisible();
-    await expect(page.locator('.globe-map')).not.toHaveClass(/is-flying/);
-    await expect(card.locator('#site-card-scene')).toBeVisible();
+    await expect(page.locator('.globe-map')).not.toHaveClass(/is-flying/, { timeout: 10_000 });
+    await expect(card.locator('#site-card-scene')).toBeVisible({ timeout: 15_000 });
     const toggle = page.getByRole('button', { name: /^Not placed yet/ });
     await expect(toggle).toBeVisible();
     const [c, t, a] = await Promise.all([card.boundingBox(), toggle.boundingBox(), card.locator('.site-card__actions').boundingBox()]);

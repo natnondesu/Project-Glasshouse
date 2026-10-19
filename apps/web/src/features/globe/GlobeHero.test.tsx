@@ -142,7 +142,7 @@ describe('Home’s globe hero', () => {
     await act(() => router.navigate(`/rooms/${mdf.id}/plan`));
     await act(() => router.navigate(-1));
     expect(Object.fromEntries(new URLSearchParams(router.state.location.search))).toEqual({ q: 'mdf', scope: `site:${siteId('Bangna campus')}` });
-    expect(screen.getByRole('combobox', { name: 'Search sites and rooms' })).toHaveValue('mdf');
+    expect(screen.getByRole('combobox', { name: 'Search sites, rooms and projects' })).toHaveValue('mdf');
     expect(card('Bangna campus')).toBeInTheDocument();
     await map();
     expect(within(crumbs()).getByRole('button', { name: 'Bangna campus' })).toHaveAttribute('aria-current', 'location');
@@ -442,7 +442,7 @@ describe('Home’s globe hero', () => {
     const before = marker();
     const trail = within(crumbs()).getAllByRole('button').map((b) => b.textContent);
     await user.keyboard('/');
-    expect(screen.getByRole('combobox', { name: 'Search sites and rooms' })).toHaveFocus();
+    expect(screen.getByRole('combobox', { name: 'Search sites, rooms and projects' })).toHaveFocus();
     await user.keyboard('shaft');
     expect(screen.getByRole('button', { name: 'Thailand — 1 of 3 sites match. Show them' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { level: 2, name: 'Everywhere · 1 site · matching “shaft”' })).toBeInTheDocument();
@@ -461,7 +461,7 @@ describe('Home’s globe hero', () => {
     await user.click(screen.getByRole('button', { name: 'Show 1 match' }));
     await waitFor(() => expect(screen.queryByRole('img', { name: /^Scale bar/ })?.getAttribute('aria-label')).not.toBe(scale));
     // Escape closes the dropdown, a second Escape clears it.
-    await user.click(screen.getByRole('combobox', { name: 'Search sites and rooms' }));
+    await user.click(screen.getByRole('combobox', { name: 'Search sites, rooms and projects' }));
     await user.keyboard('{Escape}{Escape}');
     expect(screen.getByRole('heading', { level: 2, name: 'Everywhere · 3 sites' })).toBeInTheDocument();
     await user.keyboard('mdf{Enter}');
@@ -474,7 +474,7 @@ describe('Home’s globe hero', () => {
     open(`/?scope=province:TH-10`);
     await map();
     expect(await screen.findByRole('button', { name: /^Bangna campus,/ })).toBeInTheDocument();
-    await user.type(screen.getByRole('combobox', { name: 'Search sites and rooms' }), 'riverside campus');
+    await user.type(screen.getByRole('combobox', { name: 'Search sites, rooms and projects' }), 'riverside campus');
     expect(screen.getByRole('button', { name: /^Bangna campus,/ }).closest('li')).toHaveClass('is-dim');
     expect(document.querySelectorAll('.globe-marker:not(.is-dim)').length).toBeGreaterThan(0);
     // A faded pin says so to assistive tech.
@@ -490,7 +490,7 @@ describe('Home’s globe hero', () => {
     const user = userEvent.setup();
     load(sample());
     const { router } = open('/?q=shaft&rooms=approved');
-    expect(screen.getByRole('combobox', { name: 'Search sites and rooms' })).toHaveValue('shaft');
+    expect(screen.getByRole('combobox', { name: 'Search sites, rooms and projects' })).toHaveValue('shaft');
     const rooms = screen.getByRole('region', { name: 'All rooms' });
     expect(within(rooms).getByRole('button', { name: /^Approved/ })).toHaveAttribute('aria-pressed', 'true');
     expect(within(rooms).getByRole('button', { name: /^All/ })).toHaveTextContent('3');
@@ -506,9 +506,9 @@ describe('Home’s globe hero', () => {
     const user = userEvent.setup();
     load(sample());
     const { router } = open('/?q=shaft');
-    expect(screen.getByRole('combobox', { name: 'Search sites and rooms' })).toHaveValue('shaft');
+    expect(screen.getByRole('combobox', { name: 'Search sites, rooms and projects' })).toHaveValue('shaft');
     await user.click(screen.getAllByRole('link', { name: 'Glasshouse' })[0]!);
-    expect(screen.getByRole('combobox', { name: 'Search sites and rooms' })).toHaveValue('');
+    expect(screen.getByRole('combobox', { name: 'Search sites, rooms and projects' })).toHaveValue('');
     const rooms = () => screen.getByRole('region', { name: 'All rooms' });
     expect(within(rooms()).getAllByRole('article')).toHaveLength(7);
     await user.click(within(rooms()).getByRole('button', { name: /^Draft/ }));

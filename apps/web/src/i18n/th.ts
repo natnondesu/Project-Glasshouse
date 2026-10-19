@@ -139,7 +139,7 @@ export const th: Messages = {
     justNow: 'เมื่อสักครู่',
     continue: 'ทำต่อ',
     continueTo: (room) => `ทำต่อที่ ${room}`,
-    searchLabel: 'ค้นหาไซต์และห้อง',
+    searchLabel: 'ค้นหาไซต์ ห้อง และโปรเจกต์',
     clearSearch: 'ล้างคำค้นหา',
     showMatches: (n) => `แสดงที่ตรงกัน ${n} แห่ง`,
     matching: (q) => `ที่ตรงกับ “${q}”`,
