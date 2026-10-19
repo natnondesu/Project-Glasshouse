@@ -2,7 +2,7 @@ import { formatWatts, latestApproved } from '@glasshouse/domain';
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router';
 import { useT } from '../../i18n';
-import { IconArrowRight, IconCheck, IconChevronLeft, IconChevronRight, IconClose, IconMapPin, IconPlus, IconSheet } from '../../ui/icons';
+import { IconArrowRight, IconBlock, IconCheck, IconChevronLeft, IconChevronRight, IconClose, IconMapPin, IconPlus, IconSheet, IconWarn } from '../../ui/icons';
 import { usePeople } from '../../people/peopleStore';
 import { personLabel } from '../../ui/person';
 import { pad2 } from '../../ui/StatusStamp';
@@ -214,22 +214,23 @@ export function SiteCard({ summary, roomId, lastRoomId, onRoom, canEdit, onLocat
             })}
           </ul>
           <div className="site-card__actions">
+            {/* Opening the room is always the accent action; holds get a quieter Resolve beside it (the rows above link them too). */}
+            <Link to={`/rooms/${room.room.id}/plan`} className="btn btn--ink site-card__open" title={m.globe.openRoom(room.room.name)}>
+              <span>{m.globe.openRoom(room.room.name)}</span>
+              <IconArrowRight />
+            </Link>
             {holds > 0 ? (
-              <>
-                <Link to={`/rooms/${room.room.id}/review`} className="btn btn--ink">
-                  {m.home.resolve(holds)}
-                  <IconArrowRight />
-                </Link>
-                <Link to={`/rooms/${room.room.id}/plan`} className="btn site-card__open" title={m.globe.openRoom(room.room.name)}>
-                  <span>{m.globe.openRoom(room.room.name)}</span>
-                </Link>
-              </>
-            ) : (
-              <Link to={`/rooms/${room.room.id}/plan`} className="btn btn--ink site-card__open" title={m.globe.openRoom(room.room.name)}>
-                <span>{m.globe.openRoom(room.room.name)}</span>
-                <IconArrowRight />
+              // Compact so the room's name keeps its width: the hold's icon (blocking, else to acknowledge) and the count; the full name is its label and hint.
+              <Link
+                to={`/rooms/${room.room.id}/review`}
+                className={`btn site-card__resolve${room.holds.blocks ? ' is-block' : ''}`}
+                aria-label={m.home.resolve(holds)}
+                title={m.home.resolve(holds)}
+              >
+                {room.holds.blocks ? <IconBlock /> : <IconWarn />}
+                <span className="mono">{holds}</span>
               </Link>
-            )}
+            ) : null}
             {approved ? (
               // Quieter than the way into the room, and one icon wide, so the actions never wrap; its name is its hint.
               <Link to={`/rooms/${room.room.id}/install-sheet`} className="btn site-card__sheet" aria-label={m.views.installSheet(pad2(approved.number))}>

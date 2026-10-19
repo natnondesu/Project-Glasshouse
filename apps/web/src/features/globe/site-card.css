@@ -329,6 +329,23 @@
   text-overflow: ellipsis;
 }
 
+/* The quieter Resolve: the hold's icon and its count, in the hold's colour; the room's name gives way first, never this. */
+.site-card__actions .site-card__resolve {
+  flex-shrink: 0;
+  gap: 6px;
+  padding-inline: 12px;
+  color: var(--warn);
+}
+
+.site-card__actions .site-card__resolve.is-block {
+  color: var(--block);
+}
+
+.site-card__actions .site-card__resolve svg {
+  width: 16px;
+  height: 16px;
+}
+
 .site-card__actions .btn--ink.site-card__open {
   flex: 0 1 auto;
 }

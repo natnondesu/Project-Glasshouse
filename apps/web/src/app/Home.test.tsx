@@ -69,9 +69,15 @@ it('leads the picked site’s card with the way to its holds, in the Review badg
   // In the card, holds are links to Review, in the Review badge's terms.
   expect(within(card).getByRole('link', { name: '1 blocking' })).toHaveAttribute('href', `/rooms/${mdf.id}/review`);
   expect(within(card).getByRole('link', { name: '1 to acknowledge' })).toHaveAttribute('href', `/rooms/${mdf.id}/review`);
-  // A room with holds leads with the way to them.
-  expect(screen.getByRole('link', { name: /^Resolve 2 items/ })).toHaveAttribute('href', `/rooms/${mdf.id}/review`);
-  expect(screen.getByRole('link', { name: 'Open MDF-1' })).toHaveAttribute('href', `/rooms/${mdf.id}/plan`);
+  // The way into the room is always the accent action, first; holds get a quieter Resolve after it.
+  const openRoom = screen.getByRole('link', { name: 'Open MDF-1' });
+  const resolve = screen.getByRole('link', { name: 'Resolve 2 items' });
+  expect(openRoom).toHaveAttribute('href', `/rooms/${mdf.id}/plan`);
+  expect(openRoom).toHaveClass('btn--ink');
+  expect(resolve).toHaveAttribute('href', `/rooms/${mdf.id}/review`);
+  expect(resolve).not.toHaveClass('btn--ink');
+  expect(resolve).toHaveTextContent('2');
+  expect(openRoom.compareDocumentPosition(resolve) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
 });
 
 it('adds a room to a site from Home and opens it', async () => {
