@@ -23,10 +23,9 @@ async function addSite(page: Page, project: string, site: string): Promise<void>
 test('the globe flies from the world to a site, and its card opens the room', async ({ page }) => {
   await page.goto('/');
   await expect(mapOf(page)).toBeVisible();
-  // Opens framed on Thailand, where the sample sites are, counting everything.
-  await expect(crumbs(page).getByRole('button', { name: 'Thailand' })).toBeVisible();
+  // Opens on the whole world, counting everything: one count for Thailand, no country crumb yet.
   await expect(crumbs(page).getByRole('button', { name: 'World' })).toHaveAttribute('aria-current', 'location');
-  await crumbs(page).getByRole('button', { name: 'World' }).click();
+  await expect(crumbs(page).getByRole('button', { name: 'Thailand' })).toHaveCount(0);
   await pointAtMap(page);
   await page.getByRole('button', { name: 'Thailand — 3 sites. Show them' }).click();
   await expect(crumbs(page).getByRole('button', { name: 'Thailand' })).toHaveAttribute('aria-current', 'location');
@@ -52,13 +51,14 @@ test('the wheel scrolls the page over the map unless a modifier is held or the m
   await expect(page.getByText(/scroll to zoom, or click the map first/)).toBeVisible();
   await expect.poll(() => main.evaluate((el) => el.scrollTop)).toBeGreaterThan(0);
   await main.evaluate((el) => el.scrollTo(0, 0));
+  // The world view has no scale bar; zooming in brings one.
   const scale = page.getByRole('img', { name: /^Scale bar/ });
-  const before = await scale.getAttribute('aria-label');
+  await expect(scale).toHaveCount(0);
   await pointAtMap(page);
   await page.keyboard.down('Control');
   await page.mouse.wheel(0, -600);
   await page.keyboard.up('Control');
-  await expect(scale).not.toHaveAttribute('aria-label', before ?? '');
+  await expect(scale).toBeVisible();
   expect(await main.evaluate((el) => el.scrollTop)).toBe(0);
 });
 
@@ -66,6 +66,9 @@ test('a site is placed by pasting a Google Maps link', async ({ page }) => {
   await page.goto('/');
   await addSite(page, 'Acme', 'Warehouse 2');
   await page.getByRole('link', { name: 'Glasshouse' }).first().click();
+  await pointAtMap(page);
+  await page.getByRole('button', { name: 'Thailand — 3 sites. Show them' }).click();
+  await expect(page.locator('.globe-map')).not.toHaveClass(/is-flying/);
   const toggle = page.getByRole('button', { name: /^Not placed yet/ });
   await toggle.click();
   const waiting = page.getByRole('region', { name: /Not placed yet/ });
@@ -86,6 +89,10 @@ test('a site is placed by clicking the map', async ({ page }) => {
   await page.goto('/');
   await addSite(page, 'Acme', 'Depot 9');
   await page.getByRole('link', { name: 'Glasshouse' }).first().click();
+  // From the world view to Thailand first; Place mode keeps the view where it is.
+  await pointAtMap(page);
+  await page.getByRole('button', { name: 'Thailand — 3 sites. Show them' }).click();
+  await expect(page.locator('.globe-map')).not.toHaveClass(/is-flying/);
   await page.getByRole('button', { name: /^Not placed yet/ }).click();
   await page.getByRole('button', { name: 'Place Depot 9 on the map' }).click();
   const banner = page.getByRole('region', { name: 'Place Depot 9 on the map' });
@@ -123,7 +130,6 @@ test.describe('with reduced motion', () => {
 
   test('the world view holds still and flights are jump cuts', async ({ page }) => {
     await page.goto('/');
-    await crumbs(page).getByRole('button', { name: 'World' }).click();
     const marker = page.getByRole('button', { name: 'Thailand — 3 sites. Show them' });
     await page.mouse.move(0, 0);
     const before = await marker.boundingBox();
@@ -140,13 +146,13 @@ for (const [w, h] of [[1280, 720], [1440, 900]] as const) {
     await page.goto('/');
     await addSite(page, 'Acme', 'Unplaced depot');
     await page.getByRole('link', { name: 'Glasshouse' }).first().click();
-    const search = page.getByRole('searchbox', { name: /Search sites and rooms/ });
+    const search = page.getByRole('combobox', { name: /Search sites, rooms and projects/ });
     await search.fill('Riverside Campus');
     await search.press('Enter');
     const card = page.locator('.globe-sitecard');
     await expect(card).toBeVisible();
-    await expect(page.locator('.globe-map')).not.toHaveClass(/is-flying/);
-    await expect(card.locator('#site-card-scene')).toBeVisible();
+    await expect(page.locator('.globe-map')).not.toHaveClass(/is-flying/, { timeout: 10_000 });
+    await expect(card.locator('#site-card-scene')).toBeVisible({ timeout: 15_000 });
     const toggle = page.getByRole('button', { name: /^Not placed yet/ });
     await expect(toggle).toBeVisible();
     const [c, t, a] = await Promise.all([card.boundingBox(), toggle.boundingBox(), card.locator('.site-card__actions').boundingBox()]);

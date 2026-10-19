@@ -35,18 +35,28 @@ interface GlobeHeroProps {
   frame: { seq: number; target: FrameTarget } | null;
   onPlaces: (places: SitePlaces) => void;
   onMapFailed: () => void;
+  /** Home was entered without a view in its address: the map opens on the whole world. */
+  openOnWorld?: boolean;
+  /** A room picked in the search: its site's card shows it. */
+  cardRoom?: { seq: number; siteId: string; roomId: string } | null;
 }
 
 /**
  * Home's hero, the full width of the page: a globe of every placed site. Picking a site floats its card over the map's
  * top right; sites without a location wait behind "Not placed yet" at the map's foot.
  */
-export function GlobeHero({ sites, lastRoomId, scope, onScope, onCloseCard, matches, frame, onPlaces, onMapFailed }: GlobeHeroProps) {
+export function GlobeHero({ sites, lastRoomId, scope, onScope, onCloseCard, matches, frame, onPlaces, onMapFailed, openOnWorld = false, cardRoom = null }: GlobeHeroProps) {
   const m = useT();
   const can = useCan();
   const dispatch = useWorkspaceStore((s) => s.dispatch);
   const navigate = useNavigate();
   const [roomBySite, setRoomBySite] = useState<Record<string, string>>({});
+  // A room picked in the search wins over the card's own choice, in the same render (no flash of another room's 3D).
+  const [seenPick, setSeenPick] = useState(0);
+  if (cardRoom && cardRoom.seq !== seenPick) {
+    setSeenPick(cardRoom.seq);
+    setRoomBySite((prev) => ({ ...prev, [cardRoom.siteId]: cardRoom.roomId }));
+  }
   const [mapReady, setMapReady] = useState(false);
   const [mapFailed, setMapFailed] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -195,6 +205,7 @@ export function GlobeHero({ sites, lastRoomId, scope, onScope, onCloseCard, matc
               onReady={onReady}
               hasSamples={mapSites.some((s) => s.sample)}
               cardHeight={site ? cardHeight : 0}
+              openOnWorld={openOnWorld}
             />
           </Suspense>
         </SceneBoundary>

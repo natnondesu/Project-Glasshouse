@@ -41,6 +41,8 @@ export interface GlobeMapProps {
   hasSamples: boolean;
   /** The floating card's height: names are placed again when it grows or shrinks (a room switch, the 3D folding). */
   cardHeight?: number;
+  /** Home was entered without a view in its address: the map opens on the whole world, turning. */
+  openOnWorld?: boolean;
 }
 
 /** jsdom and the first frame report no size: a laptop-sized guess until the real one arrives. */
@@ -133,7 +135,7 @@ export default function GlobeMap(props: GlobeMapProps) {
   return <Globe {...props} geo={geo} />;
 }
 
-function Globe({ sites, scope, onScope, matches, frame, onPlaces, placing, onPlace, onCancelPlace, onPasteInstead, onReady, hasSamples, cardHeight = 0, geo }: GlobeMapProps & { geo: GeoData }) {
+function Globe({ sites, scope, onScope, matches, frame, onPlaces, placing, onPlace, onCancelPlace, onPasteInstead, onReady, hasSamples, cardHeight = 0, openOnWorld = false, geo }: GlobeMapProps & { geo: GeoData }) {
   const m = useT();
   const lang = useLangStore((s) => s.lang);
   const reduced = usePrefersReducedMotion();
@@ -179,13 +181,15 @@ function Globe({ sites, scope, onScope, matches, frame, onPlaces, placing, onPla
     [sites, regionBy],
   );
 
-  // A scope read from the address opens framed on it; otherwise the view frames the country (or countries) of the sites.
+  // A scope read from the address opens framed on it; a plain Home opens on the whole world; any other view (a search
+  // or a chip in the address) frames the country (or countries) of the sites.
   const openingScope = useRef(scope).current;
+  const opensOnWorld = useRef(openOnWorld).current;
   const initial = useCallback(
     (sz: Size): Camera => {
       const framed = frameOf(openingScope, sz);
       if (framed) return framed;
-      if (sites.length === 0) return worldCamera(sz);
+      if (opensOnWorld || sites.length === 0) return worldCamera(sz);
       const own = boxOfPoints(sites.map((s) => s.location));
       const countryBoxes = [...places.values()].flatMap((p) => (p.country && spanOf(p.country.box) <= MAX_FRAME_SPAN ? [p.country.box] : []));
       const corners = [own, ...countryBoxes].flatMap(([[w, s], [e, n]]) => [{ lon: w, lat: s }, { lon: e, lat: n }]);
@@ -197,7 +201,7 @@ function Globe({ sites, scope, onScope, matches, frame, onPlaces, placing, onPla
       }
       return fitBox(box, sz, { padding: FRAME_PAD_PX, maxPpd: LEVEL_PPD.province });
     },
-    [sites, places, frameOf, openingScope],
+    [sites, places, frameOf, openingScope, opensOnWorld],
   );
 
   // The world view turns slowly until someone drags or zooms it, points at it, places a site, or scrolls it away.
@@ -282,11 +286,17 @@ function Globe({ sites, scope, onScope, matches, frame, onPlaces, placing, onPla
     if (!onScreen) flyTo(siteCamera(selected.location, Math.max(camera.ppd, LEVEL_PPD.country * 2), size));
   }, [selectedKey, selected, projection, camera, size, flyTo]);
 
-  // A flight asked from outside (Enter on a site match): after the one above, so it wins when both fire.
+  // A flight asked from outside (a search pick, the plain Home): after the one above, so it wins when both fire.
   const lastFrame = useRef(frame?.seq ?? 0);
   useEffect(() => {
     if (!frame || frame.seq === lastFrame.current || !camera || !size) return;
     lastFrame.current = frame.seq;
+    if (frame.target.kind === 'world') {
+      setChooser(null);
+      setUserMoved(false);
+      flyTo(worldCamera(size, { lat: Math.max(-30, Math.min(30, camera.lat)), lon: camera.lon }));
+      return;
+    }
     const target = frameOf(frame.target, size);
     const site = frame.target.kind === 'site' ? sites.find((s) => s.id === (frame.target as { id: string }).id) : undefined;
     if (site) flyTo(siteCamera(site.location, Math.max(camera.ppd, SITE_PPD), size));

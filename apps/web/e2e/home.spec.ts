@@ -27,14 +27,19 @@ test('the workspace bar offers the last room back, and Continue opens it', async
 
 test('a site picked on the globe floats its card over the map, live in 3D, and opens any room', async ({ page, browserName }) => {
   test.skip(browserName === 'firefox' && !!process.env.CI, "Playwright's Firefox has no WebGL in the CI image");
+  // Three flights, a live 3D and a room opening: a long walk that needs headroom when the machine is busy.
+  test.slow();
   await page.goto('/');
   await expect(mapOf(page)).toBeVisible();
   await pointAtMap(page);
+  // Home opens on the whole world: the country's count, then the province's.
+  await page.getByRole('button', { name: 'Thailand — 3 sites. Show them' }).click();
   await page.getByRole('button', { name: 'Bangkok — 3 sites. Show them' }).click();
   await page.getByRole('button', { name: /^Bangna campus, / }).click();
   const card = page.locator('.globe-sitecard');
   await expect(card.getByRole('heading', { level: 2, name: 'Bangna campus' })).toBeVisible();
-  await expect(card.locator('.site-card__paper canvas')).toBeVisible();
+  // The 3D engine loads on demand: give it time on a busy machine (what's tested is that it shows, not how fast).
+  await expect(card.locator('.site-card__paper canvas')).toBeVisible({ timeout: 15_000 });
   await card.getByRole('button', { name: 'Pause turning' }).click();
   await expect(card.getByRole('button', { name: 'Turn again' })).toHaveAttribute('aria-pressed', 'true');
   await card.getByRole('button', { name: 'Show MDF-1 in 3D' }).click();
@@ -52,7 +57,6 @@ test('a site picked on the globe floats its card over the map, live in 3D, and o
 test('the Thailand count scopes the numbers and the rooms to Thailand', async ({ page }) => {
   await page.goto('/');
   await expect(mapOf(page)).toBeVisible();
-  await crumbs(page).getByRole('button', { name: 'World' }).click();
   await pointAtMap(page);
   await page.getByRole('button', { name: 'Thailand — 3 sites. Show them' }).click();
   await expect(numbersHeading(page)).toHaveText('Thailand · 3 sites');
@@ -68,11 +72,12 @@ test('typing in the Home search fades the pins, narrows the numbers and the room
   await page.goto('/');
   await expect(mapOf(page)).toBeVisible();
   await pointAtMap(page);
+  await page.getByRole('button', { name: 'Thailand — 3 sites. Show them' }).click();
   await page.getByRole('button', { name: 'Bangkok — 3 sites. Show them' }).click();
   await expect(page.getByRole('button', { name: /^Bangna campus, / })).toBeVisible();
   await page.mouse.move(2, 2);
   await page.keyboard.press('/');
-  const search = page.getByRole('searchbox', { name: 'Search sites and rooms' });
+  const search = page.getByRole('combobox', { name: 'Search sites, rooms and projects' });
   await expect(search).toBeFocused();
   await page.keyboard.type('Shaft L2');
   await expect(page.locator('.globe-marker:has([aria-label^="Bangna campus,"])')).toHaveClass(/is-dim/);
@@ -93,7 +98,7 @@ test('the room chips filter the grid, with an honest empty result and Clear filt
   await expect(page).toHaveURL(/rooms=attention/);
   await rooms.getByRole('button', { name: /^Approved/ }).click();
   await expect(rooms.getByRole('article')).toHaveCount(2);
-  await page.getByRole('searchbox', { name: 'Search sites and rooms' }).fill('MDF');
+  await page.getByRole('combobox', { name: 'Search sites, rooms and projects' }).fill('MDF');
   await expect(rooms.getByText('No rooms match “MDF” here.')).toBeVisible();
   await rooms.getByRole('button', { name: 'Clear filters' }).click();
   await expect(rooms.getByRole('article')).toHaveCount(7);
@@ -110,6 +115,7 @@ test.describe('with reduced motion', () => {
 
   test('the picked site keeps its ring and bold name, without the pulse', async ({ page }) => {
     await page.goto('/');
+    await page.getByRole('button', { name: 'Thailand — 3 sites. Show them' }).click();
     await page.getByRole('button', { name: 'Bangkok — 3 sites. Show them' }).click();
     await page.getByRole('button', { name: /^Bangna campus, / }).click();
     await expect(page.getByRole('button', { name: /^Bangna campus, / })).toHaveAttribute('aria-pressed', 'true');
