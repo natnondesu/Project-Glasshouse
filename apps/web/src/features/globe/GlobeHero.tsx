@@ -169,7 +169,7 @@ export function GlobeHero({ sites, lastRoomId, scope, onScope, onCloseCard, matc
 
   return (
     <section className="globe-hero glass" aria-label={m.globe.map}>
-      <div className="globe-hero__paper" ref={paper}>
+      <div className={`globe-hero__paper${site && !placing ? ' has-card' : ''}`} ref={paper}>
         <SceneBoundary
           title={m.globe.unavailable}
           message={m.globe.failed}

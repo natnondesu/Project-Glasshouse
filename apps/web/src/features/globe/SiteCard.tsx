@@ -29,18 +29,18 @@ interface SiteCardProps {
   fitHeight?: number;
 }
 
-/** The card's own parts besides the 3D and the room rows: head, facts, actions, gaps and padding. */
-const CARD_CHROME_PX = 262;
+/** The card's own parts besides the 3D and the room rows: head, actions, gaps and padding. The numbers strip under the map carries the site's totals. */
+const CARD_CHROME_PX = 196;
 const ROOM_ROW_PX = 46;
-/** Rows the card keeps in view before the 3D gets any room. */
-const ROWS_KEPT = 3;
+/** The 3D comes first: one room row stays in view under it and the rest of the list scrolls. */
+const ROWS_KEPT = 1;
 const SCENE_MAX_PX = 180;
 /** Below this the 3D folds into a strip with a toggle: a sliver of a room helps nobody. */
 const SCENE_MIN_PX = 110;
 /** The folded 3D, opened again: the card scrolls to show it. */
 const SCENE_OPENED_PX = 160;
 
-/** How tall the 3D may be so the facts and the first rows stay in view; null when it should fold. */
+/** How tall the 3D may be so a room row stays in view under it; null when it should fold. */
 export function sceneHeight(fitHeight: number | undefined, rooms: number): number | null {
   if (fitHeight === undefined) return SCENE_MAX_PX;
   const room = fitHeight - CARD_CHROME_PX - Math.min(rooms, ROWS_KEPT) * ROOM_ROW_PX;
@@ -76,8 +76,9 @@ function RoomHolds({ room }: { room: RoomSummary }) {
 }
 
 /**
- * The selected site, floating over the map's top right: what it holds, each room with its revision and what holds its approval (links to Review), the
- * chosen room live in 3D, and the way into it. Rooms change by a click or prev/next, never on a timer.
+ * The selected site, floating over the map's top right: the chosen room live in 3D first, each room with its revision and what holds its approval
+ * (links to Review), and the way into it. The site's totals are in the numbers strip under the map, not repeated here. Rooms change by a click or
+ * prev/next, never on a timer.
  */
 export function SiteCard({ summary, roomId, lastRoomId, onRoom, canEdit, onLocate, onPlace, onNewRoom, onClose, fitHeight }: SiteCardProps) {
   const m = useT();
@@ -156,32 +157,10 @@ export function SiteCard({ summary, roomId, lastRoomId, onRoom, canEdit, onLocat
           ) : null}
         </p>
       </header>
-      {rooms.length > 0 ? (
-        <dl className="site-card__facts">
-          <div>
-            <dt>{m.globe.roomsLabel}</dt>
-            <dd className="mono">{rooms.length}</dd>
-          </div>
-          <div>
-            <dt>{m.globe.racksLabel}</dt>
-            <dd className="mono">{summary.racks}</dd>
-          </div>
-          <div>
-            <dt>{m.globe.powerLabel}</dt>
-            <dd className="mono">
-              {formatWatts(summary.knownW)}
-              <small>
-                {m.power.ofShort(formatWatts(summary.limitW))}
-                {summary.unknownDemand > 0 ? ` · ${m.globe.unknownDemand(summary.unknownDemand)}` : ''}
-              </small>
-            </dd>
-          </div>
-        </dl>
-      ) : null}
       {room ? (
         <>
           {fitted === null ? (
-            // Short map: the 3D folds into a strip, so the facts and the first rooms stay in view; the rows pick the room.
+            // A very short map: the 3D folds into a strip so a room row stays in view; the rows pick the room.
             <div className="site-card__strip">
               <span className="site-card__strip-name">
                 <span className="mono">3D</span> {room.room.name}

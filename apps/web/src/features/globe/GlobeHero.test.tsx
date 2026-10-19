@@ -346,6 +346,24 @@ describe('Home’s globe hero', () => {
     expect(scale()).not.toBe(zoomed);
   });
 
+  it('leaves the wheel to the site card floating on the map, so its room list scrolls, even with the map armed', async () => {
+    load(sample());
+    open(`/?scope=site:${siteId('Bangna campus')}`);
+    const view = await map();
+    const root = view.parentElement!;
+    const scale = () => screen.getByRole('img', { name: /^Scale bar/ }).getAttribute('aria-label');
+    fireEvent.pointerEnter(root);
+    fireEvent.pointerDown(view, { button: 0, pointerId: 1 });
+    view.focus();
+    const before = scale();
+    const card = document.querySelector<HTMLElement>('.globe-sitecard')!;
+    const wheel = new WheelEvent('wheel', { deltaY: -400, bubbles: true, cancelable: true });
+    card.querySelector('h2')!.dispatchEvent(wheel);
+    expect(wheel.defaultPrevented).toBe(false);
+    expect(scale()).toBe(before);
+    expect(screen.queryByText(/scroll to zoom, or click the map first/)).toBeNull();
+  });
+
   it('rings the selected pin without the pulse under reduced motion', async () => {
     load(sample());
     open(`/?scope=site:${siteId('Bangna campus')}`);
