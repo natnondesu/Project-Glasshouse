@@ -11,10 +11,10 @@ export const fold = (text: string): string => text.normalize('NFD').replace(/[\u
 export const queryWords = (query: string): string[] => fold(query).split(/\s+/).filter(Boolean);
 
 const haystack = (...parts: string[]): string => fold(parts.join(' '));
-const hasAll = (text: string, words: readonly string[]): boolean => words.every((w) => text.includes(w));
+export const hasAll = (text: string, words: readonly string[]): boolean => words.every((w) => text.includes(w));
 
-const roomText = (r: RoomSummary): string => haystack(r.project.name, r.site.name, r.room.name);
-const siteText = (s: SiteSummary): string => haystack(s.project.name, s.site.name);
+export const roomText = (r: RoomSummary): string => haystack(r.project.name, r.site.name, r.room.name);
+export const siteText = (s: SiteSummary): string => haystack(s.project.name, s.site.name);
 
 /**
  * The sites and rooms a search keeps: a room when its project, site and room names hold every word between them; a
@@ -36,7 +36,8 @@ const LEADING = 60;
 const CONTAINS = 40;
 const ELSEWHERE = 10;
 
-function nameScore(name: string, words: readonly string[]): number {
+/** How well a name answers the words: the whole name, its start, a word in it, or only its site's or project's names. */
+export function nameScore(name: string, words: readonly string[]): number {
   const folded = fold(name);
   const phrase = words.join(' ');
   if (folded === phrase) return EXACT;

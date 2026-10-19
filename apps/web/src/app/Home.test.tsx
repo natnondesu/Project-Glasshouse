@@ -120,5 +120,5 @@ it('shows no search on a Home with nothing to search', () => {
   useWorkspaceStore.getState().setLoad({ kind: 'ready' });
   open();
   expect(screen.getByRole('heading', { level: 1, name: 'Start with a project' })).toBeInTheDocument();
-  expect(screen.queryByRole('searchbox', { name: 'Search sites and rooms' })).toBeNull();
+  expect(screen.queryByRole('combobox', { name: 'Search sites and rooms' })).toBeNull();
 });

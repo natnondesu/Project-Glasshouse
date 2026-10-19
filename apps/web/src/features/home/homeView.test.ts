@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { useHomeView, viewParams } from './homeView';
+import { hasViewParams, useHomeView, viewParams } from './homeView';
 
 beforeEach(() => useHomeView.getState().reset());
 
@@ -36,5 +36,14 @@ describe('Home’s view in the address', () => {
     expect(useHomeView.getState()).toMatchObject({ q: 'x', enterSeq: 1, frame: { seq: 1, target: { kind: 'site', id: 'a' } } });
     s.reset();
     expect(useHomeView.getState()).toMatchObject({ q: '', enterSeq: 0, frame: null, scope: { kind: 'world' }, filter: 'all' });
+  });
+
+  it('tells a plain Home address from one that names a view', () => {
+    expect(hasViewParams(new URLSearchParams(''))).toBe(false);
+    // Parameters that aren't the view's, and empty ones, leave it plain.
+    expect(hasViewParams(new URLSearchParams('keep=1&q=&scope='))).toBe(false);
+    expect(hasViewParams(new URLSearchParams('q=mdf'))).toBe(true);
+    expect(hasViewParams(new URLSearchParams('scope=country:TH'))).toBe(true);
+    expect(hasViewParams(new URLSearchParams('rooms=draft'))).toBe(true);
   });
 });

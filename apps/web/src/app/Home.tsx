@@ -1,6 +1,6 @@
 import { liveCounts, newId } from '@glasshouse/domain';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate } from 'react-router';
+import { useNavigate, useSearchParams } from 'react-router';
 import { useAuthStore } from '../auth/authStore';
 import { useCan } from '../auth/useCan';
 import { GlobeHero } from '../features/globe/GlobeHero';
@@ -8,7 +8,7 @@ import { siteSummaries } from '../features/globe/sites';
 import { homeNumbers } from '../features/home/homeNumbers';
 import { filterCounts, filterRooms, scopedRooms } from '../features/home/homeRooms';
 import { narrowSites, queryWords, topMatch } from '../features/home/homeSearch';
-import { useHomeView, useHomeViewUrl } from '../features/home/homeView';
+import { hasViewParams, useHomeView, useHomeViewUrl } from '../features/home/homeView';
 import { lastRoomId } from '../features/home/lastRoom';
 import { NumbersStrip } from '../features/home/NumbersStrip';
 import { pickUp } from '../features/home/pickUp';
@@ -50,11 +50,15 @@ export function Home() {
   const me = useAuthStore((s) => s.user?.id ?? null);
   const edits = useRoomEditsStore((s) => s.byRoom);
   useDocumentTitle(null);
+  const [params] = useSearchParams();
+  // Entering Home on its plain address (the logo, the tree, signing in) starts on the whole world.
+  const [openOnWorld] = useState(() => !hasViewParams(params));
   useHomeViewUrl();
   const q = useHomeView((s) => s.q);
   const filter = useHomeView((s) => s.filter);
   const enterSeq = useHomeView((s) => s.enterSeq);
   const frame = useHomeView((s) => s.frame);
+  const cardRoom = useHomeView((s) => s.cardRoom);
   const viewScope = useHomeView((s) => s.scope);
   const setScope = useHomeView((s) => s.setScope);
   const setFilter = useHomeView((s) => s.setFilter);
@@ -135,7 +139,7 @@ export function Home() {
       </p>
       <WorkspaceBar projects={liveCounts(workspace).projects} sites={sites.length} rooms={sites.reduce((n, s) => n + s.rooms.length, 0)} pick={pick} />
       {sites.length > 0 ? (
-        <GlobeHero sites={sites} lastRoomId={lastId} scope={scope} onScope={setScope} onCloseCard={closeCard} matches={matches} frame={frame} onPlaces={onPlaces} onMapFailed={onMapFailed} />
+        <GlobeHero sites={sites} lastRoomId={lastId} scope={scope} onScope={setScope} onCloseCard={closeCard} matches={matches} frame={frame} onPlaces={onPlaces} onMapFailed={onMapFailed} openOnWorld={openOnWorld} cardRoom={cardRoom} />
       ) : null}
       {error ? (
         <p role="alert" className="field__error">

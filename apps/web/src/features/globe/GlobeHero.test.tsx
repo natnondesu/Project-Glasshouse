@@ -107,19 +107,76 @@ describe('Home’s globe hero', () => {
     expect(await screen.findByRole('dialog', { name: 'Where is Warehouse 2?' })).toBeInTheDocument();
   });
 
-  it('opens framed on the country of the sites, counting everything until a place is picked', async () => {
+  it('opens on the whole world without view parameters, counting everything until a place is picked', async () => {
     load(sample());
     open();
     await map();
     expect(within(crumbs()).getByRole('button', { name: 'World' })).toHaveAttribute('aria-current', 'location');
-    expect(within(crumbs()).getByRole('button', { name: 'Thailand' })).toBeInTheDocument();
-    // All three sample sites sit in Bangkok: one count marker, named for the province.
-    expect(screen.getByRole('button', { name: 'Bangkok — 3 sites. Show them' })).toBeInTheDocument();
+    // The world view: no country crumb, one count for the country, no scale bar.
+    expect(within(crumbs()).queryByRole('button', { name: 'Thailand' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Thailand — 3 sites. Show them' })).toBeInTheDocument();
+    expect(screen.queryByRole('img', { name: /^Scale bar/ })).toBeNull();
     expect(screen.getByText(/Map data: Natural Earth · sample sites at illustrative spots/)).toBeInTheDocument();
     expect(screen.getByRole('heading', { level: 2, name: 'Everywhere · 3 sites' })).toBeInTheDocument();
     expect(screen.getByRole('region', { name: 'All rooms' })).toBeInTheDocument();
     // No site picked: no card on the map.
     expect(screen.queryByRole('button', { name: /^Close / })).toBeNull();
+  });
+
+  it('opens a filtered address framed on its view, as before', async () => {
+    load(sample());
+    open('/?q=shaft');
+    await map();
+    // Framed on where the sites are: Thailand is in the crumbs, Bangkok's sites share one count.
+    expect(within(crumbs()).getByRole('button', { name: 'Thailand' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Bangkok — 1 of 3 sites match. Show them' })).toBeInTheDocument();
+  });
+
+  it('comes back to the world by the logo after a room, and Back from the room restores the filtered view', async () => {
+    const user = userEvent.setup();
+    const ws = sample();
+    load(ws);
+    const mdf = ws.projects[0]!.sites[0]!.rooms.find((r) => r.name === 'MDF-1')!;
+    const { router } = open(`/?q=mdf&scope=site:${siteId('Bangna campus')}`);
+    await map();
+    await act(() => router.navigate(`/rooms/${mdf.id}/plan`));
+    await act(() => router.navigate(-1));
+    expect(Object.fromEntries(new URLSearchParams(router.state.location.search))).toEqual({ q: 'mdf', scope: `site:${siteId('Bangna campus')}` });
+    expect(screen.getByRole('combobox', { name: 'Search sites and rooms' })).toHaveValue('mdf');
+    expect(card('Bangna campus')).toBeInTheDocument();
+    await map();
+    expect(within(crumbs()).getByRole('button', { name: 'Bangna campus' })).toHaveAttribute('aria-current', 'location');
+    // Into the room again, then the logo: the plain Home is the world view.
+    await act(() => router.navigate(`/rooms/${mdf.id}/plan`));
+    await user.click(screen.getAllByRole('link', { name: 'Glasshouse' })[0]!);
+    expect(router.state.location.pathname).toBe('/');
+    expect(router.state.location.search).toBe('');
+    await map();
+    expect(within(crumbs()).getByRole('button', { name: 'World' })).toHaveAttribute('aria-current', 'location');
+    expect(screen.getByRole('button', { name: 'Thailand — 3 sites. Show them' })).toBeInTheDocument();
+    expect(document.getElementById('home-site-name')).toBeNull();
+  });
+
+  it('flies back out to the world when the logo is clicked on a Home that wandered in', async () => {
+    const user = userEvent.setup();
+    load(sample());
+    const { router } = open();
+    await map();
+    await user.click(screen.getByRole('button', { name: 'Thailand — 3 sites. Show them' }));
+    await user.click(await screen.findByRole('button', { name: 'Bangkok — 3 sites. Show them' }));
+    await waitFor(() => expect(router.state.location.search).toBe('?scope=province%3ATH-10'));
+    expect(screen.getByRole('img', { name: /^Scale bar/ })).toBeInTheDocument();
+    await user.click(screen.getAllByRole('link', { name: 'Glasshouse' })[0]!);
+    expect(router.state.location.search).toBe('');
+    expect(await screen.findByRole('button', { name: 'Thailand — 3 sites. Show them' })).toBeInTheDocument();
+    expect(screen.queryByRole('img', { name: /^Scale bar/ })).toBeNull();
+    expect(within(crumbs()).getByRole('button', { name: 'World' })).toHaveAttribute('aria-current', 'location');
+    // Wandering by hand (no scope change), then the logo on the plain address: still the world again.
+    await user.click(screen.getByRole('button', { name: 'Zoom in' }));
+    await user.click(screen.getByRole('button', { name: 'Zoom in' }));
+    await waitFor(() => expect(screen.getByRole('img', { name: /^Scale bar/ })).toBeInTheDocument());
+    await user.click(screen.getAllByRole('link', { name: 'Glasshouse' })[0]!);
+    await waitFor(() => expect(screen.queryByRole('img', { name: /^Scale bar/ })).toBeNull());
   });
 
   it('picks the last room in a site’s card when that site is picked', async () => {
@@ -137,7 +194,9 @@ describe('Home’s globe hero', () => {
     load(sample());
     open();
     await map();
-    screen.getByRole('button', { name: 'Bangkok — 3 sites. Show them' }).focus();
+    screen.getByRole('button', { name: 'Thailand — 3 sites. Show them' }).focus();
+    await user.keyboard('{Enter}');
+    (await screen.findByRole('button', { name: 'Bangkok — 3 sites. Show them' })).focus();
     await user.keyboard('{Enter}');
     const campus = await screen.findByRole('button', { name: /^Riverside Campus, Sample · Riverside Campus, 4 rooms$/ });
     // The count held all of Bangkok's sites: the numbers and rooms follow it there.
@@ -237,14 +296,12 @@ describe('Home’s globe hero', () => {
     // Place mode takes focus to the map, so the keys work at once.
     const view = screen.getByRole('application');
     expect(view).toHaveFocus();
-    for (let i = 0; i < 6; i++) await user.keyboard('+');
+    for (let i = 0; i < 10 && !banner.textContent?.includes('Click again'); i++) await user.keyboard('+');
     expect(banner).toHaveTextContent('Click again to move the pin');
     await user.keyboard('{Enter}');
-    // The opening frame is Thailand's box, and zooming with the keys keeps its middle: the pin lands exactly there.
-    const thailand = parseGeo(countries as never, provinces as never).countries.find((c) => c.code === 'TH')!;
-    const [[w, south], [e, north]] = thailand.box;
-    const lat = (south + north) / 2;
-    const lon = (w + e) / 2;
+    // The world view opens over South-East Asia (12° N, 100° E), and zooming with the keys keeps its middle: the pin
+    // lands exactly there.
+    const [lat, lon] = [12, 100];
     expect(banner).toHaveTextContent(`${lat.toFixed(5)}° N, ${lon.toFixed(5)}° E`);
     await user.click(within(banner).getByRole('button', { name: 'Save location' }));
     const site = useWorkspaceStore.getState().workspace.projects.find((p) => p.id === 'p')!.sites[0]!;
@@ -298,7 +355,8 @@ describe('Home’s globe hero', () => {
     send({ type: 'site/locate', siteId: 'b', location: { lat: 18.7887, lon: 98.9855 } });
     open();
     await map();
-    await user.click(screen.getByRole('button', { name: /— 2 sites\. Show them$/ }));
+    // From the world view each count flies closer, until no zoom can split the two.
+    for (let i = 0; i < 8 && !screen.queryByRole('group', { name: 'These sites share one spot' }); i++) await user.click(screen.getByRole('button', { name: /— 2 sites\. Show them$/ }));
     const chooser = screen.getByRole('group', { name: 'These sites share one spot' });
     expect(within(chooser).getByRole('button', { name: 'Hall A' })).toHaveFocus();
     await user.click(within(chooser).getByRole('button', { name: 'Hall B' }));
@@ -324,7 +382,8 @@ describe('Home’s globe hero', () => {
     open();
     const view = await map();
     const root = view.parentElement!;
-    const scale = () => screen.getByRole('img', { name: /^Scale bar/ }).getAttribute('aria-label');
+    // The world view has no scale bar; any zoom in brings one.
+    const scale = () => screen.queryByRole('img', { name: /^Scale bar/ })?.getAttribute('aria-label') ?? null;
     const before = scale();
     fireEvent.pointerEnter(root);
     fireEvent.wheel(root, { deltaY: -400 });
@@ -333,7 +392,7 @@ describe('Home’s globe hero', () => {
     expect(screen.getByText(/^Hold (Ctrl|Cmd) and scroll/)).toBeInTheDocument();
     fireEvent.pointerDown(view, { button: 0, pointerId: 1 });
     view.focus();
-    fireEvent.wheel(root, { deltaY: -400 });
+    fireEvent.wheel(root, { deltaY: -800 });
     const zoomed = scale();
     expect(zoomed).not.toBe(before);
     // Leaving the map disarms it, even though focus stays inside.
@@ -379,13 +438,13 @@ describe('Home’s globe hero', () => {
     const { router } = open();
     await map();
     const scale = screen.queryByRole('img', { name: /^Scale bar/ })?.getAttribute('aria-label');
-    const marker = () => screen.getByRole('button', { name: /^Bangkok — / }).closest('li')!.style.transform;
+    const marker = () => screen.getByRole('button', { name: /^Thailand — / }).closest('li')!.style.transform;
     const before = marker();
     const trail = within(crumbs()).getAllByRole('button').map((b) => b.textContent);
     await user.keyboard('/');
-    expect(screen.getByRole('searchbox', { name: 'Search sites and rooms' })).toHaveFocus();
+    expect(screen.getByRole('combobox', { name: 'Search sites and rooms' })).toHaveFocus();
     await user.keyboard('shaft');
-    expect(screen.getByRole('button', { name: 'Bangkok — 1 of 3 sites match. Show them' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Thailand — 1 of 3 sites match. Show them' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { level: 2, name: 'Everywhere · 1 site · matching “shaft”' })).toBeInTheDocument();
     const rooms = screen.getByRole('region', { name: 'All rooms' });
     expect(within(rooms).getAllByRole('article').map((a) => within(a).getByRole('heading').textContent)).toEqual(['Shaft L1', 'Shaft L2', 'Shaft L3']);
@@ -401,9 +460,9 @@ describe('Home’s globe hero', () => {
     // Show 1 match flies to it.
     await user.click(screen.getByRole('button', { name: 'Show 1 match' }));
     await waitFor(() => expect(screen.queryByRole('img', { name: /^Scale bar/ })?.getAttribute('aria-label')).not.toBe(scale));
-    // Escape clears it.
-    await user.click(screen.getByRole('searchbox', { name: 'Search sites and rooms' }));
-    await user.keyboard('{Escape}');
+    // Escape closes the dropdown, a second Escape clears it.
+    await user.click(screen.getByRole('combobox', { name: 'Search sites and rooms' }));
+    await user.keyboard('{Escape}{Escape}');
     expect(screen.getByRole('heading', { level: 2, name: 'Everywhere · 3 sites' })).toBeInTheDocument();
     await user.keyboard('mdf{Enter}');
     expect(router.state.location.pathname).toMatch(/^\/rooms\/.+\/plan$/);
@@ -415,7 +474,7 @@ describe('Home’s globe hero', () => {
     open(`/?scope=province:TH-10`);
     await map();
     expect(await screen.findByRole('button', { name: /^Bangna campus,/ })).toBeInTheDocument();
-    await user.type(screen.getByRole('searchbox', { name: 'Search sites and rooms' }), 'riverside campus');
+    await user.type(screen.getByRole('combobox', { name: 'Search sites and rooms' }), 'riverside campus');
     expect(screen.getByRole('button', { name: /^Bangna campus,/ }).closest('li')).toHaveClass('is-dim');
     expect(document.querySelectorAll('.globe-marker:not(.is-dim)').length).toBeGreaterThan(0);
     // A faded pin says so to assistive tech.
@@ -431,7 +490,7 @@ describe('Home’s globe hero', () => {
     const user = userEvent.setup();
     load(sample());
     const { router } = open('/?q=shaft&rooms=approved');
-    expect(screen.getByRole('searchbox', { name: 'Search sites and rooms' })).toHaveValue('shaft');
+    expect(screen.getByRole('combobox', { name: 'Search sites and rooms' })).toHaveValue('shaft');
     const rooms = screen.getByRole('region', { name: 'All rooms' });
     expect(within(rooms).getByRole('button', { name: /^Approved/ })).toHaveAttribute('aria-pressed', 'true');
     expect(within(rooms).getByRole('button', { name: /^All/ })).toHaveTextContent('3');
@@ -447,9 +506,9 @@ describe('Home’s globe hero', () => {
     const user = userEvent.setup();
     load(sample());
     const { router } = open('/?q=shaft');
-    expect(screen.getByRole('searchbox', { name: 'Search sites and rooms' })).toHaveValue('shaft');
+    expect(screen.getByRole('combobox', { name: 'Search sites and rooms' })).toHaveValue('shaft');
     await user.click(screen.getAllByRole('link', { name: 'Glasshouse' })[0]!);
-    expect(screen.getByRole('searchbox', { name: 'Search sites and rooms' })).toHaveValue('');
+    expect(screen.getByRole('combobox', { name: 'Search sites and rooms' })).toHaveValue('');
     const rooms = () => screen.getByRole('region', { name: 'All rooms' });
     expect(within(rooms()).getAllByRole('article')).toHaveLength(7);
     await user.click(within(rooms()).getByRole('button', { name: /^Draft/ }));
@@ -489,8 +548,9 @@ describe('Home’s globe hero', () => {
     await act(() => useLangStore.getState().setLang('th'));
     open();
     await screen.findByRole('application');
+    await userEvent.click(screen.getByRole('button', { name: 'ไทย — 3 ไซต์ ดูทั้งหมด' }));
     expect(within(screen.getByRole('navigation', { name: 'ระดับแผนที่' })).getByRole('button', { name: 'ไทย' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'กรุงเทพมหานคร — 3 ไซต์ ดูทั้งหมด' })).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: 'กรุงเทพมหานคร — 3 ไซต์ ดูทั้งหมด' })).toBeInTheDocument();
   });
 
   describe('with motion', () => {
