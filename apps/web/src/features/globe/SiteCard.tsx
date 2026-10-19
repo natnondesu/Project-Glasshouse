@@ -31,20 +31,27 @@ interface SiteCardProps {
 
 /** The card's own parts besides the 3D and the room rows: head, actions, gaps and padding. The numbers strip under the map carries the site's totals. */
 const CARD_CHROME_PX = 196;
-const ROOM_ROW_PX = 46;
-/** The 3D comes first: one room row stays in view under it and the rest of the list scrolls. */
-const ROWS_KEPT = 1;
-const SCENE_MAX_PX = 180;
+/** A room row as drawn: name and chip, then racks, power and holds. */
+const ROOM_ROW_PX = 58;
+/** Room rows kept in view under the 3D: two when the card has the room, else one; the rest of the list scrolls. */
+const ROWS_KEPT = [2, 1];
+/** Before the card is measured. */
+const SCENE_DEFAULT_PX = 180;
+/** The 3D takes the card's spare height up to this: a one-room site gets a big room. */
+const SCENE_MAX_PX = 320;
 /** Below this the 3D folds into a strip with a toggle: a sliver of a room helps nobody. */
 const SCENE_MIN_PX = 110;
 /** The folded 3D, opened again: the card scrolls to show it. */
 const SCENE_OPENED_PX = 160;
 
-/** How tall the 3D may be so a room row stays in view under it; null when it should fold. */
+/** How tall the 3D may be so the first room rows stay in view under it; null when it should fold. */
 export function sceneHeight(fitHeight: number | undefined, rooms: number): number | null {
-  if (fitHeight === undefined) return SCENE_MAX_PX;
-  const room = fitHeight - CARD_CHROME_PX - Math.min(rooms, ROWS_KEPT) * ROOM_ROW_PX;
-  return room < SCENE_MIN_PX ? null : Math.min(SCENE_MAX_PX, room);
+  if (fitHeight === undefined) return SCENE_DEFAULT_PX;
+  for (const keep of ROWS_KEPT) {
+    const room = fitHeight - CARD_CHROME_PX - Math.min(rooms, keep) * ROOM_ROW_PX;
+    if (room >= SCENE_MIN_PX) return Math.min(SCENE_MAX_PX, room);
+  }
+  return null;
 }
 
 function RoomHolds({ room }: { room: RoomSummary }) {
@@ -174,7 +181,7 @@ export function SiteCard({ summary, roomId, lastRoomId, onRoom, canEdit, onLocat
             <div className="site-card__paper" id="site-card-scene" style={{ height: `${scene}px` }}>
               <SceneBoundary key={room.room.id} message={m.home.scene3dFailed} reload={m.home.reload}>
                 <Suspense fallback={<p className="home-hero__fallback">{m.home.loading3d}</p>}>
-                  <HeroScene location={{ project, site, room: room.room }} caption={room.room.name} />
+                  <HeroScene location={{ project, site, room: room.room }} caption={room.room.name} compact />
                 </Suspense>
               </SceneBoundary>
               {revision ? (

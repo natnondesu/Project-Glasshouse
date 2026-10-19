@@ -2,19 +2,24 @@ import { describe, expect, it } from 'vitest';
 import { sceneHeight } from './SiteCard';
 
 describe('how tall the card’s 3D may be', () => {
-  it('is its usual size when the map is tall, or nothing is measured yet', () => {
+  it('is its usual size until the card is measured', () => {
     expect(sceneHeight(undefined, 4)).toBe(180);
-    expect(sceneHeight(900, 4)).toBe(180);
   });
 
-  it('shows by default on a laptop map, ahead of the room list, which scrolls', () => {
-    // A 1280×720 screen gives the card about 370 px: the 3D still shows, with one room row in view.
+  it('grows into the room the card has, up to a cap: a one-room site gets a big 3D', () => {
+    const one = sceneHeight(480, 1)!;
+    const four = sceneHeight(480, 4)!;
+    expect(one).toBeGreaterThan(180);
+    expect(four).toBeGreaterThanOrEqual(110);
+    expect(one).toBeGreaterThan(four);
+    expect(sceneHeight(2000, 1)).toBe(320);
+  });
+
+  it('keeps two room rows in view when it can, one when space is tight', () => {
     expect(sceneHeight(370, 4)).toBeGreaterThanOrEqual(110);
-    expect(sceneHeight(370, 1)).toBeGreaterThanOrEqual(110);
-    expect(sceneHeight(470, 2)).toBe(180);
   });
 
-  it('folds away only when not even a room row would fit beside a useful 3D', () => {
+  it('folds away only when not even one room row would fit beside a useful 3D', () => {
     expect(sceneHeight(300, 4)).toBeNull();
   });
 });

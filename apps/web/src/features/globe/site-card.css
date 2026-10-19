@@ -352,7 +352,7 @@
   height: 18px;
 }
 
-/* The picked room's record over the 3D's foot; the rack names take its place on hover and focus. */
+/* The picked room's record over the 3D's foot. */
 .site-card__stamp {
   position: absolute;
   left: 10px;
@@ -388,11 +388,6 @@
 .site-card__paper .site-card__stamp > span:first-child {
   flex-shrink: 0;
   letter-spacing: 0.04em;
-}
-
-.site-card__paper:hover .site-card__stamp,
-.site-card__paper:focus-within .site-card__stamp {
-  opacity: 0;
 }
 
 .site-card__empty {
