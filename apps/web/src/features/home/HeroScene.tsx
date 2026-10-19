@@ -20,8 +20,11 @@ const RACK_LABELS = ['rack' as const];
  * Clicking a rack opens it in the elevation; the rack names under the scene do the same from the keyboard
  * and light their rack while pointed at.
  */
-/** `caption` replaces the hint in the corner chip (the site card names the room there instead). */
-export default function HeroScene({ location, caption }: { location: RoomLocation; caption?: string }) {
+/**
+ * `caption` replaces the hint in the corner chip (the site card names the room there instead). `compact` (the site card) leaves out the rack-name
+ * links under the scene: in a small card they crowd the room, and the card's Open button is the way in.
+ */
+export default function HeroScene({ location, caption, compact = false }: { location: RoomLocation; caption?: string; compact?: boolean }) {
   const m = useT();
   const navigate = useNavigate();
   const content = currentRevision(location.room.plan).content;
@@ -65,7 +68,7 @@ export default function HeroScene({ location, caption }: { location: RoomLocatio
         idle={!inView}
         onDemand
       />
-      {racks.length > 0 ? (
+      {racks.length > 0 && !compact ? (
         <nav className="home-hero__racks" aria-label={m.home.racksNav}>
           {racks.map((r) => (
             <Link
